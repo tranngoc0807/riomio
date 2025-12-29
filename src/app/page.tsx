@@ -1,65 +1,200 @@
-import Image from "next/image";
+import {
+  Building2,
+  Factory,
+  ShoppingCart,
+  Wallet,
+  Users,
+  HandCoins,
+  FileBarChart,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
+import Link from "next/link";
 
-export default function Home() {
+const stats = [
+  {
+    name: "Doanh thu tháng",
+    value: "1.2 tỷ",
+    change: "+12%",
+    trend: "up",
+    icon: TrendingUp,
+    color: "bg-green-500",
+  },
+  {
+    name: "Chi phí sản xuất",
+    value: "450 triệu",
+    change: "-5%",
+    trend: "down",
+    icon: TrendingDown,
+    color: "bg-red-500",
+  },
+  {
+    name: "Lợi nhuận ròng",
+    value: "320 triệu",
+    change: "+8%",
+    trend: "up",
+    icon: TrendingUp,
+    color: "bg-blue-500",
+  },
+  {
+    name: "Nhân viên",
+    value: "45",
+    change: "+2",
+    trend: "up",
+    icon: Users,
+    color: "bg-purple-500",
+  },
+];
+
+const quickLinks = [
+  {
+    name: "Thông tin công ty",
+    href: "/thong-tin-cong-ty",
+    icon: Building2,
+    description: "Quản lý thông tin doanh nghiệp",
+    color: "bg-blue-600",
+  },
+  {
+    name: "Sản xuất",
+    href: "/san-xuat",
+    icon: Factory,
+    description: "Quản lý quy trình sản xuất",
+    color: "bg-orange-500",
+  },
+  {
+    name: "Bán hàng",
+    href: "/ban-hang",
+    icon: ShoppingCart,
+    description: "Quản lý đơn hàng và khách hàng",
+    color: "bg-green-500",
+  },
+  {
+    name: "Dòng tiền",
+    href: "/dong-tien",
+    icon: Wallet,
+    description: "Theo dõi thu chi tài chính",
+    color: "bg-emerald-500",
+  },
+  {
+    name: "Lương & Bảo hiểm",
+    href: "/luong-bao-hiem",
+    icon: Users,
+    description: "Quản lý lương và phúc lợi",
+    color: "bg-purple-500",
+  },
+  {
+    name: "Quản lý tiền vay",
+    href: "/quan-ly-tien-vay",
+    icon: HandCoins,
+    description: "Theo dõi các khoản vay",
+    color: "bg-red-500",
+  },
+  {
+    name: "Báo cáo",
+    href: "/bao-cao",
+    icon: FileBarChart,
+    description: "Xem báo cáo tổng hợp",
+    color: "bg-indigo-500",
+  },
+];
+
+export default function Dashboard() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Dashboard
+        </h1>
+        <p className="text-gray-600 mt-2">
+          Chào mừng bạn đến với hệ thống quản lý Riomio Shop
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.name}
+              className="bg-white rounded-xl shadow-sm p-6 border border-gray-200"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">{stat.name}</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {stat.value}
+                  </p>
+                </div>
+                <div className={`${stat.color} p-3 rounded-lg`}>
+                  <Icon className="text-white" size={24} />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center">
+                <span
+                  className={`text-sm font-medium ${
+                    stat.trend === "up" ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {stat.change}
+                </span>
+                <span className="text-gray-500 text-sm ml-2">so với tháng trước</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Quick Links */}
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          Truy cập nhanh
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {quickLinks.map((link) => {
+            const Icon = link.icon;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all duration-200 group"
+              >
+                <div className={`${link.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <Icon className="text-white" size={24} />
+                </div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                  {link.name}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">{link.description}</p>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          Hoạt động gần đây
+        </h2>
+        <div className="space-y-4">
+          {[
+            { action: "Đơn hàng mới #1234", time: "5 phút trước", type: "order" },
+            { action: "Thanh toán lương tháng 12", time: "2 giờ trước", type: "salary" },
+            { action: "Nhập nguyên liệu sản xuất", time: "1 ngày trước", type: "production" },
+            { action: "Cập nhật báo cáo tài chính", time: "2 ngày trước", type: "report" },
+          ].map((activity, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <span className="text-gray-700">{activity.action}</span>
+              <span className="text-sm text-gray-500">{activity.time}</span>
+            </div>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
