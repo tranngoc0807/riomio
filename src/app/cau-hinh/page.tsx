@@ -30,6 +30,7 @@ import {
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useCompanyConfig, CompanyConfig, BusinessArea, QuickLinkSection, Announcement } from "@/context/CompanyConfigContext";
+import UserManagement from "@/components/UserManagement";
 
 const iconOptions = [
   { value: "Factory", label: "Sản xuất", icon: Factory },
@@ -122,6 +123,7 @@ export default function CauHinh() {
   const { config, updateConfig } = useCompanyConfig();
   const [editConfig, setEditConfig] = useState<CompanyConfig>(config);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState<"users" | "config">("users");
 
   // Modal states
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -254,9 +256,45 @@ export default function CauHinh() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
               <Settings className="text-blue-600" size={28} />
-              Cấu hình trang Thông tin công ty
+              Cấu hình
             </h1>
-            <p className="text-gray-500 text-sm mt-1">Di chuột vào từng phần để chỉnh sửa. Thay đổi sẽ được áp dụng ngay lên trang thông tin công ty.</p>
+            <p className="text-gray-500 text-sm mt-1">
+              {activeTab === "users"
+                ? "Thêm, sửa, xóa tài khoản nhân viên"
+                : "Di chuột vào từng phần để chỉnh sửa. Thay đổi sẽ được áp dụng ngay lên trang thông tin công ty."}
+            </p>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="max-w-7xl mx-auto mt-4">
+          <div className="flex gap-2 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`px-6 py-3 font-medium transition-colors relative ${
+                activeTab === "users"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Users size={20} />
+                Quản lý tài khoản
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("config")}
+              className={`px-6 py-3 font-medium transition-colors relative ${
+                activeTab === "config"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 size={20} />
+                Cấu hình trang thông tin
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -271,10 +309,18 @@ export default function CauHinh() {
         </div>
       )}
 
-      {/* Preview Container */}
-      <div className="bg-gray-200 min-h-screen">
+      {/* Tab: User Management */}
+      {activeTab === "users" && (
         <div className="max-w-7xl mx-auto py-6 px-4">
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <UserManagement />
+        </div>
+      )}
+
+      {/* Tab: Company Info Config */}
+      {activeTab === "config" && (
+        <div className="bg-gray-200 min-h-screen">
+          <div className="max-w-7xl mx-auto py-6 px-4">
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
 
             {/* Announcements Section - NEW */}
             {config.announcements.filter(a => a.isActive).length > 0 && (
@@ -462,9 +508,10 @@ export default function CauHinh() {
               </footer>
             </EditableSection>
 
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Edit Modals */}
 

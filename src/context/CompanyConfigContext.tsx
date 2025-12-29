@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 // Types
 export interface BusinessArea {
@@ -101,20 +102,151 @@ const defaultConfig: CompanyConfig = {
 
 interface CompanyConfigContextType {
   config: CompanyConfig;
-  updateConfig: (newConfig: CompanyConfig) => void;
+  updateConfig: (newConfig: CompanyConfig) => Promise<void>;
+  loading: boolean;
 }
 
 const CompanyConfigContext = createContext<CompanyConfigContextType | undefined>(undefined);
 
 export function CompanyConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<CompanyConfig>(defaultConfig);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-  const updateConfig = (newConfig: CompanyConfig) => {
-    setConfig(newConfig);
+  // Load config from Supabase on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("company_config")
+          .select("*")
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.error("Error loading company config:", error);
+          // If no config exists, create default one
+          if (error.code === "PGRST116") {
+            await createDefaultConfig();
+          }
+        } else if (data) {
+          // Map database fields (snake_case) to camelCase
+          const loadedConfig: CompanyConfig = {
+            name: data.name,
+            taxCode: data.tax_code,
+            address: data.address,
+            phone: data.phone,
+            email: data.email,
+            website: data.website,
+            foundedDate: data.founded_date,
+            employees: data.employees,
+            capital: data.capital,
+            industry: data.industry,
+            representative: data.representative,
+            position: data.position,
+            logo: data.logo,
+            heroTitle1: data.hero_title1,
+            heroTitle2: data.hero_title2,
+            heroDescription: data.hero_description,
+            aboutUs: data.about_us,
+            vision: data.vision,
+            mission: data.mission,
+            businessAreas: data.business_areas || defaultConfig.businessAreas,
+            quickLinks: data.quick_links || defaultConfig.quickLinks,
+            announcements: data.announcements || defaultConfig.announcements,
+          };
+          setConfig(loadedConfig);
+        }
+      } catch (err) {
+        console.error("Exception loading config:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const createDefaultConfig = async () => {
+    try {
+      const { error } = await supabase.from("company_config").insert({
+        name: defaultConfig.name,
+        tax_code: defaultConfig.taxCode,
+        address: defaultConfig.address,
+        phone: defaultConfig.phone,
+        email: defaultConfig.email,
+        website: defaultConfig.website,
+        founded_date: defaultConfig.foundedDate,
+        employees: defaultConfig.employees,
+        capital: defaultConfig.capital,
+        industry: defaultConfig.industry,
+        representative: defaultConfig.representative,
+        position: defaultConfig.position,
+        logo: defaultConfig.logo,
+        hero_title1: defaultConfig.heroTitle1,
+        hero_title2: defaultConfig.heroTitle2,
+        hero_description: defaultConfig.heroDescription,
+        about_us: defaultConfig.aboutUs,
+        vision: defaultConfig.vision,
+        mission: defaultConfig.mission,
+        business_areas: defaultConfig.businessAreas,
+        quick_links: defaultConfig.quickLinks,
+        announcements: defaultConfig.announcements,
+      });
+
+      if (error) {
+        console.error("Error creating default config:", error);
+      }
+    } catch (err) {
+      console.error("Exception creating default config:", err);
+    }
+  };
+
+  const updateConfig = async (newConfig: CompanyConfig) => {
+    try {
+      const { error } = await supabase
+        .from("company_config")
+        .update({
+          name: newConfig.name,
+          tax_code: newConfig.taxCode,
+          address: newConfig.address,
+          phone: newConfig.phone,
+          email: newConfig.email,
+          website: newConfig.website,
+          founded_date: newConfig.foundedDate,
+          employees: newConfig.employees,
+          capital: newConfig.capital,
+          industry: newConfig.industry,
+          representative: newConfig.representative,
+          position: newConfig.position,
+          logo: newConfig.logo,
+          hero_title1: newConfig.heroTitle1,
+          hero_title2: newConfig.heroTitle2,
+          hero_description: newConfig.heroDescription,
+          about_us: newConfig.aboutUs,
+          vision: newConfig.vision,
+          mission: newConfig.mission,
+          business_areas: newConfig.businessAreas,
+          quick_links: newConfig.quickLinks,
+          announcements: newConfig.announcements,
+        })
+        .eq("id", 1); // Assuming single row with id=1
+
+      if (error) {
+        console.error("Error updating config:", error);
+        throw error;
+      }
+
+      setConfig(newConfig);
+    } catch (err) {
+      console.error("Exception updating config:", err);
+      throw err;
+    }
   };
 
   return (
-    <CompanyConfigContext.Provider value={{ config, updateConfig }}>
+    <CompanyConfigContext.Provider value={{ config, updateConfig, loading }}>
       {children}
     </CompanyConfigContext.Provider>
   );
