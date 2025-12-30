@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/register"];
+  const publicRoutes = ["/login", "/register", "/api"];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
 
   // Check if admin exists in database (used for redirects)
@@ -67,8 +67,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // If user is logged in and trying to access auth pages
-  if (user && isPublicRoute) {
+  // If user is logged in and trying to access auth pages (but not API routes)
+  const authPages = ["/login", "/register"];
+  const isAuthPage = authPages.some((route) => pathname.startsWith(route));
+
+  if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

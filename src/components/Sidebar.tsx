@@ -373,11 +373,11 @@ export default function Sidebar() {
             )}
           </div>
 
-          <div className="border-t border-blue-700 py-3">
+          {/* <div className="border-t border-blue-700 py-3">
             <p className="text-blue-400 text-xs text-center">
               &copy; {new Date().getFullYear()} Riomio Shop
             </p>
-          </div>
+          </div> */}
         </div>
       </aside>
     </>

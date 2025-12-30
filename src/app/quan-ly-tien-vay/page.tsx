@@ -21,7 +21,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import toast, { Toaster } from "react-hot-toast";
 import Portal from "@/components/Portal";
 
 // Types
@@ -50,90 +52,60 @@ interface PaymentRecord {
   remainingAfter: number;
 }
 
-// Sample data
-const loansData: Loan[] = [
-  {
-    id: "TV001",
-    lender: "Ngân hàng Vietcombank",
-    type: "long_term",
-    principal: 500000000,
-    interestRate: 8.5,
-    startDate: "2024-01-15",
-    endDate: "2027-01-15",
-    monthlyPayment: 15800000,
-    remainingPrincipal: 420000000,
-    status: "active",
-    purpose: "Mở rộng sản xuất",
-    notes: "Khoản vay ưu đãi doanh nghiệp",
-  },
-  {
-    id: "TV002",
-    lender: "Ngân hàng Techcombank",
-    type: "short_term",
-    principal: 200000000,
-    interestRate: 9.0,
-    startDate: "2024-06-01",
-    endDate: "2025-06-01",
-    monthlyPayment: 18500000,
-    remainingPrincipal: 120000000,
-    status: "active",
-    purpose: "Nhập hàng",
-  },
-  {
-    id: "TV003",
-    lender: "Ngân hàng BIDV",
-    type: "long_term",
-    principal: 300000000,
-    interestRate: 8.0,
-    startDate: "2023-03-01",
-    endDate: "2026-03-01",
-    monthlyPayment: 10200000,
-    remainingPrincipal: 150000000,
-    status: "active",
-    purpose: "Mua thiết bị",
-  },
-  {
-    id: "TV004",
-    lender: "Công ty ABC",
-    type: "personal",
-    principal: 100000000,
-    interestRate: 10.0,
-    startDate: "2024-09-01",
-    endDate: "2025-03-01",
-    monthlyPayment: 17500000,
-    remainingPrincipal: 35000000,
-    status: "near_due",
-    purpose: "Vốn lưu động",
-  },
-  {
-    id: "TV005",
-    lender: "Ngân hàng ACB",
-    type: "short_term",
-    principal: 150000000,
-    interestRate: 9.5,
-    startDate: "2023-06-01",
-    endDate: "2024-06-01",
-    monthlyPayment: 13500000,
-    remainingPrincipal: 0,
-    status: "completed",
-    purpose: "Nhập nguyên liệu",
-  },
-];
+// Google Sheets loan interface
+interface GoogleSheetsLoan {
+  id: number;
+  code: string;
+  lender: string;
+  amount: number;
+  remaining: number;
+  interestRate: string;
+  interestType: string;
+  monthlyInterest: number;
+  dueDate: string;
+  status: string;
+}
 
-const paymentRecordsData: PaymentRecord[] = [
-  { id: 1, loanId: "TV001", date: "2024-12-15", principalPaid: 10000000, interestPaid: 5800000, totalPaid: 15800000, remainingAfter: 420000000 },
-  { id: 2, loanId: "TV001", date: "2024-11-15", principalPaid: 10000000, interestPaid: 5850000, totalPaid: 15850000, remainingAfter: 430000000 },
-  { id: 3, loanId: "TV002", date: "2024-12-01", principalPaid: 12000000, interestPaid: 6500000, totalPaid: 18500000, remainingAfter: 120000000 },
-  { id: 4, loanId: "TV003", date: "2024-12-01", principalPaid: 7000000, interestPaid: 3200000, totalPaid: 10200000, remainingAfter: 150000000 },
-  { id: 5, loanId: "TV004", date: "2024-12-01", principalPaid: 15000000, interestPaid: 2500000, totalPaid: 17500000, remainingAfter: 35000000 },
-];
+// Map Google Sheets status to app status
+const mapStatus = (sheetStatus: string): Loan["status"] => {
+  const status = sheetStatus.toLowerCase();
+  if (status.includes("ổn định") || status.includes("active")) return "active";
+  if (status.includes("sắp") || status.includes("near")) return "near_due";
+  if (status.includes("hoàn") || status.includes("completed")) return "completed";
+  if (status.includes("quá") || status.includes("overdue")) return "overdue";
+  return "active";
+};
 
-const upcomingPayments = [
-  { date: "2024-12-25", loanId: "TV001", amount: 15800000 },
-  { date: "2024-12-28", loanId: "TV002", amount: 18500000 },
-  { date: "2025-01-01", loanId: "TV003", amount: 10200000 },
-  { date: "2025-01-05", loanId: "TV004", amount: 17500000 },
-];
+// Map Google Sheets interest type to loan type
+const mapLoanType = (interestType: string, lender: string): Loan["type"] => {
+  if (lender.toLowerCase().includes("cá nhân")) return "personal";
+  if (lender.toLowerCase().includes("ngân hàng")) return "long_term";
+  return "short_term";
+};
+
+// Parse interest rate string (e.g., "12,0%" -> 12.0)
+const parseInterestRate = (rate: string): number => {
+  const cleaned = rate.replace(/[%,]/g, ".").replace(/\s/g, "");
+  return parseFloat(cleaned) || 0;
+};
+
+// Convert Google Sheets loan to app loan
+const convertGoogleSheetsLoan = (sheetLoan: GoogleSheetsLoan): Loan => {
+  return {
+    id: sheetLoan.code,
+    lender: sheetLoan.lender,
+    type: mapLoanType(sheetLoan.interestType, sheetLoan.lender),
+    principal: sheetLoan.amount || sheetLoan.remaining, // Use amount as principal, fallback to remaining
+    interestRate: parseInterestRate(sheetLoan.interestRate),
+    startDate: "", // Not available from Google Sheets
+    endDate: sheetLoan.dueDate || "",
+    monthlyPayment: sheetLoan.monthlyInterest,
+    remainingPrincipal: sheetLoan.remaining,
+    status: mapStatus(sheetLoan.status),
+    purpose: sheetLoan.interestType, // Use interest type as purpose
+    notes: undefined,
+  };
+};
 
 // Format currency
 const formatCurrency = (amount: number) => {
@@ -144,18 +116,27 @@ const formatCurrency = (amount: number) => {
 };
 
 export default function QuanLyTienVay() {
-  const [activeTab, setActiveTab] = useState("khoan-vay");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get tab from URL or default to "khoan-vay"
+  const tabFromUrl = searchParams.get("tab") || "khoan-vay";
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [loans, setLoans] = useState<Loan[]>(loansData);
-  const [paymentRecords] = useState<PaymentRecord[]>(paymentRecordsData);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [isLoadingLoans, setIsLoadingLoans] = useState(false);
+  const [paymentRecords] = useState<PaymentRecord[]>([]);
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  const [loanToDelete, setLoanToDelete] = useState<Loan | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newLoan, setNewLoan] = useState<Partial<Loan>>({
     type: "long_term",
     status: "active",
@@ -167,6 +148,45 @@ export default function QuanLyTienVay() {
     { id: "lich-su-tra", label: "Lịch sử trả nợ", icon: History },
   ];
 
+  // Update URL when tab changes
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    router.push(`?tab=${tabId}`, { scroll: false });
+  };
+
+  // Sync activeTab with URL on mount and when URL changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab") || "khoan-vay";
+    setActiveTab(tabFromUrl);
+  }, [searchParams]);
+
+  // Fetch loans from Google Sheets API
+  const fetchLoans = async () => {
+    try {
+      setIsLoadingLoans(true);
+      const response = await fetch("/api/loans");
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const convertedLoans = result.data.map((sheetLoan: GoogleSheetsLoan) =>
+          convertGoogleSheetsLoan(sheetLoan)
+        );
+        setLoans(convertedLoans);
+      } else {
+        console.error("Failed to fetch loans:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching loans:", error);
+    } finally {
+      setIsLoadingLoans(false);
+    }
+  };
+
+  // Load loans on component mount
+  useEffect(() => {
+    fetchLoans();
+  }, []);
+
   // Calculations
   const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
   const totalRemaining = loans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
@@ -175,6 +195,15 @@ export default function QuanLyTienVay() {
     .filter((l) => l.status !== "completed")
     .reduce((sum, l) => sum + l.monthlyPayment, 0);
   const activeLoans = loans.filter((l) => l.status !== "completed").length;
+
+  // Generate upcoming payments from loans data
+  const upcomingPayments = loans
+    .filter((l) => l.status !== "completed" && l.monthlyPayment > 0)
+    .map((loan) => ({
+      date: loan.endDate || new Date().toISOString().split("T")[0],
+      loanId: loan.id,
+      amount: loan.monthlyPayment,
+    }));
 
   const stats = [
     {
@@ -274,45 +303,136 @@ export default function QuanLyTienVay() {
     setShowEditModal(true);
   };
 
-  const handleDeleteLoan = (id: string) => {
-    if (confirm("Bạn có chắc muốn xóa khoản vay này?")) {
-      setLoans(loans.filter((l) => l.id !== id));
+  const handleDeleteLoan = (loan: Loan) => {
+    setLoanToDelete(loan);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteLoan = async () => {
+    if (!loanToDelete) return;
+
+    try {
+      setIsSubmitting(true);
+      const response = await fetch(`/api/loans/delete?id=${loanToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Xóa khoản vay thành công!");
+        // Refresh loans list
+        await fetchLoans();
+        setShowDeleteModal(false);
+        setLoanToDelete(null);
+      } else {
+        toast.error(`Lỗi xóa khoản vay: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting loan:", error);
+      toast.error("Có lỗi xảy ra khi xóa khoản vay");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleAddLoan = () => {
-    const id = `TV${String(loans.length + 1).padStart(3, "0")}`;
-    const loan: Loan = {
-      id,
-      lender: newLoan.lender || "",
-      type: newLoan.type as Loan["type"],
-      principal: newLoan.principal || 0,
-      interestRate: newLoan.interestRate || 0,
-      startDate: newLoan.startDate || "",
-      endDate: newLoan.endDate || "",
-      monthlyPayment: newLoan.monthlyPayment || 0,
-      remainingPrincipal: newLoan.principal || 0,
-      status: "active",
-      purpose: newLoan.purpose || "",
-      notes: newLoan.notes,
-    };
-    setLoans([...loans, loan]);
-    setShowAddModal(false);
-    setNewLoan({ type: "long_term", status: "active" });
+  const handleAddLoan = async () => {
+    try {
+      setIsSubmitting(true);
+      // Generate new loan code
+      const newCode = `MV${String(loans.length + 1).padStart(2, "0")}`;
+
+      const loanData = {
+        code: newCode,
+        lender: newLoan.lender || "",
+        remaining: newLoan.principal || 0,
+        interestRate: `${newLoan.interestRate || 0}%`,
+        interestType: newLoan.purpose || "",
+        amount: newLoan.principal || 0,
+        monthlyInterest: newLoan.monthlyPayment || 0,
+        dueDate: newLoan.endDate || "",
+        status: newLoan.status === "active" ? "Ổn Định" : "Sắp Đáo Hạn Gốc",
+      };
+
+      const response = await fetch("/api/loans/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(loanData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Thêm khoản vay thành công!");
+        // Refresh loans list
+        await fetchLoans();
+        setShowAddModal(false);
+        setNewLoan({ type: "long_term", status: "active" });
+      } else {
+        toast.error(`Lỗi thêm khoản vay: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error adding loan:", error);
+      toast.error("Có lỗi xảy ra khi thêm khoản vay");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSaveEdit = () => {
-    if (selectedLoan) {
-      setLoans(loans.map((l) => (l.id === selectedLoan.id ? selectedLoan : l)));
-      setShowEditModal(false);
-      setSelectedLoan(null);
+  const handleSaveEdit = async () => {
+    if (!selectedLoan) return;
+
+    try {
+      setIsSubmitting(true);
+      const loanData = {
+        id: selectedLoan.id,
+        code: selectedLoan.id,
+        lender: selectedLoan.lender,
+        remaining: selectedLoan.remainingPrincipal,
+        interestRate: `${selectedLoan.interestRate}%`,
+        interestType: selectedLoan.purpose,
+        amount: selectedLoan.principal,
+        monthlyInterest: selectedLoan.monthlyPayment,
+        dueDate: selectedLoan.endDate,
+        status: selectedLoan.status === "active" ? "Ổn Định" :
+                selectedLoan.status === "near_due" ? "Sắp Đáo Hạn Gốc" :
+                selectedLoan.status === "completed" ? "Hoàn Thành" : "Quá Hạn",
+      };
+
+      const response = await fetch("/api/loans/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(loanData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Cập nhật khoản vay thành công!");
+        // Refresh loans list
+        await fetchLoans();
+        setShowEditModal(false);
+        setSelectedLoan(null);
+      } else {
+        toast.error(`Lỗi cập nhật khoản vay: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error updating loan:", error);
+      toast.error("Có lỗi xảy ra khi cập nhật khoản vay");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="p-6 space-y-6">
+      <Toaster position="top-right" />
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <HandCoins className="w-7 h-7 text-blue-600" />
@@ -320,13 +440,6 @@ export default function QuanLyTienVay() {
           </h1>
           <p className="text-gray-500 mt-1">Theo dõi và quản lý các khoản vay</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Thêm khoản vay
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -353,22 +466,33 @@ export default function QuanLyTienVay() {
       {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            {tabs.map((tab) => (
+          <div className="flex items-center justify-between px-6">
+            <nav className="flex space-x-8" aria-label="Tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+            {activeTab === "khoan-vay" && (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
+                <Plus className="w-4 h-4" />
+                Thêm khoản vay
               </button>
-            ))}
-          </nav>
+            )}
+          </div>
         </div>
 
         <div className="p-6">
@@ -400,22 +524,34 @@ export default function QuanLyTienVay() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã vay</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bên cho vay</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Loại</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Gốc vay</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Lãi suất</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Còn nợ</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredLoans.map((loan) => (
+              {isLoadingLoans ? (
+                <div className="text-center py-12 text-gray-500">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                  <p>Đang tải dữ liệu...</p>
+                </div>
+              ) : filteredLoans.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <HandCoins className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p className="font-medium">Chưa có khoản vay nào</p>
+                  <p className="text-sm mt-1">Nhấn &quot;Thêm khoản vay&quot; để bắt đầu</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã vay</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bên cho vay</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Loại</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Dư nợ gốc</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Lãi suất</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Lãi phải trả/tháng</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredLoans.map((loan) => (
                       <tr key={loan.id} className="hover:bg-gray-50">
                         <td className="px-4 py-4">
                           <span className="font-medium text-blue-600">{loan.id}</span>
@@ -427,7 +563,7 @@ export default function QuanLyTienVay() {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-center">{getTypeBadge(loan.type)}</td>
-                        <td className="px-4 py-4 text-right font-medium text-gray-900">{formatCurrency(loan.principal)}</td>
+                        <td className="px-4 py-4 text-right font-medium text-gray-900">{formatCurrency(loan.remainingPrincipal)}</td>
                         <td className="px-4 py-4 text-right">
                           <span className="flex items-center justify-end gap-1 text-gray-600">
                             <Percent className="w-3 h-3" />
@@ -435,17 +571,7 @@ export default function QuanLyTienVay() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <div>
-                            <span className="font-medium text-red-600">{formatCurrency(loan.remainingPrincipal)}</span>
-                            {loan.status !== "completed" && (
-                              <div className="w-20 bg-gray-200 rounded-full h-1.5 mt-1 ml-auto">
-                                <div
-                                  className="bg-blue-600 h-1.5 rounded-full"
-                                  style={{ width: `${((loan.principal - loan.remainingPrincipal) / loan.principal) * 100}%` }}
-                                />
-                              </div>
-                            )}
-                          </div>
+                          <span className="font-medium text-orange-600">{formatCurrency(loan.monthlyPayment)}</span>
                         </td>
                         <td className="px-4 py-4 text-center">{getStatusBadge(loan.status)}</td>
                         <td className="px-4 py-4">
@@ -465,7 +591,7 @@ export default function QuanLyTienVay() {
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteLoan(loan.id)}
+                              onClick={() => handleDeleteLoan(loan)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Xóa"
                             >
@@ -474,10 +600,11 @@ export default function QuanLyTienVay() {
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -732,15 +859,20 @@ export default function QuanLyTienVay() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleAddLoan}
-                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Thêm khoản vay
+                  {isSubmitting && (
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  )}
+                  {isSubmitting ? "Đang thêm..." : "Thêm khoản vay"}
                 </button>
               </div>
             </div>
@@ -1027,15 +1159,85 @@ export default function QuanLyTienVay() {
                     setShowEditModal(false);
                     setSelectedLoan(null);
                   }}
-                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Lưu thay đổi
+                  {isSubmitting && (
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  )}
+                  {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && loanToDelete && (
+        <Portal>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 z-50 bg-black/50"
+            onClick={() => !isSubmitting && setShowDeleteModal(false)}
+          />
+          {/* Modal */}
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-full max-w-md bg-white rounded-xl shadow-2xl">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa khoản vay</h3>
+                  <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4">
+              <p className="text-gray-700">
+                Bạn có chắc chắn muốn xóa khoản vay <span className="font-semibold text-blue-600">{loanToDelete.id}</span> của{" "}
+                <span className="font-semibold">{loanToDelete.lender}</span>?
+              </p>
+              <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p className="text-sm text-yellow-800">
+                  <strong>Lưu ý:</strong> Dữ liệu sẽ bị xóa vĩnh viễn khỏi Google Sheets.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setLoanToDelete(null);
+                  }}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDeleteLoan}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting && (
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  )}
+                  {isSubmitting ? "Đang xóa..." : "Xóa khoản vay"}
                 </button>
               </div>
             </div>

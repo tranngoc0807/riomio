@@ -377,10 +377,10 @@ export default function SanPham() {
           </h1>
           <p className="text-gray-500 mt-1">Quản lý danh mục sản phẩm</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors">
+        {/* <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors">
           <Download size={20} />
           <span>Xuất Excel</span>
-        </button>
+        </button> */}
       </div>
 
       {/* Stats */}

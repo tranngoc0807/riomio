@@ -17,7 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
 
 // Dữ liệu giao dịch mẫu
@@ -166,39 +167,8 @@ const initialTransactions: {
   },
 ];
 
-// Dữ liệu tài khoản mẫu
-const initialAccounts = [
-  {
-    id: 1,
-    name: "Tiền mặt",
-    balance: 25000000,
-    type: "cash" as const,
-    bankName: "",
-    accountNumber: "",
-    accountHolder: "",
-  },
-  {
-    id: 2,
-    name: "Tài khoản VCB",
-    balance: 150000000,
-    type: "bank" as const,
-    bankName: "Vietcombank",
-    accountNumber: "1234567890123",
-    accountHolder: "BAO HAN",
-  },
-  {
-    id: 3,
-    name: "Tài khoản TCB",
-    balance: 80000000,
-    type: "bank" as const,
-    bankName: "Techcombank",
-    accountNumber: "9876543210987",
-    accountHolder: "DEV NGUYEN",
-  },
-];
-
-// Dữ liệu khoản vay
-const loans = [
+// Dữ liệu khoản vay (sẽ load từ Google Sheets)
+const initialLoans = [
   {
     id: 1,
     code: "KV001",
@@ -263,15 +233,109 @@ const getEndOfMonth = (date: Date) => {
 };
 
 export default function DongTien() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Đọc tab từ URL params, mặc định là "transactions"
+  const getTabFromUrl = (): "transactions" | "accounts" | "loans" => {
+    const tab = searchParams.get("tab");
+    if (tab === "transactions" || tab === "accounts" || tab === "loans") {
+      return tab;
+    }
+    return "transactions";
+  };
+
   const [activeTab, setActiveTab] = useState<
     "transactions" | "accounts" | "loans"
-  >("transactions");
+  >(getTabFromUrl);
   const [transactions, setTransactions] = useState(initialTransactions);
-  const [accounts, setAccounts] = useState(initialAccounts);
+  const [accounts, setAccounts] = useState<{
+    id: number;
+    accountNumber: string;
+    ownerName: string;
+    type: string;
+  }[]>([]);
+  const [loans, setLoans] = useState<{
+    id: number;
+    code: string;
+    lender: string;
+    amount: number;
+    remaining: number;
+    interestRate: string;
+    interestType: string;
+    monthlyInterest: number;
+    dueDate: string;
+    status: string;
+  }[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">(
     "all"
   );
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+  const [isLoadingLoans, setIsLoadingLoans] = useState(false);
+
+  // Sync activeTab với URL khi searchParams thay đổi
+  useEffect(() => {
+    const newTab = getTabFromUrl();
+    if (newTab !== activeTab) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveTab(newTab);
+    }
+  }, [searchParams]);
+
+  // Fetch accounts from API when accounts tab is active
+  useEffect(() => {
+    if (activeTab === "accounts") {
+      fetchAccounts();
+    }
+  }, [activeTab]);
+
+  // Fetch loans from API when loans tab is active
+  useEffect(() => {
+    if (activeTab === "loans") {
+      fetchLoans();
+    }
+  }, [activeTab]);
+
+  const fetchAccounts = async () => {
+    try {
+      setIsLoadingAccounts(true);
+      const response = await fetch("/api/accounts");
+      const result = await response.json();
+      if (result.success) {
+        setAccounts(result.data);
+      } else {
+        console.error("Failed to fetch accounts:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching accounts:", error);
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  };
+
+  const fetchLoans = async () => {
+    try {
+      setIsLoadingLoans(true);
+      const response = await fetch("/api/loans");
+      const result = await response.json();
+      if (result.success) {
+        setLoans(result.data);
+      } else {
+        console.error("Failed to fetch loans:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching loans:", error);
+    } finally {
+      setIsLoadingLoans(false);
+    }
+  };
+
+  // Function để đổi tab và cập nhật URL
+  const handleTabChange = (tab: "transactions" | "accounts" | "loans") => {
+    setActiveTab(tab);
+    router.push(`/dong-tien?tab=${tab}`);
+  };
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -338,22 +402,21 @@ export default function DongTien() {
   // Account modal states
   const [showAddAccountModal, setShowAddAccountModal] = useState(false);
   const [showEditAccountModal, setShowEditAccountModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [isAddingAccount, setIsAddingAccount] = useState(false);
+  const [isUpdatingAccount, setIsUpdatingAccount] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<number | null>(null);
   const [editingAccount, setEditingAccount] = useState<{
     id: number;
-    name: string;
-    balance: number;
-    type: "cash" | "bank";
-    bankName: string;
     accountNumber: string;
-    accountHolder: string;
+    ownerName: string;
+    type: string;
   } | null>(null);
   const [newAccount, setNewAccount] = useState({
-    name: "",
-    balance: 0,
-    type: "bank" as "cash" | "bank",
-    bankName: "",
     accountNumber: "",
-    accountHolder: "",
+    ownerName: "",
+    type: "Tiền mặt",
   });
 
   // Tạm thời bỏ filter theo ngày để hiện tất cả data mẫu
@@ -438,38 +501,35 @@ export default function DongTien() {
   };
 
   // Account handlers
-  const handleAddAccount = () => {
-    if (newAccount.name && newAccount.balance >= 0) {
-      // Validate bank fields if type is bank
-      if (
-        newAccount.type === "bank" &&
-        (!newAccount.bankName || !newAccount.accountNumber)
-      ) {
-        alert("Vui lòng nhập đầy đủ thông tin ngân hàng");
-        return;
+  const handleAddAccount = async () => {
+    if (newAccount.accountNumber) {
+      setIsAddingAccount(true);
+      try {
+        const response = await fetch("/api/accounts/add", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newAccount),
+        });
+        const result = await response.json();
+        if (result.success) {
+          setNewAccount({
+            accountNumber: "",
+            ownerName: "",
+            type: "Tiền mặt",
+          });
+          setShowAddAccountModal(false);
+          fetchAccounts(); // Reload accounts
+        } else {
+          alert("Lỗi: " + result.error);
+        }
+      } catch (error) {
+        console.error("Error adding account:", error);
+        alert("Không thể thêm tài khoản");
+      } finally {
+        setIsAddingAccount(false);
       }
-      const newId = Math.max(...accounts.map((a) => a.id), 0) + 1;
-      setAccounts([
-        ...accounts,
-        {
-          id: newId,
-          name: newAccount.name,
-          balance: newAccount.balance,
-          type: newAccount.type,
-          bankName: newAccount.bankName,
-          accountNumber: newAccount.accountNumber,
-          accountHolder: newAccount.accountHolder,
-        },
-      ]);
-      setNewAccount({
-        name: "",
-        balance: 0,
-        type: "bank",
-        bankName: "",
-        accountNumber: "",
-        accountHolder: "",
-      });
-      setShowAddAccountModal(false);
     }
   };
 
@@ -480,19 +540,60 @@ export default function DongTien() {
     }
   };
 
-  const handleSaveAccount = () => {
-    if (editingAccount && editingAccount.name) {
-      setAccounts(
-        accounts.map((a) => (a.id === editingAccount.id ? editingAccount : a))
-      );
-      setShowEditAccountModal(false);
-      setEditingAccount(null);
+  const handleSaveAccount = async () => {
+    if (editingAccount && editingAccount.accountNumber) {
+      setIsUpdatingAccount(true);
+      try {
+        const response = await fetch("/api/accounts/update", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(editingAccount),
+        });
+        const result = await response.json();
+        if (result.success) {
+          setShowEditAccountModal(false);
+          setEditingAccount(null);
+          fetchAccounts(); // Reload accounts
+        } else {
+          alert("Lỗi: " + result.error);
+        }
+      } catch (error) {
+        console.error("Error updating account:", error);
+        alert("Không thể cập nhật tài khoản");
+      } finally {
+        setIsUpdatingAccount(false);
+      }
     }
   };
 
   const handleDeleteAccount = (id: number) => {
-    if (confirm("Bạn có chắc muốn xóa tài khoản này?")) {
-      setAccounts(accounts.filter((a) => a.id !== id));
+    setAccountToDelete(id);
+    setShowDeleteAccountModal(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (accountToDelete === null) return;
+
+    setIsDeletingAccount(true);
+    try {
+      const response = await fetch(`/api/accounts/delete?id=${accountToDelete}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (result.success) {
+        setShowDeleteAccountModal(false);
+        setAccountToDelete(null);
+        fetchAccounts(); // Reload accounts
+      } else {
+        alert("Lỗi: " + result.error);
+      }
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      alert("Không thể xóa tài khoản");
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -503,7 +604,7 @@ export default function DongTien() {
   const periodExpense = transactions
     .filter((t) => t.type === "expense")
     .reduce((sum, t) => sum + t.amount, 0);
-  const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
+  const totalBalance = 255000000; // TODO: Tính từ giao dịch hoặc lưu trong Google Sheets
   const totalLoanRemaining = loans.reduce((sum, l) => sum + l.remaining, 0);
 
   return (
@@ -583,7 +684,7 @@ export default function DongTien() {
         <div className="border-b border-gray-200">
           <div className="flex">
             <button
-              onClick={() => setActiveTab("transactions")}
+              onClick={() => handleTabChange("transactions")}
               className={`px-6 py-4 font-medium transition-colors ${
                 activeTab === "transactions"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
@@ -596,7 +697,7 @@ export default function DongTien() {
               </div>
             </button>
             <button
-              onClick={() => setActiveTab("accounts")}
+              onClick={() => handleTabChange("accounts")}
               className={`px-6 py-4 font-medium transition-colors ${
                 activeTab === "accounts"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
@@ -609,7 +710,7 @@ export default function DongTien() {
               </div>
             </button>
             <button
-              onClick={() => setActiveTab("loans")}
+              onClick={() => handleTabChange("loans")}
               className={`px-6 py-4 font-medium transition-colors ${
                 activeTab === "loans"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
@@ -913,70 +1014,87 @@ export default function DongTien() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {accounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          account.type === "cash"
-                            ? "bg-yellow-400"
-                            : "bg-white/20"
-                        }`}
-                      >
-                        {account.type === "cash" ? (
-                          <Wallet size={24} className="text-yellow-800" />
-                        ) : (
-                          <CreditCard size={24} />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleEditAccount(account)}
-                          className="p-2 hover:bg-white/20 rounded-lg"
-                          title="Sửa"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAccount(account.id)}
-                          className="p-2 hover:bg-red-500/50 rounded-lg"
-                          title="Xóa"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-white/80 text-sm">{account.name}</p>
-                    <p className="text-3xl font-bold mt-1">
-                      {account.balance.toLocaleString("vi-VN")}đ
-                    </p>
-                    {account.type === "bank" && account.bankName && (
-                      <div className="mt-3 pt-3 border-t border-white/20">
-                        <p className="text-white/70 text-xs">
-                          {account.bankName}
-                        </p>
-                        <p className="text-white/90 text-sm font-mono tracking-wider mt-1">
-                          {account.accountNumber}
-                        </p>
-                        {account.accountHolder && (
-                          <p className="text-white/80 text-xs mt-1">
-                            {account.accountHolder}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    <p className="text-white/60 text-sm mt-3">
-                      {account.type === "cash"
-                        ? "Tiền mặt"
-                        : "Tài khoản ngân hàng"}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              {isLoadingAccounts ? (
+                <div className="text-center py-8 text-gray-500">
+                  Đang tải dữ liệu...
+                </div>
+              ) : accounts.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  Chưa có tài khoản nào. Nhấn &quot;Thêm tài khoản&quot; để bắt đầu.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                          STT
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                          Số tài khoản
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                          Tên chủ tài khoản
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                          Loại
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {accounts.map((account, index) => (
+                        <tr key={account.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                            {account.accountNumber}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            {account.ownerName || "-"}
+                          </td>
+                          <td className="px-4 py-4">
+                            {account.type ? (
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  account.type === "Tài khoản"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-yellow-100 text-yellow-700"
+                                }`}
+                              >
+                                {account.type}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleEditAccount(account)}
+                                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
+                                title="Sửa"
+                              >
+                                <Edit size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAccount(account.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                title="Xóa"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
 
@@ -991,92 +1109,100 @@ export default function DongTien() {
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Mã KV
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Bên cho vay
-                      </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
-                        Số tiền vay
-                      </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
-                        Còn lại
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
-                        Lãi suất
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Ngày vay
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Đến hạn
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
-                        Trạng thái
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {loans.map((loan) => (
-                      <tr key={loan.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-sm font-medium text-blue-600">
-                          {loan.code}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">
-                          {loan.lender}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-right text-gray-900">
-                          {loan.amount.toLocaleString("vi-VN")}đ
-                        </td>
-                        <td className="px-4 py-4 text-sm text-right text-orange-600 font-medium">
-                          {loan.remaining.toLocaleString("vi-VN")}đ
-                        </td>
-                        <td className="px-4 py-4 text-sm text-center text-gray-600">
-                          {loan.interestRate}%/năm
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-600">
-                          {new Date(loan.startDate).toLocaleDateString("vi-VN")}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-600">
-                          {new Date(loan.endDate).toLocaleDateString("vi-VN")}
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              loan.status === "active"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-green-100 text-green-700"
-                            }`}
-                          >
-                            {loan.status === "active" ? "Đang vay" : "Đã trả"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                              title="Xem"
-                            >
-                              <Eye size={18} />
-                            </button>
-                            <button className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">
-                              Trả nợ
-                            </button>
-                          </div>
-                        </td>
+              {isLoadingLoans ? (
+                <div className="text-center py-8 text-gray-500">
+                  Đang tải dữ liệu...
+                </div>
+              ) : loans.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  Chưa có khoản vay nào. Nhấn &quot;Thêm khoản vay&quot; để bắt đầu.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                          Mã món vay
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                          Chủ nợ
+                        </th>
+                        <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">
+                          Dư nợ gốc hiện tại
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">
+                          Lãi suất
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                          Kiểu tính lãi
+                        </th>
+                        <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">
+                          Góc tính lãi
+                        </th>
+                        <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">
+                          Dư tính tiền lãi phải trả tháng này
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">
+                          Ngày đến hạn trả lãi
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">
+                          Trạng thái
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {loans.map((loan) => (
+                        <tr key={loan.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-sm font-medium text-blue-600">
+                            {loan.code || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            {loan.lender || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-right text-orange-600 font-medium">
+                            {loan.remaining ? loan.remaining.toLocaleString("vi-VN") + "đ" : "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-center text-gray-600">
+                            {loan.interestRate || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            {loan.interestType || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-right text-gray-900">
+                            {loan.amount ? loan.amount.toLocaleString("vi-VN") + "đ" : "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-right text-red-600 font-medium">
+                            {loan.monthlyInterest ? loan.monthlyInterest.toLocaleString("vi-VN") + "đ" : "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            {loan.dueDate || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            {loan.status ? (
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  loan.status === "Đang vay"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : loan.status === "Sắp đến hạn"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : loan.status === "Đã trả"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-100 text-gray-700"
+                                }`}
+                              >
+                                {loan.status}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1247,9 +1373,11 @@ export default function DongTien() {
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
+                  <option value="Tiền mặt">Tiền mặt</option>
+                  <option value="Ngân hàng">Ngân hàng</option>
                   {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.name}>
-                      {acc.name}
+                    <option key={acc.id} value={acc.accountNumber}>
+                      {acc.accountNumber} - {acc.ownerName}
                     </option>
                   ))}
                 </select>
@@ -1612,9 +1740,11 @@ export default function DongTien() {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
+                    <option value="Tiền mặt">Tiền mặt</option>
+                    <option value="Ngân hàng">Ngân hàng</option>
                     {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.name}>
-                        {acc.name}
+                      <option key={acc.id} value={acc.accountNumber}>
+                        {acc.accountNumber} - {acc.ownerName}
                       </option>
                     ))}
                   </select>
@@ -1650,13 +1780,14 @@ export default function DongTien() {
 
       {/* Modal thêm tài khoản */}
       {showAddAccountModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Thêm tài khoản mới</h3>
               <button
                 onClick={() => setShowAddAccountModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                disabled={isAddingAccount}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
               >
                 <X size={24} />
               </button>
@@ -1664,26 +1795,42 @@ export default function DongTien() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên tài khoản *
+                  Số tài khoản *
                 </label>
                 <input
                   type="text"
-                  value={newAccount.name}
+                  value={newAccount.accountNumber}
                   onChange={(e) =>
-                    setNewAccount({ ...newAccount, name: e.target.value })
+                    setNewAccount({ ...newAccount, accountNumber: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="VD: Ngân hàng Vietcombank"
+                  disabled={isAddingAccount}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Nhập số tài khoản"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên chủ tài khoản
+                </label>
+                <input
+                  type="text"
+                  value={newAccount.ownerName}
+                  onChange={(e) =>
+                    setNewAccount({ ...newAccount, ownerName: e.target.value })
+                  }
+                  disabled={isAddingAccount}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Nhập tên chủ tài khoản"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Loại tài khoản *
                 </label>
                 <div className="flex gap-4">
                   <label
                     className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer ${
-                      newAccount.type === "cash"
+                      newAccount.type === "Tiền mặt"
                         ? "border-yellow-500 bg-yellow-50 text-yellow-700"
                         : "border-gray-300"
                     }`}
@@ -1691,10 +1838,10 @@ export default function DongTien() {
                     <input
                       type="radio"
                       name="accountType"
-                      value="cash"
-                      checked={newAccount.type === "cash"}
-                      onChange={() =>
-                        setNewAccount({ ...newAccount, type: "cash" })
+                      value="Tiền mặt"
+                      checked={newAccount.type === "Tiền mặt"}
+                      onChange={(e) =>
+                        setNewAccount({ ...newAccount, type: e.target.value })
                       }
                       className="hidden"
                     />
@@ -1703,7 +1850,7 @@ export default function DongTien() {
                   </label>
                   <label
                     className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer ${
-                      newAccount.type === "bank"
+                      newAccount.type === "Tài khoản"
                         ? "border-blue-500 bg-blue-50 text-blue-700"
                         : "border-gray-300"
                     }`}
@@ -1711,108 +1858,59 @@ export default function DongTien() {
                     <input
                       type="radio"
                       name="accountType"
-                      value="bank"
-                      checked={newAccount.type === "bank"}
-                      onChange={() =>
-                        setNewAccount({ ...newAccount, type: "bank" })
+                      value="Tài khoản"
+                      checked={newAccount.type === "Tài khoản"}
+                      onChange={(e) =>
+                        setNewAccount({ ...newAccount, type: e.target.value })
                       }
                       className="hidden"
                     />
                     <CreditCard size={20} />
-                    Ngân hàng
+                    Tài khoản
                   </label>
                 </div>
-              </div>
-              {/* Bank-specific fields */}
-              {newAccount.type === "bank" && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tên ngân hàng *
-                    </label>
-                    <input
-                      type="text"
-                      value={newAccount.bankName}
-                      onChange={(e) =>
-                        setNewAccount({
-                          ...newAccount,
-                          bankName: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="VD: Vietcombank, Techcombank..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Số tài khoản *
-                    </label>
-                    <input
-                      type="text"
-                      value={newAccount.accountNumber}
-                      onChange={(e) =>
-                        setNewAccount({
-                          ...newAccount,
-                          accountNumber: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Nhập số tài khoản"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tên chủ tài khoản
-                    </label>
-                    <input
-                      type="text"
-                      value={newAccount.accountHolder}
-                      onChange={(e) =>
-                        setNewAccount({
-                          ...newAccount,
-                          accountHolder: e.target.value.toUpperCase(),
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 uppercase"
-                      placeholder="VD: NGUYEN VAN A"
-                    />
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số dư ban đầu *
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={newAccount.balance || ""}
-                  onChange={(e) => {
-                    const val = e.target.value
-                      .replace(/^0+/, "")
-                      .replace(/\D/g, "");
-                    setNewAccount({
-                      ...newAccount,
-                      balance: val ? Number(val) : 0,
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập số dư"
-                />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowAddAccountModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={isAddingAccount}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Hủy
               </button>
               <button
                 onClick={handleAddAccount}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                disabled={isAddingAccount}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Thêm tài khoản
+                {isAddingAccount ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Đang thêm...
+                  </>
+                ) : (
+                  "Thêm tài khoản"
+                )}
               </button>
             </div>
           </div>
@@ -1821,7 +1919,7 @@ export default function DongTien() {
 
       {/* Modal sửa tài khoản */}
       {showEditAccountModal && editingAccount && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Sửa tài khoản</h3>
@@ -1830,7 +1928,8 @@ export default function DongTien() {
                   setShowEditAccountModal(false);
                   setEditingAccount(null);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                disabled={isUpdatingAccount}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
               >
                 <X size={24} />
               </button>
@@ -1838,29 +1937,48 @@ export default function DongTien() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên tài khoản *
+                  Số tài khoản *
                 </label>
                 <input
                   type="text"
-                  value={editingAccount.name}
+                  value={editingAccount.accountNumber}
                   onChange={(e) =>
                     setEditingAccount({
                       ...editingAccount,
-                      name: e.target.value,
+                      accountNumber: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="VD: Ngân hàng Vietcombank"
+                  disabled={isUpdatingAccount}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Nhập số tài khoản"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên chủ tài khoản
+                </label>
+                <input
+                  type="text"
+                  value={editingAccount.ownerName}
+                  onChange={(e) =>
+                    setEditingAccount({
+                      ...editingAccount,
+                      ownerName: e.target.value,
+                    })
+                  }
+                  disabled={isUpdatingAccount}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Nhập tên chủ tài khoản"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Loại tài khoản *
                 </label>
                 <div className="flex gap-4">
                   <label
                     className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer ${
-                      editingAccount.type === "cash"
+                      editingAccount.type === "Tiền mặt"
                         ? "border-yellow-500 bg-yellow-50 text-yellow-700"
                         : "border-gray-300"
                     }`}
@@ -1868,10 +1986,13 @@ export default function DongTien() {
                     <input
                       type="radio"
                       name="editAccountType"
-                      value="cash"
-                      checked={editingAccount.type === "cash"}
-                      onChange={() =>
-                        setEditingAccount({ ...editingAccount, type: "cash" })
+                      value="Tiền mặt"
+                      checked={editingAccount.type === "Tiền mặt"}
+                      onChange={(e) =>
+                        setEditingAccount({
+                          ...editingAccount,
+                          type: e.target.value,
+                        })
                       }
                       className="hidden"
                     />
@@ -1880,7 +2001,7 @@ export default function DongTien() {
                   </label>
                   <label
                     className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer ${
-                      editingAccount.type === "bank"
+                      editingAccount.type === "Tài khoản"
                         ? "border-blue-500 bg-blue-50 text-blue-700"
                         : "border-gray-300"
                     }`}
@@ -1888,94 +2009,20 @@ export default function DongTien() {
                     <input
                       type="radio"
                       name="editAccountType"
-                      value="bank"
-                      checked={editingAccount.type === "bank"}
-                      onChange={() =>
-                        setEditingAccount({ ...editingAccount, type: "bank" })
+                      value="Tài khoản"
+                      checked={editingAccount.type === "Tài khoản"}
+                      onChange={(e) =>
+                        setEditingAccount({
+                          ...editingAccount,
+                          type: e.target.value,
+                        })
                       }
                       className="hidden"
                     />
                     <CreditCard size={20} />
-                    Ngân hàng
+                    Tài khoản
                   </label>
                 </div>
-              </div>
-              {/* Bank-specific fields */}
-              {editingAccount.type === "bank" && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tên ngân hàng *
-                    </label>
-                    <input
-                      type="text"
-                      value={editingAccount.bankName}
-                      onChange={(e) =>
-                        setEditingAccount({
-                          ...editingAccount,
-                          bankName: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="VD: Vietcombank, Techcombank..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Số tài khoản *
-                    </label>
-                    <input
-                      type="text"
-                      value={editingAccount.accountNumber}
-                      onChange={(e) =>
-                        setEditingAccount({
-                          ...editingAccount,
-                          accountNumber: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Nhập số tài khoản"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tên chủ tài khoản
-                    </label>
-                    <input
-                      type="text"
-                      value={editingAccount.accountHolder}
-                      onChange={(e) =>
-                        setEditingAccount({
-                          ...editingAccount,
-                          accountHolder: e.target.value.toUpperCase(),
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 uppercase"
-                      placeholder="VD: NGUYEN VAN A"
-                    />
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số dư hiện tại *
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={editingAccount.balance || ""}
-                  onChange={(e) => {
-                    const val = e.target.value
-                      .replace(/^0+/, "")
-                      .replace(/\D/g, "");
-                    setEditingAccount({
-                      ...editingAccount,
-                      balance: val ? Number(val) : 0,
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập số dư"
-                />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
@@ -1984,15 +2031,112 @@ export default function DongTien() {
                   setShowEditAccountModal(false);
                   setEditingAccount(null);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={isUpdatingAccount}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Hủy
               </button>
               <button
                 onClick={handleSaveAccount}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                disabled={isUpdatingAccount}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Lưu thay đổi
+                {isUpdatingAccount ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Đang lưu...
+                  </>
+                ) : (
+                  "Lưu thay đổi"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận xóa tài khoản */}
+      {showDeleteAccountModal && (
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-red-600">Xác nhận xóa</h3>
+              <button
+                onClick={() => {
+                  setShowDeleteAccountModal(false);
+                  setAccountToDelete(null);
+                }}
+                disabled={isDeletingAccount}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <p className="text-gray-700 mb-6">
+              Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteAccountModal(false);
+                  setAccountToDelete(null);
+                }}
+                disabled={isDeletingAccount}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDeleteAccount}
+                disabled={isDeletingAccount}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeletingAccount ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Đang xóa...
+                  </>
+                ) : (
+                  "Xóa"
+                )}
               </button>
             </div>
           </div>
