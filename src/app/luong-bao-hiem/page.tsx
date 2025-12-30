@@ -17,12 +17,11 @@ import {
   Phone,
   CreditCard,
   Cake,
-  Camera,
   MapPin,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
-import Image from "next/image";
+import toast, { Toaster } from "react-hot-toast";
 
 type AttendanceStatus = "present" | "late" | "absent" | "off" | "future";
 
@@ -49,7 +48,7 @@ const getAvatarColor = (position: string) => {
     "Quản lý đơn hàng": "from-blue-500 to-blue-600",
     "Thiết kế": "from-pink-500 to-pink-600",
     "Thủ kho": "from-orange-500 to-orange-600",
-    "Partten": "from-cyan-500 to-cyan-600",
+    Partten: "from-cyan-500 to-cyan-600",
     "May mẫu": "from-teal-500 to-teal-600",
     "Sale sỉ": "from-indigo-500 to-indigo-600",
     "Sale sàn": "from-rose-500 to-rose-600",
@@ -59,66 +58,75 @@ const getAvatarColor = (position: string) => {
   return colors[position] || "from-gray-500 to-gray-600";
 };
 
-// Dữ liệu nhân viên mẫu
-const initialEmployees = [
-  { id: 1, name: "Lê Thị Thanh Thảo", position: "Partten", phone: "0901234567", birthday: "1990-05-15", cccd: "001090012345", address: "Hoàng Mai, Hà Nội", avatar: "" },
-  { id: 2, name: "Trần Thị Quý", position: "May mẫu", phone: "0912345678", birthday: "1988-08-20", cccd: "001088023456", address: "Thanh Xuân, Hà Nội", avatar: "" },
-  { id: 3, name: "Nguyễn Thị Thuệ", position: "Thiết kế", phone: "0923456789", birthday: "1992-03-10", cccd: "001092034567", address: "Cầu Giấy, Hà Nội", avatar: "" },
-  { id: 4, name: "Dương Thị Bích", position: "Quản lý đơn hàng", phone: "0934567890", birthday: "1991-07-25", cccd: "001091045678", address: "Hà Đông, Hà Nội", avatar: "" },
-  { id: 5, name: "Trịnh Thị Hồng", position: "Kế toán", phone: "0945678901", birthday: "1989-11-30", cccd: "001089056789", address: "Long Biên, Hà Nội", avatar: "" },
-  { id: 6, name: "Hà Bình", position: "Tổng hợp", phone: "0956789012", birthday: "1993-01-18", cccd: "001093067890", address: "Đống Đa, Hà Nội", avatar: "" },
-  { id: 7, name: "Hoàng Việt", position: "Giám đốc", phone: "0967890123", birthday: "1985-04-05", cccd: "001085078901", address: "Ba Đình, Hà Nội", avatar: "" },
-  { id: 8, name: "Nguyễn Thị Thu", position: "Thủ kho", phone: "0978901234", birthday: "1994-09-12", cccd: "001094089012", address: "Gia Lâm, Hà Nội", avatar: "" },
-  { id: 9, name: "Phạm Hoài Phước", position: "Sale sỉ", phone: "0989012345", birthday: "1990-12-08", cccd: "001090090123", address: "Hai Bà Trưng, Hà Nội", avatar: "" },
-  { id: 10, name: "Nguyễn Văn Toàn", position: "Thủ kho", phone: "0990123456", birthday: "1991-06-22", cccd: "001091101234", address: "Nam Từ Liêm, Hà Nội", avatar: "" },
-  { id: 11, name: "Đỗ Thị Hương Giang", position: "Sale sàn", phone: "0901234568", birthday: "1995-02-14", cccd: "001095112345", address: "Bắc Từ Liêm, Hà Nội", avatar: "" },
-  { id: 12, name: "Văn Đức", position: "Hình ảnh", phone: "0912345679", birthday: "1992-10-28", cccd: "001092123456", address: "Tây Hồ, Hà Nội", avatar: "" },
-];
+// Employee type - khớp với Google Sheets Employee interface
+interface Employee {
+  id: number;
+  name: string;
+  position: string;
+  phone: string;
+  birthday: string;
+  cccd: string;
+  address: string;
+}
 
 // Generate attendance data
-const generateAttendanceData = (employees: typeof initialEmployees, year: number, month: number): AttendanceRecord[] => {
+const generateAttendanceData = (
+  employees: Employee[],
+  year: number,
+  month: number
+): AttendanceRecord[] => {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
   const currentDay = today.getDate();
   const currentMonth = today.getMonth() + 1;
   const currentYear = today.getFullYear();
 
-  return employees.map(emp => ({
+  return employees.map((emp) => ({
     employeeId: emp.id,
     employeeName: emp.name,
-    attendance: Array.from({ length: daysInMonth }, (_, i): AttendanceStatus => {
-      const day = i + 1;
-      const date = new Date(year, month - 1, day);
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    attendance: Array.from(
+      { length: daysInMonth },
+      (_, i): AttendanceStatus => {
+        const day = i + 1;
+        const date = new Date(year, month - 1, day);
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
-      // Kiểm tra ngày tương lai
-      const isFutureDay =
-        year > currentYear ||
-        (year === currentYear && month > currentMonth) ||
-        (year === currentYear && month === currentMonth && day > currentDay);
+        // Kiểm tra ngày tương lai
+        const isFutureDay =
+          year > currentYear ||
+          (year === currentYear && month > currentMonth) ||
+          (year === currentYear && month === currentMonth && day > currentDay);
 
-      if (isFutureDay) return "future"; // Ngày tương lai - không thể chấm công
-      if (isWeekend) return "off"; // Cuối tuần - nghỉ
+        if (isFutureDay) return "future"; // Ngày tương lai - không thể chấm công
+        if (isWeekend) return "off"; // Cuối tuần - nghỉ
 
-      // Ngày hôm nay - mặc định chưa chấm (để user tự chấm)
-      const isToday = year === currentYear && month === currentMonth && day === currentDay;
-      if (isToday) return "absent"; // Chưa chấm, mặc định vắng để user tự tích
+        // Ngày hôm nay - mặc định chưa chấm (để user tự chấm)
+        const isToday =
+          year === currentYear && month === currentMonth && day === currentDay;
+        if (isToday) return "absent"; // Chưa chấm, mặc định vắng để user tự tích
 
-      // Ngày trong quá khứ - dữ liệu mẫu
-      return Math.random() > 0.1 ? "present" : "absent";
-    })
+        // Ngày trong quá khứ - dữ liệu mẫu
+        return Math.random() > 0.1 ? "present" : "absent";
+      }
+    ),
   }));
 };
 
 // Generate salary data
-const generateSalaryData = (employees: typeof initialEmployees) => {
-  return employees.map(emp => {
-    const baseSalary = emp.position === "Giám đốc" ? 25000000 :
-                       emp.position === "Kế toán" ? 12000000 :
-                       emp.position === "Quản lý đơn hàng" ? 10000000 :
-                       emp.position.includes("Sale") ? 8000000 :
-                       emp.position === "Thiết kế" ? 10000000 :
-                       7000000;
+const generateSalaryData = (employees: Employee[]) => {
+  return employees.map((emp) => {
+    const baseSalary =
+      emp.position === "Giám đốc"
+        ? 25000000
+        : emp.position === "Kế toán"
+        ? 12000000
+        : emp.position === "Quản lý đơn hàng"
+        ? 10000000
+        : emp.position.includes("Sale")
+        ? 8000000
+        : emp.position === "Thiết kế"
+        ? 10000000
+        : 7000000;
     const allowance = Math.floor(baseSalary * 0.15);
     const insurance = Math.floor(baseSalary * 0.105); // 10.5% BHXH + BHYT + BHTN
     const workDays = 22 + Math.floor(Math.random() * 4);
@@ -135,7 +143,7 @@ const generateSalaryData = (employees: typeof initialEmployees) => {
       bonus,
       insurance,
       netSalary,
-      status: Math.random() > 0.3 ? "paid" : "pending"
+      status: Math.random() > 0.3 ? "paid" : "pending",
     };
   });
 };
@@ -147,25 +155,54 @@ export default function LuongBaoHiem() {
   const currentMonth = today.getMonth() + 1;
   const currentYear = today.getFullYear();
 
-  const [activeTab, setActiveTab] = useState<"employees" | "attendance" | "salary">("employees");
-  const [employees, setEmployees] = useState(initialEmployees);
+  const [activeTab, setActiveTab] = useState<
+    "employees" | "attendance" | "salary"
+  >("employees");
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<typeof initialEmployees[0] | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null
+  );
   const [newEmployee, setNewEmployee] = useState({
-    name: "", position: "", phone: "", birthday: "", cccd: "", address: "", avatar: ""
+    name: "",
+    position: "",
+    phone: "",
+    birthday: "",
+    cccd: "",
+    address: "",
   });
   const [editEmployee, setEditEmployee] = useState({
-    id: 0, name: "", position: "", phone: "", birthday: "", cccd: "", address: "", avatar: ""
+    id: 0,
+    name: "",
+    position: "",
+    phone: "",
+    birthday: "",
+    cccd: "",
+    address: "",
   });
-
-  // Ref for file input
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const editFileInputRef = useRef<HTMLInputElement>(null);
+  const [originalEmployee, setOriginalEmployee] = useState({
+    id: 0,
+    name: "",
+    position: "",
+    phone: "",
+    birthday: "",
+    cccd: "",
+    address: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    name: false,
+    position: false,
+    phone: false,
+  });
 
   // State để lưu dữ liệu chấm công
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
@@ -174,101 +211,277 @@ export default function LuongBaoHiem() {
   const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
 
   // Kiểm tra có phải tháng/năm hiện tại không
-  const isCurrentMonth = selectedMonth === currentMonth && selectedYear === currentYear;
+  const isCurrentMonth =
+    selectedMonth === currentMonth && selectedYear === currentYear;
+
+  // Load employees from Google Sheets on mount
+  useEffect(() => {
+    loadEmployeesFromSheet();
+  }, []);
 
   // Khởi tạo dữ liệu chấm công khi thay đổi tháng/năm hoặc danh sách nhân viên
   useEffect(() => {
-    setAttendanceData(generateAttendanceData(employees, selectedYear, selectedMonth));
+    setAttendanceData(
+      generateAttendanceData(employees, selectedYear, selectedMonth)
+    );
   }, [employees, selectedYear, selectedMonth]);
+
+  const loadEmployeesFromSheet = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/employees");
+      const data = await response.json();
+
+      if (data.success && data.data.length > 0) {
+        setEmployees(data.data);
+      } else {
+        console.log("No data in Google Sheets, using sample data");
+      }
+    } catch (error) {
+      console.error("Error loading employees from sheet:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const syncToGoogleSheets = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch("/api/employees/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ employees }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Đã đồng bộ dữ liệu lên Google Sheets thành công!");
+      } else {
+        toast.error(`Lỗi: ${data.error}`);
+      }
+    } catch (error: any) {
+      console.error("Error syncing to Google Sheets:", error);
+      toast.error(`Lỗi khi đồng bộ: ${error.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Hàm toggle trạng thái chấm công
   const handleToggleAttendance = (employeeId: number, dayIndex: number) => {
-    setAttendanceData(prev => prev.map(record => {
-      if (record.employeeId !== employeeId) return record;
+    setAttendanceData((prev) =>
+      prev.map((record) => {
+        if (record.employeeId !== employeeId) return record;
 
-      const newAttendance = [...record.attendance];
-      const currentStatus = newAttendance[dayIndex];
+        const newAttendance = [...record.attendance];
+        const currentStatus = newAttendance[dayIndex];
 
-      // Không cho phép thay đổi ngày tương lai
-      if (currentStatus === "future") return record;
+        // Không cho phép thay đổi ngày tương lai
+        if (currentStatus === "future") return record;
 
-      // Cycle: present -> late -> absent -> off -> present
-      if (currentStatus === "present") {
-        newAttendance[dayIndex] = "late";
-      } else if (currentStatus === "late") {
-        newAttendance[dayIndex] = "absent";
-      } else if (currentStatus === "absent") {
-        newAttendance[dayIndex] = "off";
-      } else {
-        newAttendance[dayIndex] = "present";
-      }
+        // Cycle: present -> late -> absent -> off -> present
+        if (currentStatus === "present") {
+          newAttendance[dayIndex] = "late";
+        } else if (currentStatus === "late") {
+          newAttendance[dayIndex] = "absent";
+        } else if (currentStatus === "absent") {
+          newAttendance[dayIndex] = "off";
+        } else {
+          newAttendance[dayIndex] = "present";
+        }
 
-      return { ...record, attendance: newAttendance };
-    }));
+        return { ...record, attendance: newAttendance };
+      })
+    );
   };
 
   // Hàm chấm công tất cả nhân viên hôm nay là "có mặt"
   const handleMarkAllPresentToday = () => {
     if (!isCurrentMonth) return;
     const todayIndex = currentDay - 1;
-    setAttendanceData(prev => prev.map(record => {
-      const newAttendance = [...record.attendance];
-      newAttendance[todayIndex] = "present";
-      return { ...record, attendance: newAttendance };
-    }));
+    setAttendanceData((prev) =>
+      prev.map((record) => {
+        const newAttendance = [...record.attendance];
+        newAttendance[todayIndex] = "present";
+        return { ...record, attendance: newAttendance };
+      })
+    );
   };
 
   // Hàm chấm công tất cả nhân viên hôm nay là "vắng"
   const handleMarkAllAbsentToday = () => {
     if (!isCurrentMonth) return;
     const todayIndex = currentDay - 1;
-    setAttendanceData(prev => prev.map(record => {
-      const newAttendance = [...record.attendance];
-      newAttendance[todayIndex] = "absent";
-      return { ...record, attendance: newAttendance };
-    }));
+    setAttendanceData((prev) =>
+      prev.map((record) => {
+        const newAttendance = [...record.attendance];
+        newAttendance[todayIndex] = "absent";
+        return { ...record, attendance: newAttendance };
+      })
+    );
   };
 
   const salaryData = generateSalaryData(employees);
 
-  const filteredEmployees = employees.filter(emp =>
-    emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.position.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredEmployees = employees.filter(
+    (emp) =>
+      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.position.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddEmployee = () => {
-    if (newEmployee.name && newEmployee.position) {
-      setEmployees([...employees, {
-        id: employees.length + 1,
-        ...newEmployee
-      }]);
-      setNewEmployee({ name: "", position: "", phone: "", birthday: "", cccd: "", address: "", avatar: "" });
-      setShowAddModal(false);
+  const handleAddEmployee = async () => {
+    // Validate form
+    const errors = {
+      name: !newEmployee.name.trim(),
+      position: !newEmployee.position.trim(),
+      phone: false,
+    };
+
+    // Validate phone nếu có nhập
+    if (newEmployee.phone) {
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(newEmployee.phone)) {
+        errors.phone = true;
+        toast.error("Số điện thoại phải là 10 chữ số!");
+      }
+    }
+
+    setFormErrors(errors);
+
+    // Kiểm tra có lỗi không
+    if (errors.name || errors.position || errors.phone) {
+      if (errors.name) toast.error("Vui lòng nhập họ và tên!");
+      if (errors.position) toast.error("Vui lòng nhập công việc!");
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      const newEmp = {
+        id:
+          employees.length > 0
+            ? Math.max(...employees.map((e) => e.id)) + 1
+            : 1,
+        ...newEmployee,
+      };
+
+      const response = await fetch("/api/employees/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newEmp),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Reload dữ liệu từ Google Sheets để đồng bộ
+        await loadEmployeesFromSheet();
+        setNewEmployee({
+          name: "",
+          position: "",
+          phone: "",
+          birthday: "",
+          cccd: "",
+          address: "",
+        });
+        setFormErrors({ name: false, position: false, phone: false });
+        setShowAddModal(false);
+        toast.success("Đã thêm nhân viên và cập nhật Google Sheets!");
+      } else {
+        toast.error(`Lỗi: ${data.error}`);
+      }
+    } catch (error: any) {
+      console.error("Error adding employee:", error);
+      toast.error(`Lỗi khi thêm nhân viên: ${error.message}`);
+    } finally {
+      setIsAdding(false);
     }
   };
 
-  const handleDeleteEmployee = (id: number) => {
+  const handleDeleteEmployee = async (id: number) => {
     if (confirm("Bạn có chắc muốn xóa nhân viên này?")) {
-      setEmployees(employees.filter(emp => emp.id !== id));
+      try {
+        const response = await fetch(`/api/employees/delete?id=${id}`, {
+          method: "DELETE",
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setEmployees(employees.filter((emp) => emp.id !== id));
+          toast.success("Đã xóa nhân viên và cập nhật Google Sheets!");
+        } else {
+          toast.error(`Lỗi: ${data.error}`);
+        }
+      } catch (error: any) {
+        console.error("Error deleting employee:", error);
+        toast.error(`Lỗi khi xóa nhân viên: ${error.message}`);
+      }
     }
   };
 
-  const handleViewEmployee = (emp: typeof initialEmployees[0]) => {
+  const handleViewEmployee = (emp: Employee) => {
     setSelectedEmployee(emp);
     setShowViewModal(true);
   };
 
-  const handleOpenEditModal = (emp: typeof initialEmployees[0]) => {
+  const handleOpenEditModal = (emp: Employee) => {
     setEditEmployee({ ...emp });
+    setOriginalEmployee({ ...emp });
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editEmployee.name && editEmployee.position) {
-      setEmployees(employees.map(emp =>
-        emp.id === editEmployee.id ? editEmployee : emp
-      ));
-      setShowEditModal(false);
+      // Kiểm tra xem có thay đổi gì không
+      const hasChanges =
+        editEmployee.name !== originalEmployee.name ||
+        editEmployee.position !== originalEmployee.position ||
+        editEmployee.phone !== originalEmployee.phone ||
+        editEmployee.birthday !== originalEmployee.birthday ||
+        editEmployee.cccd !== originalEmployee.cccd ||
+        editEmployee.address !== originalEmployee.address;
+
+      if (!hasChanges) {
+        toast("Không có thay đổi nào để lưu");
+        setShowEditModal(false);
+        return;
+      }
+
+      setIsUpdating(true);
+      try {
+        const response = await fetch("/api/employees/update", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(editEmployee),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setEmployees(
+            employees.map((emp) =>
+              emp.id === editEmployee.id ? editEmployee : emp
+            )
+          );
+          setShowEditModal(false);
+          toast.success("Đã cập nhật thông tin nhân viên và Google Sheets!");
+        } else {
+          toast.error(`Lỗi: ${data.error}`);
+        }
+      } catch (error: any) {
+        console.error("Error updating employee:", error);
+        toast.error(`Lỗi khi cập nhật nhân viên: ${error.message}`);
+      } finally {
+        setIsUpdating(false);
+      }
     }
   };
 
@@ -277,20 +490,41 @@ export default function LuongBaoHiem() {
 
   return (
     <div className="p-6 space-y-6">
+      <Toaster position="top-right" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Lương & Bảo hiểm</h1>
-          <p className="text-gray-600 mt-1">Quản lý nhân viên, chấm công và bảng lương</p>
+          <p className="text-gray-600 mt-1">
+            Quản lý nhân viên, chấm công và bảng lương
+          </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors">
-          <Download size={20} />
-          <span>Xuất Excel</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={loadEmployeesFromSheet}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <Download size={20} />
+            <span>{isLoading ? "Đang tải..." : "Tải từ Sheets"}</span>
+          </button>
+          <button
+            onClick={syncToGoogleSheets}
+            disabled={isSyncing}
+            className="flex items-center gap-2 px-4 py-2 border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <Download size={20} />
+            <span>{isSyncing ? "Đang đồng bộ..." : "Đồng bộ lên Sheets"}</span>
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors">
+            <Download size={20} />
+            <span>Xuất Excel</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="flex items-center gap-3">
             <div className="bg-blue-100 p-3 rounded-lg">
@@ -298,7 +532,9 @@ export default function LuongBaoHiem() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Tổng nhân viên</p>
-              <p className="text-2xl font-bold text-gray-900">{employees.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {employees.length}
+              </p>
             </div>
           </div>
         </div>
@@ -309,7 +545,9 @@ export default function LuongBaoHiem() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Tổng lương tháng</p>
-              <p className="text-2xl font-bold text-green-600">{(totalSalary / 1000000).toFixed(1)}M</p>
+              <p className="text-2xl font-bold text-green-600">
+                {(totalSalary / 1000000).toFixed(1)}M
+              </p>
             </div>
           </div>
         </div>
@@ -320,7 +558,9 @@ export default function LuongBaoHiem() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Tổng bảo hiểm</p>
-              <p className="text-2xl font-bold text-orange-600">{(totalInsurance / 1000000).toFixed(1)}M</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {(totalInsurance / 1000000).toFixed(1)}M
+              </p>
             </div>
           </div>
         </div>
@@ -332,12 +572,13 @@ export default function LuongBaoHiem() {
             <div>
               <p className="text-sm text-gray-500">Đã thanh toán</p>
               <p className="text-2xl font-bold text-purple-600">
-                {salaryData.filter(s => s.status === "paid").length}/{salaryData.length}
+                {salaryData.filter((s) => s.status === "paid").length}/
+                {salaryData.length}
               </p>
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -391,7 +632,10 @@ export default function LuongBaoHiem() {
             <>
               <div className="flex items-center justify-between mb-6">
                 <div className="flex-1 max-w-md relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    size={20}
+                  />
                   <input
                     type="text"
                     placeholder="Tìm kiếm nhân viên..."
@@ -413,37 +657,43 @@ export default function LuongBaoHiem() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">STT</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Họ và tên</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Công việc</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Số điện thoại</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Ngày sinh</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">CCCD</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Địa chỉ</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">Thao tác</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        STT
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Họ và tên
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Công việc
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Số điện thoại
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Ngày sinh
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        CCCD
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Địa chỉ
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
+                        Thao tác
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {filteredEmployees.map((emp, index) => (
                       <tr key={emp.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-sm text-gray-600">{index + 1}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {index + 1}
+                        </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            {/* Avatar */}
-                            {emp.avatar ? (
-                              <Image
-                                src={emp.avatar}
-                                alt={emp.name}
-                                width={40}
-                                height={40}
-                                className="w-10 h-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarColor(emp.position)} flex items-center justify-center text-white font-semibold text-sm shadow-sm`}>
-                                {getInitials(emp.name)}
-                              </div>
-                            )}
-                            <p className="text-sm font-medium text-gray-900">{emp.name}</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {emp.name}
+                            </p>
                           </div>
                         </td>
                         <td className="px-4 py-4">
@@ -451,12 +701,20 @@ export default function LuongBaoHiem() {
                             {emp.position}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-600">{emp.phone}</td>
                         <td className="px-4 py-4 text-sm text-gray-600">
-                          {emp.birthday ? new Date(emp.birthday).toLocaleDateString("vi-VN") : "-"}
+                          {emp.phone}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-600">{emp.cccd || "-"}</td>
-                        <td className="px-4 py-4 text-sm text-gray-600">{emp.address || "-"}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {emp.birthday
+                            ? new Date(emp.birthday).toLocaleDateString("vi-VN")
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {emp.cccd || "-"}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {emp.address || "-"}
+                        </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -515,7 +773,9 @@ export default function LuongBaoHiem() {
                       className="px-3 py-2 border border-gray-300 rounded-lg"
                     >
                       {Array.from({ length: 12 }, (_, i) => (
-                        <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
+                        <option key={i + 1} value={i + 1}>
+                          Tháng {i + 1}
+                        </option>
                       ))}
                     </select>
                     <select
@@ -523,8 +783,10 @@ export default function LuongBaoHiem() {
                       onChange={(e) => setSelectedYear(Number(e.target.value))}
                       className="px-3 py-2 border border-gray-300 rounded-lg"
                     >
-                      {[2023, 2024, 2025].map(year => (
-                        <option key={year} value={year}>{year}</option>
+                      {[2023, 2024, 2025].map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -575,7 +837,10 @@ export default function LuongBaoHiem() {
                         <Edit size={18} />
                         Đang chỉnh sửa chấm công
                       </p>
-                      <p className="text-sm text-green-700">Click vào ô để thay đổi trạng thái: Có mặt → Đi muộn → Vắng → Nghỉ</p>
+                      <p className="text-sm text-green-700">
+                        Click vào ô để thay đổi trạng thái: Có mặt → Đi muộn →
+                        Vắng → Nghỉ
+                      </p>
                     </div>
                     <div className="flex gap-2">
                       {isCurrentMonth && (
@@ -627,13 +892,21 @@ export default function LuongBaoHiem() {
                       </th>
                       {Array.from({ length: daysInMonth }, (_, i) => {
                         const day = i + 1;
-                        const date = new Date(selectedYear, selectedMonth - 1, day);
-                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                        const date = new Date(
+                          selectedYear,
+                          selectedMonth - 1,
+                          day
+                        );
+                        const isWeekend =
+                          date.getDay() === 0 || date.getDay() === 6;
                         const isToday = isCurrentMonth && day === currentDay;
                         const isFutureDay =
                           selectedYear > currentYear ||
-                          (selectedYear === currentYear && selectedMonth > currentMonth) ||
-                          (selectedYear === currentYear && selectedMonth === currentMonth && day > currentDay);
+                          (selectedYear === currentYear &&
+                            selectedMonth > currentMonth) ||
+                          (selectedYear === currentYear &&
+                            selectedMonth === currentMonth &&
+                            day > currentDay);
                         return (
                           <th
                             key={i}
@@ -651,13 +924,19 @@ export default function LuongBaoHiem() {
                           </th>
                         );
                       })}
-                      <th className="px-3 py-2 text-center font-medium text-gray-500 bg-blue-50">Tổng</th>
+                      <th className="px-3 py-2 text-center font-medium text-gray-500 bg-blue-50">
+                        Tổng
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {attendanceData.map((row) => {
-                      const totalPresent = row.attendance.filter(a => a === "present").length;
-                      const totalLate = row.attendance.filter(a => a === "late").length;
+                      const totalPresent = row.attendance.filter(
+                        (a) => a === "present"
+                      ).length;
+                      const totalLate = row.attendance.filter(
+                        (a) => a === "late"
+                      ).length;
                       const totalWorking = totalPresent + totalLate;
                       return (
                         <tr key={row.employeeId} className="hover:bg-gray-50">
@@ -666,12 +945,19 @@ export default function LuongBaoHiem() {
                           </td>
                           {row.attendance.map((status, i) => {
                             const day = i + 1;
-                            const isToday = isCurrentMonth && day === currentDay;
+                            const isToday =
+                              isCurrentMonth && day === currentDay;
                             const isFuture = status === "future";
                             return (
                               <td
                                 key={i}
-                                className={`px-1 py-2 text-center ${isToday ? "bg-blue-100" : isFuture ? "bg-gray-50" : ""}`}
+                                className={`px-1 py-2 text-center ${
+                                  isToday
+                                    ? "bg-blue-100"
+                                    : isFuture
+                                    ? "bg-gray-50"
+                                    : ""
+                                }`}
                               >
                                 {isFuture ? (
                                   <div
@@ -680,30 +966,61 @@ export default function LuongBaoHiem() {
                                   />
                                 ) : (
                                   <div
-                                    onClick={() => isEditingAttendance && handleToggleAttendance(row.employeeId, i)}
+                                    onClick={() =>
+                                      isEditingAttendance &&
+                                      handleToggleAttendance(row.employeeId, i)
+                                    }
                                     className={`w-6 h-6 mx-auto rounded transition-all ${
                                       isEditingAttendance
                                         ? "cursor-pointer hover:scale-110 hover:shadow-md"
                                         : "cursor-default"
                                     } ${
                                       status === "present"
-                                        ? isEditingAttendance ? "bg-green-500 hover:bg-green-600" : "bg-green-500"
+                                        ? isEditingAttendance
+                                          ? "bg-green-500 hover:bg-green-600"
+                                          : "bg-green-500"
                                         : status === "late"
-                                        ? isEditingAttendance ? "bg-yellow-500 hover:bg-yellow-600" : "bg-yellow-500"
+                                        ? isEditingAttendance
+                                          ? "bg-yellow-500 hover:bg-yellow-600"
+                                          : "bg-yellow-500"
                                         : status === "absent"
-                                        ? isEditingAttendance ? "bg-red-500 hover:bg-red-600" : "bg-red-500"
-                                        : isEditingAttendance ? "bg-gray-200 hover:bg-gray-300" : "bg-gray-200"
-                                    } ${isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""}`}
-                                    title={`${status === "present" ? "Có mặt" : status === "late" ? "Đi muộn" : status === "absent" ? "Vắng" : "Nghỉ"}${isEditingAttendance ? " - Click để thay đổi" : ""}`}
+                                        ? isEditingAttendance
+                                          ? "bg-red-500 hover:bg-red-600"
+                                          : "bg-red-500"
+                                        : isEditingAttendance
+                                        ? "bg-gray-200 hover:bg-gray-300"
+                                        : "bg-gray-200"
+                                    } ${
+                                      isToday
+                                        ? "ring-2 ring-blue-400 ring-offset-1"
+                                        : ""
+                                    }`}
+                                    title={`${
+                                      status === "present"
+                                        ? "Có mặt"
+                                        : status === "late"
+                                        ? "Đi muộn"
+                                        : status === "absent"
+                                        ? "Vắng"
+                                        : "Nghỉ"
+                                    }${
+                                      isEditingAttendance
+                                        ? " - Click để thay đổi"
+                                        : ""
+                                    }`}
                                   />
                                 )}
                               </td>
                             );
                           })}
                           <td className="px-3 py-2 text-center font-semibold bg-blue-50">
-                            <span className="text-blue-600">{totalWorking}</span>
+                            <span className="text-blue-600">
+                              {totalWorking}
+                            </span>
                             {totalLate > 0 && (
-                              <span className="text-yellow-600 text-xs ml-1">({totalLate})</span>
+                              <span className="text-yellow-600 text-xs ml-1">
+                                ({totalLate})
+                              </span>
                             )}
                           </td>
                         </tr>
@@ -726,7 +1043,9 @@ export default function LuongBaoHiem() {
                     className="px-3 py-2 border border-gray-300 rounded-lg"
                   >
                     {Array.from({ length: 12 }, (_, i) => (
-                      <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
+                      <option key={i + 1} value={i + 1}>
+                        Tháng {i + 1}
+                      </option>
                     ))}
                   </select>
                   <select
@@ -734,39 +1053,65 @@ export default function LuongBaoHiem() {
                     onChange={(e) => setSelectedYear(Number(e.target.value))}
                     className="px-3 py-2 border border-gray-300 rounded-lg"
                   >
-                    {[2023, 2024, 2025].map(year => (
-                      <option key={year} value={year}>{year}</option>
+                    {[2023, 2024, 2025].map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
                     ))}
                   </select>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+                {/* <button className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
                   <Check size={20} />
                   Thanh toán tất cả
-                </button>
+                </button> */}
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">STT</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Nhân viên</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Chức vụ</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Lương CB</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Phụ cấp</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">Ngày công</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Thưởng</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500 bg-orange-50">Bảo hiểm</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500 bg-green-50">Thực lãnh</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">Trạng thái</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        STT
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Nhân viên
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Chức vụ
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                        Lương CB
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                        Phụ cấp
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
+                        Ngày công
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                        Thưởng
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500 bg-orange-50">
+                        Bảo hiểm
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500 bg-green-50">
+                        Thực lãnh
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
+                        Trạng thái
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {salaryData.map((row, index) => (
                       <tr key={row.employeeId} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-sm text-gray-600">{index + 1}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {index + 1}
+                        </td>
                         <td className="px-4 py-4">
-                          <p className="text-sm font-medium text-gray-900">{row.employeeName}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {row.employeeName}
+                          </p>
                         </td>
                         <td className="px-4 py-4">
                           <span className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
@@ -807,16 +1152,26 @@ export default function LuongBaoHiem() {
                   </tbody>
                   <tfoot>
                     <tr className="bg-gray-100 font-semibold">
-                      <td colSpan={3} className="px-4 py-3 text-right">Tổng cộng:</td>
+                      <td colSpan={3} className="px-4 py-3 text-right">
+                        Tổng cộng:
+                      </td>
                       <td className="px-4 py-3 text-right">
-                        {salaryData.reduce((s, r) => s + r.baseSalary, 0).toLocaleString("vi-VN")}
+                        {salaryData
+                          .reduce((s, r) => s + r.baseSalary, 0)
+                          .toLocaleString("vi-VN")}
                       </td>
                       <td className="px-4 py-3 text-right text-green-600">
-                        +{salaryData.reduce((s, r) => s + r.allowance, 0).toLocaleString("vi-VN")}
+                        +
+                        {salaryData
+                          .reduce((s, r) => s + r.allowance, 0)
+                          .toLocaleString("vi-VN")}
                       </td>
                       <td className="px-4 py-3 text-center">-</td>
                       <td className="px-4 py-3 text-right text-blue-600">
-                        +{salaryData.reduce((s, r) => s + r.bonus, 0).toLocaleString("vi-VN")}
+                        +
+                        {salaryData
+                          .reduce((s, r) => s + r.bonus, 0)
+                          .toLocaleString("vi-VN")}
                       </td>
                       <td className="px-4 py-3 text-right text-orange-600 bg-orange-100">
                         -{totalInsurance.toLocaleString("vi-VN")}
@@ -840,126 +1195,192 @@ export default function LuongBaoHiem() {
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Thêm nhân viên mới</h3>
-              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setFormErrors({ name: false, position: false, phone: false });
+                }}
+                disabled={isAdding}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              >
                 <X size={24} />
               </button>
             </div>
             <div className="space-y-4">
-              {/* Avatar Upload */}
-              <div className="flex flex-col items-center">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ảnh đại diện</label>
-                <div className="relative">
-                  {newEmployee.avatar ? (
-                    <Image
-                      src={newEmployee.avatar}
-                      alt="Avatar"
-                      width={80}
-                      height={80}
-                      className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center">
-                      <Users className="text-white" size={32} />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 p-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 shadow-lg"
-                  >
-                    <Camera size={14} />
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setNewEmployee({ ...newEmployee, avatar: reader.result as string });
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Họ và tên *
+                </label>
                 <input
                   type="text"
                   value={newEmployee.name}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    setNewEmployee({ ...newEmployee, name: e.target.value });
+                    setFormErrors({ ...formErrors, name: false });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                    formErrors.name
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
+                  }`}
                   placeholder="Nhập họ và tên"
+                  disabled={isAdding}
                 />
+                {formErrors.name && (
+                  <p className="text-red-500 text-xs mt-1">
+                    Họ và tên là bắt buộc
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Công việc *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Công việc *
+                </label>
                 <input
                   type="text"
                   value={newEmployee.position}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    setNewEmployee({
+                      ...newEmployee,
+                      position: e.target.value,
+                    });
+                    setFormErrors({ ...formErrors, position: false });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                    formErrors.position
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
+                  }`}
                   placeholder="Nhập công việc"
+                  disabled={isAdding}
                 />
+                {formErrors.position && (
+                  <p className="text-red-500 text-xs mt-1">
+                    Công việc là bắt buộc
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Số điện thoại (10 số)
+                </label>
                 <input
                   type="text"
                   value={newEmployee.phone}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập số điện thoại"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ""); // Chỉ cho phép số
+                    if (value.length <= 10) {
+                      setNewEmployee({ ...newEmployee, phone: value });
+                      setFormErrors({ ...formErrors, phone: false });
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                    formErrors.phone
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="Nhập 10 chữ số"
+                  maxLength={10}
+                  disabled={isAdding}
                 />
+                {formErrors.phone && (
+                  <p className="text-red-500 text-xs mt-1">
+                    Số điện thoại phải đủ 10 chữ số
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ngày sinh
+                </label>
                 <input
                   type="date"
                   value={newEmployee.birthday}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, birthday: e.target.value })}
+                  onChange={(e) =>
+                    setNewEmployee({ ...newEmployee, birthday: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  disabled={isAdding}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">CCCD</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  CCCD (12 số)
+                </label>
                 <input
                   type="text"
                   value={newEmployee.cccd}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, cccd: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ""); // Chỉ cho phép số
+                    if (value.length <= 12) {
+                      setNewEmployee({ ...newEmployee, cccd: value });
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập số CCCD"
+                  placeholder="Nhập 12 chữ số"
+                  maxLength={12}
+                  disabled={isAdding}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Địa chỉ
+                </label>
                 <input
                   type="text"
                   value={newEmployee.address}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, address: e.target.value })}
+                  onChange={(e) =>
+                    setNewEmployee({ ...newEmployee, address: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Nhập địa chỉ"
+                  disabled={isAdding}
                 />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setFormErrors({ name: false, position: false, phone: false });
+                }}
+                disabled={isAdding}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Hủy
               </button>
               <button
                 onClick={handleAddEmployee}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                disabled={isAdding}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Thêm
+                {isAdding ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Đang thêm...
+                  </>
+                ) : (
+                  "Thêm"
+                )}
               </button>
             </div>
           </div>
@@ -978,7 +1399,9 @@ export default function LuongBaoHiem() {
           <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Thông tin nhân viên</h3>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Thông tin nhân viên
+                </h3>
                 <button
                   onClick={() => setShowViewModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -989,21 +1412,19 @@ export default function LuongBaoHiem() {
 
               {/* Employee Avatar & Name */}
               <div className="flex items-center gap-4 pb-6 border-b border-gray-200">
-                {selectedEmployee.avatar ? (
-                  <Image
-                    src={selectedEmployee.avatar}
-                    alt={selectedEmployee.name}
-                    width={80}
-                    height={80}
-                    className="w-20 h-20 rounded-full object-cover shadow-lg"
-                  />
-                ) : (
-                  <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${getAvatarColor(selectedEmployee.position)} flex items-center justify-center shadow-lg`}>
-                    <span className="text-white font-bold text-2xl">{getInitials(selectedEmployee.name)}</span>
-                  </div>
-                )}
+                <div
+                  className={`w-20 h-20 rounded-full bg-gradient-to-br ${getAvatarColor(
+                    selectedEmployee.position
+                  )} flex items-center justify-center shadow-lg`}
+                >
+                  <span className="text-white font-bold text-2xl">
+                    {getInitials(selectedEmployee.name)}
+                  </span>
+                </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{selectedEmployee.name}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {selectedEmployee.name}
+                  </p>
                   <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
                     {selectedEmployee.position}
                   </span>
@@ -1018,7 +1439,9 @@ export default function LuongBaoHiem() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Số điện thoại</p>
-                    <p className="font-semibold text-gray-900">{selectedEmployee.phone || "Chưa cập nhật"}</p>
+                    <p className="font-semibold text-gray-900">
+                      {selectedEmployee.phone || "Chưa cập nhật"}
+                    </p>
                   </div>
                 </div>
 
@@ -1029,7 +1452,11 @@ export default function LuongBaoHiem() {
                   <div>
                     <p className="text-sm text-gray-500">Ngày sinh</p>
                     <p className="font-semibold text-gray-900">
-                      {selectedEmployee.birthday ? new Date(selectedEmployee.birthday).toLocaleDateString("vi-VN") : "Chưa cập nhật"}
+                      {selectedEmployee.birthday
+                        ? new Date(
+                            selectedEmployee.birthday
+                          ).toLocaleDateString("vi-VN")
+                        : "Chưa cập nhật"}
                     </p>
                   </div>
                 </div>
@@ -1040,7 +1467,9 @@ export default function LuongBaoHiem() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Số CCCD</p>
-                    <p className="font-semibold text-gray-900">{selectedEmployee.cccd || "Chưa cập nhật"}</p>
+                    <p className="font-semibold text-gray-900">
+                      {selectedEmployee.cccd || "Chưa cập nhật"}
+                    </p>
                   </div>
                 </div>
 
@@ -1050,7 +1479,9 @@ export default function LuongBaoHiem() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Địa chỉ</p>
-                    <p className="font-semibold text-gray-900">{selectedEmployee.address || "Chưa cập nhật"}</p>
+                    <p className="font-semibold text-gray-900">
+                      {selectedEmployee.address || "Chưa cập nhật"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1090,7 +1521,9 @@ export default function LuongBaoHiem() {
           <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Chỉnh sửa thông tin</h3>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Chỉnh sửa thông tin
+                </h3>
                 <button
                   onClick={() => setShowEditModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1100,104 +1533,97 @@ export default function LuongBaoHiem() {
               </div>
 
               <div className="space-y-4">
-                {/* Avatar Upload */}
-                <div className="flex flex-col items-center">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ảnh đại diện</label>
-                  <div className="relative">
-                    {editEmployee.avatar ? (
-                      <Image
-                        src={editEmployee.avatar}
-                        alt="Avatar"
-                        width={80}
-                        height={80}
-                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                      />
-                    ) : (
-                      <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${getAvatarColor(editEmployee.position)} flex items-center justify-center`}>
-                        <span className="text-white font-bold text-xl">{getInitials(editEmployee.name || "NV")}</span>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => editFileInputRef.current?.click()}
-                      className="absolute bottom-0 right-0 p-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 shadow-lg"
-                    >
-                      <Camera size={14} />
-                    </button>
-                    <input
-                      ref={editFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setEditEmployee({ ...editEmployee, avatar: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Họ và tên *
+                  </label>
                   <input
                     type="text"
                     value={editEmployee.name}
-                    onChange={(e) => setEditEmployee({ ...editEmployee, name: e.target.value })}
+                    onChange={(e) =>
+                      setEditEmployee({ ...editEmployee, name: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập họ và tên"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Công việc *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Công việc *
+                  </label>
                   <input
                     type="text"
                     value={editEmployee.position}
-                    onChange={(e) => setEditEmployee({ ...editEmployee, position: e.target.value })}
+                    onChange={(e) =>
+                      setEditEmployee({
+                        ...editEmployee,
+                        position: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập công việc"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Số điện thoại
+                  </label>
                   <input
                     type="text"
                     value={editEmployee.phone}
-                    onChange={(e) => setEditEmployee({ ...editEmployee, phone: e.target.value })}
+                    onChange={(e) =>
+                      setEditEmployee({
+                        ...editEmployee,
+                        phone: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập số điện thoại"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày sinh
+                  </label>
                   <input
                     type="date"
                     value={editEmployee.birthday}
-                    onChange={(e) => setEditEmployee({ ...editEmployee, birthday: e.target.value })}
+                    onChange={(e) =>
+                      setEditEmployee({
+                        ...editEmployee,
+                        birthday: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CCCD</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    CCCD
+                  </label>
                   <input
                     type="text"
                     value={editEmployee.cccd}
-                    onChange={(e) => setEditEmployee({ ...editEmployee, cccd: e.target.value })}
+                    onChange={(e) =>
+                      setEditEmployee({ ...editEmployee, cccd: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập số CCCD"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Địa chỉ
+                  </label>
                   <input
                     type="text"
                     value={editEmployee.address}
-                    onChange={(e) => setEditEmployee({ ...editEmployee, address: e.target.value })}
+                    onChange={(e) =>
+                      setEditEmployee({
+                        ...editEmployee,
+                        address: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập địa chỉ"
                   />
@@ -1208,15 +1634,43 @@ export default function LuongBaoHiem() {
               <div className="flex gap-3 mt-8">
                 <button
                   onClick={() => setShowEditModal(false)}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                  disabled={isUpdating}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                  disabled={isUpdating}
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Lưu thay đổi
+                  {isUpdating ? (
+                    <>
+                      <svg
+                        className="animate-spin h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Đang lưu...
+                    </>
+                  ) : (
+                    "Lưu thay đổi"
+                  )}
                 </button>
               </div>
             </div>
