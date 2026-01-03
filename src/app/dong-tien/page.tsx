@@ -20,191 +20,16 @@ import {
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
+import toast, { Toaster } from "react-hot-toast";
+import { ThuChi } from "@/lib/googleSheets";
 
-// Dữ liệu giao dịch mẫu
-const initialTransactions: {
-  id: number;
-  code: string;
-  date: string;
-  type: "income" | "expense";
-  category: string;
-  entity: string;
-  description: string;
-  amount: number;
-  account: string;
-}[] = [
-  {
-    id: 1,
-    code: "GD001",
-    date: "2024-12-25",
-    type: "income",
-    category: "Bán hàng",
-    entity: "Công ty ABC",
-    description: "Thu tiền đơn hàng DH004",
-    amount: 8500000,
-    account: "Tiền mặt",
-  },
-  {
-    id: 2,
-    code: "GD002",
-    date: "2024-12-25",
-    type: "expense",
-    category: "Lương",
-    entity: "Nhân viên",
-    description: "Chi lương nhân viên tháng 12",
-    amount: 45000000,
-    account: "Ngân hàng",
-  },
-  {
-    id: 3,
-    code: "GD003",
-    date: "2024-12-24",
-    type: "income",
-    category: "Bán hàng",
-    entity: "Khách lẻ",
-    description: "Thu tiền đơn hàng DH003",
-    amount: 450000,
-    account: "Tiền mặt",
-  },
-  {
-    id: 4,
-    code: "GD004",
-    date: "2024-12-24",
-    type: "expense",
-    category: "NPL",
-    entity: "Toản Nhung",
-    description: "Chi mua nguyên phụ liệu",
-    amount: 12000000,
-    account: "Ngân hàng",
-  },
-  {
-    id: 5,
-    code: "GD005",
-    date: "2024-12-23",
-    type: "income",
-    category: "Bán hàng",
-    entity: "Công ty ABC",
-    description: "Thu tiền công ty ABC",
-    amount: 15000000,
-    account: "Ngân hàng",
-  },
-  {
-    id: 6,
-    code: "GD006",
-    date: "2024-12-23",
-    type: "expense",
-    category: "Điện nước",
-    entity: "EVN",
-    description: "Chi tiền điện tháng 12",
-    amount: 3500000,
-    account: "Tiền mặt",
-  },
-  {
-    id: 7,
-    code: "GD007",
-    date: "2024-12-20",
-    type: "income",
-    category: "Bán hàng",
-    entity: "Shop XYZ",
-    description: "Thu tiền shop XYZ",
-    amount: 22000000,
-    account: "Ngân hàng",
-  },
-  {
-    id: 8,
-    code: "GD008",
-    date: "2024-12-18",
-    type: "expense",
-    category: "NPL",
-    entity: "Phương Tiên",
-    description: "Chi mua vải cotton",
-    amount: 8500000,
-    account: "Ngân hàng",
-  },
-  {
-    id: 9,
-    code: "GD009",
-    date: "2024-12-15",
-    type: "income",
-    category: "Thu nợ",
-    entity: "NPP Hải Dương",
-    description: "NPP Hải Dương thanh toán",
-    amount: 35000000,
-    account: "Ngân hàng",
-  },
-  {
-    id: 10,
-    code: "GD010",
-    date: "2024-12-10",
-    type: "expense",
-    category: "Thuê nhà",
-    entity: "Chủ kho",
-    description: "Tiền thuê kho tháng 12",
-    amount: 15000000,
-    account: "Ngân hàng",
-  },
-  {
-    id: 11,
-    code: "GD011",
-    date: "2024-11-28",
-    type: "income",
-    category: "Bán hàng",
-    entity: "Đại lý tháng 11",
-    description: "Thu tiền đơn hàng tháng 11",
-    amount: 42000000,
-    account: "Ngân hàng",
-  },
-  {
-    id: 12,
-    code: "GD012",
-    date: "2024-11-25",
-    type: "expense",
-    category: "Lương",
-    entity: "Nhân viên",
-    description: "Chi lương nhân viên tháng 11",
-    amount: 43000000,
-    account: "Ngân hàng",
-  },
-];
 
-// Dữ liệu khoản vay (sẽ load từ Google Sheets)
-const initialLoans = [
-  {
-    id: 1,
-    code: "KV001",
-    lender: "Ngân hàng VCB",
-    amount: 500000000,
-    remaining: 350000000,
-    interestRate: 8.5,
-    startDate: "2024-01-15",
-    endDate: "2026-01-15",
-    status: "active",
-  },
-  {
-    id: 2,
-    code: "KV002",
-    lender: "Ông Nguyễn Văn B",
-    amount: 100000000,
-    remaining: 50000000,
-    interestRate: 12,
-    startDate: "2024-06-01",
-    endDate: "2025-06-01",
-    status: "active",
-  },
-];
 
 // Helper functions
 const formatDate = (date: Date) => {
   return date.toISOString().split("T")[0];
 };
 
-const formatDisplayDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-};
 
 // Get start of week (Monday)
 const getStartOfWeek = (date: Date) => {
@@ -248,7 +73,11 @@ export default function DongTien() {
   const [activeTab, setActiveTab] = useState<
     "transactions" | "accounts" | "loans"
   >(getTabFromUrl);
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const [thuChiList, setThuChiList] = useState<ThuChi[]>([]);
+  const [isLoadingThuChi, setIsLoadingThuChi] = useState(false);
+  const [isAddingThuChi, setIsAddingThuChi] = useState(false);
+  const [isUpdatingThuChi, setIsUpdatingThuChi] = useState(false);
+  const [isDeletingThuChi, setIsDeletingThuChi] = useState(false);
   const [accounts, setAccounts] = useState<{
     id: number;
     accountNumber: string;
@@ -283,6 +112,13 @@ export default function DongTien() {
     }
   }, [searchParams]);
 
+  // Fetch thu chi from API when transactions tab is active
+  useEffect(() => {
+    if (activeTab === "transactions") {
+      fetchThuChi();
+    }
+  }, [activeTab]);
+
   // Fetch accounts from API when accounts tab is active
   useEffect(() => {
     if (activeTab === "accounts") {
@@ -296,6 +132,25 @@ export default function DongTien() {
       fetchLoans();
     }
   }, [activeTab]);
+
+  const fetchThuChi = async () => {
+    try {
+      setIsLoadingThuChi(true);
+      const response = await fetch("/api/thu-chi");
+      const result = await response.json();
+      if (result.success) {
+        setThuChiList(result.data);
+      } else {
+        console.error("Failed to fetch thu chi:", result.error);
+        toast.error("Không thể tải dữ liệu thu chi");
+      }
+    } catch (error) {
+      console.error("Error fetching thu chi:", error);
+      toast.error("Lỗi khi tải dữ liệu thu chi");
+    } finally {
+      setIsLoadingThuChi(false);
+    }
+  };
 
   const fetchAccounts = async () => {
     try {
@@ -366,37 +221,29 @@ export default function DongTien() {
     }
   };
 
-  // TODO: Bật lại filter khi có data thật
-  // const dateFilteredTransactions = useMemo(() => {
-  //   return transactions.filter((t) => {
-  //     const txDate = t.date;
-  //     return txDate >= fromDate && txDate <= toDate;
-  //   });
-  // }, [transactions, fromDate, toDate]);
 
-  // Modal states
+  // Thu Chi modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showEditTransactionModal, setShowEditTransactionModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [editingTransaction, setEditingTransaction] = useState<{
-    id: number;
-    code: string;
-    date: string;
-    type: "income" | "expense";
-    category: string;
-    entity: string;
-    description: string;
-    amount: number;
-    account: string;
-  } | null>(null);
-  const [newTransaction, setNewTransaction] = useState({
-    type: "income" as "income" | "expense",
-    category: "",
+  const [showEditThuChiModal, setShowEditThuChiModal] = useState(false);
+  const [showDeleteThuChiModal, setShowDeleteThuChiModal] = useState(false);
+  const [selectedThuChi, setSelectedThuChi] = useState<ThuChi | null>(null);
+  const [thuChiToDelete, setThuChiToDelete] = useState<number | null>(null);
+  const [editingThuChi, setEditingThuChi] = useState<ThuChi | null>(null);
+  const [newThuChi, setNewThuChi] = useState<Partial<ThuChi>>({
+    date: formatDate(new Date()),
+    accountName: "",
+    nccNpl: "",
+    workshop: "",
+    shippingCost: 0,
+    salesIncome: 0,
+    otherIncome: 0,
     entity: "",
-    description: "",
-    amount: 0,
-    account: "Tiền mặt",
+    content: "",
+    category: "",
+    totalIncome: 0,
+    totalExpense: 0,
+    note: "",
   });
 
   // Account modal states
@@ -419,20 +266,51 @@ export default function DongTien() {
     type: "Tiền mặt",
   });
 
-  // Tạm thời bỏ filter theo ngày để hiện tất cả data mẫu
-  const filteredTransactions = transactions.filter((t) => {
+  // Filter thu chi by search, type, and date range
+  const filteredThuChi = thuChiList.filter((t) => {
     const matchSearch =
-      t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.entity.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchType = filterType === "all" || t.type === filterType;
-    return matchSearch && matchType;
+      (t.content || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.entity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.category || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.accountName || "").toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter by date range
+    let matchDate = true;
+    if (t.date && fromDate && toDate) {
+      // Parse date from t.date (có thể là "02/01/2026" hoặc "2026-01-02")
+      let itemDate: Date | null = null;
+      if (t.date.includes("/")) {
+        // Format DD/MM/YYYY
+        const parts = t.date.split("/");
+        if (parts.length === 3) {
+          itemDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        }
+      } else if (t.date.includes("-")) {
+        // Format YYYY-MM-DD
+        itemDate = new Date(t.date);
+      }
+
+      if (itemDate && !isNaN(itemDate.getTime())) {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        // Reset time part for accurate date comparison
+        itemDate.setHours(0, 0, 0, 0);
+        from.setHours(0, 0, 0, 0);
+        to.setHours(0, 0, 0, 0);
+        matchDate = itemDate >= from && itemDate <= to;
+      }
+    }
+
+    // Filter by type: income (totalIncome > 0), expense (totalExpense > 0)
+    if (filterType === "income") return matchSearch && matchDate && t.totalIncome > 0;
+    if (filterType === "expense") return matchSearch && matchDate && t.totalExpense > 0;
+    return matchSearch && matchDate;
   });
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredThuChi.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedTransactions = filteredTransactions.slice(
+  const paginatedThuChi = filteredThuChi.slice(
     startIndex,
     startIndex + itemsPerPage
   );
@@ -448,55 +326,120 @@ export default function DongTien() {
     setCurrentPage(1);
   };
 
-  const handleAddTransaction = () => {
-    if (newTransaction.category && newTransaction.amount > 0) {
-      const today = new Date().toISOString().split("T")[0];
-      setTransactions([
-        {
-          id: transactions.length + 1,
-          code: `GD${String(transactions.length + 1).padStart(3, "0")}`,
-          date: today,
-          ...newTransaction,
-        },
-        ...transactions,
-      ]);
-      setNewTransaction({
-        type: "income",
-        category: "",
-        entity: "",
-        description: "",
-        amount: 0,
-        account: "Tiền mặt",
+  // Thu Chi handlers
+  const handleAddThuChi = async () => {
+    if (!newThuChi.date) {
+      toast.error("Vui lòng điền ngày tháng");
+      return;
+    }
+
+    setIsAddingThuChi(true);
+    try {
+      const response = await fetch("/api/thu-chi/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newThuChi),
       });
-      setShowAddModal(false);
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Thêm thu chi thành công");
+        setNewThuChi({
+          date: formatDate(new Date()),
+          accountName: "",
+          nccNpl: "",
+          workshop: "",
+          shippingCost: 0,
+          salesIncome: 0,
+          otherIncome: 0,
+          entity: "",
+          content: "",
+          category: "",
+          totalIncome: 0,
+          totalExpense: 0,
+          note: "",
+        });
+        setShowAddModal(false);
+        fetchThuChi();
+      } else {
+        toast.error(result.error || "Không thể thêm thu chi");
+      }
+    } catch (error) {
+      console.error("Error adding thu chi:", error);
+      toast.error("Lỗi khi thêm thu chi");
+    } finally {
+      setIsAddingThuChi(false);
     }
   };
 
-  const handleViewItem = (item: any) => {
-    setSelectedItem(item);
+  const handleViewThuChi = (item: ThuChi) => {
+    setSelectedThuChi(item);
     setShowViewModal(true);
   };
 
-  const handleDeleteTransaction = (id: number) => {
-    if (confirm("Bạn có chắc muốn xóa giao dịch này?")) {
-      setTransactions(transactions.filter((t) => t.id !== id));
+  const handleEditThuChi = (item: ThuChi) => {
+    setEditingThuChi(item);
+    setShowEditThuChiModal(true);
+  };
+
+  const handleSaveThuChi = async () => {
+    if (!editingThuChi) return;
+
+    if (!editingThuChi.date) {
+      toast.error("Vui lòng điền ngày tháng");
+      return;
+    }
+
+    setIsUpdatingThuChi(true);
+    try {
+      const response = await fetch("/api/thu-chi/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingThuChi),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Cập nhật thu chi thành công");
+        setShowEditThuChiModal(false);
+        setEditingThuChi(null);
+        fetchThuChi();
+      } else {
+        toast.error(result.error || "Không thể cập nhật thu chi");
+      }
+    } catch (error) {
+      console.error("Error updating thu chi:", error);
+      toast.error("Lỗi khi cập nhật thu chi");
+    } finally {
+      setIsUpdatingThuChi(false);
     }
   };
 
-  const handleEditTransaction = (tx: typeof editingTransaction) => {
-    if (tx) {
-      setEditingTransaction(tx);
-      setShowEditTransactionModal(true);
-    }
+  const handleDeleteThuChi = (id: number) => {
+    setThuChiToDelete(id);
+    setShowDeleteThuChiModal(true);
   };
 
-  const handleSaveTransaction = () => {
-    if (editingTransaction && editingTransaction.category && editingTransaction.amount > 0) {
-      setTransactions(
-        transactions.map((t) => (t.id === editingTransaction.id ? editingTransaction : t))
-      );
-      setShowEditTransactionModal(false);
-      setEditingTransaction(null);
+  const confirmDeleteThuChi = async () => {
+    if (thuChiToDelete === null) return;
+
+    setIsDeletingThuChi(true);
+    try {
+      const response = await fetch(`/api/thu-chi/delete?id=${thuChiToDelete}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Xóa thu chi thành công");
+        setShowDeleteThuChiModal(false);
+        setThuChiToDelete(null);
+        fetchThuChi();
+      } else {
+        toast.error(result.error || "Không thể xóa thu chi");
+      }
+    } catch (error) {
+      console.error("Error deleting thu chi:", error);
+      toast.error("Lỗi khi xóa thu chi");
+    } finally {
+      setIsDeletingThuChi(false);
     }
   };
 
@@ -597,18 +540,15 @@ export default function DongTien() {
     }
   };
 
-  // Stats - hiện tất cả data mẫu
-  const periodIncome = transactions
-    .filter((t) => t.type === "income")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const periodExpense = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalBalance = 255000000; // TODO: Tính từ giao dịch hoặc lưu trong Google Sheets
+  // Stats - tính từ filteredThuChi (dữ liệu đã filter)
+  const periodIncome = filteredThuChi.reduce((sum, t) => sum + (t.totalIncome || 0), 0);
+  const periodExpense = filteredThuChi.reduce((sum, t) => sum + (t.totalExpense || 0), 0);
+  const totalBalance = periodIncome - periodExpense;
   const totalLoanRemaining = loans.reduce((sum, l) => sum + l.remaining, 0);
 
   return (
     <div className="p-6 space-y-6">
+      <Toaster position="top-right" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -736,7 +676,10 @@ export default function DongTien() {
                       <input
                         type="date"
                         value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
+                        onChange={(e) => {
+                          setFromDate(e.target.value);
+                          setCurrentPage(1);
+                        }}
                         className="border-none bg-transparent text-sm font-medium text-gray-900 focus:outline-none cursor-pointer"
                       />
                       <span className="text-gray-300">|</span>
@@ -744,7 +687,10 @@ export default function DongTien() {
                       <input
                         type="date"
                         value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
+                        onChange={(e) => {
+                          setToDate(e.target.value);
+                          setCurrentPage(1);
+                        }}
                         className="border-none bg-transparent text-sm font-medium text-gray-900 focus:outline-none cursor-pointer"
                       />
                     </div>
@@ -754,7 +700,7 @@ export default function DongTien() {
                   <div className="flex items-center gap-4">
                     <div className="bg-white rounded-lg px-3 py-2 border border-gray-200">
                       <span className="text-xs text-gray-500">
-                        {transactions.length} giao dịch
+                        {filteredThuChi.length} giao dịch
                       </span>
                     </div>
                     <div className="text-right">
@@ -843,124 +789,112 @@ export default function DongTien() {
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Mã GD
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Ngày
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
-                        Loại
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Danh mục
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Đối tượng
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Mô tả
-                      </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
-                        Số tiền
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                        Tài khoản
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {paginatedTransactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-sm font-medium text-blue-600">
-                          {tx.code}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-600">
-                          {new Date(tx.date).toLocaleDateString("vi-VN")}
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                              tx.type === "income"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {tx.type === "income" ? (
-                              <ArrowUpCircle size={14} />
-                            ) : (
-                              <ArrowDownCircle size={14} />
-                            )}
-                            {tx.type === "income" ? "Thu" : "Chi"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
-                            {tx.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900 font-medium">
-                          {tx.entity || "-"}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">
-                          {tx.description}
-                        </td>
-                        <td
-                          className={`px-4 py-4 text-sm text-right font-medium ${
-                            tx.type === "income"
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }`}
-                        >
-                          {tx.type === "income" ? "+" : "-"}
-                          {tx.amount.toLocaleString("vi-VN")}đ
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-600">
-                          {tx.account}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleViewItem(tx)}
-                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                              title="Xem"
-                            >
-                              <Eye size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleEditTransaction(tx)}
-                              className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
-                              title="Sửa"
-                            >
-                              <Edit size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTransaction(tx.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                              title="Xóa"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
+              {isLoadingThuChi ? (
+                <div className="text-center py-8 text-gray-500">
+                  Đang tải dữ liệu...
+                </div>
+              ) : paginatedThuChi.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  Chưa có dữ liệu thu chi. Nhấn &quot;Thêm giao dịch&quot; để bắt đầu.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                          Ngày
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                          Tên TK
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                          Đối tượng
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                          Nội dung
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                          Phân loại
+                        </th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                          Tổng thu
+                        </th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                          Tổng chi
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
+                          Thao tác
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {paginatedThuChi.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            {item.date || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                            {item.accountName || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            {item.entity || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            {item.content || "-"}
+                          </td>
+                          <td className="px-4 py-4">
+                            {item.category ? (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                                {item.category}
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-right font-medium text-green-600">
+                            {item.totalIncome > 0 ? `+${item.totalIncome.toLocaleString("vi-VN")}đ` : "-"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-right font-medium text-red-600">
+                            {item.totalExpense > 0 ? `-${item.totalExpense.toLocaleString("vi-VN")}đ` : "-"}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleViewThuChi(item)}
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                title="Xem"
+                              >
+                                <Eye size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleEditThuChi(item)}
+                                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
+                                title="Sửa"
+                              >
+                                <Edit size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteThuChi(item.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                title="Xóa"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
                   <div className="text-sm text-gray-500">
-                    Hiển thị {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredTransactions.length)} / {filteredTransactions.length} giao dịch
+                    Hiển thị {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredThuChi.length)} / {filteredThuChi.length} giao dịch
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -1204,205 +1138,249 @@ export default function DongTien() {
         </div>
       </div>
 
-      {/* Modal thêm giao dịch */}
+      {/* Modal thêm thu chi */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Thêm giao dịch mới</h3>
+              <h3 className="text-lg font-semibold">Thêm thu chi mới</h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                disabled={isAddingThuChi}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
               >
                 <X size={24} />
               </button>
             </div>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại giao dịch
-                </label>
-                <div className="flex gap-4">
-                  <label
-                    className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer ${
-                      newTransaction.type === "income"
-                        ? "border-green-500 bg-green-50 text-green-700"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="type"
-                      value="income"
-                      checked={newTransaction.type === "income"}
-                      onChange={() =>
-                        setNewTransaction({ ...newTransaction, type: "income" })
-                      }
-                      className="hidden"
-                    />
-                    <ArrowUpCircle size={20} />
-                    Thu
+              {/* Row 1: Ngày tháng, Tên TK */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày tháng *
                   </label>
-                  <label
-                    className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer ${
-                      newTransaction.type === "expense"
-                        ? "border-red-500 bg-red-50 text-red-700"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="type"
-                      value="expense"
-                      checked={newTransaction.type === "expense"}
-                      onChange={() =>
-                        setNewTransaction({
-                          ...newTransaction,
-                          type: "expense",
-                        })
-                      }
-                      className="hidden"
-                    />
-                    <ArrowDownCircle size={20} />
-                    Chi
+                  <input
+                    type="date"
+                    value={newThuChi.date || ""}
+                    onChange={(e) => setNewThuChi({ ...newThuChi, date: e.target.value })}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên TK
                   </label>
+                  <input
+                    type="text"
+                    value={newThuChi.accountName || ""}
+                    onChange={(e) => setNewThuChi({ ...newThuChi, accountName: e.target.value })}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="Tên tài khoản"
+                  />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Danh mục *
-                </label>
-                <select
-                  value={newTransaction.category}
-                  onChange={(e) =>
-                    setNewTransaction({
-                      ...newTransaction,
-                      category: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Chọn danh mục</option>
-                  {newTransaction.type === "income" ? (
-                    <>
-                      <option value="Bán hàng">Bán hàng</option>
-                      <option value="Thu nợ">Thu nợ</option>
-                      <option value="Khác">Khác</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="Lương">Lương</option>
-                      <option value="NPL">Nguyên phụ liệu</option>
-                      <option value="Điện nước">Điện nước</option>
-                      <option value="Thuê nhà">Thuê nhà</option>
-                      <option value="Khác">Khác</option>
-                    </>
-                  )}
-                </select>
+              {/* Row 2: NCC NPL, Xưởng SX */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    NCC NPL
+                  </label>
+                  <input
+                    type="text"
+                    value={newThuChi.nccNpl || ""}
+                    onChange={(e) => setNewThuChi({ ...newThuChi, nccNpl: e.target.value })}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="NCC NPL"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Xưởng SX
+                  </label>
+                  <input
+                    type="text"
+                    value={newThuChi.workshop || ""}
+                    onChange={(e) => setNewThuChi({ ...newThuChi, workshop: e.target.value })}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="Xưởng sản xuất"
+                  />
+                </div>
               </div>
+              {/* Row 3: Chi vận chuyển, Thu tiền hàng, Thu khác */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chi vận chuyển
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newThuChi.shippingCost || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                      setNewThuChi({ ...newThuChi, shippingCost: val ? Number(val) : 0 });
+                    }}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Thu tiền hàng
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newThuChi.salesIncome || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                      setNewThuChi({ ...newThuChi, salesIncome: val ? Number(val) : 0 });
+                    }}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Thu khác
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newThuChi.otherIncome || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                      setNewThuChi({ ...newThuChi, otherIncome: val ? Number(val) : 0 });
+                    }}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              {/* Row 4: Đối tượng, Phân loại */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đối tượng
+                  </label>
+                  <input
+                    type="text"
+                    value={newThuChi.entity || ""}
+                    onChange={(e) => setNewThuChi({ ...newThuChi, entity: e.target.value })}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="Nhập đối tượng"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phân loại thu chi
+                  </label>
+                  <input
+                    type="text"
+                    value={newThuChi.category || ""}
+                    onChange={(e) => setNewThuChi({ ...newThuChi, category: e.target.value })}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="Phân loại"
+                  />
+                </div>
+              </div>
+              {/* Row 5: Nội dung */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Đối tượng
+                  Nội dung
                 </label>
                 <input
                   type="text"
-                  value={newTransaction.entity}
-                  onChange={(e) =>
-                    setNewTransaction({
-                      ...newTransaction,
-                      entity: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="VD: Công ty ABC, NCC Toản Nhung..."
+                  value={newThuChi.content || ""}
+                  onChange={(e) => setNewThuChi({ ...newThuChi, content: e.target.value })}
+                  disabled={isAddingThuChi}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  placeholder="Nhập nội dung"
                 />
               </div>
+              {/* Row 6: Tổng thu, Tổng chi */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tổng thu
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newThuChi.totalIncome || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                      setNewThuChi({ ...newThuChi, totalIncome: val ? Number(val) : 0 });
+                    }}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tổng chi
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newThuChi.totalExpense || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                      setNewThuChi({ ...newThuChi, totalExpense: val ? Number(val) : 0 });
+                    }}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              {/* Row 7: Ghi chú */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mô tả
+                  Ghi chú
                 </label>
                 <input
                   type="text"
-                  value={newTransaction.description}
-                  onChange={(e) =>
-                    setNewTransaction({
-                      ...newTransaction,
-                      description: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập mô tả"
+                  value={newThuChi.note || ""}
+                  onChange={(e) => setNewThuChi({ ...newThuChi, note: e.target.value })}
+                  disabled={isAddingThuChi}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  placeholder="Ghi chú"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số tiền *
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={newTransaction.amount || ""}
-                  onChange={(e) => {
-                    const val = e.target.value
-                      .replace(/^0+/, "")
-                      .replace(/\D/g, "");
-                    setNewTransaction({
-                      ...newTransaction,
-                      amount: val ? Number(val) : 0,
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập số tiền"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tài khoản
-                </label>
-                <select
-                  value={newTransaction.account}
-                  onChange={(e) =>
-                    setNewTransaction({
-                      ...newTransaction,
-                      account: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Tiền mặt">Tiền mặt</option>
-                  <option value="Ngân hàng">Ngân hàng</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.accountNumber}>
-                      {acc.accountNumber} - {acc.ownerName}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={isAddingThuChi}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               >
                 Hủy
               </button>
               <button
-                onClick={handleAddTransaction}
-                className={`flex-1 px-4 py-2 text-white rounded-lg ${
-                  newTransaction.type === "income"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-red-600 hover:bg-red-700"
-                }`}
+                onClick={handleAddThuChi}
+                disabled={isAddingThuChi}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Thêm {newTransaction.type === "income" ? "thu" : "chi"}
+                {isAddingThuChi ? "Đang thêm..." : "Thêm thu chi"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Slide Panel xem chi tiết giao dịch */}
-      {showViewModal && selectedItem && (
+      {/* Slide Panel xem chi tiết thu chi */}
+      {showViewModal && selectedThuChi && (
         <Portal>
           {/* Overlay */}
           <div
@@ -1413,7 +1391,7 @@ export default function DongTien() {
           <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Chi tiết giao dịch</h3>
+                <h3 className="text-xl font-bold text-gray-900">Chi tiết thu chi</h3>
                 <button
                   onClick={() => setShowViewModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1422,68 +1400,73 @@ export default function DongTien() {
                 </button>
               </div>
 
-              {/* Transaction Type Badge */}
-              <div className="mb-6">
-                <span
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
-                    selectedItem.type === "income"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {selectedItem.type === "income" ? (
-                    <ArrowUpCircle size={18} />
-                  ) : (
-                    <ArrowDownCircle size={18} />
-                  )}
-                  {selectedItem.type === "income" ? "Thu" : "Chi"}
-                </span>
-              </div>
-
-              {/* Amount */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-xl">
-                <p className="text-sm text-gray-500 mb-1">Số tiền</p>
-                <p
-                  className={`text-3xl font-bold ${
-                    selectedItem.type === "income"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {selectedItem.type === "income" ? "+" : "-"}
-                  {selectedItem.amount.toLocaleString("vi-VN")}đ
-                </p>
+              {/* Amount Summary */}
+              <div className="mb-6 grid grid-cols-2 gap-4">
+                <div className="p-4 bg-green-50 rounded-xl">
+                  <p className="text-sm text-green-600 mb-1">Tổng thu</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    +{(selectedThuChi.totalIncome || 0).toLocaleString("vi-VN")}đ
+                  </p>
+                </div>
+                <div className="p-4 bg-red-50 rounded-xl">
+                  <p className="text-sm text-red-600 mb-1">Tổng chi</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    -{(selectedThuChi.totalExpense || 0).toLocaleString("vi-VN")}đ
+                  </p>
+                </div>
               </div>
 
               {/* Details */}
               <div className="space-y-4">
                 <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-500">Mã giao dịch</span>
-                  <span className="text-gray-900 font-medium">{selectedItem.code}</span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Ngày</span>
-                  <span className="text-gray-900 font-medium">
-                    {new Date(selectedItem.date).toLocaleDateString("vi-VN")}
-                  </span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.date || "-"}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-500">Danh mục</span>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
-                    {selectedItem.category}
-                  </span>
+                  <span className="text-gray-500">Tên TK</span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.accountName || "-"}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">NCC NPL</span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.nccNpl || "-"}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Xưởng SX</span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.workshop || "-"}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Chi vận chuyển</span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.shippingCost ? `${selectedThuChi.shippingCost.toLocaleString("vi-VN")}đ` : "-"}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Thu tiền hàng</span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.salesIncome ? `${selectedThuChi.salesIncome.toLocaleString("vi-VN")}đ` : "-"}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Thu khác</span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.otherIncome ? `${selectedThuChi.otherIncome.toLocaleString("vi-VN")}đ` : "-"}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Đối tượng</span>
-                  <span className="text-gray-900 font-medium">{selectedItem.entity || "-"}</span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.entity || "-"}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-500">Tài khoản</span>
-                  <span className="text-gray-900 font-medium">{selectedItem.account}</span>
+                  <span className="text-gray-500">Phân loại</span>
+                  {selectedThuChi.category ? (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                      {selectedThuChi.category}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </div>
+                <div className="py-3 border-b border-gray-100">
+                  <p className="text-gray-500 mb-2">Nội dung</p>
+                  <p className="text-gray-900">{selectedThuChi.content || "-"}</p>
                 </div>
                 <div className="py-3">
-                  <p className="text-gray-500 mb-2">Mô tả</p>
-                  <p className="text-gray-900">{selectedItem.description || "Không có mô tả"}</p>
+                  <p className="text-gray-500 mb-2">Ghi chú</p>
+                  <p className="text-gray-900">{selectedThuChi.note || "-"}</p>
                 </div>
               </div>
 
@@ -1498,11 +1481,11 @@ export default function DongTien() {
                 <button
                   onClick={() => {
                     setShowViewModal(false);
-                    handleEditTransaction(selectedItem);
+                    handleEditThuChi(selectedThuChi);
                   }}
                   className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
                 >
-                  Sửa giao dịch
+                  Sửa
                 </button>
               </div>
             </div>
@@ -1510,240 +1493,227 @@ export default function DongTien() {
         </Portal>
       )}
 
-      {/* Slide Panel sửa giao dịch */}
-      {showEditTransactionModal && editingTransaction && (
+      {/* Slide Panel sửa thu chi */}
+      {showEditThuChiModal && editingThuChi && (
         <Portal>
           {/* Overlay */}
           <div
             className="fixed inset-0 z-50 bg-black/20"
             onClick={() => {
-              setShowEditTransactionModal(false);
-              setEditingTransaction(null);
+              setShowEditThuChiModal(false);
+              setEditingThuChi(null);
             }}
           />
           {/* Panel */}
-          <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] overflow-y-auto">
+          <div className="fixed top-0 right-0 w-full max-w-lg h-screen bg-white shadow-2xl z-[60] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Sửa giao dịch</h3>
+                <h3 className="text-xl font-bold text-gray-900">Sửa thu chi</h3>
                 <button
                   onClick={() => {
-                    setShowEditTransactionModal(false);
-                    setEditingTransaction(null);
+                    setShowEditThuChiModal(false);
+                    setEditingThuChi(null);
                   }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  disabled={isUpdatingThuChi}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <X size={24} />
                 </button>
               </div>
 
               <div className="space-y-4">
-                {/* Transaction Code (readonly) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mã giao dịch
-                  </label>
-                  <input
-                    type="text"
-                    value={editingTransaction.code}
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
-                  />
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ngày giao dịch
-                  </label>
-                  <input
-                    type="date"
-                    value={editingTransaction.date}
-                    onChange={(e) =>
-                      setEditingTransaction({
-                        ...editingTransaction,
-                        date: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Transaction Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Loại giao dịch
-                  </label>
-                  <div className="flex gap-4">
-                    <label
-                      className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer ${
-                        editingTransaction.type === "income"
-                          ? "border-green-500 bg-green-50 text-green-700"
-                          : "border-gray-300"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="editTxType"
-                        value="income"
-                        checked={editingTransaction.type === "income"}
-                        onChange={() =>
-                          setEditingTransaction({
-                            ...editingTransaction,
-                            type: "income",
-                            category: "",
-                          })
-                        }
-                        className="hidden"
-                      />
-                      <ArrowUpCircle size={20} />
-                      Thu
+                {/* Row 1: Ngày tháng, Tên TK */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày tháng *
                     </label>
-                    <label
-                      className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer ${
-                        editingTransaction.type === "expense"
-                          ? "border-red-500 bg-red-50 text-red-700"
-                          : "border-gray-300"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="editTxType"
-                        value="expense"
-                        checked={editingTransaction.type === "expense"}
-                        onChange={() =>
-                          setEditingTransaction({
-                            ...editingTransaction,
-                            type: "expense",
-                            category: "",
-                          })
-                        }
-                        className="hidden"
-                      />
-                      <ArrowDownCircle size={20} />
-                      Chi
+                    <input
+                      type="date"
+                      value={editingThuChi.date || ""}
+                      onChange={(e) => setEditingThuChi({ ...editingThuChi, date: e.target.value })}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tên TK
                     </label>
+                    <input
+                      type="text"
+                      value={editingThuChi.accountName || ""}
+                      onChange={(e) => setEditingThuChi({ ...editingThuChi, accountName: e.target.value })}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
                   </div>
                 </div>
-
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Danh mục *
-                  </label>
-                  <select
-                    value={editingTransaction.category}
-                    onChange={(e) =>
-                      setEditingTransaction({
-                        ...editingTransaction,
-                        category: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Chọn danh mục</option>
-                    {editingTransaction.type === "income" ? (
-                      <>
-                        <option value="Bán hàng">Bán hàng</option>
-                        <option value="Thu nợ">Thu nợ</option>
-                        <option value="Khác">Khác</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="Lương">Lương</option>
-                        <option value="NPL">Nguyên phụ liệu</option>
-                        <option value="Điện nước">Điện nước</option>
-                        <option value="Thuê nhà">Thuê nhà</option>
-                        <option value="Khác">Khác</option>
-                      </>
-                    )}
-                  </select>
+                {/* Row 2: NCC NPL, Xưởng SX */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      NCC NPL
+                    </label>
+                    <input
+                      type="text"
+                      value={editingThuChi.nccNpl || ""}
+                      onChange={(e) => setEditingThuChi({ ...editingThuChi, nccNpl: e.target.value })}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Xưởng SX
+                    </label>
+                    <input
+                      type="text"
+                      value={editingThuChi.workshop || ""}
+                      onChange={(e) => setEditingThuChi({ ...editingThuChi, workshop: e.target.value })}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
                 </div>
-
-                {/* Entity */}
+                {/* Row 3: Chi vận chuyển, Thu tiền hàng, Thu khác */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Chi vận chuyển
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editingThuChi.shippingCost || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setEditingThuChi({ ...editingThuChi, shippingCost: val ? Number(val) : 0 });
+                      }}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Thu tiền hàng
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editingThuChi.salesIncome || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setEditingThuChi({ ...editingThuChi, salesIncome: val ? Number(val) : 0 });
+                      }}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Thu khác
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editingThuChi.otherIncome || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setEditingThuChi({ ...editingThuChi, otherIncome: val ? Number(val) : 0 });
+                      }}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+                {/* Row 4: Đối tượng, Phân loại */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Đối tượng
+                    </label>
+                    <input
+                      type="text"
+                      value={editingThuChi.entity || ""}
+                      onChange={(e) => setEditingThuChi({ ...editingThuChi, entity: e.target.value })}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phân loại thu chi
+                    </label>
+                    <input
+                      type="text"
+                      value={editingThuChi.category || ""}
+                      onChange={(e) => setEditingThuChi({ ...editingThuChi, category: e.target.value })}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+                {/* Row 5: Nội dung */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Đối tượng
+                    Nội dung
                   </label>
                   <input
                     type="text"
-                    value={editingTransaction.entity}
-                    onChange={(e) =>
-                      setEditingTransaction({
-                        ...editingTransaction,
-                        entity: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="VD: Công ty ABC, NCC Toản Nhung..."
+                    value={editingThuChi.content || ""}
+                    onChange={(e) => setEditingThuChi({ ...editingThuChi, content: e.target.value })}
+                    disabled={isUpdatingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   />
                 </div>
-
-                {/* Description */}
+                {/* Row 6: Tổng thu, Tổng chi */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tổng thu
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editingThuChi.totalIncome || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setEditingThuChi({ ...editingThuChi, totalIncome: val ? Number(val) : 0 });
+                      }}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tổng chi
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editingThuChi.totalExpense || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setEditingThuChi({ ...editingThuChi, totalExpense: val ? Number(val) : 0 });
+                      }}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+                {/* Row 7: Ghi chú */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mô tả
+                    Ghi chú
                   </label>
                   <input
                     type="text"
-                    value={editingTransaction.description}
-                    onChange={(e) =>
-                      setEditingTransaction({
-                        ...editingTransaction,
-                        description: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nhập mô tả"
+                    value={editingThuChi.note || ""}
+                    onChange={(e) => setEditingThuChi({ ...editingThuChi, note: e.target.value })}
+                    disabled={isUpdatingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   />
-                </div>
-
-                {/* Amount */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Số tiền *
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={editingTransaction.amount || ""}
-                    onChange={(e) => {
-                      const val = e.target.value
-                        .replace(/^0+/, "")
-                        .replace(/\D/g, "");
-                      setEditingTransaction({
-                        ...editingTransaction,
-                        amount: val ? Number(val) : 0,
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nhập số tiền"
-                  />
-                </div>
-
-                {/* Account */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tài khoản
-                  </label>
-                  <select
-                    value={editingTransaction.account}
-                    onChange={(e) =>
-                      setEditingTransaction({
-                        ...editingTransaction,
-                        account: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Tiền mặt">Tiền mặt</option>
-                    <option value="Ngân hàng">Ngân hàng</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.accountNumber}>
-                        {acc.accountNumber} - {acc.ownerName}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
 
@@ -1751,27 +1721,68 @@ export default function DongTien() {
               <div className="flex gap-3 mt-8">
                 <button
                   onClick={() => {
-                    setShowEditTransactionModal(false);
-                    setEditingTransaction(null);
+                    setShowEditThuChiModal(false);
+                    setEditingThuChi(null);
                   }}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                  disabled={isUpdatingThuChi}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50"
                 >
                   Hủy
                 </button>
                 <button
-                  onClick={handleSaveTransaction}
-                  className={`flex-1 px-4 py-3 text-white rounded-lg font-medium ${
-                    editingTransaction.type === "income"
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-red-600 hover:bg-red-700"
-                  }`}
+                  onClick={handleSaveThuChi}
+                  disabled={isUpdatingThuChi}
+                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Lưu thay đổi
+                  {isUpdatingThuChi ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
               </div>
             </div>
           </div>
         </Portal>
+      )}
+
+      {/* Modal xác nhận xóa thu chi */}
+      {showDeleteThuChiModal && (
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-red-600">Xác nhận xóa</h3>
+              <button
+                onClick={() => {
+                  setShowDeleteThuChiModal(false);
+                  setThuChiToDelete(null);
+                }}
+                disabled={isDeletingThuChi}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <p className="text-gray-700 mb-6">
+              Bạn có chắc chắn muốn xóa thu chi này? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteThuChiModal(false);
+                  setThuChiToDelete(null);
+                }}
+                disabled={isDeletingThuChi}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDeleteThuChi}
+                disabled={isDeletingThuChi}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeletingThuChi ? "Đang xóa..." : "Xóa"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal thêm tài khoản */}

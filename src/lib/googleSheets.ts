@@ -1802,6 +1802,240 @@ export async function deleteMaterialFromSheet(materialId: number): Promise<void>
 }
 
 // ============================================
+// THU CHI MANAGEMENT (Quản lý thu chi hàng ngày)
+// ============================================
+
+const spreadsheetIdThuChi = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameThuChi = process.env.GOOGLE_SHEET_NAME_THU_CHI || "ThuChi";
+
+// Interface cho thu chi
+export interface ThuChi {
+  id: number;
+  date: string;           // Ngày tháng (Cột A)
+  accountName: string;    // Tên TK (Cột B)
+  nccNpl: string;         // NCC NPL (Cột C)
+  workshop: string;       // Xưởng SX (Cột D)
+  shippingCost: number;   // Chi vận chuyển (Cột E)
+  salesIncome: number;    // Thu tiền hàng (Cột F)
+  otherIncome: number;    // Thu khác (Cột G)
+  entity: string;         // Đối tượng (Cột H)
+  content: string;        // Nội dung (Cột I)
+  category: string;       // Phân loại thu chi (Cột J)
+  totalIncome: number;    // Tổng thu (Cột K)
+  totalExpense: number;   // Tổng chi (Cột L)
+  note: string;           // Ghi chú (Cột M)
+}
+
+// Helper function to parse price values
+const parseThuChiPrice = (value: any): number => {
+  if (!value) return 0;
+  const cleaned = value.toString().replace(/[,.\s]/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+/**
+ * Đọc danh sách thu chi từ Google Sheets
+ */
+export async function getThuChiFromSheet(): Promise<ThuChi[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdThuChi,
+      range: `${sheetNameThuChi}!A2:M`, // Đọc từ dòng 2
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No thu chi data found in sheet.");
+      return [];
+    }
+
+    const thuChiList: ThuChi[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        date: row[0] || "",
+        accountName: row[1] || "",
+        nccNpl: row[2] || "",
+        workshop: row[3] || "",
+        shippingCost: parseThuChiPrice(row[4]),
+        salesIncome: parseThuChiPrice(row[5]),
+        otherIncome: parseThuChiPrice(row[6]),
+        entity: row[7] || "",
+        content: row[8] || "",
+        category: row[9] || "",
+        totalIncome: parseThuChiPrice(row[10]),
+        totalExpense: parseThuChiPrice(row[11]),
+        note: row[12] || "",
+      }))
+      .filter((item) =>
+        // Bỏ qua header và dòng trống
+        item.date.trim() !== "" &&
+        item.date !== "Ngày tháng" &&
+        !item.date.toLowerCase().includes("ngày")
+      );
+
+    return thuChiList;
+  } catch (error) {
+    console.error("Error reading thu chi from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm thu chi mới vào Google Sheets
+ */
+export async function addThuChiToSheet(thuChi: ThuChi): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdThuChi,
+      range: `${sheetNameThuChi}!A:M`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Tìm dòng cuối có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    const values = [
+      [
+        thuChi.date,
+        thuChi.accountName,
+        thuChi.nccNpl,
+        thuChi.workshop,
+        thuChi.shippingCost || "",
+        thuChi.salesIncome || "",
+        thuChi.otherIncome || "",
+        thuChi.entity,
+        thuChi.content,
+        thuChi.category,
+        thuChi.totalIncome || "",
+        thuChi.totalExpense || "",
+        thuChi.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdThuChi,
+      range: `${sheetNameThuChi}!A${nextRow}:M${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added thu chi at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding thu chi to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật thu chi trong Google Sheets
+ */
+export async function updateThuChiInSheet(thuChi: ThuChi): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = thuChi.id + 1; // ID 1 = dòng 2
+
+    const values = [
+      [
+        thuChi.date,
+        thuChi.accountName,
+        thuChi.nccNpl,
+        thuChi.workshop,
+        thuChi.shippingCost || "",
+        thuChi.salesIncome || "",
+        thuChi.otherIncome || "",
+        thuChi.entity,
+        thuChi.content,
+        thuChi.category,
+        thuChi.totalIncome || "",
+        thuChi.totalExpense || "",
+        thuChi.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdThuChi,
+      range: `${sheetNameThuChi}!A${rowNumber}:M${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated thu chi ID: ${thuChi.id}`);
+  } catch (error) {
+    console.error("Error updating thu chi in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa thu chi khỏi Google Sheets
+ */
+export async function deleteThuChiFromSheet(thuChiId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = thuChiId + 1;
+
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdThuChi,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameThuChi
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      throw new Error(`Cannot find sheet named "${sheetNameThuChi}"`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdThuChi,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted thu chi ID: ${thuChiId}`);
+  } catch (error) {
+    console.error("Error deleting thu chi from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // LOAN MANAGEMENT (Quản lý khoản vay)
 // ============================================
 
