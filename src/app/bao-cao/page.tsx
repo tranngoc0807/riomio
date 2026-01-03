@@ -435,10 +435,6 @@ export default function BaoCao() {
             <option value="quarter">Quý này</option>
             <option value="year">Năm nay</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            <Download className="w-4 h-4" />
-            Xuất báo cáo
-          </button>
         </div>
       </div>
 
@@ -505,10 +501,6 @@ export default function BaoCao() {
                 <h3 className="text-lg font-semibold text-gray-900">
                   Báo cáo doanh thu theo tháng
                 </h3>
-                <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  <Printer className="w-4 h-4" />
-                  In báo cáo
-                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">

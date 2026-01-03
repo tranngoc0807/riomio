@@ -617,10 +617,6 @@ export default function DongTien() {
             Quản lý thu chi và theo dõi dòng tiền
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors">
-          <Download size={20} />
-          <span>Xuất báo cáo</span>
-        </button>
       </div>
 
       {/* Stats */}

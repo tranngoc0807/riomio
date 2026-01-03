@@ -1146,6 +1146,662 @@ export async function deleteOrderFromSheet(orderId: number): Promise<void> {
 }
 
 // ============================================
+// SUPPLIER MANAGEMENT (Quản lý nhà cung cấp)
+// ============================================
+
+const spreadsheetIdNCC = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameNCC = process.env.GOOGLE_SHEET_NAME_DON_HANG_NCCNPL || "NCCNPL";
+
+// Interface cho nhà cung cấp
+export interface Supplier {
+  id: number;
+  name: string;       // NCC (Tên nhà cung cấp)
+  material: string;   // Chất liệu
+  address: string;    // Địa chỉ
+  contact: string;    // Liên hệ
+  phone: string;      // Điện thoại
+  note: string;       // Ghi chú
+}
+
+/**
+ * Đọc danh sách nhà cung cấp từ Google Sheets
+ * Sheet: NCCNPL
+ * Cột B: NCC, C: Chất liệu, D: Địa chỉ, E: Liên hệ, F: Điện thoại, G: Ghi chú
+ */
+export async function getSuppliersFromSheet(): Promise<Supplier[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNCC,
+      range: `${sheetNameNCC}!B2:G`, // Đọc từ dòng 2, cột B đến G
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No supplier data found in sheet.");
+      return [];
+    }
+
+    const suppliers: Supplier[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        name: row[0] || "",
+        material: row[1] || "",
+        address: row[2] || "",
+        contact: row[3] || "",
+        phone: row[4] || "",
+        note: row[5] || "",
+      }))
+      .filter((supplier) => supplier.name.trim() !== "");
+
+    return suppliers;
+  } catch (error) {
+    console.error("Error reading suppliers from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm nhà cung cấp mới vào Google Sheets
+ * Tự động đánh STT vào cột A, ghi dữ liệu vào cột B-G
+ */
+export async function addSupplierToSheet(supplier: Supplier): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNCC,
+      range: `${sheetNameNCC}!A:G`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Bỏ qua header (dòng 1), tìm dòng cuối cùng có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Đếm số nhà cung cấp thực tế để đánh STT
+    const supplierRows = allRows.slice(1).filter(
+      (row) => row && row[1] && row[1].toString().trim() !== ""
+    );
+    const sttNumber = supplierRows.length + 1;
+
+    // Ghi cả STT (cột A) và dữ liệu (cột B-G)
+    const values = [
+      [
+        sttNumber,
+        supplier.name,
+        supplier.material,
+        supplier.address,
+        supplier.contact,
+        supplier.phone,
+        supplier.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNCC,
+      range: `${sheetNameNCC}!A${nextRow}:G${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added supplier: ${supplier.name} with STT: ${sttNumber} at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding supplier to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật thông tin nhà cung cấp trong Google Sheets
+ */
+export async function updateSupplierInSheet(supplier: Supplier): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
+    const rowNumber = supplier.id + 1;
+
+    const values = [
+      [
+        supplier.name,
+        supplier.material,
+        supplier.address,
+        supplier.contact,
+        supplier.phone,
+        supplier.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNCC,
+      range: `${sheetNameNCC}!B${rowNumber}:G${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated supplier: ${supplier.name}`);
+  } catch (error) {
+    console.error("Error updating supplier in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa nhà cung cấp khỏi Google Sheets
+ */
+export async function deleteSupplierFromSheet(supplierId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
+    const rowNumber = supplierId + 1;
+
+    // Lấy sheetId để xóa dòng - tìm sheet theo tên
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdNCC,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameNCC
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      console.error("Available sheets:", sheetMetadata.data.sheets?.map(s => s.properties?.title));
+      throw new Error(`Cannot find sheet named "${sheetNameNCC}" to delete row`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    // Xóa dòng
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdNCC,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted supplier with ID: ${supplierId} from row ${rowNumber}`);
+  } catch (error) {
+    console.error("Error deleting supplier from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// WORKSHOP MANAGEMENT (Quản lý xưởng sản xuất)
+// ============================================
+
+const spreadsheetIdXuongSX = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameXuongSX = process.env.GOOGLE_SHEET_NAME_XUONG_SAN_XUAT || "XuongSX";
+
+// Interface cho xưởng sản xuất
+export interface Workshop {
+  id: number;
+  name: string;       // Mã xưởng (Tên xưởng)
+  phone: string;      // Điện thoại
+  address: string;    // Địa chỉ
+  manager: string;    // Người phụ trách
+  note: string;       // Ghi chú
+}
+
+/**
+ * Đọc danh sách xưởng sản xuất từ Google Sheets
+ * Sheet: XuongSX
+ * Cột B: Mã xưởng, C: Điện thoại, D: Địa chỉ, E: Người phụ trách, F: Ghi chú
+ */
+export async function getWorkshopsFromSheet(): Promise<Workshop[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdXuongSX,
+      range: `${sheetNameXuongSX}!B2:F`, // Đọc từ dòng 2, cột B đến F
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No workshop data found in sheet.");
+      return [];
+    }
+
+    const workshops: Workshop[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        name: row[0] || "",
+        phone: row[1] || "",
+        address: row[2] || "",
+        manager: row[3] || "",
+        note: row[4] || "",
+      }))
+      .filter((workshop) => workshop.name.trim() !== "");
+
+    return workshops;
+  } catch (error) {
+    console.error("Error reading workshops from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm xưởng sản xuất mới vào Google Sheets
+ * Tự động đánh STT vào cột A, ghi dữ liệu vào cột B-F
+ */
+export async function addWorkshopToSheet(workshop: Workshop): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdXuongSX,
+      range: `${sheetNameXuongSX}!A:F`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Bỏ qua header (dòng 1), tìm dòng cuối cùng có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Đếm số xưởng thực tế để đánh STT
+    const workshopRows = allRows.slice(1).filter(
+      (row) => row && row[1] && row[1].toString().trim() !== ""
+    );
+    const sttNumber = workshopRows.length + 1;
+
+    // Ghi cả STT (cột A) và dữ liệu (cột B-F)
+    const values = [
+      [
+        sttNumber,
+        workshop.name,
+        workshop.phone,
+        workshop.address,
+        workshop.manager,
+        workshop.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdXuongSX,
+      range: `${sheetNameXuongSX}!A${nextRow}:F${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added workshop: ${workshop.name} with STT: ${sttNumber} at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding workshop to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật thông tin xưởng sản xuất trong Google Sheets
+ */
+export async function updateWorkshopInSheet(workshop: Workshop): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
+    const rowNumber = workshop.id + 1;
+
+    const values = [
+      [
+        workshop.name,
+        workshop.phone,
+        workshop.address,
+        workshop.manager,
+        workshop.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdXuongSX,
+      range: `${sheetNameXuongSX}!B${rowNumber}:F${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated workshop: ${workshop.name}`);
+  } catch (error) {
+    console.error("Error updating workshop in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa xưởng sản xuất khỏi Google Sheets
+ */
+export async function deleteWorkshopFromSheet(workshopId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
+    const rowNumber = workshopId + 1;
+
+    // Lấy sheetId để xóa dòng - tìm sheet theo tên
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdXuongSX,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameXuongSX
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      console.error("Available sheets:", sheetMetadata.data.sheets?.map(s => s.properties?.title));
+      throw new Error(`Cannot find sheet named "${sheetNameXuongSX}" to delete row`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    // Xóa dòng
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdXuongSX,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted workshop with ID: ${workshopId} from row ${rowNumber}`);
+  } catch (error) {
+    console.error("Error deleting workshop from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// MATERIAL MANAGEMENT (Quản lý nguyên phụ liệu)
+// ============================================
+
+const spreadsheetIdNPL = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameNPL = process.env.GOOGLE_SHEET_NAME_NGUYEN_PHU_LIEU || "NPL";
+
+// Interface cho nguyên phụ liệu
+export interface Material {
+  id: number;
+  code: string;          // Mã NPL
+  name: string;          // Tên NPL
+  supplier: string;      // Nhà cung cấp
+  info: string;          // Thông tin NPL
+  unit: string;          // ĐVT
+  priceBeforeTax: number; // Đơn giá chưa thuế
+  taxRate: number;       // Thuế suất
+  priceWithTax: number;  // Đơn giá có thuế
+  image: string;         // Hình ảnh
+  note: string;          // Ghi chú
+}
+
+/**
+ * Đọc danh sách nguyên phụ liệu từ Google Sheets
+ * Sheet: NPL
+ * Cột B: Mã NPL, C: Tên NPL, D: Nhà cung cấp, E: Thông tin NPL, F: ĐVT,
+ * G: Đơn giá chưa thuế, H: Thuế suất, I: Đơn giá có thuế, J: Hình ảnh, K: Ghi chú
+ */
+export async function getMaterialsFromSheet(): Promise<Material[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNPL,
+      range: `${sheetNameNPL}!B2:K`, // Đọc từ dòng 2, cột B đến K
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No material data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse price values (remove thousand separators)
+    const parsePrice = (value: any): number => {
+      if (!value) return 0;
+      // Remove thousand separators (. , or spaces) and parse
+      const cleaned = value.toString().replace(/[,.\s]/g, '');
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const materials: Material[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        code: row[0] || "",
+        name: row[1] || "",
+        supplier: row[2] || "",
+        info: row[3] || "",
+        unit: row[4] || "",
+        priceBeforeTax: parsePrice(row[5]),
+        taxRate: parseFloat(row[6]?.toString().replace(/[%\s]/g, '')) || 0,
+        priceWithTax: parsePrice(row[7]),
+        image: row[8] || "",
+        note: row[9] || "",
+      }))
+      .filter((material) =>
+        // Bỏ qua header row và những dòng hoàn toàn trống
+        // Cho phép dòng có code rỗng nhưng phải có name
+        (material.code.trim() !== "" || material.name.trim() !== "") &&
+        material.code !== "Mã NPL" &&
+        !material.code.toLowerCase().includes("mã npl") &&
+        material.name !== "Tên NPL"
+      );
+
+    return materials;
+  } catch (error) {
+    console.error("Error reading materials from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm nguyên phụ liệu mới vào Google Sheets
+ * Tự động đánh STT vào cột A, ghi dữ liệu vào cột B-K
+ */
+export async function addMaterialToSheet(material: Material): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNPL,
+      range: `${sheetNameNPL}!A:K`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Bỏ qua header (dòng 1), tìm dòng cuối cùng có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Đếm số nguyên phụ liệu thực tế để đánh STT
+    const materialRows = allRows.slice(1).filter(
+      (row) => row && row[1] && row[1].toString().trim() !== ""
+    );
+    const sttNumber = materialRows.length + 1;
+
+    // Ghi cả STT (cột A) và dữ liệu (cột B-K)
+    const values = [
+      [
+        sttNumber,
+        material.code,
+        material.name,
+        material.supplier,
+        material.info,
+        material.unit,
+        material.priceBeforeTax,
+        material.taxRate,
+        material.priceWithTax,
+        material.image,
+        material.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNPL,
+      range: `${sheetNameNPL}!A${nextRow}:K${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added material: ${material.name} with STT: ${sttNumber} at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding material to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật thông tin nguyên phụ liệu trong Google Sheets
+ */
+export async function updateMaterialInSheet(material: Material): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
+    const rowNumber = material.id + 1;
+
+    const values = [
+      [
+        material.code,
+        material.name,
+        material.supplier,
+        material.info,
+        material.unit,
+        material.priceBeforeTax,
+        material.taxRate,
+        material.priceWithTax,
+        material.image,
+        material.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNPL,
+      range: `${sheetNameNPL}!B${rowNumber}:K${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated material: ${material.name}`);
+  } catch (error) {
+    console.error("Error updating material in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa nguyên phụ liệu khỏi Google Sheets
+ */
+export async function deleteMaterialFromSheet(materialId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
+    const rowNumber = materialId + 1;
+
+    // Lấy sheetId để xóa dòng - tìm sheet theo tên
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdNPL,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameNPL
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      console.error("Available sheets:", sheetMetadata.data.sheets?.map(s => s.properties?.title));
+      throw new Error(`Cannot find sheet named "${sheetNameNPL}" to delete row`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    // Xóa dòng
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdNPL,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted material with ID: ${materialId} from row ${rowNumber}`);
+  } catch (error) {
+    console.error("Error deleting material from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // LOAN MANAGEMENT (Quản lý khoản vay)
 // ============================================
 
