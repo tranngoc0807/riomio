@@ -463,7 +463,7 @@ export default function DongTien() {
             type: "Tiền mặt",
           });
           setShowAddAccountModal(false);
-          fetchAccounts(); // Reload accounts
+          fetchAccounts();
         } else {
           alert("Lỗi: " + result.error);
         }

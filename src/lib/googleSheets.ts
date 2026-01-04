@@ -2036,6 +2036,278 @@ export async function deleteThuChiFromSheet(thuChiId: number): Promise<void> {
 }
 
 // ============================================
+// KE HOACH SAN XUAT MANAGEMENT (Quản lý kế hoạch sản xuất)
+// ============================================
+
+const spreadsheetIdKeHoachSX = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameKeHoachSX = process.env.GOOGLE_SHEET_NAME_KE_HOACH_SX || "KeHoachSX";
+
+// Interface cho kế hoạch sản xuất
+export interface KeHoachSX {
+  id: number;
+  lsxCode: string;        // LSX số (Cột A)
+  workshop: string;       // Xưởng SX (Cột B)
+  orderDate: string;      // Ngày gửi lệnh (Cột C)
+  completionDate: string; // Ngày hoàn thành (Cột D)
+  productCode: string;    // Mã SP (Cột E)
+  productName: string;    // Tên SP (Cột F)
+  size: string;           // Size (Cột G)
+  mainFabric: string;     // Vải chính (Cột H)
+  color: string;          // Màu sắc (Cột I)
+  image: string;          // Hình ảnh (Cột J)
+  // Sizes cho trẻ em (Cột K-O)
+  size1_2: number;
+  size3_4: number;
+  size5_6: number;
+  size7_8: number;
+  size9_10: number;
+  // Sizes cho người lớn (Cột P-T)
+  sizeXS: number;
+  sizeS: number;
+  sizeM: number;
+  sizeL: number;
+  sizeXL: number;
+  totalQuantity: number;  // Tổng SL (Cột U)
+  note: string;           // Ghi chú (Cột V)
+}
+
+// Helper function to parse quantity values
+const parseQuantity = (value: any): number => {
+  if (!value) return 0;
+  const cleaned = value.toString().replace(/[,.\s]/g, '');
+  const parsed = parseInt(cleaned, 10);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+/**
+ * Đọc danh sách kế hoạch sản xuất từ Google Sheets
+ */
+export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdKeHoachSX,
+      range: `${sheetNameKeHoachSX}!A2:V`, // Đọc từ dòng 2
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No ke hoach SX data found in sheet.");
+      return [];
+    }
+
+    const keHoachList: KeHoachSX[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        lsxCode: row[0] || "",
+        workshop: row[1] || "",
+        orderDate: row[2] || "",
+        completionDate: row[3] || "",
+        productCode: row[4] || "",
+        productName: row[5] || "",
+        size: row[6] || "",
+        mainFabric: row[7] || "",
+        color: row[8] || "",
+        image: row[9] || "",
+        size1_2: parseQuantity(row[10]),
+        size3_4: parseQuantity(row[11]),
+        size5_6: parseQuantity(row[12]),
+        size7_8: parseQuantity(row[13]),
+        size9_10: parseQuantity(row[14]),
+        sizeXS: parseQuantity(row[15]),
+        sizeS: parseQuantity(row[16]),
+        sizeM: parseQuantity(row[17]),
+        sizeL: parseQuantity(row[18]),
+        sizeXL: parseQuantity(row[19]),
+        totalQuantity: parseQuantity(row[20]),
+        note: row[21] || "",
+      }))
+      .filter((item) =>
+        // Bỏ qua header và dòng trống
+        item.lsxCode.trim() !== "" &&
+        item.lsxCode !== "LSX số" &&
+        !item.lsxCode.toLowerCase().includes("lsx số")
+      );
+
+    return keHoachList;
+  } catch (error) {
+    console.error("Error reading ke hoach SX from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm kế hoạch sản xuất mới vào Google Sheets
+ */
+export async function addKeHoachSXToSheet(keHoach: KeHoachSX): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdKeHoachSX,
+      range: `${sheetNameKeHoachSX}!A:V`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Tìm dòng cuối có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    const values = [
+      [
+        keHoach.lsxCode,
+        keHoach.workshop,
+        keHoach.orderDate,
+        keHoach.completionDate,
+        keHoach.productCode,
+        keHoach.productName,
+        keHoach.size,
+        keHoach.mainFabric,
+        keHoach.color,
+        keHoach.image,
+        keHoach.size1_2 || "",
+        keHoach.size3_4 || "",
+        keHoach.size5_6 || "",
+        keHoach.size7_8 || "",
+        keHoach.size9_10 || "",
+        keHoach.sizeXS || "",
+        keHoach.sizeS || "",
+        keHoach.sizeM || "",
+        keHoach.sizeL || "",
+        keHoach.sizeXL || "",
+        keHoach.totalQuantity || "",
+        keHoach.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdKeHoachSX,
+      range: `${sheetNameKeHoachSX}!A${nextRow}:V${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added ke hoach SX at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding ke hoach SX to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật kế hoạch sản xuất trong Google Sheets
+ */
+export async function updateKeHoachSXInSheet(keHoach: KeHoachSX): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = keHoach.id + 1; // ID 1 = dòng 2
+
+    const values = [
+      [
+        keHoach.lsxCode,
+        keHoach.workshop,
+        keHoach.orderDate,
+        keHoach.completionDate,
+        keHoach.productCode,
+        keHoach.productName,
+        keHoach.size,
+        keHoach.mainFabric,
+        keHoach.color,
+        keHoach.image,
+        keHoach.size1_2 || "",
+        keHoach.size3_4 || "",
+        keHoach.size5_6 || "",
+        keHoach.size7_8 || "",
+        keHoach.size9_10 || "",
+        keHoach.sizeXS || "",
+        keHoach.sizeS || "",
+        keHoach.sizeM || "",
+        keHoach.sizeL || "",
+        keHoach.sizeXL || "",
+        keHoach.totalQuantity || "",
+        keHoach.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdKeHoachSX,
+      range: `${sheetNameKeHoachSX}!A${rowNumber}:V${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated ke hoach SX ID: ${keHoach.id}`);
+  } catch (error) {
+    console.error("Error updating ke hoach SX in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa kế hoạch sản xuất khỏi Google Sheets
+ */
+export async function deleteKeHoachSXFromSheet(keHoachId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = keHoachId + 1;
+
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdKeHoachSX,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameKeHoachSX
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      throw new Error(`Cannot find sheet named "${sheetNameKeHoachSX}"`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdKeHoachSX,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted ke hoach SX ID: ${keHoachId}`);
+  } catch (error) {
+    console.error("Error deleting ke hoach SX from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // LOAN MANAGEMENT (Quản lý khoản vay)
 // ============================================
 
