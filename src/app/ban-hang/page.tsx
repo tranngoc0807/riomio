@@ -12,6 +12,7 @@ import {
   Download,
   TrendingUp,
   Tag,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -1316,7 +1317,10 @@ export default function BanHang() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Bán hàng</h1>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <ShoppingCart className="text-blue-600" size={32} />
+            Bán hàng
+          </h1>
           <p className="text-gray-600 mt-1 mb-5">
             Quản lý khách hàng và đơn hàng
           </p>
@@ -1509,9 +1513,9 @@ export default function BanHang() {
               </div>
 
               {isLoadingOrders ? (
-                <div className="text-center py-12 text-gray-500">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-                  <p>Đang tải dữ liệu...</p>
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
                 </div>
               ) : orders.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">

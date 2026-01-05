@@ -554,7 +554,7 @@ export default function SanPhamPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <Package className="w-7 h-7 text-purple-600" />
             Quản lý sản phẩm
           </h1>
@@ -680,7 +680,7 @@ export default function SanPhamPage() {
               {/* Loading state */}
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
                 </div>
               ) : (
@@ -902,7 +902,7 @@ export default function SanPhamPage() {
               {/* Loading state */}
               {catalogLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
                 </div>
               ) : (

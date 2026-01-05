@@ -15,12 +15,18 @@ import {
   MapPin,
   User,
   FileText,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
 import toast, { Toaster } from "react-hot-toast";
-import type { Material, Workshop, Supplier, KeHoachSX } from "@/lib/googleSheets";
+import type {
+  Material,
+  Workshop,
+  Supplier,
+  KeHoachSX,
+} from "@/lib/googleSheets";
 
 export default function SanXuat() {
   const router = useRouter();
@@ -42,7 +48,9 @@ export default function SanXuat() {
   const [showViewKeHoachModal, setShowViewKeHoachModal] = useState(false);
   const [showEditKeHoachModal, setShowEditKeHoachModal] = useState(false);
   const [showDeleteKeHoachModal, setShowDeleteKeHoachModal] = useState(false);
-  const [selectedKeHoach, setSelectedKeHoach] = useState<KeHoachSX | null>(null);
+  const [selectedKeHoach, setSelectedKeHoach] = useState<KeHoachSX | null>(
+    null
+  );
   const [keHoachToDelete, setKeHoachToDelete] = useState<number | null>(null);
   const [newKeHoach, setNewKeHoach] = useState<Omit<KeHoachSX, "id">>({
     lsxCode: "",
@@ -478,9 +486,12 @@ export default function SanXuat() {
 
     try {
       setIsDeletingKeHoach(true);
-      const response = await fetch(`/api/ke-hoach-sx/delete?id=${keHoachToDelete}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/ke-hoach-sx/delete?id=${keHoachToDelete}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       const result = await response.json();
 
@@ -931,11 +942,11 @@ export default function SanXuat() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <Factory className="w-7 h-7 text-blue-600" />
             Sản xuất
           </h1>
@@ -1037,8 +1048,9 @@ export default function SanXuat() {
               </div>
 
               {isLoadingKeHoach ? (
-                <div className="flex justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1080,7 +1092,10 @@ export default function SanXuat() {
                     <tbody className="divide-y divide-gray-200">
                       {filteredKeHoach.length === 0 ? (
                         <tr>
-                          <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                          <td
+                            colSpan={10}
+                            className="px-4 py-8 text-center text-gray-500"
+                          >
                             Chưa có kế hoạch sản xuất nào
                           </td>
                         </tr>
@@ -1112,7 +1127,9 @@ export default function SanXuat() {
                               {item.color || "-"}
                             </td>
                             <td className="px-3 py-3 text-sm text-center font-medium text-gray-900">
-                              {item.totalQuantity > 0 ? item.totalQuantity.toLocaleString("vi-VN") : "-"}
+                              {item.totalQuantity > 0
+                                ? item.totalQuantity.toLocaleString("vi-VN")
+                                : "-"}
                             </td>
                             <td className="px-3 py-3">
                               <div className="flex items-center justify-center gap-2">
@@ -3142,21 +3159,45 @@ export default function SanXuat() {
             onClick={() => {
               setShowAddKeHoachModal(false);
               setNewKeHoach({
-                lsxCode: "", workshop: "", orderDate: "", completionDate: "",
-                productCode: "", productName: "", size: "", mainFabric: "",
-                color: "", image: "", size1_2: 0, size3_4: 0, size5_6: 0,
-                size7_8: 0, size9_10: 0, sizeXS: 0, sizeS: 0, sizeM: 0,
-                sizeL: 0, sizeXL: 0, totalQuantity: 0, note: "",
+                lsxCode: "",
+                workshop: "",
+                orderDate: "",
+                completionDate: "",
+                productCode: "",
+                productName: "",
+                size: "",
+                mainFabric: "",
+                color: "",
+                image: "",
+                size1_2: 0,
+                size3_4: 0,
+                size5_6: 0,
+                size7_8: 0,
+                size9_10: 0,
+                sizeXS: 0,
+                sizeS: 0,
+                sizeM: 0,
+                sizeL: 0,
+                sizeXL: 0,
+                totalQuantity: 0,
+                note: "",
               });
             }}
           />
           <div className="fixed top-0 right-0 w-full max-w-2xl h-screen bg-white shadow-2xl z-60 flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Thêm kế hoạch sản xuất</h3>
-                <p className="text-sm text-gray-500">Nhập thông tin kế hoạch sản xuất mới</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Thêm kế hoạch sản xuất
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Nhập thông tin kế hoạch sản xuất mới
+                </p>
               </div>
-              <button onClick={() => setShowAddKeHoachModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <button
+                onClick={() => setShowAddKeHoachModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
                 <X size={24} />
               </button>
             </div>
@@ -3164,50 +3205,248 @@ export default function SanXuat() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">LSX số *</label>
-                    <input type="text" value={newKeHoach.lsxCode} onChange={(e) => setNewKeHoach({ ...newKeHoach, lsxCode: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="VD: LSX001" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      LSX số *
+                    </label>
+                    <input
+                      type="text"
+                      value={newKeHoach.lsxCode}
+                      onChange={(e) =>
+                        setNewKeHoach({
+                          ...newKeHoach,
+                          lsxCode: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="VD: LSX001"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Xưởng SX</label>
-                    <select value={newKeHoach.workshop} onChange={(e) => setNewKeHoach({ ...newKeHoach, workshop: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Xưởng SX
+                    </label>
+                    <select
+                      value={newKeHoach.workshop}
+                      onChange={(e) =>
+                        setNewKeHoach({
+                          ...newKeHoach,
+                          workshop: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
                       <option value="">-- Chọn xưởng --</option>
-                      {workshops.map((w) => (<option key={w.id} value={w.name}>{w.name}</option>))}
+                      {workshops.map((w) => (
+                        <option key={w.id} value={w.name}>
+                          {w.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Ngày gửi lệnh</label><input type="date" value={newKeHoach.orderDate} onChange={(e) => setNewKeHoach({ ...newKeHoach, orderDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Ngày hoàn thành</label><input type="date" value={newKeHoach.completionDate} onChange={(e) => setNewKeHoach({ ...newKeHoach, completionDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày gửi lệnh
+                    </label>
+                    <input
+                      type="date"
+                      value={newKeHoach.orderDate}
+                      onChange={(e) =>
+                        setNewKeHoach({
+                          ...newKeHoach,
+                          orderDate: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày hoàn thành
+                    </label>
+                    <input
+                      type="date"
+                      value={newKeHoach.completionDate}
+                      onChange={(e) =>
+                        setNewKeHoach({
+                          ...newKeHoach,
+                          completionDate: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Mã SP</label><input type="text" value={newKeHoach.productCode} onChange={(e) => setNewKeHoach({ ...newKeHoach, productCode: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Tên SP</label><input type="text" value={newKeHoach.productName} onChange={(e) => setNewKeHoach({ ...newKeHoach, productName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã SP
+                    </label>
+                    <input
+                      type="text"
+                      value={newKeHoach.productCode}
+                      onChange={(e) =>
+                        setNewKeHoach({
+                          ...newKeHoach,
+                          productCode: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tên SP
+                    </label>
+                    <input
+                      type="text"
+                      value={newKeHoach.productName}
+                      onChange={(e) =>
+                        setNewKeHoach({
+                          ...newKeHoach,
+                          productName: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Vải chính</label><input type="text" value={newKeHoach.mainFabric} onChange={(e) => setNewKeHoach({ ...newKeHoach, mainFabric: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Màu sắc</label><input type="text" value={newKeHoach.color} onChange={(e) => setNewKeHoach({ ...newKeHoach, color: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Tổng SL</label><input type="number" value={newKeHoach.totalQuantity || ""} onChange={(e) => setNewKeHoach({ ...newKeHoach, totalQuantity: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vải chính
+                    </label>
+                    <input
+                      type="text"
+                      value={newKeHoach.mainFabric}
+                      onChange={(e) =>
+                        setNewKeHoach({
+                          ...newKeHoach,
+                          mainFabric: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Màu sắc
+                    </label>
+                    <input
+                      type="text"
+                      value={newKeHoach.color}
+                      onChange={(e) =>
+                        setNewKeHoach({ ...newKeHoach, color: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tổng SL
+                    </label>
+                    <input
+                      type="number"
+                      value={newKeHoach.totalQuantity || ""}
+                      onChange={(e) =>
+                        setNewKeHoach({
+                          ...newKeHoach,
+                          totalQuantity: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Số lượng theo size</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Số lượng theo size
+                  </label>
                   <div className="grid grid-cols-5 gap-2">
-                    {[{ key: "size1_2", label: "1/2" }, { key: "size3_4", label: "3/4" }, { key: "size5_6", label: "5/6" }, { key: "size7_8", label: "7/8" }, { key: "size9_10", label: "9/10" }].map((s) => (
-                      <div key={s.key}><label className="block text-xs text-gray-500 mb-1">{s.label}</label><input type="number" value={(newKeHoach as any)[s.key] || ""} onChange={(e) => setNewKeHoach({ ...newKeHoach, [s.key]: Number(e.target.value) })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" /></div>
+                    {[
+                      { key: "size1_2", label: "1/2" },
+                      { key: "size3_4", label: "3/4" },
+                      { key: "size5_6", label: "5/6" },
+                      { key: "size7_8", label: "7/8" },
+                      { key: "size9_10", label: "9/10" },
+                    ].map((s) => (
+                      <div key={s.key}>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          {s.label}
+                        </label>
+                        <input
+                          type="number"
+                          value={(newKeHoach as any)[s.key] || ""}
+                          onChange={(e) =>
+                            setNewKeHoach({
+                              ...newKeHoach,
+                              [s.key]: Number(e.target.value),
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
                     ))}
                   </div>
                   <div className="grid grid-cols-5 gap-2 mt-2">
-                    {[{ key: "sizeXS", label: "XS" }, { key: "sizeS", label: "S" }, { key: "sizeM", label: "M" }, { key: "sizeL", label: "L" }, { key: "sizeXL", label: "XL" }].map((s) => (
-                      <div key={s.key}><label className="block text-xs text-gray-500 mb-1">{s.label}</label><input type="number" value={(newKeHoach as any)[s.key] || ""} onChange={(e) => setNewKeHoach({ ...newKeHoach, [s.key]: Number(e.target.value) })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" /></div>
+                    {[
+                      { key: "sizeXS", label: "XS" },
+                      { key: "sizeS", label: "S" },
+                      { key: "sizeM", label: "M" },
+                      { key: "sizeL", label: "L" },
+                      { key: "sizeXL", label: "XL" },
+                    ].map((s) => (
+                      <div key={s.key}>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          {s.label}
+                        </label>
+                        <input
+                          type="number"
+                          value={(newKeHoach as any)[s.key] || ""}
+                          onChange={(e) =>
+                            setNewKeHoach({
+                              ...newKeHoach,
+                              [s.key]: Number(e.target.value),
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label><textarea value={newKeHoach.note} onChange={(e) => setNewKeHoach({ ...newKeHoach, note: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={3} /></div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    value={newKeHoach.note}
+                    onChange={(e) =>
+                      setNewKeHoach({ ...newKeHoach, note: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                  />
+                </div>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
               <div className="flex gap-3">
-                <button onClick={() => setShowAddKeHoachModal(false)} disabled={isAddingKeHoach} className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50">Hủy</button>
-                <button onClick={handleAddKeHoach} disabled={isAddingKeHoach} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50">{isAddingKeHoach ? "Đang thêm..." : "Thêm kế hoạch"}</button>
+                <button
+                  onClick={() => setShowAddKeHoachModal(false)}
+                  disabled={isAddingKeHoach}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleAddKeHoach}
+                  disabled={isAddingKeHoach}
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+                >
+                  {isAddingKeHoach ? "Đang thêm..." : "Thêm kế hoạch"}
+                </button>
               </div>
             </div>
           </div>
@@ -3217,43 +3456,165 @@ export default function SanXuat() {
       {/* Modal xem chi tiết kế hoạch SX */}
       {showViewKeHoachModal && selectedKeHoach && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowViewKeHoachModal(false)} />
+          <div
+            className="fixed inset-0 z-50 bg-black/20"
+            onClick={() => setShowViewKeHoachModal(false)}
+          />
           <div className="fixed top-0 right-0 w-full max-w-2xl h-screen bg-white shadow-2xl z-60 flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
-              <div><h3 className="text-lg font-semibold text-gray-900">Chi tiết kế hoạch sản xuất</h3><p className="text-sm text-gray-500">LSX: {selectedKeHoach.lsxCode}</p></div>
-              <button onClick={() => setShowViewKeHoachModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chi tiết kế hoạch sản xuất
+                </h3>
+                <p className="text-sm text-gray-500">
+                  LSX: {selectedKeHoach.lsxCode}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowViewKeHoachModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={24} />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div><span className="text-sm text-gray-500">LSX số:</span><p className="font-medium">{selectedKeHoach.lsxCode}</p></div>
-                  <div><span className="text-sm text-gray-500">Xưởng SX:</span><p className="font-medium">{selectedKeHoach.workshop || "-"}</p></div>
-                  <div><span className="text-sm text-gray-500">Ngày gửi lệnh:</span><p className="font-medium">{selectedKeHoach.orderDate || "-"}</p></div>
-                  <div><span className="text-sm text-gray-500">Ngày hoàn thành:</span><p className="font-medium">{selectedKeHoach.completionDate || "-"}</p></div>
-                  <div><span className="text-sm text-gray-500">Mã SP:</span><p className="font-medium">{selectedKeHoach.productCode || "-"}</p></div>
-                  <div><span className="text-sm text-gray-500">Tên SP:</span><p className="font-medium">{selectedKeHoach.productName || "-"}</p></div>
-                  <div><span className="text-sm text-gray-500">Vải chính:</span><p className="font-medium">{selectedKeHoach.mainFabric || "-"}</p></div>
-                  <div><span className="text-sm text-gray-500">Màu sắc:</span><p className="font-medium">{selectedKeHoach.color || "-"}</p></div>
+                  <div>
+                    <span className="text-sm text-gray-500">LSX số:</span>
+                    <p className="font-medium">{selectedKeHoach.lsxCode}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500">Xưởng SX:</span>
+                    <p className="font-medium">
+                      {selectedKeHoach.workshop || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500">
+                      Ngày gửi lệnh:
+                    </span>
+                    <p className="font-medium">
+                      {selectedKeHoach.orderDate || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500">
+                      Ngày hoàn thành:
+                    </span>
+                    <p className="font-medium">
+                      {selectedKeHoach.completionDate || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500">Mã SP:</span>
+                    <p className="font-medium">
+                      {selectedKeHoach.productCode || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500">Tên SP:</span>
+                    <p className="font-medium">
+                      {selectedKeHoach.productName || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500">Vải chính:</span>
+                    <p className="font-medium">
+                      {selectedKeHoach.mainFabric || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500">Màu sắc:</span>
+                    <p className="font-medium">
+                      {selectedKeHoach.color || "-"}
+                    </p>
+                  </div>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Số lượng theo size:</span>
+                  <span className="text-sm text-gray-500">
+                    Số lượng theo size:
+                  </span>
                   <div className="grid grid-cols-5 gap-2 mt-2">
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">1/2</span><p className="font-medium">{selectedKeHoach.size1_2 || 0}</p></div>
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">3/4</span><p className="font-medium">{selectedKeHoach.size3_4 || 0}</p></div>
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">5/6</span><p className="font-medium">{selectedKeHoach.size5_6 || 0}</p></div>
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">7/8</span><p className="font-medium">{selectedKeHoach.size7_8 || 0}</p></div>
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">9/10</span><p className="font-medium">{selectedKeHoach.size9_10 || 0}</p></div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">1/2</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.size1_2 || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">3/4</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.size3_4 || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">5/6</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.size5_6 || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">7/8</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.size7_8 || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">9/10</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.size9_10 || 0}
+                      </p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-5 gap-2 mt-2">
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">XS</span><p className="font-medium">{selectedKeHoach.sizeXS || 0}</p></div>
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">S</span><p className="font-medium">{selectedKeHoach.sizeS || 0}</p></div>
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">M</span><p className="font-medium">{selectedKeHoach.sizeM || 0}</p></div>
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">L</span><p className="font-medium">{selectedKeHoach.sizeL || 0}</p></div>
-                    <div className="text-center p-2 bg-gray-50 rounded"><span className="text-xs text-gray-500">XL</span><p className="font-medium">{selectedKeHoach.sizeXL || 0}</p></div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">XS</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.sizeXS || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">S</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.sizeS || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">M</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.sizeM || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">L</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.sizeL || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">XL</span>
+                      <p className="font-medium">
+                        {selectedKeHoach.sizeXL || 0}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4"><div><span className="text-sm text-gray-500">Tổng số lượng:</span><p className="font-medium text-lg text-blue-600">{selectedKeHoach.totalQuantity?.toLocaleString("vi-VN") || 0}</p></div></div>
-                <div><span className="text-sm text-gray-500">Ghi chú:</span><p className="font-medium">{selectedKeHoach.note || "-"}</p></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm text-gray-500">
+                      Tổng số lượng:
+                    </span>
+                    <p className="font-medium text-lg text-blue-600">
+                      {selectedKeHoach.totalQuantity?.toLocaleString("vi-VN") ||
+                        0}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">Ghi chú:</span>
+                  <p className="font-medium">{selectedKeHoach.note || "-"}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -3263,51 +3624,275 @@ export default function SanXuat() {
       {/* Modal sửa kế hoạch SX */}
       {showEditKeHoachModal && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowEditKeHoachModal(false)} />
+          <div
+            className="fixed inset-0 z-50 bg-black/20"
+            onClick={() => setShowEditKeHoachModal(false)}
+          />
           <div className="fixed top-0 right-0 w-full max-w-2xl h-screen bg-white shadow-2xl z-60 flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-green-50">
-              <div><h3 className="text-lg font-semibold text-gray-900">Sửa kế hoạch sản xuất</h3><p className="text-sm text-gray-500">LSX: {editKeHoach.lsxCode}</p></div>
-              <button onClick={() => setShowEditKeHoachModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Sửa kế hoạch sản xuất
+                </h3>
+                <p className="text-sm text-gray-500">
+                  LSX: {editKeHoach.lsxCode}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowEditKeHoachModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={24} />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">LSX số *</label><input type="text" value={editKeHoach.lsxCode} onChange={(e) => setEditKeHoach({ ...editKeHoach, lsxCode: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Xưởng SX</label><select value={editKeHoach.workshop} onChange={(e) => setEditKeHoach({ ...editKeHoach, workshop: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"><option value="">-- Chọn xưởng --</option>{workshops.map((w) => (<option key={w.id} value={w.name}>{w.name}</option>))}</select></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      LSX số *
+                    </label>
+                    <input
+                      type="text"
+                      value={editKeHoach.lsxCode}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          lsxCode: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Xưởng SX
+                    </label>
+                    <select
+                      value={editKeHoach.workshop}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          workshop: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- Chọn xưởng --</option>
+                      {workshops.map((w) => (
+                        <option key={w.id} value={w.name}>
+                          {w.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Ngày gửi lệnh</label><input type="date" value={editKeHoach.orderDate} onChange={(e) => setEditKeHoach({ ...editKeHoach, orderDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Ngày hoàn thành</label><input type="date" value={editKeHoach.completionDate} onChange={(e) => setEditKeHoach({ ...editKeHoach, completionDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày gửi lệnh
+                    </label>
+                    <input
+                      type="date"
+                      value={editKeHoach.orderDate}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          orderDate: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày hoàn thành
+                    </label>
+                    <input
+                      type="date"
+                      value={editKeHoach.completionDate}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          completionDate: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Mã SP</label><input type="text" value={editKeHoach.productCode} onChange={(e) => setEditKeHoach({ ...editKeHoach, productCode: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Tên SP</label><input type="text" value={editKeHoach.productName} onChange={(e) => setEditKeHoach({ ...editKeHoach, productName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã SP
+                    </label>
+                    <input
+                      type="text"
+                      value={editKeHoach.productCode}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          productCode: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tên SP
+                    </label>
+                    <input
+                      type="text"
+                      value={editKeHoach.productName}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          productName: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Vải chính</label><input type="text" value={editKeHoach.mainFabric} onChange={(e) => setEditKeHoach({ ...editKeHoach, mainFabric: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Màu sắc</label><input type="text" value={editKeHoach.color} onChange={(e) => setEditKeHoach({ ...editKeHoach, color: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Tổng SL</label><input type="number" value={editKeHoach.totalQuantity || ""} onChange={(e) => setEditKeHoach({ ...editKeHoach, totalQuantity: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vải chính
+                    </label>
+                    <input
+                      type="text"
+                      value={editKeHoach.mainFabric}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          mainFabric: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Màu sắc
+                    </label>
+                    <input
+                      type="text"
+                      value={editKeHoach.color}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          color: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tổng SL
+                    </label>
+                    <input
+                      type="number"
+                      value={editKeHoach.totalQuantity || ""}
+                      onChange={(e) =>
+                        setEditKeHoach({
+                          ...editKeHoach,
+                          totalQuantity: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Số lượng theo size</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Số lượng theo size
+                  </label>
                   <div className="grid grid-cols-5 gap-2">
-                    {[{ key: "size1_2", label: "1/2" }, { key: "size3_4", label: "3/4" }, { key: "size5_6", label: "5/6" }, { key: "size7_8", label: "7/8" }, { key: "size9_10", label: "9/10" }].map((s) => (
-                      <div key={s.key}><label className="block text-xs text-gray-500 mb-1">{s.label}</label><input type="number" value={(editKeHoach as any)[s.key] || ""} onChange={(e) => setEditKeHoach({ ...editKeHoach, [s.key]: Number(e.target.value) })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" /></div>
+                    {[
+                      { key: "size1_2", label: "1/2" },
+                      { key: "size3_4", label: "3/4" },
+                      { key: "size5_6", label: "5/6" },
+                      { key: "size7_8", label: "7/8" },
+                      { key: "size9_10", label: "9/10" },
+                    ].map((s) => (
+                      <div key={s.key}>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          {s.label}
+                        </label>
+                        <input
+                          type="number"
+                          value={(editKeHoach as any)[s.key] || ""}
+                          onChange={(e) =>
+                            setEditKeHoach({
+                              ...editKeHoach,
+                              [s.key]: Number(e.target.value),
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
                     ))}
                   </div>
                   <div className="grid grid-cols-5 gap-2 mt-2">
-                    {[{ key: "sizeXS", label: "XS" }, { key: "sizeS", label: "S" }, { key: "sizeM", label: "M" }, { key: "sizeL", label: "L" }, { key: "sizeXL", label: "XL" }].map((s) => (
-                      <div key={s.key}><label className="block text-xs text-gray-500 mb-1">{s.label}</label><input type="number" value={(editKeHoach as any)[s.key] || ""} onChange={(e) => setEditKeHoach({ ...editKeHoach, [s.key]: Number(e.target.value) })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" /></div>
+                    {[
+                      { key: "sizeXS", label: "XS" },
+                      { key: "sizeS", label: "S" },
+                      { key: "sizeM", label: "M" },
+                      { key: "sizeL", label: "L" },
+                      { key: "sizeXL", label: "XL" },
+                    ].map((s) => (
+                      <div key={s.key}>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          {s.label}
+                        </label>
+                        <input
+                          type="number"
+                          value={(editKeHoach as any)[s.key] || ""}
+                          onChange={(e) =>
+                            setEditKeHoach({
+                              ...editKeHoach,
+                              [s.key]: Number(e.target.value),
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label><textarea value={editKeHoach.note} onChange={(e) => setEditKeHoach({ ...editKeHoach, note: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={3} /></div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    value={editKeHoach.note}
+                    onChange={(e) =>
+                      setEditKeHoach({ ...editKeHoach, note: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                  />
+                </div>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
               <div className="flex gap-3">
-                <button onClick={() => setShowEditKeHoachModal(false)} disabled={isUpdatingKeHoach} className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50">Hủy</button>
-                <button onClick={handleSaveEditKeHoach} disabled={isUpdatingKeHoach} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50">{isUpdatingKeHoach ? "Đang lưu..." : "Lưu thay đổi"}</button>
+                <button
+                  onClick={() => setShowEditKeHoachModal(false)}
+                  disabled={isUpdatingKeHoach}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveEditKeHoach}
+                  disabled={isUpdatingKeHoach}
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+                >
+                  {isUpdatingKeHoach ? "Đang lưu..." : "Lưu thay đổi"}
+                </button>
               </div>
             </div>
           </div>
@@ -3317,13 +3902,33 @@ export default function SanXuat() {
       {/* Modal xác nhận xóa kế hoạch SX */}
       {showDeleteKeHoachModal && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowDeleteKeHoachModal(false)} />
+          <div
+            className="fixed inset-0 z-50 bg-black/20"
+            onClick={() => setShowDeleteKeHoachModal(false)}
+          />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl z-60 w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Xác nhận xóa</h3>
-            <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa kế hoạch sản xuất này không? Hành động này không thể hoàn tác.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Xác nhận xóa
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn xóa kế hoạch sản xuất này không? Hành động
+              này không thể hoàn tác.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setShowDeleteKeHoachModal(false)} disabled={isDeletingKeHoach} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50">Hủy</button>
-              <button onClick={confirmDeleteKeHoach} disabled={isDeletingKeHoach} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50">{isDeletingKeHoach ? "Đang xóa..." : "Xóa"}</button>
+              <button
+                onClick={() => setShowDeleteKeHoachModal(false)}
+                disabled={isDeletingKeHoach}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDeleteKeHoach}
+                disabled={isDeletingKeHoach}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
+              >
+                {isDeletingKeHoach ? "Đang xóa..." : "Xóa"}
+              </button>
             </div>
           </div>
         </Portal>

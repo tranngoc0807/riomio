@@ -412,11 +412,11 @@ export default function BaoCao() {
       : debtData.filter((d) => d.type === debtFilter);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <BarChart3 className="w-7 h-7 text-blue-600" />
             Báo cáo & Thống kê
           </h1>

@@ -197,9 +197,8 @@ export default function DongTien() {
   const itemsPerPage = 20;
 
   // Date range filter states
-  const today = formatDate(new Date());
-  const [fromDate, setFromDate] = useState(today);
-  const [toDate, setToDate] = useState(today);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   // Quick select presets
   const applyPreset = (preset: "today" | "week" | "month" | "all") => {
@@ -215,9 +214,9 @@ export default function DongTien() {
       setFromDate(formatDate(getStartOfMonth(now)));
       setToDate(formatDate(getEndOfMonth(now)));
     } else {
-      // All - show all transactions
-      setFromDate("2020-01-01");
-      setToDate(formatDate(now));
+      // All - show all transactions (clear date filter)
+      setFromDate("");
+      setToDate("");
     }
   };
 
@@ -547,12 +546,15 @@ export default function DongTien() {
   const totalLoanRemaining = loans.reduce((sum, l) => sum + l.remaining, 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <Toaster position="top-right" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dòng tiền</h1>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <Wallet className="text-blue-600" size={32} />
+            Dòng tiền
+          </h1>
           <p className="text-gray-600 mt-1">
             Quản lý thu chi và theo dõi dòng tiền
           </p>

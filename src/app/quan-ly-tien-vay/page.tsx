@@ -20,6 +20,7 @@ import {
   TrendingDown,
   ArrowUpRight,
   ArrowDownRight,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -588,12 +589,12 @@ export default function QuanLyTienVay() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <Toaster position="top-right" />
       {/* Header */}
       <div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <HandCoins className="w-7 h-7 text-blue-600" />
             Quản lý tiền vay
           </h1>
@@ -693,9 +694,9 @@ export default function QuanLyTienVay() {
               </div>
 
               {isLoadingLoans ? (
-                <div className="text-center py-12 text-gray-500">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-                  <p>Đang tải dữ liệu...</p>
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
                 </div>
               ) : filteredLoans.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
@@ -781,9 +782,9 @@ export default function QuanLyTienVay() {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Lịch sử thanh toán</h3>
               {isLoadingPaymentHistory ? (
-                <div className="text-center py-12 text-gray-500">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-                  <p>Đang tải dữ liệu...</p>
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
                 </div>
               ) : paymentHistory.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
