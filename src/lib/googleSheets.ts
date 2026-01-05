@@ -2757,3 +2757,485 @@ export async function deletePaymentHistoryFromSheet(paymentId: number): Promise<
     throw error;
   }
 }
+
+// ============================================
+// SAN PHAM MANAGEMENT (Quản lý phát triển sản phẩm)
+// ============================================
+
+const spreadsheetIdSanPham = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameSanPham = process.env.GOOGLE_SHEET_NAME_SAN_PHAM_PHAT_TRIEN || "PhatTrienSanPham";
+
+// Interface cho sản phẩm phát triển
+export interface SanPham {
+  id: number;
+  code: string;           // Mã SP (Cột A)
+  name: string;           // Tên SP (Cột B)
+  size: string;           // Size (Cột C)
+  mainFabric: string;     // Vải chính (Cột D)
+  accentFabric: string;   // Vải phối (Cột E)
+  otherMaterials: string; // Phụ liệu khác (Cột F)
+  productionStatus: string; // Tình trạng SX (Cột G)
+  productionOrder: string;  // Lệnh SX (Cột H)
+  workshop: string;       // Xưởng SX (Cột I)
+  note: string;           // Ghi chú (Cột J)
+}
+
+/**
+ * Đọc danh sách sản phẩm phát triển từ Google Sheets
+ */
+export async function getSanPhamFromSheet(): Promise<SanPham[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanPham,
+      range: `${sheetNameSanPham}!A2:J`, // Đọc từ dòng 2, cột A đến J
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No san pham data found in sheet.");
+      return [];
+    }
+
+    const sanPhams: SanPham[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        code: row[0] || "",
+        name: row[1] || "",
+        size: row[2] || "",
+        mainFabric: row[3] || "",
+        accentFabric: row[4] || "",
+        otherMaterials: row[5] || "",
+        productionStatus: row[6] || "",
+        productionOrder: row[7] || "",
+        workshop: row[8] || "",
+        note: row[9] || "",
+      }))
+      .filter((sp) => sp.code.trim() !== "" || sp.name.trim() !== "");
+
+    return sanPhams;
+  } catch (error) {
+    console.error("Error reading san pham from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm sản phẩm mới vào Google Sheets
+ */
+export async function addSanPhamToSheet(sanPham: SanPham): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanPham,
+      range: `${sheetNameSanPham}!A:J`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Tìm dòng cuối có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    const values = [
+      [
+        sanPham.code,
+        sanPham.name,
+        sanPham.size,
+        sanPham.mainFabric,
+        sanPham.accentFabric,
+        sanPham.otherMaterials,
+        sanPham.productionStatus,
+        sanPham.productionOrder,
+        sanPham.workshop,
+        sanPham.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanPham,
+      range: `${sheetNameSanPham}!A${nextRow}:J${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added san pham: ${sanPham.code} at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding san pham to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật sản phẩm trong Google Sheets
+ */
+export async function updateSanPhamInSheet(sanPham: SanPham): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = sanPham.id + 1; // ID 1 = dòng 2
+
+    const values = [
+      [
+        sanPham.code,
+        sanPham.name,
+        sanPham.size,
+        sanPham.mainFabric,
+        sanPham.accentFabric,
+        sanPham.otherMaterials,
+        sanPham.productionStatus,
+        sanPham.productionOrder,
+        sanPham.workshop,
+        sanPham.note,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanPham,
+      range: `${sheetNameSanPham}!A${rowNumber}:J${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated san pham ID: ${sanPham.id}`);
+  } catch (error) {
+    console.error("Error updating san pham in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa sản phẩm khỏi Google Sheets
+ */
+export async function deleteSanPhamFromSheet(sanPhamId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = sanPhamId + 1;
+
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdSanPham,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameSanPham
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      throw new Error(`Cannot find sheet named "${sheetNameSanPham}"`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdSanPham,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted san pham ID: ${sanPhamId}`);
+  } catch (error) {
+    console.error("Error deleting san pham from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// SAN PHAM CATALOG MANAGEMENT (Quản lý danh mục sản phẩm)
+// ============================================
+
+const spreadsheetIdSanPhamCatalog = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameSanPhamCatalog = process.env.GOOGLE_SHEET_NAME_SAN_PHAM || "SanPham";
+
+// Interface cho danh mục sản phẩm
+export interface SanPhamCatalog {
+  id: number;
+  name: string;              // Tên SP (B)
+  sizeChart: string;         // Bảng size sản xuất (C)
+  image: string;             // Hình ảnh (D)
+  color: string;             // Màu sắc sản xuất (E)
+  retailPrice: number;       // Giá bán lẻ (F)
+  wholesalePrice: number;    // Giá bán sỉ (G)
+  costPrice: number;         // Giá vốn (H)
+  mainFabric: string;        // Vải chính (I)
+  accentFabric: string;      // Vải phối (J)
+  otherMaterials: string;    // Phụ liệu khác (K)
+  mainFabricQuota: string;   // Định mức vải chính (L)
+  accentFabricQuota: string; // Định mức vải phối 1 (M)
+  materialsQuota: string;    // Định mức phụ liệu 2 (N)
+  accessoriesQuota: string;  // Định mức phụ kiện (O)
+  otherQuota: string;        // Định mức khác (P)
+  plannedQuantity: number;   // Số lượng kế hoạch (Q)
+  cutQuantity: number;       // Số lượng cắt (R)
+  warehouseQuantity: number; // Số lượng nhập kho (S)
+  finalStatus: string;       // CĐ Final (T)
+  nplSyncStatus: string;     // CĐ đồng bộ NPL (U)
+  productionStatus: string;  // CĐ sản xuất (V)
+  warehouseEntry: string;    // Nhập kho (W)
+}
+
+// Helper to parse price from Vietnamese format
+const parsePriceCatalog = (value: any): number => {
+  if (!value) return 0;
+  const cleaned = value.toString().replace(/[,.\s]/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+/**
+ * Đọc danh mục sản phẩm từ Google Sheets
+ */
+export async function getSanPhamCatalogFromSheet(): Promise<SanPhamCatalog[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanPhamCatalog,
+      range: `${sheetNameSanPhamCatalog}!B2:W`, // Đọc từ cột B (bỏ STT), dòng 2
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No san pham catalog data found in sheet.");
+      return [];
+    }
+
+    const products: SanPhamCatalog[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        name: row[0] || "",               // B - Tên SP
+        sizeChart: row[1] || "",          // C - Bảng size sản xuất
+        image: row[2] || "",              // D - Hình ảnh
+        color: row[3] || "",              // E - Màu sắc sản xuất
+        retailPrice: parsePriceCatalog(row[4]),    // F - Giá bán lẻ
+        wholesalePrice: parsePriceCatalog(row[5]), // G - Giá bán sỉ
+        costPrice: parsePriceCatalog(row[6]),      // H - Giá vốn
+        mainFabric: row[7] || "",         // I - Vải chính
+        accentFabric: row[8] || "",       // J - Vải phối
+        otherMaterials: row[9] || "",     // K - Phụ liệu khác
+        mainFabricQuota: row[10] || "",   // L - Định mức vải chính
+        accentFabricQuota: row[11] || "", // M - Định mức vải phối 1
+        materialsQuota: row[12] || "",    // N - Định mức phụ liệu 2
+        accessoriesQuota: row[13] || "",  // O - Định mức phụ kiện
+        otherQuota: row[14] || "",        // P - Định mức khác
+        plannedQuantity: parseInt(row[15]) || 0,   // Q - Số lượng kế hoạch
+        cutQuantity: parseInt(row[16]) || 0,       // R - Số lượng cắt
+        warehouseQuantity: parseInt(row[17]) || 0, // S - Số lượng nhập kho
+        finalStatus: row[18] || "",       // T - CĐ Final
+        nplSyncStatus: row[19] || "",     // U - CĐ đồng bộ NPL
+        productionStatus: row[20] || "",  // V - CĐ sản xuất
+        warehouseEntry: row[21] || "",    // W - Nhập kho
+      }))
+      .filter((p) => p.name.trim() !== "");
+
+    return products;
+  } catch (error) {
+    console.error("Error reading san pham catalog from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm sản phẩm mới vào danh mục
+ */
+export async function addSanPhamCatalogToSheet(product: SanPhamCatalog): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối và đếm STT
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanPhamCatalog,
+      range: `${sheetNameSanPhamCatalog}!A:W`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Tìm dòng cuối có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Đếm số sản phẩm để đánh STT
+    const productRows = allRows.slice(1).filter(
+      (row) => row && row[1] && row[1].toString().trim() !== ""
+    );
+    const sttNumber = productRows.length + 1;
+
+    const values = [
+      [
+        sttNumber, // A - STT
+        product.name,
+        product.sizeChart,
+        product.image,
+        product.color,
+        product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",
+        product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "",
+        product.costPrice > 0 ? formatNumberVN(product.costPrice) : "",
+        product.mainFabric,
+        product.accentFabric,
+        product.otherMaterials,
+        product.mainFabricQuota,
+        product.accentFabricQuota,
+        product.materialsQuota,
+        product.accessoriesQuota,
+        product.otherQuota,
+        product.plannedQuantity || "",
+        product.cutQuantity || "",
+        product.warehouseQuantity || "",
+        product.finalStatus,
+        product.nplSyncStatus,
+        product.productionStatus,
+        product.warehouseEntry,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanPhamCatalog,
+      range: `${sheetNameSanPhamCatalog}!A${nextRow}:W${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added san pham catalog: ${product.name} at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding san pham catalog to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật sản phẩm trong danh mục
+ */
+export async function updateSanPhamCatalogInSheet(product: SanPhamCatalog): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = product.id + 1; // ID 1 = dòng 2
+
+    // Giữ nguyên STT, chỉ cập nhật từ cột B
+    const values = [
+      [
+        product.name,
+        product.sizeChart,
+        product.image,
+        product.color,
+        product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",
+        product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "",
+        product.costPrice > 0 ? formatNumberVN(product.costPrice) : "",
+        product.mainFabric,
+        product.accentFabric,
+        product.otherMaterials,
+        product.mainFabricQuota,
+        product.accentFabricQuota,
+        product.materialsQuota,
+        product.accessoriesQuota,
+        product.otherQuota,
+        product.plannedQuantity || "",
+        product.cutQuantity || "",
+        product.warehouseQuantity || "",
+        product.finalStatus,
+        product.nplSyncStatus,
+        product.productionStatus,
+        product.warehouseEntry,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanPhamCatalog,
+      range: `${sheetNameSanPhamCatalog}!B${rowNumber}:W${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated san pham catalog ID: ${product.id}`);
+  } catch (error) {
+    console.error("Error updating san pham catalog in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa sản phẩm khỏi danh mục
+ */
+export async function deleteSanPhamCatalogFromSheet(productId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = productId + 1;
+
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdSanPhamCatalog,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameSanPhamCatalog
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      throw new Error(`Cannot find sheet named "${sheetNameSanPhamCatalog}"`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdSanPhamCatalog,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted san pham catalog ID: ${productId}`);
+  } catch (error) {
+    console.error("Error deleting san pham catalog from Google Sheets:", error);
+    throw error;
+  }
+}
