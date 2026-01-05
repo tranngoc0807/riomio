@@ -2381,6 +2381,21 @@ function formatNumberVN(num: number): string {
 }
 
 /**
+ * Convert date from yyyy-mm-dd to dd/mm/yyyy format
+ */
+function formatDateVN(dateStr: string): string {
+  if (!dateStr) return "";
+  // Check if already in dd/mm/yyyy format
+  if (dateStr.includes("/")) return dateStr;
+  // Convert from yyyy-mm-dd to dd/mm/yyyy
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
+/**
  * Thêm khoản vay mới vào Google Sheets
  */
 export async function addLoanToSheet(loan: Loan): Promise<void> {
@@ -2546,6 +2561,199 @@ export async function deleteLoanFromSheet(loanCode: string): Promise<void> {
     console.log(`Successfully deleted loan with code: ${loanCode} from row ${rowNumber}`);
   } catch (error) {
     console.error("Error deleting loan from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// LICH SU THANH TOAN MANAGEMENT (Quản lý lịch sử thanh toán)
+// ============================================
+
+const spreadsheetIdLichSuThanhToan = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameLichSuThanhToan = process.env.GOOGLE_SHEET_NAME_LICH_SU_THANH_TOAN || "LichSuThanhToan";
+
+// Interface cho lịch sử thanh toán
+export interface PaymentHistory {
+  id: number;
+  transactionDate: string;  // Ngày giao dịch (Cột A)
+  loanCode: string;         // Mã món vay (Cột B)
+  transactionType: string;  // Loại giao dịch (Cột C)
+  amountIn: number;         // Số tiền thu (Cột D)
+  amountOut: number;        // Số tiền chi (Cột E)
+}
+
+/**
+ * Đọc danh sách lịch sử thanh toán từ Google Sheets
+ */
+export async function getPaymentHistoryFromSheet(): Promise<PaymentHistory[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLichSuThanhToan,
+      range: `${sheetNameLichSuThanhToan}!A2:E`, // Đọc từ dòng 2
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No payment history data found in sheet.");
+      return [];
+    }
+
+    const paymentHistory: PaymentHistory[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        transactionDate: row[0] || "",
+        loanCode: row[1] || "",
+        transactionType: row[2] || "",
+        amountIn: parseFloat(row[3]?.replace(/[,\.]/g, "") || "0"),
+        amountOut: parseFloat(row[4]?.replace(/[,\.]/g, "") || "0"),
+      }))
+      .filter((item) =>
+        item.transactionDate.trim() !== "" &&
+        item.transactionDate !== "Ngày giao dịch" &&
+        !item.transactionDate.toLowerCase().includes("ngày giao dịch")
+      );
+
+    return paymentHistory;
+  } catch (error) {
+    console.error("Error reading payment history from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm lịch sử thanh toán mới vào Google Sheets
+ */
+export async function addPaymentHistoryToSheet(payment: PaymentHistory): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLichSuThanhToan,
+      range: `${sheetNameLichSuThanhToan}!A:E`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Tìm dòng cuối có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    const values = [
+      [
+        formatDateVN(payment.transactionDate),
+        payment.loanCode.toUpperCase(),
+        payment.transactionType,
+        payment.amountIn > 0 ? formatNumberVN(payment.amountIn) : "",
+        payment.amountOut > 0 ? formatNumberVN(payment.amountOut) : "",
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLichSuThanhToan,
+      range: `${sheetNameLichSuThanhToan}!A${nextRow}:E${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added payment history at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding payment history to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật lịch sử thanh toán trong Google Sheets
+ */
+export async function updatePaymentHistoryInSheet(payment: PaymentHistory): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = payment.id + 1; // ID 1 = dòng 2
+
+    const values = [
+      [
+        formatDateVN(payment.transactionDate),
+        payment.loanCode.toUpperCase(),
+        payment.transactionType,
+        payment.amountIn > 0 ? formatNumberVN(payment.amountIn) : "",
+        payment.amountOut > 0 ? formatNumberVN(payment.amountOut) : "",
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLichSuThanhToan,
+      range: `${sheetNameLichSuThanhToan}!A${rowNumber}:E${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated payment history ID: ${payment.id}`);
+  } catch (error) {
+    console.error("Error updating payment history in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa lịch sử thanh toán khỏi Google Sheets
+ */
+export async function deletePaymentHistoryFromSheet(paymentId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = paymentId + 1;
+
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdLichSuThanhToan,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameLichSuThanhToan
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      throw new Error(`Cannot find sheet named "${sheetNameLichSuThanhToan}"`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdLichSuThanhToan,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted payment history ID: ${paymentId}`);
+  } catch (error) {
+    console.error("Error deleting payment history from Google Sheets:", error);
     throw error;
   }
 }

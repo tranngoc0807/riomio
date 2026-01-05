@@ -25,6 +25,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import Portal from "@/components/Portal";
+import type { PaymentHistory } from "@/lib/googleSheets";
 
 // Types
 interface Loan {
@@ -42,15 +43,6 @@ interface Loan {
   notes?: string;
 }
 
-interface PaymentRecord {
-  id: number;
-  loanId: string;
-  date: string;
-  principalPaid: number;
-  interestPaid: number;
-  totalPaid: number;
-  remainingAfter: number;
-}
 
 // Google Sheets loan interface
 interface GoogleSheetsLoan {
@@ -126,7 +118,36 @@ export default function QuanLyTienVay() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [loans, setLoans] = useState<Loan[]>([]);
   const [isLoadingLoans, setIsLoadingLoans] = useState(false);
-  const [paymentRecords] = useState<PaymentRecord[]>([]);
+
+  // Payment History state
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
+  const [isLoadingPaymentHistory, setIsLoadingPaymentHistory] = useState(false);
+  const [isAddingPayment, setIsAddingPayment] = useState(false);
+  const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+  const [isDeletingPayment, setIsDeletingPayment] = useState(false);
+
+  // Payment History modal states
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [showViewPaymentModal, setShowViewPaymentModal] = useState(false);
+  const [showEditPaymentModal, setShowEditPaymentModal] = useState(false);
+  const [showDeletePaymentModal, setShowDeletePaymentModal] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentHistory | null>(null);
+  const [paymentToDelete, setPaymentToDelete] = useState<number | null>(null);
+  const [newPayment, setNewPayment] = useState<Omit<PaymentHistory, "id">>({
+    transactionDate: "",
+    loanCode: "",
+    transactionType: "",
+    amountIn: 0,
+    amountOut: 0,
+  });
+  const [editPayment, setEditPayment] = useState<PaymentHistory>({
+    id: 0,
+    transactionDate: "",
+    loanCode: "",
+    transactionType: "",
+    amountIn: 0,
+    amountOut: 0,
+  });
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -185,6 +206,30 @@ export default function QuanLyTienVay() {
   // Load loans on component mount
   useEffect(() => {
     fetchLoans();
+  }, []);
+
+  // Fetch payment history from API
+  const fetchPaymentHistory = async () => {
+    try {
+      setIsLoadingPaymentHistory(true);
+      const response = await fetch("/api/payment-history");
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setPaymentHistory(result.data);
+      } else {
+        console.error("Failed to fetch payment history:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+    } finally {
+      setIsLoadingPaymentHistory(false);
+    }
+  };
+
+  // Load payment history on component mount
+  useEffect(() => {
+    fetchPaymentHistory();
   }, []);
 
   // Calculations
@@ -428,6 +473,120 @@ export default function QuanLyTienVay() {
     }
   };
 
+  // Payment History handlers
+  const handleViewPayment = (payment: PaymentHistory) => {
+    setSelectedPayment(payment);
+    setShowViewPaymentModal(true);
+  };
+
+  const handleEditPayment = (payment: PaymentHistory) => {
+    setEditPayment({ ...payment });
+    setShowEditPaymentModal(true);
+  };
+
+  const handleDeletePayment = (id: number) => {
+    setPaymentToDelete(id);
+    setShowDeletePaymentModal(true);
+  };
+
+  const handleAddPayment = async () => {
+    try {
+      setIsAddingPayment(true);
+      const response = await fetch("/api/payment-history/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newPayment),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Thêm lịch sử thanh toán thành công!");
+        await fetchPaymentHistory();
+        setShowAddPaymentModal(false);
+        setNewPayment({
+          transactionDate: "",
+          loanCode: "",
+          transactionType: "",
+          amountIn: 0,
+          amountOut: 0,
+        });
+      } else {
+        toast.error(`Lỗi: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error adding payment:", error);
+      toast.error("Có lỗi xảy ra khi thêm lịch sử thanh toán");
+    } finally {
+      setIsAddingPayment(false);
+    }
+  };
+
+  const handleSaveEditPayment = async () => {
+    try {
+      setIsUpdatingPayment(true);
+      const response = await fetch("/api/payment-history/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editPayment),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Cập nhật lịch sử thanh toán thành công!");
+        await fetchPaymentHistory();
+        setShowEditPaymentModal(false);
+        setEditPayment({
+          id: 0,
+          transactionDate: "",
+          loanCode: "",
+          transactionType: "",
+          amountIn: 0,
+          amountOut: 0,
+        });
+      } else {
+        toast.error(`Lỗi: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      toast.error("Có lỗi xảy ra khi cập nhật lịch sử thanh toán");
+    } finally {
+      setIsUpdatingPayment(false);
+    }
+  };
+
+  const confirmDeletePayment = async () => {
+    if (paymentToDelete === null) return;
+
+    try {
+      setIsDeletingPayment(true);
+      const response = await fetch(`/api/payment-history/delete?id=${paymentToDelete}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Xóa lịch sử thanh toán thành công!");
+        await fetchPaymentHistory();
+        setShowDeletePaymentModal(false);
+        setPaymentToDelete(null);
+      } else {
+        toast.error(`Lỗi: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting payment:", error);
+      toast.error("Có lỗi xảy ra khi xóa lịch sử thanh toán");
+    } finally {
+      setIsDeletingPayment(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <Toaster position="top-right" />
@@ -490,6 +649,15 @@ export default function QuanLyTienVay() {
               >
                 <Plus className="w-4 h-4" />
                 Thêm khoản vay
+              </button>
+            )}
+            {activeTab === "lich-thanh-toan" && (
+              <button
+                onClick={() => setShowAddPaymentModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Thêm giao dịch
               </button>
             )}
           </div>
@@ -611,6 +779,109 @@ export default function QuanLyTienVay() {
           {/* Tab: Lịch thanh toán */}
           {activeTab === "lich-thanh-toan" && (
             <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Lịch sử thanh toán</h3>
+              {isLoadingPaymentHistory ? (
+                <div className="text-center py-12 text-gray-500">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                  <p>Đang tải dữ liệu...</p>
+                </div>
+              ) : paymentHistory.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <History className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p className="font-medium">Chưa có lịch sử thanh toán nào</p>
+                  <p className="text-sm mt-1">Nhấn &quot;Thêm giao dịch&quot; để bắt đầu</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày giao dịch</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã món vay</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Loại giao dịch</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Số tiền thu</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Số tiền chi</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {paymentHistory.map((payment) => (
+                        <tr key={payment.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-gray-400" />
+                              <span className="text-gray-900">{payment.transactionDate}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="font-medium text-blue-600">{payment.loanCode}</span>
+                          </td>
+                          <td className="px-4 py-4 text-gray-900">{payment.transactionType}</td>
+                          <td className="px-4 py-4 text-right">
+                            {payment.amountIn > 0 && (
+                              <span className="flex items-center justify-end gap-1 text-green-600 font-medium">
+                                <ArrowDownRight className="w-4 h-4" />
+                                {formatCurrency(payment.amountIn)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            {payment.amountOut > 0 && (
+                              <span className="flex items-center justify-end gap-1 text-red-600 font-medium">
+                                <ArrowUpRight className="w-4 h-4" />
+                                {formatCurrency(payment.amountOut)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleViewPayment(payment)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Xem chi tiết"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleEditPayment(payment)}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="Sửa"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeletePayment(payment.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Xóa"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-100 font-semibold">
+                        <td className="px-4 py-3 text-gray-900" colSpan={3}>Tổng cộng</td>
+                        <td className="px-4 py-3 text-right text-green-600">
+                          {formatCurrency(paymentHistory.reduce((s, p) => s + p.amountIn, 0))}
+                        </td>
+                        <td className="px-4 py-3 text-right text-red-600">
+                          {formatCurrency(paymentHistory.reduce((s, p) => s + p.amountOut, 0))}
+                        </td>
+                        <td className="px-4 py-3"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab: Lịch sử trả nợ */}
+          {activeTab === "lich-su-tra" && (
+            <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Các khoản thanh toán sắp tới</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {upcomingPayments.map((payment, index) => {
@@ -652,66 +923,6 @@ export default function QuanLyTienVay() {
                 <p className="text-3xl font-bold text-yellow-700">
                   {formatCurrency(upcomingPayments.reduce((sum, p) => sum + p.amount, 0))}
                 </p>
-              </div>
-            </div>
-          )}
-
-          {/* Tab: Lịch sử trả nợ */}
-          {activeTab === "lich-su-tra" && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Lịch sử thanh toán</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã vay</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bên cho vay</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Trả gốc</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Trả lãi</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Tổng trả</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Còn nợ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {paymentRecords.map((record) => {
-                      const loan = loans.find((l) => l.id === record.loanId);
-                      return (
-                        <tr key={record.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-4">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-400" />
-                              <span className="text-gray-900">{new Date(record.date).toLocaleDateString("vi-VN")}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="font-medium text-blue-600">{record.loanId}</span>
-                          </td>
-                          <td className="px-4 py-4 text-gray-900">{loan?.lender}</td>
-                          <td className="px-4 py-4 text-right text-green-600">{formatCurrency(record.principalPaid)}</td>
-                          <td className="px-4 py-4 text-right text-orange-600">{formatCurrency(record.interestPaid)}</td>
-                          <td className="px-4 py-4 text-right font-medium text-gray-900">{formatCurrency(record.totalPaid)}</td>
-                          <td className="px-4 py-4 text-right text-red-600">{formatCurrency(record.remainingAfter)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-100 font-semibold">
-                      <td className="px-4 py-3 text-gray-900" colSpan={3}>Tổng cộng</td>
-                      <td className="px-4 py-3 text-right text-green-600">
-                        {formatCurrency(paymentRecords.reduce((s, r) => s + r.principalPaid, 0))}
-                      </td>
-                      <td className="px-4 py-3 text-right text-orange-600">
-                        {formatCurrency(paymentRecords.reduce((s, r) => s + r.interestPaid, 0))}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-900">
-                        {formatCurrency(paymentRecords.reduce((s, r) => s + r.totalPaid, 0))}
-                      </td>
-                      <td className="px-4 py-3"></td>
-                    </tr>
-                  </tfoot>
-                </table>
               </div>
             </div>
           )}
@@ -1238,6 +1449,354 @@ export default function QuanLyTienVay() {
                     <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                   )}
                   {isSubmitting ? "Đang xóa..." : "Xóa khoản vay"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Add Payment History Modal */}
+      {showAddPaymentModal && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-50 bg-black/20"
+            onClick={() => setShowAddPaymentModal(false)}
+          />
+          <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Thêm giao dịch mới</h3>
+                <p className="text-sm text-gray-500">Nhập thông tin giao dịch</p>
+              </div>
+              <button
+                onClick={() => setShowAddPaymentModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày giao dịch *</label>
+                  <input
+                    type="date"
+                    value={newPayment.transactionDate}
+                    onChange={(e) => setNewPayment({ ...newPayment, transactionDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã món vay</label>
+                  <input
+                    type="text"
+                    value={newPayment.loanCode}
+                    onChange={(e) => setNewPayment({ ...newPayment, loanCode: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="VD: MV01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Loại giao dịch</label>
+                  <input
+                    type="text"
+                    value={newPayment.transactionType}
+                    onChange={(e) => setNewPayment({ ...newPayment, transactionType: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="VD: Trả lãi, Trả gốc..."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền thu</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={newPayment.amountIn || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setNewPayment({ ...newPayment, amountIn: val ? Number(val) : 0 });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền chi</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={newPayment.amountOut || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setNewPayment({ ...newPayment, amountOut: val ? Number(val) : 0 });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAddPaymentModal(false)}
+                  disabled={isAddingPayment}
+                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleAddPayment}
+                  disabled={isAddingPayment}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isAddingPayment && (
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  )}
+                  {isAddingPayment ? "Đang thêm..." : "Thêm giao dịch"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* View Payment History Modal */}
+      {showViewPaymentModal && selectedPayment && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-50 bg-black/20"
+            onClick={() => setShowViewPaymentModal(false)}
+          />
+          <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Chi tiết giao dịch</h3>
+                <p className="text-sm text-gray-500">ID: {selectedPayment.id}</p>
+              </div>
+              <button
+                onClick={() => setShowViewPaymentModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Ngày giao dịch</span>
+                  <span className="text-gray-900 font-medium">{selectedPayment.transactionDate}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Mã món vay</span>
+                  <span className="text-blue-600 font-medium">{selectedPayment.loanCode}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Loại giao dịch</span>
+                  <span className="text-gray-900 font-medium">{selectedPayment.transactionType}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Số tiền thu</span>
+                  <span className="text-green-600 font-medium">{formatCurrency(selectedPayment.amountIn)}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Số tiền chi</span>
+                  <span className="text-red-600 font-medium">{formatCurrency(selectedPayment.amountOut)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowViewPaymentModal(false)}
+                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={() => {
+                    setShowViewPaymentModal(false);
+                    handleEditPayment(selectedPayment);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Sửa giao dịch
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Edit Payment History Modal */}
+      {showEditPaymentModal && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-50 bg-black/20"
+            onClick={() => setShowEditPaymentModal(false)}
+          />
+          <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Sửa giao dịch</h3>
+                <p className="text-sm text-gray-500">ID: {editPayment.id}</p>
+              </div>
+              <button
+                onClick={() => setShowEditPaymentModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày giao dịch *</label>
+                  <input
+                    type="date"
+                    value={editPayment.transactionDate}
+                    onChange={(e) => setEditPayment({ ...editPayment, transactionDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã món vay</label>
+                  <input
+                    type="text"
+                    value={editPayment.loanCode}
+                    onChange={(e) => setEditPayment({ ...editPayment, loanCode: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="VD: MV01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Loại giao dịch</label>
+                  <input
+                    type="text"
+                    value={editPayment.transactionType}
+                    onChange={(e) => setEditPayment({ ...editPayment, transactionType: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="VD: Trả lãi, Trả gốc..."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền thu</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editPayment.amountIn || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setEditPayment({ ...editPayment, amountIn: val ? Number(val) : 0 });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền chi</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editPayment.amountOut || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setEditPayment({ ...editPayment, amountOut: val ? Number(val) : 0 });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEditPaymentModal(false)}
+                  disabled={isUpdatingPayment}
+                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveEditPayment}
+                  disabled={isUpdatingPayment}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isUpdatingPayment && (
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  )}
+                  {isUpdatingPayment ? "Đang lưu..." : "Lưu thay đổi"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Delete Payment History Modal */}
+      {showDeletePaymentModal && paymentToDelete !== null && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-50 bg-black/50"
+            onClick={() => !isDeletingPayment && setShowDeletePaymentModal(false)}
+          />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-full max-w-md bg-white rounded-xl shadow-2xl">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa giao dịch</h3>
+                  <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4">
+              <p className="text-gray-700">
+                Bạn có chắc chắn muốn xóa giao dịch này?
+              </p>
+              <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p className="text-sm text-yellow-800">
+                  <strong>Lưu ý:</strong> Dữ liệu sẽ bị xóa vĩnh viễn khỏi Google Sheets.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeletePaymentModal(false);
+                    setPaymentToDelete(null);
+                  }}
+                  disabled={isDeletingPayment}
+                  className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDeletePayment}
+                  disabled={isDeletingPayment}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isDeletingPayment && (
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  )}
+                  {isDeletingPayment ? "Đang xóa..." : "Xóa giao dịch"}
                 </button>
               </div>
             </div>
