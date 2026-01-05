@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -91,8 +92,26 @@ const formatPrice = (price: number) => {
 };
 
 export default function SanPhamPage() {
-  // Tab state
-  const [activeTab, setActiveTab] = useState<"phat-trien" | "danh-muc">("phat-trien");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Tab state - read from URL param
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<"phat-trien" | "danh-muc">(
+    tabParam === "danh-muc" ? "danh-muc" : "phat-trien"
+  );
+
+  // Handle tab change with URL update
+  const handleTabChange = (tab: "phat-trien" | "danh-muc") => {
+    setActiveTab(tab);
+    router.push(`/san-pham?tab=${tab}`, { scroll: false });
+  };
+
+  // Sync tab state when URL param changes (browser back/forward)
+  useEffect(() => {
+    const newTab = tabParam === "danh-muc" ? "danh-muc" : "phat-trien";
+    setActiveTab(newTab);
+  }, [tabParam]);
 
   // ======== PHÁT TRIỂN SẢN PHẨM STATE ========
   const [products, setProducts] = useState<SanPham[]>([]);
@@ -547,7 +566,7 @@ export default function SanPhamPage() {
       <div className="border-b border-gray-200">
         <nav className="flex gap-4">
           <button
-            onClick={() => setActiveTab("phat-trien")}
+            onClick={() => handleTabChange("phat-trien")}
             className={`flex items-center gap-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors ${
               activeTab === "phat-trien"
                 ? "border-purple-600 text-purple-600"
@@ -558,7 +577,7 @@ export default function SanPhamPage() {
             Phát triển sản phẩm
           </button>
           <button
-            onClick={() => setActiveTab("danh-muc")}
+            onClick={() => handleTabChange("danh-muc")}
             className={`flex items-center gap-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors ${
               activeTab === "danh-muc"
                 ? "border-purple-600 text-purple-600"
