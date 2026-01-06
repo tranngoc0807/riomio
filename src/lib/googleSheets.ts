@@ -2055,20 +2055,32 @@ export interface KeHoachSX {
   mainFabric: string;     // Vải chính (Cột H)
   color: string;          // Màu sắc (Cột I)
   image: string;          // Hình ảnh (Cột J)
-  // Sizes cho trẻ em (Cột K-O)
-  size1_2: number;
-  size3_4: number;
-  size5_6: number;
-  size7_8: number;
-  size9_10: number;
-  // Sizes cho người lớn (Cột P-T)
+  // Sizes cho trẻ em (Cột K-AA)
+  size6m: number;         // 6m
+  size9m: number;         // 9m
+  size0_1: number;        // 0/1
+  size1_2: number;        // 1/2
+  size2_3: number;        // 2/3
+  size3_4: number;        // 3/4
+  size4_5: number;        // 4/5
+  size5_6: number;        // 5/6
+  size6_7: number;        // 6/7
+  size7_8: number;        // 7/8
+  size8_9: number;        // 8/9
+  size9_10: number;       // 9/10
+  size10_11: number;      // 10/11
+  size11_12: number;      // 11/12
+  size12_13: number;      // 12/13
+  size13_14: number;      // 13/14
+  size14_15: number;      // 14/15
+  // Sizes cho người lớn (Cột AB-AF)
   sizeXS: number;
   sizeS: number;
   sizeM: number;
   sizeL: number;
   sizeXL: number;
-  totalQuantity: number;  // Tổng SL (Cột U)
-  note: string;           // Ghi chú (Cột V)
+  totalQuantity: number;  // Tổng SL (Cột AG)
+  note: string;           // Ghi chú (Cột AH)
 }
 
 // Helper function to parse quantity values
@@ -2088,7 +2100,7 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `${sheetNameKeHoachSX}!A2:V`, // Đọc từ dòng 2
+      range: `${sheetNameKeHoachSX}!A2:AH`, // Đọc từ dòng 2 đến cột AH
     });
 
     const rows = response.data.values;
@@ -2111,18 +2123,32 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
         mainFabric: row[7] || "",
         color: row[8] || "",
         image: row[9] || "",
-        size1_2: parseQuantity(row[10]),
-        size3_4: parseQuantity(row[11]),
-        size5_6: parseQuantity(row[12]),
-        size7_8: parseQuantity(row[13]),
-        size9_10: parseQuantity(row[14]),
-        sizeXS: parseQuantity(row[15]),
-        sizeS: parseQuantity(row[16]),
-        sizeM: parseQuantity(row[17]),
-        sizeL: parseQuantity(row[18]),
-        sizeXL: parseQuantity(row[19]),
-        totalQuantity: parseQuantity(row[20]),
-        note: row[21] || "",
+        // Sizes cho trẻ em (Cột K-AA)
+        size6m: parseQuantity(row[10]),
+        size9m: parseQuantity(row[11]),
+        size0_1: parseQuantity(row[12]),
+        size1_2: parseQuantity(row[13]),
+        size2_3: parseQuantity(row[14]),
+        size3_4: parseQuantity(row[15]),
+        size4_5: parseQuantity(row[16]),
+        size5_6: parseQuantity(row[17]),
+        size6_7: parseQuantity(row[18]),
+        size7_8: parseQuantity(row[19]),
+        size8_9: parseQuantity(row[20]),
+        size9_10: parseQuantity(row[21]),
+        size10_11: parseQuantity(row[22]),
+        size11_12: parseQuantity(row[23]),
+        size12_13: parseQuantity(row[24]),
+        size13_14: parseQuantity(row[25]),
+        size14_15: parseQuantity(row[26]),
+        // Sizes cho người lớn (Cột AB-AF)
+        sizeXS: parseQuantity(row[27]),
+        sizeS: parseQuantity(row[28]),
+        sizeM: parseQuantity(row[29]),
+        sizeL: parseQuantity(row[30]),
+        sizeXL: parseQuantity(row[31]),
+        totalQuantity: parseQuantity(row[32]),
+        note: row[33] || "",
       }))
       .filter((item) =>
         // Bỏ qua header và dòng trống
@@ -2148,7 +2174,7 @@ export async function addKeHoachSXToSheet(keHoach: KeHoachSX): Promise<void> {
     // Đọc toàn bộ dữ liệu để tìm dòng cuối
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `${sheetNameKeHoachSX}!A:V`,
+      range: `${sheetNameKeHoachSX}!A:AH`,
     });
 
     const allRows = response.data.values || [];
@@ -2176,11 +2202,25 @@ export async function addKeHoachSXToSheet(keHoach: KeHoachSX): Promise<void> {
         keHoach.mainFabric,
         keHoach.color,
         keHoach.image,
+        // Sizes cho trẻ em
+        keHoach.size6m || "",
+        keHoach.size9m || "",
+        keHoach.size0_1 || "",
         keHoach.size1_2 || "",
+        keHoach.size2_3 || "",
         keHoach.size3_4 || "",
+        keHoach.size4_5 || "",
         keHoach.size5_6 || "",
+        keHoach.size6_7 || "",
         keHoach.size7_8 || "",
+        keHoach.size8_9 || "",
         keHoach.size9_10 || "",
+        keHoach.size10_11 || "",
+        keHoach.size11_12 || "",
+        keHoach.size12_13 || "",
+        keHoach.size13_14 || "",
+        keHoach.size14_15 || "",
+        // Sizes cho người lớn
         keHoach.sizeXS || "",
         keHoach.sizeS || "",
         keHoach.sizeM || "",
@@ -2193,7 +2233,7 @@ export async function addKeHoachSXToSheet(keHoach: KeHoachSX): Promise<void> {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `${sheetNameKeHoachSX}!A${nextRow}:V${nextRow}`,
+      range: `${sheetNameKeHoachSX}!A${nextRow}:AH${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -2228,11 +2268,25 @@ export async function updateKeHoachSXInSheet(keHoach: KeHoachSX): Promise<void> 
         keHoach.mainFabric,
         keHoach.color,
         keHoach.image,
+        // Sizes cho trẻ em
+        keHoach.size6m || "",
+        keHoach.size9m || "",
+        keHoach.size0_1 || "",
         keHoach.size1_2 || "",
+        keHoach.size2_3 || "",
         keHoach.size3_4 || "",
+        keHoach.size4_5 || "",
         keHoach.size5_6 || "",
+        keHoach.size6_7 || "",
         keHoach.size7_8 || "",
+        keHoach.size8_9 || "",
         keHoach.size9_10 || "",
+        keHoach.size10_11 || "",
+        keHoach.size11_12 || "",
+        keHoach.size12_13 || "",
+        keHoach.size13_14 || "",
+        keHoach.size14_15 || "",
+        // Sizes cho người lớn
         keHoach.sizeXS || "",
         keHoach.sizeS || "",
         keHoach.sizeM || "",
@@ -2245,7 +2299,7 @@ export async function updateKeHoachSXInSheet(keHoach: KeHoachSX): Promise<void> 
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `${sheetNameKeHoachSX}!A${rowNumber}:V${rowNumber}`,
+      range: `${sheetNameKeHoachSX}!A${rowNumber}:AH${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -3236,6 +3290,192 @@ export async function deleteSanPhamCatalogFromSheet(productId: number): Promise<
     console.log(`Successfully deleted san pham catalog ID: ${productId}`);
   } catch (error) {
     console.error("Error deleting san pham catalog from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// SHIPPING UNIT MANAGEMENT (Quản lý đơn vị vận chuyển)
+// ============================================
+
+const spreadsheetIdVanChuyen = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const sheetNameVanChuyen = process.env.GOOGLE_SHEET_NAME_VAN_CHUYEN || "VanChuyen";
+
+// Interface cho đơn vị vận chuyển
+export interface ShippingUnit {
+  id: number;
+  name: string;       // Tên đơn vị vận chuyển
+  phone: string;      // Số điện thoại
+  address: string;    // Địa chỉ
+  contact: string;    // Người liên hệ
+  note: string;       // Ghi chú
+}
+
+/**
+ * Đọc danh sách đơn vị vận chuyển từ Google Sheets
+ * Sheet: VanChuyen
+ * Cột B: Tên ĐVVC, C: SĐT, D: Địa chỉ, E: Liên hệ, F: Ghi chú
+ */
+export async function getShippingUnitsFromSheet(): Promise<ShippingUnit[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdVanChuyen,
+      range: `${sheetNameVanChuyen}!B2:F`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No shipping unit data found in sheet.");
+      return [];
+    }
+
+    const shippingUnits: ShippingUnit[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        name: row[0] || "",
+        phone: row[1] || "",
+        address: row[2] || "",
+        contact: row[3] || "",
+        note: row[4] || "",
+      }))
+      .filter((unit) => unit.name.trim() !== "");
+
+    return shippingUnits;
+  } catch (error) {
+    console.error("Error reading shipping units from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm đơn vị vận chuyển mới vào Google Sheets
+ */
+export async function addShippingUnitToSheet(shippingUnit: ShippingUnit): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdVanChuyen,
+      range: `${sheetNameVanChuyen}!A:F`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Bỏ qua header (dòng 1), tìm dòng cuối cùng có dữ liệu
+    let lastDataRow = 1;
+    for (let i = allRows.length - 1; i >= 1; i--) {
+      if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const newRowNumber = lastDataRow + 1;
+    const newSTT = lastDataRow;
+
+    // Ghi dữ liệu mới vào dòng tiếp theo
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdVanChuyen,
+      range: `${sheetNameVanChuyen}!A${newRowNumber}:F${newRowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          newSTT,
+          shippingUnit.name,
+          shippingUnit.phone,
+          shippingUnit.address,
+          shippingUnit.contact,
+          shippingUnit.note,
+        ]],
+      },
+    });
+
+    console.log(`Successfully added shipping unit: ${shippingUnit.name} at row ${newRowNumber}`);
+  } catch (error) {
+    console.error("Error adding shipping unit to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật đơn vị vận chuyển trong Google Sheets
+ */
+export async function updateShippingUnitInSheet(shippingUnit: ShippingUnit): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = shippingUnit.id + 1;
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdVanChuyen,
+      range: `${sheetNameVanChuyen}!B${rowNumber}:F${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          shippingUnit.name,
+          shippingUnit.phone,
+          shippingUnit.address,
+          shippingUnit.contact,
+          shippingUnit.note,
+        ]],
+      },
+    });
+
+    console.log(`Successfully updated shipping unit ID: ${shippingUnit.id}`);
+  } catch (error) {
+    console.error("Error updating shipping unit in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa đơn vị vận chuyển khỏi Google Sheets
+ */
+export async function deleteShippingUnitFromSheet(unitId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowNumber = unitId + 1;
+
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdVanChuyen,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameVanChuyen
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      throw new Error(`Cannot find sheet named "${sheetNameVanChuyen}" to delete row`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdVanChuyen,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted shipping unit with ID: ${unitId}`);
+  } catch (error) {
+    console.error("Error deleting shipping unit from Google Sheets:", error);
     throw error;
   }
 }
