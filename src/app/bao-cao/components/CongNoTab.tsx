@@ -1,63 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { Eye } from "lucide-react";
-import { DebtReport, formatCurrency } from "./types";
+import { useState, useEffect } from "react";
+import { Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { DebtReport, CongNoItem, formatCurrency } from "./types";
 
-// Sample data
-const debtData: DebtReport[] = [
-  {
-    id: 1,
-    name: "Công ty TNHH ABC Fashion",
-    type: "customer",
-    totalDebt: 125000000,
-    paid: 75000000,
-    remaining: 50000000,
-    dueDate: "2024-12-30",
-    status: "normal",
-  },
-  {
-    id: 2,
-    name: "Shop Thời trang XYZ",
-    type: "customer",
-    totalDebt: 85000000,
-    paid: 45000000,
-    remaining: 40000000,
-    dueDate: "2024-12-25",
-    status: "warning",
-  },
-  {
-    id: 3,
-    name: "NCC Vải Hoàng Minh",
-    type: "supplier",
-    totalDebt: 200000000,
-    paid: 150000000,
-    remaining: 50000000,
-    dueDate: "2024-12-20",
-    status: "overdue",
-  },
-  {
-    id: 4,
-    name: "Xưởng may Tân Bình",
-    type: "workshop",
-    totalDebt: 95000000,
-    paid: 60000000,
-    remaining: 35000000,
-    dueDate: "2025-01-05",
-    status: "normal",
-  },
-  {
-    id: 5,
-    name: "NCC Phụ liệu Kim Long",
-    type: "supplier",
-    totalDebt: 45000000,
-    paid: 45000000,
-    remaining: 0,
-    dueDate: "2024-12-15",
-    status: "normal",
-  },
-];
+const ITEMS_PER_PAGE = 50;
 
+// Badge for new data from sheet (based on duCuoiKy value)
+const getDebtStatusBadgeByValue = (duCuoiKy: number) => {
+  if (duCuoiKy === 0) {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        Đã thanh toán
+      </span>
+    );
+  } else if (duCuoiKy < 0) {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+        Dư thừa
+      </span>
+    );
+  } else {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+        Còn nợ
+      </span>
+    );
+  }
+};
+
+// Badge for old data format (based on status string) - for backward compatibility
 const getDebtStatusBadge = (status: string) => {
   switch (status) {
     case "normal":
@@ -113,88 +85,133 @@ interface CongNoTabProps {
 }
 
 export default function CongNoTab({ onViewDetail }: CongNoTabProps) {
-  const [debtFilter, setDebtFilter] = useState<
-    "all" | "customer" | "supplier" | "workshop"
-  >("all");
+  const [congNoData, setCongNoData] = useState<CongNoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredDebtData =
-    debtFilter === "all"
-      ? debtData
-      : debtData.filter((d) => d.type === debtFilter);
+  useEffect(() => {
+    fetchCongNoData();
+  }, []);
+
+  const fetchCongNoData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch("/api/cong-no");
+      const result = await response.json();
+
+      if (result.success) {
+        setCongNoData(result.data);
+      } else {
+        setError(result.error || "Không thể tải dữ liệu công nợ");
+      }
+    } catch (err) {
+      setError("Lỗi kết nối. Vui lòng thử lại sau.");
+      console.error("Error fetching cong no:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Convert CongNoItem to DebtReport for detail modal
+  const handleViewDetail = (item: CongNoItem) => {
+    const report: DebtReport = {
+      id: item.id,
+      name: item.khachHang,
+      type: "customer",
+      totalDebt: item.duDauKy + item.phatSinh,
+      paid: item.thanhToan,
+      remaining: item.duCuoiKy,
+      dueDate: "-",
+      status:
+        item.duCuoiKy === 0
+          ? "normal"
+          : item.duCuoiKy < 0
+          ? "normal"
+          : "warning",
+    };
+    onViewDetail(report, "debt");
+  };
+
+  // Pagination
+  const totalPages = Math.ceil(congNoData.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedData = congNoData.slice(startIndex, endIndex);
+
+  // Calculate totals (for all data)
+  const totalDuDauKy = congNoData.reduce((sum, item) => sum + item.duDauKy, 0);
+  const totalPhatSinh = congNoData.reduce(
+    (sum, item) => sum + item.phatSinh,
+    0
+  );
+  const totalThanhToan = congNoData.reduce(
+    (sum, item) => sum + item.thanhToan,
+    0
+  );
+  const totalDuCuoiKy = congNoData.reduce(
+    (sum, item) => sum + item.duCuoiKy,
+    0
+  );
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Đang tải dữ liệu công nợ...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error}</p>
+        <button
+          onClick={fetchCongNoData}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Báo cáo công nợ</h3>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-            <button
-              onClick={() => setDebtFilter("all")}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                debtFilter === "all"
-                  ? "bg-white shadow text-gray-900"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Tất cả
-            </button>
-            <button
-              onClick={() => setDebtFilter("customer")}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                debtFilter === "customer"
-                  ? "bg-white shadow text-gray-900"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Khách hàng
-            </button>
-            <button
-              onClick={() => setDebtFilter("supplier")}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                debtFilter === "supplier"
-                  ? "bg-white shadow text-gray-900"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              NCC NPL
-            </button>
-            <button
-              onClick={() => setDebtFilter("workshop")}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                debtFilter === "workshop"
-                  ? "bg-white shadow text-gray-900"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Xưởng SX
-            </button>
-          </div>
-        </div>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Báo cáo công nợ phải thu khách hàng ({congNoData.length} khách hàng)
+        </h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50">
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Đối tượng
+                STT
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Loại
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Tổng nợ
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Khách hàng
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Đã trả
+                Dư đầu kì
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Còn lại
+                Phát sinh
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Hạn trả
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Thanh toán
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Trạng thái
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Dư cuối kì
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Thao tác
@@ -202,33 +219,44 @@ export default function CongNoTab({ onViewDetail }: CongNoTabProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredDebtData.map((row) => (
+            {paginatedData.map((row, index) => (
               <tr key={row.id} className="hover:bg-gray-50">
+                <td className="px-4 py-4 text-gray-600">
+                  {startIndex + index + 1}
+                </td>
                 <td className="px-4 py-4">
-                  <span className="font-medium text-gray-900">{row.name}</span>
+                  <span className="font-medium text-gray-900">
+                    {row.khachHang}
+                  </span>
                 </td>
-                <td className="px-4 py-4 text-center">
-                  {getDebtTypeBadge(row.type)}
+                <td
+                  className={`px-4 py-4 text-right ${
+                    row.duDauKy < 0 ? "text-red-600" : "text-gray-900"
+                  }`}
+                >
+                  {formatCurrency(row.duDauKy)}
                 </td>
-                <td className="px-4 py-4 text-right font-medium text-gray-900">
-                  {formatCurrency(row.totalDebt)}
+                <td className="px-4 py-4 text-right text-blue-600">
+                  {formatCurrency(row.phatSinh)}
                 </td>
                 <td className="px-4 py-4 text-right text-green-600">
-                  {formatCurrency(row.paid)}
+                  {formatCurrency(row.thanhToan)}
                 </td>
-                <td className="px-4 py-4 text-right font-medium text-orange-600">
-                  {formatCurrency(row.remaining)}
-                </td>
-                <td className="px-4 py-4 text-center text-gray-600">
-                  {new Date(row.dueDate).toLocaleDateString("vi-VN")}
-                </td>
-                <td className="px-4 py-4 text-center">
-                  {getDebtStatusBadge(row.status)}
+                <td
+                  className={`px-4 py-4 text-right font-medium ${
+                    row.duCuoiKy < 0
+                      ? "text-red-600"
+                      : row.duCuoiKy > 0
+                      ? "text-orange-600"
+                      : "text-gray-900"
+                  }`}
+                >
+                  {formatCurrency(row.duCuoiKy)}
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-center">
                     <button
-                      onClick={() => onViewDetail(row, "debt")}
+                      onClick={() => handleViewDetail(row)}
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Xem chi tiết"
                     >
@@ -244,29 +272,98 @@ export default function CongNoTab({ onViewDetail }: CongNoTabProps) {
               <td className="px-4 py-3 text-gray-900" colSpan={2}>
                 Tổng cộng
               </td>
-              <td className="px-4 py-3 text-right text-gray-900">
-                {formatCurrency(
-                  filteredDebtData.reduce((s, d) => s + d.totalDebt, 0)
-                )}
+              <td
+                className={`px-4 py-3 text-right ${
+                  totalDuDauKy < 0 ? "text-red-600" : "text-gray-900"
+                }`}
+              >
+                {formatCurrency(totalDuDauKy)}
+              </td>
+              <td className="px-4 py-3 text-right text-blue-600">
+                {formatCurrency(totalPhatSinh)}
               </td>
               <td className="px-4 py-3 text-right text-green-600">
-                {formatCurrency(
-                  filteredDebtData.reduce((s, d) => s + d.paid, 0)
-                )}
+                {formatCurrency(totalThanhToan)}
               </td>
-              <td className="px-4 py-3 text-right text-orange-600">
-                {formatCurrency(
-                  filteredDebtData.reduce((s, d) => s + d.remaining, 0)
-                )}
+              <td
+                className={`px-4 py-3 text-right ${
+                  totalDuCuoiKy < 0
+                    ? "text-red-600"
+                    : totalDuCuoiKy > 0
+                    ? "text-orange-600"
+                    : "text-gray-900"
+                }`}
+              >
+                {formatCurrency(totalDuCuoiKy)}
               </td>
-              <td className="px-4 py-3" colSpan={3}></td>
+              <td className="px-4 py-3"></td>
             </tr>
           </tfoot>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+          <div className="text-sm text-gray-600">
+            Hiển thị {startIndex + 1} - {Math.min(endIndex, congNoData.length)}{" "}
+            / {congNoData.length} khách hàng
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Page numbers */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  return (
+                    page === 1 ||
+                    page === totalPages ||
+                    Math.abs(page - currentPage) <= 1
+                  );
+                })
+                .map((page, idx, arr) => {
+                  const showEllipsisBefore = idx > 0 && page - arr[idx - 1] > 1;
+                  return (
+                    <div key={page} className="flex items-center gap-1">
+                      {showEllipsisBefore && (
+                        <span className="px-2 text-gray-400">...</span>
+                      )}
+                      <button
+                        onClick={() => goToPage(page)}
+                        className={`min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white"
+                            : "hover:bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Export data and helpers for reuse
-export { debtData, getDebtStatusBadge, getDebtTypeBadge };
+// Export empty data for backward compatibility
+export const debtData: DebtReport[] = [];
+export { getDebtStatusBadge, getDebtTypeBadge };

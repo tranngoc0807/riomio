@@ -3694,3 +3694,57 @@ export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
     throw error;
   }
 }
+
+// ==================== CÔNG NỢ PHẢI THU KHÁCH HÀNG ====================
+
+const sheetNameCongNo = process.env.GOOGLE_SHEET_NAME_CNPT_KH || "CNPT KH";
+
+// Interface cho dữ liệu công nợ từ Google Sheet
+export interface CongNoItem {
+  id: number;
+  khachHang: string; // Khách hàng
+  duDauKy: number; // Dư đầu kì
+  phatSinh: number; // Phát sinh
+  thanhToan: number; // Thanh toán
+  duCuoiKy: number; // Dư cuối kì
+}
+
+/**
+ * Đọc dữ liệu công nợ phải thu khách hàng từ Google Sheets
+ * Header ở dòng 5, dữ liệu từ dòng 6
+ * Cột A: STT, B: Khách hàng, C: Dư đầu kì, D: Phát sinh, E: Thanh toán, F: Dư cuối kì
+ */
+export async function getCongNoFromSheet(): Promise<CongNoItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdTonKho, // Same spreadsheet as inventory
+      range: `'${sheetNameCongNo}'!B6:F`, // Cột B-F (Khách hàng đến Dư cuối kì), bỏ qua STT ở cột A
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No debt data found in sheet.");
+      return [];
+    }
+
+    // Chuyển đổi dữ liệu từ sheet thành CongNoItem objects
+    const congNoItems: CongNoItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        khachHang: row[0] || "", // Cột B: Khách hàng
+        duDauKy: parseFloat(String(row[1]).replace(/\./g, "").replace(",", ".")) || 0, // Cột C: Dư đầu kì
+        phatSinh: parseFloat(String(row[2]).replace(/\./g, "").replace(",", ".")) || 0, // Cột D: Phát sinh
+        thanhToan: parseFloat(String(row[3]).replace(/\./g, "").replace(",", ".")) || 0, // Cột E: Thanh toán
+        duCuoiKy: parseFloat(String(row[4]).replace(/\./g, "").replace(",", ".")) || 0, // Cột F: Dư cuối kì
+      }))
+      .filter((item) => item.khachHang.trim() !== ""); // Lọc bỏ các dòng trống
+
+    return congNoItems;
+  } catch (error) {
+    console.error("Error reading debt from Google Sheets:", error);
+    throw error;
+  }
+}

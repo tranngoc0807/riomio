@@ -41,6 +41,16 @@ export interface TonKhoItem {
   tonCuoi: number; // Tồn cuối
 }
 
+// Interface cho dữ liệu công nợ từ Google Sheet
+export interface CongNoItem {
+  id: number;
+  khachHang: string; // Khách hàng
+  duDauKy: number; // Dư đầu kì
+  phatSinh: number; // Phát sinh
+  thanhToan: number; // Thanh toán
+  duCuoiKy: number; // Dư cuối kì
+}
+
 export interface SalaryReport {
   id: number;
   employeeName: string;
