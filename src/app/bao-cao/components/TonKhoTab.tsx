@@ -102,12 +102,6 @@ export default function TonKhoTab({ onViewDetail }: TonKhoTabProps) {
         <h3 className="text-lg font-semibold text-gray-900">
           Báo cáo tồn kho ({tonKhoData.length} sản phẩm)
         </h3>
-        <button
-          onClick={fetchTonKhoData}
-          className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          Làm mới
-        </button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">

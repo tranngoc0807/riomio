@@ -3657,7 +3657,7 @@ export interface TonKhoItem {
 
 /**
  * Đọc dữ liệu tồn kho từ Google Sheets
- * Header ở dòng 1, dữ liệu từ dòng 2
+ * Header ở dòng 3, dữ liệu từ dòng 4
  * Cột A: STT, B: Mã SP, C: Nhập, D: Nhập, E: Xuất, F: Tồn cuối
  */
 export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
@@ -3666,7 +3666,7 @@ export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdTonKho,
-      range: `'${sheetNameTonKho}'!A2:F`, // Header dòng 1, dữ liệu từ dòng 2
+      range: `'${sheetNameTonKho}'!A6:F`, // Header dòng 3, dữ liệu từ dòng 4
     });
 
     const rows = response.data.values;
