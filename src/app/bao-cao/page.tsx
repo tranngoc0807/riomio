@@ -11,6 +11,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 // Import components
 import {
@@ -30,8 +31,20 @@ import {
   SalaryReport,
 } from "./components";
 
+const VALID_TABS = ["doanh-thu", "cong-no", "ton-kho", "nhan-su"];
+
 export default function BaoCao() {
-  const [activeTab, setActiveTab] = useState("doanh-thu");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Get active tab directly from URL (no useState needed for tab)
+  const tabFromUrl = searchParams.get("tab");
+  const activeTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : "doanh-thu";
+
+  // Update URL when tab changes
+  const handleTabChange = (tabId: string) => {
+    router.push(`/bao-cao?tab=${tabId}`, { scroll: false });
+  };
   const [dateRange, setDateRange] = useState("month");
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState<
@@ -167,7 +180,7 @@ export default function BaoCao() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.id
                     ? "border-blue-500 text-blue-600"
