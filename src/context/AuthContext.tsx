@@ -112,8 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const maxRetries = 3;
-    const timeout = 10000; // 10 seconds timeout
+    const maxRetries = 2;
+    const timeout = 3000; // 3 seconds timeout
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {

@@ -32,6 +32,7 @@ export async function PUT(request: NextRequest) {
 
     const thuChi: ThuChi = {
       id: body.id,
+      code: body.code || "",  // Giữ nguyên mã khi update
       date: body.date,
       accountName: body.accountName || "",
       nccNpl: body.nccNpl || "",
@@ -39,6 +40,7 @@ export async function PUT(request: NextRequest) {
       shippingCost: body.shippingCost || 0,
       salesIncome: body.salesIncome || 0,
       otherIncome: body.otherIncome || 0,
+      otherExpense: body.otherExpense || 0,
       entity: body.entity || "",
       content: body.content || "",
       category: body.category || "",

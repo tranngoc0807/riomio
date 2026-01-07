@@ -1818,6 +1818,56 @@ export async function deleteMaterialFromSheet(materialId: number): Promise<void>
 }
 
 // ============================================
+// PHÂN LOẠI THU CHI (Categories for Thu Chi)
+// ============================================
+
+const sheetNamePhanLoaiThuChi = process.env.GOOGLE_SHEET_NAME_PHAN_LOAI_THU_CHI || "PhanLoaiThuChi";
+
+// Interface cho phân loại thu chi
+export interface PhanLoaiThuChi {
+  id: number;
+  loaiPhieu: string;    // Loại phiếu: "Phiếu thu" hoặc "Phiếu chi"
+  noiDung: string;      // Nội dung phân loại
+}
+
+/**
+ * Đọc danh sách phân loại thu chi từ Google Sheets
+ */
+export async function getPhanLoaiThuChiFromSheet(): Promise<PhanLoaiThuChi[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: `${sheetNamePhanLoaiThuChi}!A2:C`, // STT, Loại phiếu, Nội dung
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No phan loai thu chi data found in sheet.");
+      return [];
+    }
+
+    const phanLoaiList: PhanLoaiThuChi[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        loaiPhieu: row[1] || "",
+        noiDung: row[2] || "",
+      }))
+      .filter((item) =>
+        item.noiDung.trim() !== "" &&
+        item.loaiPhieu.trim() !== ""
+      );
+
+    return phanLoaiList;
+  } catch (error) {
+    console.error("Error reading phan loai thu chi from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // THU CHI MANAGEMENT (Quản lý thu chi hàng ngày)
 // ============================================
 
@@ -1827,19 +1877,21 @@ const sheetNameThuChi = process.env.GOOGLE_SHEET_NAME_THU_CHI || "ThuChi";
 // Interface cho thu chi
 export interface ThuChi {
   id: number;
-  date: string;           // Ngày tháng (Cột A)
-  accountName: string;    // Tên TK (Cột B)
-  nccNpl: string;         // NCC NPL (Cột C)
-  workshop: string;       // Xưởng SX (Cột D)
-  shippingCost: number;   // Chi vận chuyển (Cột E)
-  salesIncome: number;    // Thu tiền hàng (Cột F)
-  otherIncome: number;    // Thu khác (Cột G)
-  entity: string;         // Đối tượng (Cột H)
-  content: string;        // Nội dung (Cột I)
-  category: string;       // Phân loại thu chi (Cột J)
-  totalIncome: number;    // Tổng thu (Cột K)
-  totalExpense: number;   // Tổng chi (Cột L)
-  note: string;           // Ghi chú (Cột M)
+  code: string;           // Mã Thu Chi (Cột A) - PT001, PC001...
+  date: string;           // Ngày tháng (Cột B)
+  accountName: string;    // Tên TK (Cột C)
+  nccNpl: string;         // NCC NPL (Cột D)
+  workshop: string;       // Xưởng SX (Cột E)
+  shippingCost: number;   // Chi vận chuyển (Cột F)
+  salesIncome: number;    // Thu tiền hàng (Cột G)
+  otherIncome: number;    // Thu khác (Cột H)
+  otherExpense: number;   // Chi khác (Cột I)
+  entity: string;         // Đối tượng (Cột J)
+  content: string;        // Nội dung (Cột K)
+  category: string;       // Phân loại thu chi (Cột L)
+  totalIncome: number;    // Tổng thu (Cột M)
+  totalExpense: number;   // Tổng chi (Cột N)
+  note: string;           // Ghi chú (Cột O)
 }
 
 // Helper function to parse price values
@@ -1859,7 +1911,7 @@ export async function getThuChiFromSheet(): Promise<ThuChi[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdThuChi,
-      range: `${sheetNameThuChi}!A2:M`, // Đọc từ dòng 2
+      range: `${sheetNameThuChi}!A2:O`, // Đọc từ dòng 2, cột A đến O
     });
 
     const rows = response.data.values;
@@ -1872,25 +1924,28 @@ export async function getThuChiFromSheet(): Promise<ThuChi[]> {
     const thuChiList: ThuChi[] = rows
       .map((row, index) => ({
         id: index + 1,
-        date: row[0] || "",
-        accountName: row[1] || "",
-        nccNpl: row[2] || "",
-        workshop: row[3] || "",
-        shippingCost: parseThuChiPrice(row[4]),
-        salesIncome: parseThuChiPrice(row[5]),
-        otherIncome: parseThuChiPrice(row[6]),
-        entity: row[7] || "",
-        content: row[8] || "",
-        category: row[9] || "",
-        totalIncome: parseThuChiPrice(row[10]),
-        totalExpense: parseThuChiPrice(row[11]),
-        note: row[12] || "",
+        code: row[0] || "",           // Cột A: Mã Thu Chi
+        date: row[1] || "",           // Cột B: Ngày tháng
+        accountName: row[2] || "",    // Cột C: Tên TK
+        nccNpl: row[3] || "",         // Cột D: NCC NPL
+        workshop: row[4] || "",       // Cột E: Xưởng SX
+        shippingCost: parseThuChiPrice(row[5]),  // Cột F: Chi vận chuyển
+        salesIncome: parseThuChiPrice(row[6]),   // Cột G: Thu tiền hàng
+        otherIncome: parseThuChiPrice(row[7]),   // Cột H: Thu khác
+        otherExpense: parseThuChiPrice(row[8]),  // Cột I: Chi khác
+        entity: row[9] || "",         // Cột J: Đối tượng
+        content: row[10] || "",       // Cột K: Nội dung
+        category: row[11] || "",      // Cột L: Phân loại thu chi
+        totalIncome: parseThuChiPrice(row[12]),  // Cột M: Tổng thu
+        totalExpense: parseThuChiPrice(row[13]), // Cột N: Tổng chi
+        note: row[14] || "",          // Cột O: Ghi chú
       }))
       .filter((item) =>
-        // Bỏ qua header và dòng trống
-        item.date.trim() !== "" &&
+        // Bỏ qua header và dòng trống - kiểm tra ngày tháng hoặc mã
+        (item.date.trim() !== "" || item.code.trim() !== "") &&
         item.date !== "Ngày tháng" &&
-        !item.date.toLowerCase().includes("ngày")
+        !item.date.toLowerCase().includes("ngày") &&
+        item.code !== "Mã Thu Chi"
       );
 
     return thuChiList;
@@ -1901,19 +1956,49 @@ export async function getThuChiFromSheet(): Promise<ThuChi[]> {
 }
 
 /**
- * Thêm thu chi mới vào Google Sheets
+ * Tạo mã thu chi tự động (PT001, PC001, ...)
  */
-export async function addThuChiToSheet(thuChi: ThuChi): Promise<void> {
+function generateThuChiCode(existingCodes: string[], isIncome: boolean): string {
+  const prefix = isIncome ? "PT" : "PC";
+
+  // Lọc các mã có cùng prefix và lấy số lớn nhất
+  const relevantCodes = existingCodes
+    .filter(code => code && code.startsWith(prefix))
+    .map(code => {
+      const numPart = code.replace(prefix, "");
+      return parseInt(numPart, 10);
+    })
+    .filter(num => !isNaN(num));
+
+  const maxNum = relevantCodes.length > 0 ? Math.max(...relevantCodes) : 0;
+  const nextNum = maxNum + 1;
+
+  // Format số với padding 3 chữ số (001, 002, ...)
+  return `${prefix}${nextNum.toString().padStart(3, "0")}`;
+}
+
+/**
+ * Thêm thu chi mới vào Google Sheets
+ * @param thuChi - Dữ liệu thu chi
+ * @param isIncome - true = Phiếu Thu (PT), false = Phiếu Chi (PC)
+ */
+export async function addThuChiToSheet(thuChi: Omit<ThuChi, "id" | "code"> & { code?: string }, isIncome: boolean): Promise<string> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Đọc toàn bộ dữ liệu để tìm dòng cuối
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối và các mã hiện có
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdThuChi,
-      range: `${sheetNameThuChi}!A:M`,
+      range: `${sheetNameThuChi}!A:O`,
     });
 
     const allRows = response.data.values || [];
+
+    // Lấy tất cả mã hiện có (cột A)
+    const existingCodes = allRows.slice(1).map(row => row[0] || "");
+
+    // Tạo mã tự động: PT = Phiếu Thu, PC = Phiếu Chi
+    const code = generateThuChiCode(existingCodes, isIncome);
 
     // Tìm dòng cuối có dữ liệu
     let lastDataRow = 1;
@@ -1928,32 +2013,35 @@ export async function addThuChiToSheet(thuChi: ThuChi): Promise<void> {
 
     const values = [
       [
-        thuChi.date,
-        thuChi.accountName,
-        thuChi.nccNpl,
-        thuChi.workshop,
-        thuChi.shippingCost || "",
-        thuChi.salesIncome || "",
-        thuChi.otherIncome || "",
-        thuChi.entity,
-        thuChi.content,
-        thuChi.category,
-        thuChi.totalIncome || "",
-        thuChi.totalExpense || "",
-        thuChi.note,
+        code,                       // Cột A: Mã Thu Chi
+        thuChi.date,                // Cột B: Ngày tháng
+        thuChi.accountName,         // Cột C: Tên TK
+        thuChi.nccNpl,              // Cột D: NCC NPL
+        thuChi.workshop,            // Cột E: Xưởng SX
+        thuChi.shippingCost || "",  // Cột F: Chi vận chuyển
+        thuChi.salesIncome || "",   // Cột G: Thu tiền hàng
+        thuChi.otherIncome || "",   // Cột H: Thu khác
+        thuChi.otherExpense || "",  // Cột I: Chi khác
+        thuChi.entity,              // Cột J: Đối tượng
+        thuChi.content,             // Cột K: Nội dung
+        thuChi.category,            // Cột L: Phân loại thu chi
+        thuChi.totalIncome || "",   // Cột M: Tổng thu
+        thuChi.totalExpense || "",  // Cột N: Tổng chi
+        thuChi.note,                // Cột O: Ghi chú
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdThuChi,
-      range: `${sheetNameThuChi}!A${nextRow}:M${nextRow}`,
+      range: `${sheetNameThuChi}!A${nextRow}:O${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
       },
     });
 
-    console.log(`Successfully added thu chi at row: ${nextRow}`);
+    console.log(`Successfully added thu chi with code ${code} at row: ${nextRow}`);
+    return code;
   } catch (error) {
     console.error("Error adding thu chi to Google Sheets:", error);
     throw error;
@@ -1971,25 +2059,27 @@ export async function updateThuChiInSheet(thuChi: ThuChi): Promise<void> {
 
     const values = [
       [
-        thuChi.date,
-        thuChi.accountName,
-        thuChi.nccNpl,
-        thuChi.workshop,
-        thuChi.shippingCost || "",
-        thuChi.salesIncome || "",
-        thuChi.otherIncome || "",
-        thuChi.entity,
-        thuChi.content,
-        thuChi.category,
-        thuChi.totalIncome || "",
-        thuChi.totalExpense || "",
-        thuChi.note,
+        thuChi.code,                // Cột A: Mã Thu Chi (giữ nguyên)
+        thuChi.date,                // Cột B: Ngày tháng
+        thuChi.accountName,         // Cột C: Tên TK
+        thuChi.nccNpl,              // Cột D: NCC NPL
+        thuChi.workshop,            // Cột E: Xưởng SX
+        thuChi.shippingCost || "",  // Cột F: Chi vận chuyển
+        thuChi.salesIncome || "",   // Cột G: Thu tiền hàng
+        thuChi.otherIncome || "",   // Cột H: Thu khác
+        thuChi.otherExpense || "",  // Cột I: Chi khác
+        thuChi.entity,              // Cột J: Đối tượng
+        thuChi.content,             // Cột K: Nội dung
+        thuChi.category,            // Cột L: Phân loại thu chi
+        thuChi.totalIncome || "",   // Cột M: Tổng thu
+        thuChi.totalExpense || "",  // Cột N: Tổng chi
+        thuChi.note,                // Cột O: Ghi chú
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdThuChi,
-      range: `${sheetNameThuChi}!A${rowNumber}:M${rowNumber}`,
+      range: `${sheetNameThuChi}!A${rowNumber}:O${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -3546,6 +3636,61 @@ export async function deleteShippingUnitFromSheet(unitId: number): Promise<void>
     console.log(`Successfully deleted shipping unit with ID: ${unitId}`);
   } catch (error) {
     console.error("Error deleting shipping unit from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== TỒN KHO (INVENTORY) ====================
+
+const spreadsheetIdTonKho = process.env.GOOGLE_SPREADSHEET_ID_TON_KHO || spreadsheetId;
+const sheetNameTonKho = process.env.GOOGLE_SHEET_NAME_TON_KHO_SP || "Tồn kho SP";
+
+// Interface cho dữ liệu tồn kho
+export interface TonKhoItem {
+  id: number;
+  maSp: string; // Mã SP
+  nhap1: number; // Nhập (cột C)
+  nhap2: number; // Nhập (cột D)
+  xuat: number; // Xuất
+  tonCuoi: number; // Tồn cuối
+}
+
+/**
+ * Đọc dữ liệu tồn kho từ Google Sheets
+ * Header ở dòng 1, dữ liệu từ dòng 2
+ * Cột A: STT, B: Mã SP, C: Nhập, D: Nhập, E: Xuất, F: Tồn cuối
+ */
+export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdTonKho,
+      range: `'${sheetNameTonKho}'!A2:F`, // Header dòng 1, dữ liệu từ dòng 2
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No inventory data found in sheet.");
+      return [];
+    }
+
+    // Chuyển đổi dữ liệu từ sheet thành TonKhoItem objects
+    const tonKhoItems: TonKhoItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maSp: row[1] || "", // Cột B: Mã SP
+        nhap1: parseFloat(row[2]) || 0, // Cột C: Nhập
+        nhap2: parseFloat(row[3]) || 0, // Cột D: Nhập
+        xuat: parseFloat(row[4]) || 0, // Cột E: Xuất
+        tonCuoi: parseFloat(row[5]) || 0, // Cột F: Tồn cuối
+      }))
+      .filter((item) => item.maSp.trim() !== ""); // Lọc bỏ các dòng trống
+
+    return tonKhoItems;
+  } catch (error) {
+    console.error("Error reading inventory from Google Sheets:", error);
     throw error;
   }
 }

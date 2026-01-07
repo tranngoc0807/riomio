@@ -103,6 +103,23 @@ export default function DongTien() {
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [isLoadingLoans, setIsLoadingLoans] = useState(false);
 
+  // Suppliers and Workshops for searchable dropdowns
+  const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
+  const [workshops, setWorkshops] = useState<{ id: number; name: string }[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [workshopSearch, setWorkshopSearch] = useState("");
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const [showWorkshopDropdown, setShowWorkshopDropdown] = useState(false);
+
+  // Account name dropdown
+  const [accountSearch, setAccountSearch] = useState("");
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+
+  // Category dropdown (Phân loại thu chi)
+  const [categories, setCategories] = useState<{ id: number; loaiPhieu: string; noiDung: string }[]>([]);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
   // Sync activeTab với URL khi searchParams thay đổi
   useEffect(() => {
     const newTab = getTabFromUrl();
@@ -132,6 +149,45 @@ export default function DongTien() {
       fetchLoans();
     }
   }, [activeTab]);
+
+  // Fetch suppliers, workshops, accounts and categories for dropdowns
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      // Fetch each API separately to handle errors individually
+      try {
+        const suppliersRes = await fetch("/api/suppliers");
+        const suppliersData = await suppliersRes.json();
+        if (suppliersData.success) setSuppliers(suppliersData.data);
+      } catch (e) {
+        console.error("Error fetching suppliers:", e);
+      }
+
+      try {
+        const workshopsRes = await fetch("/api/workshops");
+        const workshopsData = await workshopsRes.json();
+        if (workshopsData.success) setWorkshops(workshopsData.data);
+      } catch (e) {
+        console.error("Error fetching workshops:", e);
+      }
+
+      try {
+        const accountsRes = await fetch("/api/accounts");
+        const accountsData = await accountsRes.json();
+        if (accountsData.success) setAccounts(accountsData.data);
+      } catch (e) {
+        console.error("Error fetching accounts:", e);
+      }
+
+      try {
+        const categoriesRes = await fetch("/api/phan-loai-thu-chi");
+        const categoriesData = await categoriesRes.json();
+        if (categoriesData.success) setCategories(categoriesData.data);
+      } catch (e) {
+        console.error("Error fetching categories:", e);
+      }
+    };
+    fetchDropdownData();
+  }, []);
 
   const fetchThuChi = async () => {
     try {
@@ -223,6 +279,7 @@ export default function DongTien() {
 
   // Thu Chi modal states
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addModalType, setAddModalType] = useState<"income" | "expense">("income");
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditThuChiModal, setShowEditThuChiModal] = useState(false);
   const [showDeleteThuChiModal, setShowDeleteThuChiModal] = useState(false);
@@ -237,6 +294,7 @@ export default function DongTien() {
     shippingCost: 0,
     salesIncome: 0,
     otherIncome: 0,
+    otherExpense: 0,
     entity: "",
     content: "",
     category: "",
@@ -268,6 +326,7 @@ export default function DongTien() {
   // Filter thu chi by search, type, and date range
   const filteredThuChi = thuChiList.filter((t) => {
     const matchSearch =
+      (t.code || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.content || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.entity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.category || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -337,7 +396,7 @@ export default function DongTien() {
       const response = await fetch("/api/thu-chi/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newThuChi),
+        body: JSON.stringify({ ...newThuChi, type: addModalType }),
       });
       const result = await response.json();
       if (result.success) {
@@ -350,6 +409,7 @@ export default function DongTien() {
           shippingCost: 0,
           salesIncome: 0,
           otherIncome: 0,
+          otherExpense: 0,
           entity: "",
           content: "",
           category: "",
@@ -357,6 +417,10 @@ export default function DongTien() {
           totalExpense: 0,
           note: "",
         });
+        setAccountSearch("");
+        setSupplierSearch("");
+        setWorkshopSearch("");
+        setCategorySearch("");
         setShowAddModal(false);
         fetchThuChi();
       } else {
@@ -782,13 +846,28 @@ export default function DongTien() {
                     </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  <Plus size={20} />
-                  Thêm giao dịch
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setAddModalType("income");
+                      setShowAddModal(true);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                  >
+                    <ArrowDownCircle size={20} />
+                    Thu
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAddModalType("expense");
+                      setShowAddModal(true);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                  >
+                    <ArrowUpCircle size={20} />
+                    Chi
+                  </button>
+                </div>
               </div>
 
               {isLoadingThuChi ? (
@@ -801,22 +880,25 @@ export default function DongTien() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-275">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 whitespace-nowrap">
+                          Mã
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 whitespace-nowrap">
                           Ngày
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 whitespace-nowrap">
                           Tên TK
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 whitespace-nowrap">
                           Đối tượng
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 whitespace-nowrap">
                           Nội dung
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 whitespace-nowrap min-w-35">
                           Phân loại
                         </th>
                         <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
@@ -833,6 +915,15 @@ export default function DongTien() {
                     <tbody className="divide-y divide-gray-200">
                       {paginatedThuChi.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-sm font-medium">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              item.code?.startsWith("PT")
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                              {item.code || "-"}
+                            </span>
+                          </td>
                           <td className="px-4 py-4 text-sm text-gray-600">
                             {item.date || "-"}
                           </td>
@@ -845,9 +936,9 @@ export default function DongTien() {
                           <td className="px-4 py-4 text-sm text-gray-900">
                             {item.content || "-"}
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-4 min-w-35">
                             {item.category ? (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full whitespace-nowrap">
                                 {item.category}
                               </span>
                             ) : (
@@ -1145,7 +1236,9 @@ export default function DongTien() {
         <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Thêm thu chi mới</h3>
+              <h3 className={`text-lg font-semibold ${addModalType === "income" ? "text-green-600" : "text-red-600"}`}>
+                {addModalType === "income" ? "Thêm khoản thu" : "Thêm khoản chi"}
+              </h3>
               <button
                 onClick={() => setShowAddModal(false)}
                 disabled={isAddingThuChi}
@@ -1169,51 +1262,158 @@ export default function DongTien() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   />
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Tên TK
                   </label>
                   <input
                     type="text"
-                    value={newThuChi.accountName || ""}
-                    onChange={(e) => setNewThuChi({ ...newThuChi, accountName: e.target.value })}
+                    value={accountSearch}
+                    onChange={(e) => {
+                      setAccountSearch(e.target.value);
+                      setShowAccountDropdown(true);
+                    }}
+                    onFocus={() => setShowAccountDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowAccountDropdown(false), 200)}
                     disabled={isAddingThuChi}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="Tên tài khoản"
+                    placeholder="Tìm tài khoản..."
                   />
+                  {showAccountDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {accounts.length === 0 ? (
+                        <div className="px-3 py-2 text-gray-500 text-sm">
+                          Đang tải...
+                        </div>
+                      ) : (
+                        <>
+                          {accounts
+                            .filter((a) =>
+                              a.accountNumber.toLowerCase().includes(accountSearch.toLowerCase())
+                            )
+                            .map((account) => (
+                              <div
+                                key={account.id}
+                                onClick={() => {
+                                  setNewThuChi({ ...newThuChi, accountName: account.accountNumber });
+                                  setAccountSearch(account.accountNumber);
+                                  setShowAccountDropdown(false);
+                                }}
+                                className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm"
+                              >
+                                {account.accountNumber}
+                              </div>
+                            ))}
+                          {accounts.filter((a) =>
+                            a.accountNumber.toLowerCase().includes(accountSearch.toLowerCase())
+                          ).length === 0 && (
+                            <div className="px-3 py-2 text-gray-500 text-sm">
+                              Không tìm thấy
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Row 2: NCC NPL, Xưởng SX */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     NCC NPL
                   </label>
                   <input
                     type="text"
-                    value={newThuChi.nccNpl || ""}
-                    onChange={(e) => setNewThuChi({ ...newThuChi, nccNpl: e.target.value })}
+                    value={supplierSearch}
+                    onChange={(e) => {
+                      setSupplierSearch(e.target.value);
+                      setShowSupplierDropdown(true);
+                    }}
+                    onFocus={() => setShowSupplierDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
                     disabled={isAddingThuChi}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="NCC NPL"
+                    placeholder="Tìm nhà cung cấp..."
                   />
+                  {showSupplierDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {suppliers
+                        .filter((s) =>
+                          s.name.toLowerCase().includes(supplierSearch.toLowerCase())
+                        )
+                        .map((supplier) => (
+                          <div
+                            key={supplier.id}
+                            onClick={() => {
+                              setNewThuChi({ ...newThuChi, nccNpl: supplier.name });
+                              setSupplierSearch(supplier.name);
+                              setShowSupplierDropdown(false);
+                            }}
+                            className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm"
+                          >
+                            {supplier.name}
+                          </div>
+                        ))}
+                      {suppliers.filter((s) =>
+                        s.name.toLowerCase().includes(supplierSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="px-3 py-2 text-gray-500 text-sm">
+                          Không tìm thấy
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Xưởng SX
                   </label>
                   <input
                     type="text"
-                    value={newThuChi.workshop || ""}
-                    onChange={(e) => setNewThuChi({ ...newThuChi, workshop: e.target.value })}
+                    value={workshopSearch}
+                    onChange={(e) => {
+                      setWorkshopSearch(e.target.value);
+                      setShowWorkshopDropdown(true);
+                    }}
+                    onFocus={() => setShowWorkshopDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowWorkshopDropdown(false), 200)}
                     disabled={isAddingThuChi}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="Xưởng sản xuất"
+                    placeholder="Tìm xưởng sản xuất..."
                   />
+                  {showWorkshopDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {workshops
+                        .filter((w) =>
+                          w.name.toLowerCase().includes(workshopSearch.toLowerCase())
+                        )
+                        .map((workshop) => (
+                          <div
+                            key={workshop.id}
+                            onClick={() => {
+                              setNewThuChi({ ...newThuChi, workshop: workshop.name });
+                              setWorkshopSearch(workshop.name);
+                              setShowWorkshopDropdown(false);
+                            }}
+                            className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm"
+                          >
+                            {workshop.name}
+                          </div>
+                        ))}
+                      {workshops.filter((w) =>
+                        w.name.toLowerCase().includes(workshopSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="px-3 py-2 text-gray-500 text-sm">
+                          Không tìm thấy
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              {/* Row 3: Chi vận chuyển, Thu tiền hàng, Thu khác */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* Row 3: Chi vận chuyển, Thu tiền hàng, Thu khác, Chi khác */}
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Chi vận chuyển
@@ -1265,6 +1465,23 @@ export default function DongTien() {
                     placeholder="0"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chi khác
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newThuChi.otherExpense || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                      setNewThuChi({ ...newThuChi, otherExpense: val ? Number(val) : 0 });
+                    }}
+                    disabled={isAddingThuChi}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="0"
+                  />
+                </div>
               </div>
               {/* Row 4: Đối tượng, Phân loại */}
               <div className="grid grid-cols-2 gap-4">
@@ -1281,18 +1498,62 @@ export default function DongTien() {
                     placeholder="Nhập đối tượng"
                   />
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Phân loại thu chi
                   </label>
                   <input
                     type="text"
-                    value={newThuChi.category || ""}
-                    onChange={(e) => setNewThuChi({ ...newThuChi, category: e.target.value })}
+                    value={categorySearch}
+                    onChange={(e) => {
+                      setCategorySearch(e.target.value);
+                      setShowCategoryDropdown(true);
+                    }}
+                    onFocus={() => setShowCategoryDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 200)}
                     disabled={isAddingThuChi}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="Phân loại"
+                    placeholder="Chọn phân loại..."
                   />
+                  {showCategoryDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {categories.length === 0 ? (
+                        <div className="px-3 py-2 text-gray-500 text-sm">
+                          Đang tải...
+                        </div>
+                      ) : (
+                        <>
+                          {categories
+                            .filter((c) =>
+                              // Lọc theo loại phiếu: Thu = "Phiếu thu", Chi = "Phiếu chi"
+                              (addModalType === "income" ? c.loaiPhieu === "Phiếu thu" : c.loaiPhieu === "Phiếu chi") &&
+                              c.noiDung.toLowerCase().includes(categorySearch.toLowerCase())
+                            )
+                            .map((cat) => (
+                              <div
+                                key={cat.id}
+                                onClick={() => {
+                                  setNewThuChi({ ...newThuChi, category: cat.noiDung });
+                                  setCategorySearch(cat.noiDung);
+                                  setShowCategoryDropdown(false);
+                                }}
+                                className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm"
+                              >
+                                {cat.noiDung}
+                              </div>
+                            ))}
+                          {categories.filter((c) =>
+                            (addModalType === "income" ? c.loaiPhieu === "Phiếu thu" : c.loaiPhieu === "Phiếu chi") &&
+                            c.noiDung.toLowerCase().includes(categorySearch.toLowerCase())
+                          ).length === 0 && (
+                            <div className="px-3 py-2 text-gray-500 text-sm">
+                              Không tìm thấy
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Row 5: Nội dung */}
@@ -1309,42 +1570,45 @@ export default function DongTien() {
                   placeholder="Nhập nội dung"
                 />
               </div>
-              {/* Row 6: Tổng thu, Tổng chi */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tổng thu
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newThuChi.totalIncome || ""}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                      setNewThuChi({ ...newThuChi, totalIncome: val ? Number(val) : 0 });
-                    }}
-                    disabled={isAddingThuChi}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tổng chi
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newThuChi.totalExpense || ""}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                      setNewThuChi({ ...newThuChi, totalExpense: val ? Number(val) : 0 });
-                    }}
-                    disabled={isAddingThuChi}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="0"
-                  />
-                </div>
+              {/* Row 6: Tổng thu hoặc Tổng chi (tùy thuộc vào loại) */}
+              <div>
+                {addModalType === "income" ? (
+                  <div>
+                    <label className="block text-sm font-medium text-green-700 mb-1">
+                      Tổng thu *
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={newThuChi.totalIncome || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setNewThuChi({ ...newThuChi, totalIncome: val ? Number(val) : 0, totalExpense: 0 });
+                      }}
+                      disabled={isAddingThuChi}
+                      className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                      placeholder="Nhập số tiền thu"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-red-700 mb-1">
+                      Tổng chi *
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={newThuChi.totalExpense || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setNewThuChi({ ...newThuChi, totalExpense: val ? Number(val) : 0, totalIncome: 0 });
+                      }}
+                      disabled={isAddingThuChi}
+                      className="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+                      placeholder="Nhập số tiền chi"
+                    />
+                  </div>
+                )}
               </div>
               {/* Row 7: Ghi chú */}
               <div>
@@ -1372,9 +1636,13 @@ export default function DongTien() {
               <button
                 onClick={handleAddThuChi}
                 disabled={isAddingThuChi}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                className={`flex-1 px-4 py-2 text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 ${
+                  addModalType === "income"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
               >
-                {isAddingThuChi ? "Đang thêm..." : "Thêm thu chi"}
+                {isAddingThuChi ? "Đang thêm..." : addModalType === "income" ? "Thêm khoản thu" : "Thêm khoản chi"}
               </button>
             </div>
           </div>
@@ -1390,7 +1658,7 @@ export default function DongTien() {
             onClick={() => setShowViewModal(false)}
           />
           {/* Panel */}
-          <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] overflow-y-auto">
+          <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-[60] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-900">Chi tiết thu chi</h3>
@@ -1447,6 +1715,10 @@ export default function DongTien() {
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Thu khác</span>
                   <span className="text-gray-900 font-medium">{selectedThuChi.otherIncome ? `${selectedThuChi.otherIncome.toLocaleString("vi-VN")}đ` : "-"}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-gray-500">Chi khác</span>
+                  <span className="text-gray-900 font-medium">{selectedThuChi.otherExpense ? `${selectedThuChi.otherExpense.toLocaleString("vi-VN")}đ` : "-"}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Đối tượng</span>
@@ -1578,8 +1850,8 @@ export default function DongTien() {
                     />
                   </div>
                 </div>
-                {/* Row 3: Chi vận chuyển, Thu tiền hàng, Thu khác */}
-                <div className="grid grid-cols-3 gap-4">
+                {/* Row 3: Chi vận chuyển, Thu tiền hàng, Thu khác, Chi khác */}
+                <div className="grid grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Chi vận chuyển
@@ -1623,6 +1895,22 @@ export default function DongTien() {
                       onChange={(e) => {
                         const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
                         setEditingThuChi({ ...editingThuChi, otherIncome: val ? Number(val) : 0 });
+                      }}
+                      disabled={isUpdatingThuChi}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Chi khác
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editingThuChi.otherExpense || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
+                        setEditingThuChi({ ...editingThuChi, otherExpense: val ? Number(val) : 0 });
                       }}
                       disabled={isUpdatingThuChi}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addThuChiToSheet, ThuChi } from "@/lib/googleSheets";
+import { addThuChiToSheet } from "@/lib/googleSheets";
 
 /**
  * POST /api/thu-chi/add
@@ -20,8 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const thuChi: ThuChi = {
-      id: body.id || 0,
+    const thuChiData = {
       date: body.date,
       accountName: body.accountName || "",
       nccNpl: body.nccNpl || "",
@@ -29,6 +28,7 @@ export async function POST(request: NextRequest) {
       shippingCost: body.shippingCost || 0,
       salesIncome: body.salesIncome || 0,
       otherIncome: body.otherIncome || 0,
+      otherExpense: body.otherExpense || 0,
       entity: body.entity || "",
       content: body.content || "",
       category: body.category || "",
@@ -37,12 +37,16 @@ export async function POST(request: NextRequest) {
       note: body.note || "",
     };
 
-    await addThuChiToSheet(thuChi);
+    // Xác định loại: income (Thu) = PT, expense (Chi) = PC
+    const isIncome = body.type === "income";
+
+    // Mã sẽ được tự động tạo trong addThuChiToSheet
+    const generatedCode = await addThuChiToSheet(thuChiData, isIncome);
 
     return NextResponse.json({
       success: true,
       message: "Thu chi added successfully",
-      data: thuChi,
+      data: { ...thuChiData, code: generatedCode },
     });
   } catch (error: any) {
     console.error("Error adding thu chi:", error);
