@@ -47,6 +47,7 @@ interface AuthContextType {
   ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasPermission: (requiredRoles: UserRole[]) => boolean;
+  refetchProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,35 +61,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
 
-  const fetchProfile = async (userId: string): Promise<Profile | null> => {
-    try {
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<null>((resolve) => {
-        setTimeout(() => {
-          console.warn("⚠️ fetchProfile: TIMEOUT after 5 seconds");
-          resolve(null);
-        }, 5000);
-      });
+  const PROFILE_CACHE_KEY = "riomio_profile_cache";
+  const PROFILE_CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
-      const fetchPromise = supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single()
-        .then((response: any) => {
-          if (response.error) {
-            console.error("📋 fetchProfile: Error:", response.error);
-            return null;
-          }
-          return response.data as Profile;
+  // Get cached profile from localStorage
+  const getCachedProfile = (userId: string): Profile | null => {
+    try {
+      const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+      if (cached) {
+        const { profile: cachedProfile, timestamp, cachedUserId } = JSON.parse(cached);
+        if (cachedUserId === userId && Date.now() - timestamp < PROFILE_CACHE_EXPIRY) {
+          console.log("📋 fetchProfile: Using cached profile");
+          return cachedProfile;
+        }
+      }
+    } catch (e) {
+      console.warn("📋 fetchProfile: Cache read error", e);
+    }
+    return null;
+  };
+
+  // Save profile to localStorage cache
+  const setCachedProfile = (userId: string, profileData: Profile) => {
+    try {
+      localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({
+        profile: profileData,
+        timestamp: Date.now(),
+        cachedUserId: userId,
+      }));
+    } catch (e) {
+      console.warn("📋 fetchProfile: Cache write error", e);
+    }
+  };
+
+  // Clear profile cache
+  const clearProfileCache = () => {
+    try {
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+    } catch (e) {
+      console.warn("📋 fetchProfile: Cache clear error", e);
+    }
+  };
+
+  const fetchProfile = async (userId: string, useCache = true): Promise<Profile | null> => {
+    // Try to get from cache first
+    if (useCache) {
+      const cached = getCachedProfile(userId);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    const maxRetries = 3;
+    const timeout = 10000; // 10 seconds timeout
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📋 fetchProfile: Attempt ${attempt}/${maxRetries}`);
+
+        const timeoutPromise = new Promise<null>((resolve) => {
+          setTimeout(() => {
+            console.warn(`⚠️ fetchProfile: TIMEOUT after ${timeout / 1000} seconds (attempt ${attempt})`);
+            resolve(null);
+          }, timeout);
         });
 
-      const result = await Promise.race([fetchPromise, timeoutPromise]);
-      return result;
-    } catch (err) {
-      console.error("📋 fetchProfile: Exception:", err);
-      return null;
+        const fetchPromise = supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single()
+          .then((response: any) => {
+            if (response.error) {
+              console.error("📋 fetchProfile: Error:", response.error);
+              return null;
+            }
+            return response.data as Profile;
+          });
+
+        const result = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (result) {
+          console.log("📋 fetchProfile: Success, caching profile");
+          setCachedProfile(userId, result);
+          return result;
+        }
+
+        // Wait before retry (exponential backoff)
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
+          console.log(`📋 fetchProfile: Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      } catch (err) {
+        console.error(`📋 fetchProfile: Exception (attempt ${attempt}):`, err);
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
+
+    console.error("📋 fetchProfile: All retries failed");
+    return null;
   };
 
   useEffect(() => {
@@ -215,7 +290,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   };
 
+  // Function to manually refetch profile (useful when profile fails to load)
+  const refetchProfile = async () => {
+    if (user?.id) {
+      console.log("📋 refetchProfile: Manually refetching profile...");
+      const profileData = await fetchProfile(user.id, false); // Skip cache
+      setProfile(profileData);
+    }
+  };
+
   const signOut = async () => {
+    clearProfileCache(); // Clear cached profile on logout
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
@@ -250,6 +335,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         hasPermission,
+        refetchProfile,
       }}
     >
       {children}

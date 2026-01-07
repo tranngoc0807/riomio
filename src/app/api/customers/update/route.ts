@@ -34,8 +34,12 @@ export async function PUT(request: NextRequest) {
       id: body.id,
       name: body.name,
       category: body.category || "",
+      cccd: body.cccd || "",
       phone: body.phone || "",
       address: body.address || "",
+      shippingInfo: body.shippingInfo || "",
+      birthday: body.birthday || "",
+      notes: body.notes || "",
     };
 
     await updateCustomerInSheet(customer);

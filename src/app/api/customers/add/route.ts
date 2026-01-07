@@ -24,8 +24,12 @@ export async function POST(request: NextRequest) {
       id: body.id || Date.now(),
       name: body.name,
       category: body.category || "",
+      cccd: body.cccd || "",
       phone: body.phone || "",
       address: body.address || "",
+      shippingInfo: body.shippingInfo || "",
+      birthday: body.birthday || "",
+      notes: body.notes || "",
     };
 
     await addCustomerToSheet(customer);

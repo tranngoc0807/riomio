@@ -526,14 +526,18 @@ export interface Customer {
   id: number;
   name: string;
   category: string;
+  cccd: string;
   phone: string;
   address: string;
+  shippingInfo: string;
+  birthday: string;
+  notes: string;
 }
 
 /**
  * Đọc danh sách khách hàng từ Google Sheets
  * Sheet: DSKhachHang
- * Cột B: Khách hàng, C: Phân Loại, D: SĐT, E: Địa chỉ
+ * Cột B: Khách hàng, C: Phân Loại, D: CCCD/MST, E: Điện thoại, F: Địa chỉ, G: Thông tin gửi hàng, H: Sinh nhật, I: Ghi chú
  */
 export async function getCustomersFromSheet(): Promise<Customer[]> {
   try {
@@ -541,7 +545,7 @@ export async function getCustomersFromSheet(): Promise<Customer[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKhachHang,
-      range: `${sheetNameKhachHang}!B2:E`, // Đọc từ dòng 2, cột B đến E
+      range: `${sheetNameKhachHang}!B2:I`, // Đọc từ dòng 2, cột B đến I
     });
 
     const rows = response.data.values;
@@ -556,8 +560,12 @@ export async function getCustomersFromSheet(): Promise<Customer[]> {
         id: index + 1,
         name: row[0] || "",
         category: row[1] || "",
-        phone: row[2] || "",
-        address: row[3] || "",
+        cccd: row[2] || "",
+        phone: row[3] || "",
+        address: row[4] || "",
+        shippingInfo: row[5] || "",
+        birthday: row[6] || "",
+        notes: row[7] || "",
       }))
       .filter((customer) => customer.name.trim() !== "");
 
@@ -578,20 +586,24 @@ export async function addCustomerToSheet(customer: Customer): Promise<void> {
     // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
     const rowNumber = customer.id + 1;
 
-    // Ghi STT vào cột A và data vào cột B-E
+    // Ghi STT vào cột A và data vào cột B-I
     const values = [
       [
         customer.id, // STT vào cột A
         customer.name,
         customer.category,
+        customer.cccd,
         customer.phone,
         customer.address,
+        customer.shippingInfo,
+        customer.birthday,
+        customer.notes,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKhachHang,
-      range: `${sheetNameKhachHang}!A${rowNumber}:E${rowNumber}`,
+      range: `${sheetNameKhachHang}!A${rowNumber}:I${rowNumber}`,
       valueInputOption: "RAW",
       requestBody: {
         values,
@@ -615,19 +627,23 @@ export async function updateCustomerInSheet(customer: Customer): Promise<void> {
     // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
     const rowNumber = customer.id + 1;
 
-    // Cập nhật cột B-E (không cập nhật cột A - STT)
+    // Cập nhật cột B-I (không cập nhật cột A - STT)
     const values = [
       [
         customer.name,
         customer.category,
+        customer.cccd,
         customer.phone,
         customer.address,
+        customer.shippingInfo,
+        customer.birthday,
+        customer.notes,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKhachHang,
-      range: `${sheetNameKhachHang}!B${rowNumber}:E${rowNumber}`,
+      range: `${sheetNameKhachHang}!B${rowNumber}:I${rowNumber}`,
       valueInputOption: "RAW",
       requestBody: {
         values,
@@ -2872,6 +2888,60 @@ export async function getSanPhamFromSheet(): Promise<SanPham[]> {
     return sanPhams;
   } catch (error) {
     console.error("Error reading san pham from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// SAN PHAM BAN HANG (Sản phẩm bán hàng - PhatTrienSanPhamBanHang)
+// ============================================
+
+const sheetNameSanPhamBanHang = process.env.GOOGLE_SHEET_NAME_SAN_PHAM_PHAT_TRIEN_BAN_HANG || "PhatTrienSanPhamBanHang";
+
+// Interface cho sản phẩm bán hàng
+export interface SanPhamBanHang {
+  id: number;
+  code: string;           // Mã SP (Cột A)
+  name: string;           // Tên SP (Cột B)
+  wholesalePrice: number; // Giá sỉ (Cột E)
+  retailPrice: number;    // Giá lẻ (Cột F)
+  image: string;          // Hình ảnh (Cột G)
+}
+
+/**
+ * Đọc danh sách sản phẩm bán hàng từ Google Sheets (PhatTrienSanPhamBanHang)
+ */
+export async function getSanPhamBanHangFromSheet(): Promise<SanPhamBanHang[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanPham,
+      range: `${sheetNameSanPhamBanHang}!A2:G`, // Đọc từ dòng 2, cột A đến G
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No san pham ban hang data found in sheet.");
+      return [];
+    }
+
+    const sanPhams: SanPhamBanHang[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        code: row[0] || "",
+        name: row[1] || "",
+        // Cột C, D bỏ qua (Size, Xưởng SX)
+        wholesalePrice: parseFloat(String(row[4] || "0").replace(/[,.]/g, "")) || 0, // Cột E - Giá sỉ
+        retailPrice: parseFloat(String(row[5] || "0").replace(/[,.]/g, "")) || 0,    // Cột F - Giá lẻ
+        image: row[6] || "",  // Cột G - Hình ảnh
+      }))
+      .filter((sp) => sp.code.trim() !== "");
+
+    return sanPhams;
+  } catch (error) {
+    console.error("Error reading san pham ban hang from Google Sheets:", error);
     throw error;
   }
 }
