@@ -1,0 +1,309 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Loader2, RefreshCw, ChevronDown, Search } from "lucide-react";
+
+interface CongNoRow {
+  id: number;
+  date: string;
+  orderCode: string;
+  productAmount: number;
+  payment: number;
+  balance: number;
+}
+
+interface Customer {
+  id: number;
+  name: string;
+}
+
+export default function CongNoKHTab() {
+  const [congNoData, setCongNoData] = useState<CongNoRow[]>([]);
+  const [customerName, setCustomerName] = useState<string>("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isChangingCustomer, setIsChangingCustomer] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    fetchCustomers();
+    fetchData();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch("/api/customers");
+      const result = await response.json();
+      if (result.success) {
+        setCustomers(result.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/cong-no-kh");
+      const result = await response.json();
+
+      if (result.success) {
+        setCongNoData(result.data || []);
+        setCustomerName(result.customer || "");
+      }
+    } catch (error) {
+      console.error("Error fetching cong no data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectCustomer = async (name: string) => {
+    if (name === customerName) {
+      setShowDropdown(false);
+      return;
+    }
+
+    try {
+      setIsChangingCustomer(true);
+      setShowDropdown(false);
+
+      // Cập nhật khách hàng trong Google Sheet
+      const response = await fetch("/api/cong-no-kh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer: name }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Đợi 1 giây để Google Sheet cập nhật formulas
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Fetch lại data mới
+        await fetchData();
+      }
+    } catch (error) {
+      console.error("Error changing customer:", error);
+    } finally {
+      setIsChangingCustomer(false);
+    }
+  };
+
+  // Lọc danh sách khách hàng theo từ khóa
+  const filteredCustomers = customers.filter((c) =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Tính tổng
+  const totalProductAmount = congNoData.reduce((sum, row) => sum + row.productAmount, 0);
+  const totalPayment = congNoData.reduce((sum, row) => sum + row.payment, 0);
+  const lastBalance = congNoData.length > 0 ? congNoData[congNoData.length - 1].balance : 0;
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-semibold text-gray-900">Công nợ khách hàng</h3>
+
+          {/* Customer Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              disabled={isChangingCustomer}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors min-w-[180px] disabled:opacity-50"
+            >
+              {isChangingCustomer ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  <span className="text-blue-700">Đang chuyển...</span>
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-blue-700 truncate flex-1 text-left">
+                    {customerName || "Chọn khách hàng"}
+                  </span>
+                  <ChevronDown size={18} className="text-blue-600" />
+                </>
+              )}
+            </button>
+
+            {showDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowDropdown(false)}
+                />
+                <div className="absolute z-50 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl">
+                  {/* Search */}
+                  <div className="p-3 border-b border-gray-100">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                      <input
+                        type="text"
+                        placeholder="Tìm khách hàng..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Customer List */}
+                  <div className="max-h-64 overflow-y-auto">
+                    {filteredCustomers.length === 0 ? (
+                      <div className="px-4 py-3 text-gray-500 text-sm text-center">
+                        Không tìm thấy khách hàng
+                      </div>
+                    ) : (
+                      filteredCustomers.map((customer) => (
+                        <div
+                          key={customer.id}
+                          onClick={() => handleSelectCustomer(customer.name)}
+                          className={`px-4 py-3 cursor-pointer transition-colors ${
+                            customerName === customer.name
+                              ? "bg-blue-50 text-blue-700 font-medium"
+                              : "hover:bg-gray-50"
+                          }`}
+                        >
+                          {customer.name}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={fetchData}
+          disabled={isLoading || isChangingCustomer}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+          Làm mới
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+          <p className="text-sm text-blue-600 mb-1">Tổng tiền hàng</p>
+          <p className="text-2xl font-bold text-blue-700">
+            {totalProductAmount.toLocaleString("vi-VN")}đ
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+          <p className="text-sm text-green-600 mb-1">Tổng thanh toán</p>
+          <p className="text-2xl font-bold text-green-700">
+            {totalPayment.toLocaleString("vi-VN")}đ
+          </p>
+        </div>
+        <div className={`bg-gradient-to-br rounded-xl p-4 border ${
+          lastBalance > 0
+            ? "from-orange-50 to-orange-100 border-orange-200"
+            : "from-gray-50 to-gray-100 border-gray-200"
+        }`}>
+          <p className={`text-sm mb-1 ${lastBalance > 0 ? "text-orange-600" : "text-gray-600"}`}>
+            Dư nợ hiện tại
+          </p>
+          <p className={`text-2xl font-bold ${lastBalance > 0 ? "text-orange-700" : "text-gray-700"}`}>
+            {lastBalance.toLocaleString("vi-VN")}đ
+          </p>
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        {isLoading || isChangingCustomer ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-3" />
+              <p className="text-gray-500">
+                {isChangingCustomer ? "Đang chuyển khách hàng..." : "Đang tải dữ liệu..."}
+              </p>
+            </div>
+          </div>
+        ) : congNoData.length === 0 ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <p className="text-gray-500">Không có dữ liệu công nợ</p>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    STT
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Ngày tháng
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Mã đơn hàng
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Tiền hàng
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Thanh toán
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider bg-orange-50">
+                    Dư cuối
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {congNoData.map((row, index) => (
+                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {index + 1}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {row.date}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-blue-600">
+                      {row.orderCode || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-gray-900">
+                      {row.productAmount > 0 ? row.productAmount.toLocaleString("vi-VN") : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-green-600 font-medium">
+                      {row.payment > 0 ? row.payment.toLocaleString("vi-VN") : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right font-semibold bg-orange-50 text-orange-700">
+                      {row.balance.toLocaleString("vi-VN")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-100 font-semibold">
+                  <td colSpan={3} className="px-4 py-3 text-sm text-gray-700 text-right">
+                    Tổng cộng:
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right text-gray-900">
+                    {totalProductAmount.toLocaleString("vi-VN")}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right text-green-600">
+                    {totalPayment.toLocaleString("vi-VN")}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right text-orange-700 bg-orange-100">
+                    {lastBalance.toLocaleString("vi-VN")}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
