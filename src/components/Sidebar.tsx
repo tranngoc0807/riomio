@@ -17,6 +17,14 @@ import {
   Settings,
   LogOut,
   User,
+  Boxes,
+  Hammer,
+  Image,
+  ClipboardList,
+  Calculator,
+  Cog,
+  PackageSearch,
+  Receipt,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -58,6 +66,56 @@ const menuItems: MenuItem[] = [
     href: "/san-xuat",
     icon: Factory,
     roles: ALL_ROLES,
+    subItems: [
+      {
+        name: "Nguyên phụ liệu",
+        href: "/san-xuat/nguyen-phu-lieu",
+        icon: Boxes,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Gia công",
+        href: "/san-xuat/gia-cong",
+        icon: Hammer,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Hình In",
+        href: "/san-xuat/hinh-in",
+        icon: Image,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Kế hoạch sản xuất",
+        href: "/san-xuat/ke-hoach",
+        icon: ClipboardList,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Giá thành",
+        href: "/san-xuat/gia-thanh",
+        icon: Calculator,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Công đoạn sản xuất",
+        href: "/san-xuat/cong-doan",
+        icon: Cog,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Sản phẩm",
+        href: "/san-xuat/san-pham",
+        icon: PackageSearch,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Chi phí khác",
+        href: "/san-xuat/chi-phi-khac",
+        icon: Receipt,
+        roles: ALL_ROLES,
+      },
+    ],
   },
   {
     name: "Sản phẩm",
@@ -232,48 +290,30 @@ export default function Sidebar() {
                     <>
                       {/* Parent menu with sub-items */}
                       <div className="flex flex-col">
-                        <div
-                          className={`flex items-center rounded-lg transition-all duration-200 ${
-                            isActive
-                              ? "bg-white shadow-lg"
-                              : hasActiveSubItem
-                              ? "bg-blue-700/50"
-                              : "hover:bg-blue-700/50"
+                        <button
+                          onClick={() => toggleMenu(item.href)}
+                          className={`w-full flex items-center justify-between rounded-lg transition-all duration-200 px-4 py-3 ${
+                            hasActiveSubItem
+                              ? "bg-blue-700/50 text-blue-100"
+                              : "hover:bg-blue-700/50 text-blue-100"
                           }`}
                         >
-                          <Link
-                            href={item.href}
-                            onClick={() => setIsOpen(false)}
-                            className={`flex-1 flex items-center gap-3 px-4 py-3 transition-colors ${
-                              isActive
-                                ? "text-blue-900"
-                                : "text-blue-100"
-                            }`}
-                          >
+                          <div className="flex items-center gap-3">
                             <Icon size={20} />
                             <span className="font-medium">{item.name}</span>
-                          </Link>
-                          <button
-                            onClick={() => toggleMenu(item.href)}
-                            className={`px-3 py-3 transition-colors ${
-                              isActive
-                                ? "text-blue-900 hover:bg-blue-100 rounded-r-lg"
-                                : "text-blue-100 hover:bg-blue-600/50 rounded-r-lg"
+                          </div>
+                          <ChevronDown
+                            size={18}
+                            className={`transition-transform duration-200 ${
+                              isExpanded ? "rotate-180" : ""
                             }`}
-                          >
-                            <ChevronDown
-                              size={18}
-                              className={`transition-transform duration-200 ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                            />
-                          </button>
-                        </div>
+                          />
+                        </button>
 
                         {/* Sub-items */}
                         <div
                           className={`overflow-hidden transition-all duration-200 ${
-                            isExpanded ? "max-h-40 mt-1" : "max-h-0"
+                            isExpanded ? "max-h-96 mt-1" : "max-h-0"
                           }`}
                         >
                           <ul className="ml-4 pl-4 border-l border-blue-600 space-y-1">

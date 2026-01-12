@@ -4096,3 +4096,641 @@ export async function saveChamCongToSheet(
     throw error;
   }
 }
+
+// ============================================
+// NHẬP KHO NGUYÊN PHỤ LIỆU (Nhập kho NPL)
+// ============================================
+
+const spreadsheetIdSanXuat = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT || "16WCta5dfQGsUhSO0oMRWvQNSU-VzwiyWpTctKEDwaHc";
+const sheetNameNhapKhoNPL = process.env.GOOGLE_SHEET_NAME_NHAP_KHO_NPL || "Nhập kho NPL";
+
+// Interface cho nhập kho NPL
+export interface NhapKhoNPL {
+  id: number;
+  maPNKNPL: string;       // Mã PNKNPL (Cột A)
+  ngayThang: string;      // Ngày tháng (Cột B)
+  nguoiNhap: string;      // Người nhập (Cột C)
+  noiDung: string;        // Nội dung (Cột D)
+  maNPL: string;          // Mã NPL (Cột E)
+  ncc: string;            // NCC (Cột F)
+  dvt: string;            // ĐVT (Cột G)
+  soLuong: number;        // Số lượng (Cột H)
+  donGiaSauThue: number;  // Đơn giá sau thuế (Cột I)
+  thanhTien: number;      // Thành tiền (Cột J)
+  ghiChu: string;         // Ghi chú (Cột K)
+  tonThucTe: number;      // Tồn thực tế (Cột L)
+}
+
+/**
+ * Đọc dữ liệu nhập kho NPL từ Google Sheets
+ * Header ở dòng 5, dữ liệu từ dòng 6
+ */
+export async function getNhapKhoNPLFromSheet(): Promise<NhapKhoNPL[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameNhapKhoNPL}'!A6:L`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No nhap kho NPL data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse number from Vietnamese format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      // Handle #N/A or error values
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const nhapKhoList: NhapKhoNPL[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maPNKNPL: row[0] || "",
+        ngayThang: row[1] || "",
+        nguoiNhap: row[2] || "",
+        noiDung: row[3] || "",
+        maNPL: row[4] || "",
+        ncc: row[5] || "",
+        dvt: row[6] || "",
+        soLuong: parseNumberVN(row[7]),
+        donGiaSauThue: parseNumberVN(row[8]),
+        thanhTien: parseNumberVN(row[9]),
+        ghiChu: row[10] || "",
+        tonThucTe: parseNumberVN(row[11]),
+      }))
+      .filter((item) => item.maPNKNPL.trim() !== "" && !item.maPNKNPL.startsWith('#'));
+
+    return nhapKhoList;
+  } catch (error) {
+    console.error("Error reading nhap kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// PHIẾU NHẬP KHO NPL (PNK NPL)
+// ============================================
+
+const sheetNamePhieuNhapNPL = process.env.GOOGLE_SHEET_NAME_PHIEU_NHAP_NPL || "PNK NPL";
+
+// Interface cho phiếu nhập kho NPL
+export interface PhieuNhapNPL {
+  id: number;
+  stt: number;              // STT (Cột A)
+  maNPL: string;            // Mã nguyên phụ liệu (Cột B)
+  dvt: string;              // ĐVT (Cột C)
+  soLuong: number;          // Số lượng (Cột D)
+  ghiChu: string;           // Ghi chú (Cột E)
+}
+
+/**
+ * Đọc dữ liệu phiếu nhập kho NPL từ Google Sheets
+ * Header ở dòng 6, dữ liệu từ dòng 7
+ */
+export async function getPhieuNhapNPLFromSheet(): Promise<PhieuNhapNPL[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNamePhieuNhapNPL}'!A7:E`, // Header dòng 6, dữ liệu từ dòng 7
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No phieu nhap kho NPL data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse number from Vietnamese format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const phieuNhapList: PhieuNhapNPL[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseInt(row[0]) || index + 1,
+        maNPL: row[1] || "",
+        dvt: row[2] || "",
+        soLuong: parseNumberVN(row[3]),
+        ghiChu: row[4] || "",
+      }))
+      .filter((item) => item.maNPL.trim() !== "");
+
+    return phieuNhapList;
+  } catch (error) {
+    console.error("Error reading phieu nhap kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// XUẤT KHO NGUYÊN PHỤ LIỆU (Xuất kho NPL)
+// ============================================
+
+const sheetNameXuatKhoNPL = process.env.GOOGLE_SHEET_NAME_XUAT_KHO_NPL || "Xuất kho NPL";
+
+// Interface cho xuất kho NPL
+export interface XuatKhoNPL {
+  id: number;
+  maPhieu: string;          // Mã phiếu (Cột A)
+  ngayThang: string;        // Ngày tháng (Cột B)
+  nguoiNhap: string;        // Người nhập (Cột C)
+  noiDung: string;          // Nội dung (Cột D)
+  maSP: string;             // Mã SP (Cột E)
+  lenhSX: string;           // Lệnh SX (Cột F)
+  xuongSX: string;          // Xưởng sản xuất (Cột G)
+  maNPL: string;            // Mã NPL (Cột H)
+  dvt: string;              // ĐVT (Cột I)
+  soLuong: number;          // Số lượng (Cột J)
+  donGia: number;           // Đơn giá (Cột K)
+  thanhTien: number;        // Thành tiền (Cột L)
+  loaiChiPhi: string;       // Loại chi phí (Cột M)
+  ghiChu: string;           // Ghi chú (Cột N)
+  tonThucTe: number;        // Tồn thực tế (Cột O)
+}
+
+/**
+ * Đọc dữ liệu xuất kho NPL từ Google Sheets
+ * Header ở dòng 5, dữ liệu từ dòng 6
+ */
+export async function getXuatKhoNPLFromSheet(): Promise<XuatKhoNPL[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameXuatKhoNPL}'!A6:O`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No xuat kho NPL data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse number from Vietnamese format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const xuatKhoList: XuatKhoNPL[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maPhieu: row[0] || "",
+        ngayThang: row[1] || "",
+        nguoiNhap: row[2] || "",
+        noiDung: row[3] || "",
+        maSP: row[4] || "",
+        lenhSX: row[5] || "",
+        xuongSX: row[6] || "",
+        maNPL: row[7] || "",
+        dvt: row[8] || "",
+        soLuong: parseNumberVN(row[9]),
+        donGia: parseNumberVN(row[10]),
+        thanhTien: parseNumberVN(row[11]),
+        loaiChiPhi: row[12] || "",
+        ghiChu: row[13] || "",
+        tonThucTe: parseNumberVN(row[14]),
+      }))
+      .filter((item) => item.maPhieu.trim() !== "" && !item.maPhieu.startsWith('#'));
+
+    return xuatKhoList;
+  } catch (error) {
+    console.error("Error reading xuat kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ===================== PHIEU XUAT KHO NPL (PXK NPL) =====================
+const spreadsheetIdSanXuat5 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNamePhieuXuatNPL = process.env.GOOGLE_SHEET_NAME_PHIEU_XUAT_NPL || "PXK NPL";
+
+// Interface cho phiếu xuất kho NPL
+export interface PhieuXuatNPL {
+  id: number;
+  stt: number;           // STT (Cột A)
+  maNPL: string;         // Mã nguyên phụ liệu (Cột B)
+  dvt: string;           // ĐVT (Cột C)
+  soLuong: number;       // Số lượng (Cột D)
+  ghiChu: string;        // Ghi chú (Cột E)
+}
+
+/**
+ * Đọc dữ liệu phiếu xuất kho NPL từ Google Sheets
+ * Header ở dòng 6, dữ liệu từ dòng 7, cột A đến E
+ */
+export async function getPhieuXuatNPLFromSheet(): Promise<PhieuXuatNPL[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat5,
+      range: `'${sheetNamePhieuXuatNPL}'!A7:E`, // Header dòng 6, dữ liệu từ dòng 7
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No phieu xuat kho NPL data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const phieuXuatList: PhieuXuatNPL[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        maNPL: row[1] || "",
+        dvt: row[2] || "",
+        soLuong: parseNumberVN(row[3]),
+        ghiChu: row[4] || "",
+      }))
+      .filter((item) => item.maNPL.trim() !== "" && !item.maNPL.startsWith('#'));
+
+    return phieuXuatList;
+  } catch (error) {
+    console.error("Error reading phieu xuat kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ===================== TỒN KHO NPL (Tồn kho NPL kho công ty) =====================
+const spreadsheetIdSanXuat6 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameTonKhoNPL = process.env.GOOGLE_SHEET_NAME_TON_KHO_NPL || "Tồn kho NPL kho công ty";
+
+// Interface cho tồn kho NPL theo tháng (Bảng 1 - Cột A-H)
+export interface TonKhoNPLThang {
+  id: number;
+  stt: number;             // STT (Cột A)
+  maNPL: string;           // Mã nguyên phụ liệu (Cột B)
+  tonDau: number;          // Tồn đầu (Cột C)
+  nhapKho: number;         // Nhập kho (Cột D)
+  xuatKho: number;         // Xuất kho (Cột E)
+  tonCuoi: number;         // Tồn cuối (Cột F)
+  donGiaSauThue: number;   // Đơn giá sau thuế (Cột G)
+  giaTriTon: number;       // Giá trị tồn sau thuế (Cột H)
+}
+
+// Interface cho tồn kho NPL đến ngày (Bảng 2 - Cột J-L)
+export interface TonKhoNPLNgay {
+  id: number;
+  stt: number;             // STT (Cột J)
+  maSP: string;            // Mã SP (Cột K)
+  soLuong: number;         // Số lượng (Cột L)
+}
+
+/**
+ * Đọc dữ liệu tồn kho NPL theo tháng từ Google Sheets (Bảng 1)
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột A đến H
+ */
+export async function getTonKhoNPLThangFromSheet(): Promise<TonKhoNPLThang[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat6,
+      range: `'${sheetNameTonKhoNPL}'!A6:H`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No ton kho NPL thang data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const tonKhoList: TonKhoNPLThang[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        maNPL: row[1] || "",
+        tonDau: parseNumberVN(row[2]),
+        nhapKho: parseNumberVN(row[3]),
+        xuatKho: parseNumberVN(row[4]),
+        tonCuoi: parseNumberVN(row[5]),
+        donGiaSauThue: parseNumberVN(row[6]),
+        giaTriTon: parseNumberVN(row[7]),
+      }))
+      .filter((item) => item.maNPL.trim() !== "" && !item.maNPL.startsWith('#'));
+
+    return tonKhoList;
+  } catch (error) {
+    console.error("Error reading ton kho NPL thang from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu tồn kho NPL đến ngày từ Google Sheets (Bảng 2)
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột J đến L
+ */
+export async function getTonKhoNPLNgayFromSheet(): Promise<TonKhoNPLNgay[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat6,
+      range: `'${sheetNameTonKhoNPL}'!J6:L`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No ton kho NPL ngay data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const tonKhoNgayList: TonKhoNPLNgay[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        maSP: row[1] || "",
+        soLuong: parseNumberVN(row[2]),
+      }))
+      .filter((item) => item.maSP.trim() !== "" && !item.maSP.startsWith('#'));
+
+    return tonKhoNgayList;
+  } catch (error) {
+    console.error("Error reading ton kho NPL ngay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ===================== CNPT NCC NPL (Công nợ phải trả NCC NPL) =====================
+const spreadsheetIdSanXuat7 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameCNPTNCCNPL = process.env.GOOGLE_SHEET_NAME_CNPT_NCC_NPL || "CNPT NCC NPL";
+
+// Interface cho công nợ phải trả NCC NPL theo tháng (Bảng 1 - Cột A-F)
+export interface CNPTNCCNPLThang {
+  id: number;
+  stt: number;             // STT (Cột A)
+  nccNPL: string;          // NCC NPL (Cột B)
+  duDauKi: number;         // Dư đầu kì (Cột C)
+  phatSinh: number;        // Phát sinh (Cột D)
+  thanhToan: number;       // Thanh toán (Cột E)
+  duCuoiKi: number;        // Dư cuối kì (Cột F)
+}
+
+// Interface cho bảng kê số dư đầu kì đến ngày (Bảng 2 - Cột H-J)
+export interface CNPTNCCNPLNgay {
+  id: number;
+  stt: number;             // STT (Cột H)
+  nccNPL: string;          // NCC NPL (Cột I)
+  soTien: number;          // Số tiền (Cột J)
+}
+
+/**
+ * Đọc dữ liệu công nợ phải trả NCC NPL theo tháng từ Google Sheets (Bảng 1)
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột A đến F
+ */
+export async function getCNPTNCCNPLThangFromSheet(): Promise<CNPTNCCNPLThang[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat7,
+      range: `'${sheetNameCNPTNCCNPL}'!A6:F`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No CNPT NCC NPL thang data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const cnptList: CNPTNCCNPLThang[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        nccNPL: row[1] || "",
+        duDauKi: parseNumberVN(row[2]),
+        phatSinh: parseNumberVN(row[3]),
+        thanhToan: parseNumberVN(row[4]),
+        duCuoiKi: parseNumberVN(row[5]),
+      }))
+      .filter((item) => item.nccNPL.trim() !== "" && !item.nccNPL.startsWith('#'));
+
+    return cnptList;
+  } catch (error) {
+    console.error("Error reading CNPT NCC NPL thang from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu bảng kê số dư đầu kì đến ngày từ Google Sheets (Bảng 2)
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột H đến J
+ */
+export async function getCNPTNCCNPLNgayFromSheet(): Promise<CNPTNCCNPLNgay[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat7,
+      range: `'${sheetNameCNPTNCCNPL}'!H6:J`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No CNPT NCC NPL ngay data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const cnptNgayList: CNPTNCCNPLNgay[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        nccNPL: row[1] || "",
+        soTien: parseNumberVN(row[2]),
+      }))
+      .filter((item) => item.nccNPL.trim() !== "" && !item.nccNPL.startsWith('#'));
+
+    return cnptNgayList;
+  } catch (error) {
+    console.error("Error reading CNPT NCC NPL ngay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ===================== THEO DÕI CN TỪNG NCC NPL =====================
+const spreadsheetIdSanXuat8 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameTheodoiCN = process.env.GOOGLE_SHEET_NAME_THEO_DOI_CN || "Theo dõi CN từng NCC NPL";
+
+// Interface cho theo dõi CN theo tháng (Bảng 1 - Cột A-F)
+export interface TheodoiCNThang {
+  id: number;
+  stt: number;             // STT (Cột A)
+  nccNPL: string;          // NCC NPL (Cột B)
+  duDauKi: number;         // Dư đầu kì (Cột C)
+  phatSinh: number;        // Phát sinh (Cột D)
+  thanhToan: number;       // Thanh toán (Cột E)
+  duCuoiKi: number;        // Dư cuối kì (Cột F)
+}
+
+// Interface cho bảng kê số dư đầu kì đến ngày (Bảng 2 - Cột H-J)
+export interface TheodoiCNNgay {
+  id: number;
+  stt: number;             // STT (Cột H)
+  nccNPL: string;          // NCC NPL (Cột I)
+  soTien: number;          // Số tiền (Cột J)
+}
+
+/**
+ * Đọc dữ liệu theo dõi CN theo tháng từ Google Sheets (Bảng 1)
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột A đến F
+ */
+export async function getTheodoiCNThangFromSheet(): Promise<TheodoiCNThang[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat8,
+      range: `'${sheetNameTheodoiCN}'!A6:F`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No theo doi CN thang data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const theodoiList: TheodoiCNThang[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        nccNPL: row[1] || "",
+        duDauKi: parseNumberVN(row[2]),
+        phatSinh: parseNumberVN(row[3]),
+        thanhToan: parseNumberVN(row[4]),
+        duCuoiKi: parseNumberVN(row[5]),
+      }))
+      .filter((item) => item.nccNPL.trim() !== "" && !item.nccNPL.startsWith('#'));
+
+    return theodoiList;
+  } catch (error) {
+    console.error("Error reading theo doi CN thang from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu bảng kê số dư đầu kì đến ngày từ Google Sheets (Bảng 2)
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột H đến J
+ */
+export async function getTheodoiCNNgayFromSheet(): Promise<TheodoiCNNgay[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat8,
+      range: `'${sheetNameTheodoiCN}'!H6:J`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No theo doi CN ngay data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const theodoiNgayList: TheodoiCNNgay[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        nccNPL: row[1] || "",
+        soTien: parseNumberVN(row[2]),
+      }))
+      .filter((item) => item.nccNPL.trim() !== "" && !item.nccNPL.startsWith('#'));
+
+    return theodoiNgayList;
+  } catch (error) {
+    console.error("Error reading theo doi CN ngay from Google Sheets:", error);
+    throw error;
+  }
+}
