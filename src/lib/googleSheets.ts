@@ -1155,7 +1155,7 @@ export async function deleteOrderFromSheet(orderId: number): Promise<void> {
 // SUPPLIER MANAGEMENT (Quản lý nhà cung cấp)
 // ============================================
 
-const spreadsheetIdNCC = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG || spreadsheetId;
+const spreadsheetIdNCC = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
 const sheetNameNCC = process.env.GOOGLE_SHEET_NAME_DON_HANG_NCCNPL || "NCCNPL";
 
 // Interface cho nhà cung cấp

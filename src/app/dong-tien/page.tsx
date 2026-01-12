@@ -1412,77 +1412,6 @@ export default function DongTien() {
                   )}
                 </div>
               </div>
-              {/* Row 3: Chi vận chuyển, Thu tiền hàng, Thu khác, Chi khác */}
-              <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chi vận chuyển
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newThuChi.shippingCost || ""}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                      setNewThuChi({ ...newThuChi, shippingCost: val ? Number(val) : 0 });
-                    }}
-                    disabled={isAddingThuChi}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thu tiền hàng
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newThuChi.salesIncome || ""}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                      setNewThuChi({ ...newThuChi, salesIncome: val ? Number(val) : 0 });
-                    }}
-                    disabled={isAddingThuChi}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thu khác
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newThuChi.otherIncome || ""}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                      setNewThuChi({ ...newThuChi, otherIncome: val ? Number(val) : 0 });
-                    }}
-                    disabled={isAddingThuChi}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chi khác
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newThuChi.otherExpense || ""}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                      setNewThuChi({ ...newThuChi, otherExpense: val ? Number(val) : 0 });
-                    }}
-                    disabled={isAddingThuChi}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
               {/* Row 4: Đối tượng, Phân loại */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1500,7 +1429,7 @@ export default function DongTien() {
                 </div>
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phân loại thu chi
+                    {addModalType === "income" ? "Phân loại thu" : "Phân loại chi"}
                   </label>
                   <input
                     type="text"
@@ -1513,7 +1442,7 @@ export default function DongTien() {
                     onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 200)}
                     disabled={isAddingThuChi}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    placeholder="Chọn phân loại..."
+                    placeholder={addModalType === "income" ? "Chọn phân loại thu..." : "Chọn phân loại chi..."}
                   />
                   {showCategoryDropdown && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -1705,22 +1634,6 @@ export default function DongTien() {
                   <span className="text-gray-900 font-medium">{selectedThuChi.workshop || "-"}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-500">Chi vận chuyển</span>
-                  <span className="text-gray-900 font-medium">{selectedThuChi.shippingCost ? `${selectedThuChi.shippingCost.toLocaleString("vi-VN")}đ` : "-"}</span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-500">Thu tiền hàng</span>
-                  <span className="text-gray-900 font-medium">{selectedThuChi.salesIncome ? `${selectedThuChi.salesIncome.toLocaleString("vi-VN")}đ` : "-"}</span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-500">Thu khác</span>
-                  <span className="text-gray-900 font-medium">{selectedThuChi.otherIncome ? `${selectedThuChi.otherIncome.toLocaleString("vi-VN")}đ` : "-"}</span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-gray-100">
-                  <span className="text-gray-500">Chi khác</span>
-                  <span className="text-gray-900 font-medium">{selectedThuChi.otherExpense ? `${selectedThuChi.otherExpense.toLocaleString("vi-VN")}đ` : "-"}</span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Đối tượng</span>
                   <span className="text-gray-900 font-medium">{selectedThuChi.entity || "-"}</span>
                 </div>
@@ -1850,73 +1763,6 @@ export default function DongTien() {
                     />
                   </div>
                 </div>
-                {/* Row 3: Chi vận chuyển, Thu tiền hàng, Thu khác, Chi khác */}
-                <div className="grid grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Chi vận chuyển
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={editingThuChi.shippingCost || ""}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setEditingThuChi({ ...editingThuChi, shippingCost: val ? Number(val) : 0 });
-                      }}
-                      disabled={isUpdatingThuChi}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Thu tiền hàng
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={editingThuChi.salesIncome || ""}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setEditingThuChi({ ...editingThuChi, salesIncome: val ? Number(val) : 0 });
-                      }}
-                      disabled={isUpdatingThuChi}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Thu khác
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={editingThuChi.otherIncome || ""}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setEditingThuChi({ ...editingThuChi, otherIncome: val ? Number(val) : 0 });
-                      }}
-                      disabled={isUpdatingThuChi}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Chi khác
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={editingThuChi.otherExpense || ""}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setEditingThuChi({ ...editingThuChi, otherExpense: val ? Number(val) : 0 });
-                      }}
-                      disabled={isUpdatingThuChi}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    />
-                  </div>
-                </div>
                 {/* Row 4: Đối tượng, Phân loại */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1933,7 +1779,7 @@ export default function DongTien() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phân loại thu chi
+                      {editingThuChi.totalIncome > 0 ? "Phân loại thu" : "Phân loại chi"}
                     </label>
                     <input
                       type="text"
@@ -1941,6 +1787,7 @@ export default function DongTien() {
                       onChange={(e) => setEditingThuChi({ ...editingThuChi, category: e.target.value })}
                       disabled={isUpdatingThuChi}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                      placeholder={editingThuChi.totalIncome > 0 ? "Chọn phân loại thu..." : "Chọn phân loại chi..."}
                     />
                   </div>
                 </div>
