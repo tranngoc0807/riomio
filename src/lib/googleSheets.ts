@@ -4734,3 +4734,381 @@ export async function getTheodoiCNNgayFromSheet(): Promise<TheodoiCNNgay[]> {
     throw error;
   }
 }
+
+// ===================== ĐƠN GIÁ GIA CÔNG =====================
+const spreadsheetIdSanXuat9 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameDonGiaGiaCong = process.env.GOOGLE_SHEET_NAME_DON_GIA_GIA_CONG || "Đơn giá gia công";
+
+// Interface cho đơn giá gia công
+export interface DonGiaGiaCong {
+  id: number;
+  maSPNhapKho: string;    // Mã SP nhập kho (Cột A)
+  maSP: string;            // Mã SP (Cột B)
+  mucLucSX: string;        // Mục lục sản xuất (Cột C)
+  xuongSX: string;         // Xưởng sản xuất (Cột D)
+  noiDungKhac: string;     // Nội dung khác (Cột E)
+  donGia: number;          // Đơn giá (Cột F)
+  nguoiNhap: string;       // Người nhập (Cột G)
+  ghiChu: string;          // Ghi chú (Cột H)
+}
+
+/**
+ * Đọc dữ liệu đơn giá gia công từ Google Sheets
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột A đến H
+ */
+export async function getDonGiaGiaCongFromSheet(): Promise<DonGiaGiaCong[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat9,
+      range: `'${sheetNameDonGiaGiaCong}'!A6:H`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No don gia gia cong data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const donGiaList: DonGiaGiaCong[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maSPNhapKho: row[0] || "",
+        maSP: row[1] || "",
+        mucLucSX: row[2] || "",
+        xuongSX: row[3] || "",
+        noiDungKhac: row[4] || "",
+        donGia: parseNumberVN(row[5]),
+        nguoiNhap: row[6] || "",
+        ghiChu: row[7] || "",
+      }))
+      .filter((item) => item.maSPNhapKho.trim() !== "" || item.maSP.trim() !== "");
+
+    return donGiaList;
+  } catch (error) {
+    console.error("Error reading don gia gia cong from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ===================== BẢNG KÊ GIA CÔNG =====================
+const spreadsheetIdSanXuat10 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameBangKeGiaCong = process.env.GOOGLE_SHEET_NAME_BANG_KE_GIA_CONG || "Bảng kê gia công";
+
+// Interface cho bảng kê gia công
+export interface BangKeGiaCong {
+  id: number;
+  maPGC: string;          // Mã PGC (Cột A)
+  ngayThang: string;      // Ngày tháng (Cột B)
+  maSPSX: string;         // Mã SP SX (Cột C)
+  maSP: string;           // Mã SP (Cột D)
+  xuongSX: string;        // Xưởng SX (Cột E)
+  soLuong: number;        // Số lượng (Cột F)
+  donGia: number;         // Đơn giá (Cột G)
+  thanhTien: number;      // Thành tiền (Cột H)
+  phanLoai: string;       // Phân loại (Cột I)
+  doiSoat: string;        // Đối soát (Cột J)
+  ghiChu: string;         // Ghi chú (Cột K)
+}
+
+/**
+ * Đọc dữ liệu bảng kê gia công từ Google Sheets
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột A đến K
+ */
+export async function getBangKeGiaCongFromSheet(): Promise<BangKeGiaCong[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat10,
+      range: `'${sheetNameBangKeGiaCong}'!A6:K`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No bang ke gia cong data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const bangKeList: BangKeGiaCong[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maPGC: row[0] || "",
+        ngayThang: row[1] || "",
+        maSPSX: row[2] || "",
+        maSP: row[3] || "",
+        xuongSX: row[4] || "",
+        soLuong: parseNumberVN(row[5]),
+        donGia: parseNumberVN(row[6]),
+        thanhTien: parseNumberVN(row[7]),
+        phanLoai: row[8] || "",
+        doiSoat: row[9] || "",
+        ghiChu: row[10] || "",
+      }))
+      .filter((item) => item.maPGC.trim() !== "");
+
+    return bangKeList;
+  } catch (error) {
+    console.error("Error reading bang ke gia cong from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ===================== PHIẾU GIA CÔNG =====================
+const spreadsheetIdSanXuat11 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNamePhieuGiaCong = process.env.GOOGLE_SHEET_NAME_PHIEU_GIA_CONG || "Phiếu gia công";
+
+// Interface cho chi tiết phiếu gia công
+export interface PhieuGiaCongDetail {
+  id: number;
+  stt: number;             // STT (Cột A)
+  maSanPham: string;       // Mã sản phẩm (Cột B)
+  soLuong: number;         // Số lượng (Cột C)
+  donGia: number;          // Đơn giá (Cột D)
+  thanhTien: number;       // Thành tiền (Cột E)
+  ghiChu: string;          // Ghi chú (Cột F)
+}
+
+// Interface cho thông tin header phiếu gia công
+export interface PhieuGiaCongInfo {
+  maPhieu: string;         // Mã phiếu (B3)
+  ngay: string;            // Ngày (B4)
+  xuongSX: string;         // Xưởng sản xuất (E3)
+  tongSoLuong: number;     // Tổng số lượng (E4)
+  details: PhieuGiaCongDetail[];
+}
+
+/**
+ * Đọc dữ liệu phiếu gia công từ Google Sheets
+ * Header info: Row 3-4, Data header: Row 6, Data: Row 7+
+ */
+export async function getPhieuGiaCongFromSheet(): Promise<PhieuGiaCongInfo> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu từ A1 đến F100
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat11,
+      range: `'${sheetNamePhieuGiaCong}'!A1:F100`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return {
+        maPhieu: "",
+        ngay: "",
+        xuongSX: "",
+        tongSoLuong: 0,
+        details: [],
+      };
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    // Đọc thông tin header (Row 3 = index 2, Row 4 = index 3)
+    const maPhieu = rows[2]?.[1]?.toString().trim() || "";
+    const ngay = rows[3]?.[1]?.toString().trim() || "";
+    const xuongSX = rows[2]?.[4]?.toString().trim() || "";
+    const tongSoLuong = parseNumberVN(rows[3]?.[4]);
+
+    // Đọc chi tiết từ row 7 (index 6)
+    const details: PhieuGiaCongDetail[] = [];
+    for (let i = 6; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      const stt = parseNumberVN(row[0]);
+      const maSanPham = row[1]?.toString().trim() || "";
+
+      // Skip empty rows
+      if (!maSanPham && stt === 0) continue;
+
+      details.push({
+        id: i + 1,
+        stt: stt,
+        maSanPham: maSanPham,
+        soLuong: parseNumberVN(row[2]),
+        donGia: parseNumberVN(row[3]),
+        thanhTien: parseNumberVN(row[4]),
+        ghiChu: row[5]?.toString().trim() || "",
+      });
+    }
+
+    return {
+      maPhieu,
+      ngay,
+      xuongSX,
+      tongSoLuong,
+      details,
+    };
+  } catch (error) {
+    console.error("Error reading phieu gia cong from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật mã phiếu gia công được chọn (cell B3)
+ */
+export async function updatePhieuGiaCongSelection(maPhieu: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat11,
+      range: `'${sheetNamePhieuGiaCong}'!B3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[maPhieu]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating phieu gia cong selection:", error);
+    throw error;
+  }
+}
+
+// ===================== CNPT XƯỞNG GIA CÔNG =====================
+const spreadsheetIdSanXuat12 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameCNPTXuongGiaCong = process.env.GOOGLE_SHEET_NAME_CNPT_XUONG_GIA_CONG || "CNPT xưởng gia công";
+
+// Interface cho bảng 1: Công nợ phải trả xưởng SX theo tháng (Cột A-G)
+export interface CNPTXuongThang {
+  id: number;
+  stt: number;             // STT (Cột A)
+  xuongSX: string;         // Xưởng SX (Cột B)
+  duDau: number;           // Dư đầu (Cột C)
+  tienGiaCong: number;     // Tiền gia công (Cột D)
+  thanhToan: number;       // Thanh toán (Cột E)
+  duCuoi: number;          // Dư cuối (Cột G)
+}
+
+// Interface cho bảng 2: Số dư đầu kì đến ngày (Cột H-K)
+export interface CNPTXuongNgay {
+  id: number;
+  stt: number;             // STT (Cột H)
+  xuongSX: string;         // Xưởng SX (Cột I)
+  soTien: number;          // Số tiền (Cột K)
+}
+
+/**
+ * Đọc dữ liệu CNPT xưởng gia công theo tháng từ Google Sheets (Bảng 1)
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột A đến F
+ */
+export async function getCNPTXuongThangFromSheet(): Promise<CNPTXuongThang[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat12,
+      range: `'${sheetNameCNPTXuongGiaCong}'!A6:F`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No CNPT xuong thang data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const cnptList: CNPTXuongThang[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        xuongSX: row[1] || "",
+        duDau: parseNumberVN(row[2]),
+        tienGiaCong: parseNumberVN(row[3]),
+        thanhToan: parseNumberVN(row[4]),
+        duCuoi: parseNumberVN(row[5]), // Cột F (index 5)
+      }))
+      .filter((item) => item.xuongSX.trim() !== "" && !item.xuongSX.startsWith('#'));
+
+    return cnptList;
+  } catch (error) {
+    console.error("Error reading CNPT xuong thang from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu số dư đầu kì xưởng SX đến ngày từ Google Sheets (Bảng 2)
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột H đến J
+ */
+export async function getCNPTXuongNgayFromSheet(): Promise<CNPTXuongNgay[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat12,
+      range: `'${sheetNameCNPTXuongGiaCong}'!H6:J`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No CNPT xuong ngay data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const cnptNgayList: CNPTXuongNgay[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        xuongSX: row[1] || "",
+        soTien: parseNumberVN(row[2]), // Cột J (index 2 trong range H-J)
+      }))
+      .filter((item) => item.xuongSX.trim() !== "" && !item.xuongSX.startsWith('#'));
+
+    return cnptNgayList;
+  } catch (error) {
+    console.error("Error reading CNPT xuong ngay from Google Sheets:", error);
+    throw error;
+  }
+}

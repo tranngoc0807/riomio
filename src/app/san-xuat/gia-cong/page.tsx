@@ -13,8 +13,12 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
-// Import existing tab component from parent
+// Import existing tab components from parent
 import WorkshopsTab from "../components/WorkshopsTab";
+import DonGiaGiaCongTab from "../components/DonGiaGiaCongTab";
+import BangKeGiaCongTab from "../components/BangKeGiaCongTab";
+import PhieuGiaCongTab from "../components/PhieuGiaCongTab";
+import CNPTXuongGiaCongTab from "../components/CNPTXuongGiaCongTab";
 
 type TabType =
   | "xuong-sx"
@@ -104,10 +108,10 @@ export default function GiaCong() {
 
         <div className="p-6">
           {activeTab === "xuong-sx" && <WorkshopsTab />}
-          {activeTab === "don-gia" && <PlaceholderTab title="Đơn giá gia công" icon={Calculator} />}
-          {activeTab === "bang-ke" && <PlaceholderTab title="Bảng kê gia công" icon={ClipboardList} />}
-          {activeTab === "phieu-gc" && <PlaceholderTab title="Phiếu gia công" icon={FileText} />}
-          {activeTab === "cnpt-xuong" && <PlaceholderTab title="CNPT xưởng gia công" icon={Receipt} />}
+          {activeTab === "don-gia" && <DonGiaGiaCongTab />}
+          {activeTab === "bang-ke" && <BangKeGiaCongTab />}
+          {activeTab === "phieu-gc" && <PhieuGiaCongTab />}
+          {activeTab === "cnpt-xuong" && <CNPTXuongGiaCongTab />}
           {activeTab === "theo-doi-cn" && <PlaceholderTab title="Theo dõi CN từng xưởng SX" icon={FileSearch} />}
         </div>
       </div>
