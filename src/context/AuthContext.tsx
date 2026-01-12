@@ -112,58 +112,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const maxRetries = 2;
-    const timeout = 3000; // 3 seconds timeout
+    try {
+      console.log("📋 fetchProfile: Fetching from Supabase...");
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`📋 fetchProfile: Attempt ${attempt}/${maxRetries}`);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
 
-        const timeoutPromise = new Promise<null>((resolve) => {
-          setTimeout(() => {
-            console.warn(`⚠️ fetchProfile: TIMEOUT after ${timeout / 1000} seconds (attempt ${attempt})`);
-            resolve(null);
-          }, timeout);
-        });
-
-        const fetchPromise = supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", userId)
-          .single()
-          .then((response: any) => {
-            if (response.error) {
-              console.error("📋 fetchProfile: Error:", response.error);
-              return null;
-            }
-            return response.data as Profile;
-          });
-
-        const result = await Promise.race([fetchPromise, timeoutPromise]);
-
-        if (result) {
-          console.log("📋 fetchProfile: Success, caching profile");
-          setCachedProfile(userId, result);
-          return result;
-        }
-
-        // Wait before retry (exponential backoff)
-        if (attempt < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
-          console.log(`📋 fetchProfile: Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      } catch (err) {
-        console.error(`📋 fetchProfile: Exception (attempt ${attempt}):`, err);
-        if (attempt < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
+      if (error) {
+        console.error("📋 fetchProfile: Error:", error);
+        return null;
       }
-    }
 
-    console.error("📋 fetchProfile: All retries failed");
-    return null;
+      if (data) {
+        console.log("📋 fetchProfile: Success, caching profile");
+        setCachedProfile(userId, data);
+        return data as Profile;
+      }
+
+      return null;
+    } catch (err) {
+      console.error("📋 fetchProfile: Exception:", err);
+      return null;
+    }
   };
 
   useEffect(() => {
