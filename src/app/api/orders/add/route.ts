@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
       date: body.date || new Date().toISOString().split("T")[0],
       customer: body.customer,
       productCode: body.productCode || "",
+      color: body.color || "",
+      size: body.size || "",
       image: body.image || "",
       items: body.items || 0,
       productPrice: body.productPrice || 0,

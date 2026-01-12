@@ -20,7 +20,9 @@ interface PrintableLenhSanXuatProps {
   data: GroupedLSX;
 }
 
-const TABLE_SIZES = [
+const ALL_SIZES = [
+  { key: "size6m", label: "6m" },
+  { key: "size9m", label: "9m" },
   { key: "size0_1", label: "0/1" },
   { key: "size1_2", label: "1/2" },
   { key: "size2_3", label: "2/3" },
@@ -29,18 +31,68 @@ const TABLE_SIZES = [
   { key: "size5_6", label: "5/6" },
   { key: "size6_7", label: "6/7" },
   { key: "size7_8", label: "7/8" },
+  { key: "size8_9", label: "8/9" },
+  { key: "size9_10", label: "9/10" },
+  { key: "size10_11", label: "10/11" },
+  { key: "size11_12", label: "11/12" },
+  { key: "size12_13", label: "12/13" },
+  { key: "size13_14", label: "13/14" },
+  { key: "size14_15", label: "14/15" },
+  { key: "sizeXS", label: "XS" },
+  { key: "sizeS", label: "S" },
+  { key: "sizeM", label: "M" },
+  { key: "sizeL", label: "L" },
+  { key: "sizeXL", label: "XL" },
 ];
 
-const formatDate = (dateString: string) => {
+// Get sizes that have data across all products
+const getSizesWithData = (products: KeHoachSX[]) => {
+  return ALL_SIZES.filter((s) =>
+    products.some((p) => (p as any)[s.key] > 0)
+  );
+};
+
+const formatDate = (dateString: string | number) => {
   if (!dateString) return "-";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("vi-VN");
+
+  const strValue = String(dateString);
+
+  // Handle dd/mm/yyyy format
+  if (strValue.includes("/")) {
+    return strValue;
+  }
+
+  // Handle yyyy-mm-dd format
+  if (strValue.includes("-")) {
+    const date = new Date(strValue);
+    if (!isNaN(date.getTime())) {
+      const day = date.getDate().toString().padStart(2, "0");
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+  }
+
+  // Handle Excel serial number
+  const numValue = Number(strValue);
+  if (!isNaN(numValue) && numValue > 25000 && numValue < 100000) {
+    const date = new Date((numValue - 25569) * 86400 * 1000);
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  return strValue;
 };
 
 export default function PrintableLenhSanXuat({ data }: PrintableLenhSanXuatProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Get only sizes that have data for this LSX
+  const sizesWithData = getSizesWithData(data.products);
 
   const handleDownloadJPG = async () => {
     if (!printRef.current) return;
@@ -270,7 +322,7 @@ export default function PrintableLenhSanXuat({ data }: PrintableLenhSanXuatProps
                 <th style={{ border: "1px solid #d1d5db", padding: "8px 4px", textAlign: "center", width: "50px" }}>
                   Hình ảnh
                 </th>
-                {TABLE_SIZES.map((s) => (
+                {sizesWithData.map((s) => (
                   <th
                     key={s.key}
                     style={{
@@ -331,7 +383,7 @@ export default function PrintableLenhSanXuat({ data }: PrintableLenhSanXuatProps
                       "-"
                     )}
                   </td>
-                  {TABLE_SIZES.map((s) => (
+                  {sizesWithData.map((s) => (
                     <td
                       key={s.key}
                       style={{

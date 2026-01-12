@@ -1239,24 +1239,14 @@ export default function KeHoachSXTab() {
                           <div className="text-xl font-bold text-blue-600">{product.totalQuantity || 0}</div>
                         </div>
                       </div>
-                      {/* Sizes Grid - 2 rows */}
+                      {/* Sizes Grid - Only show sizes with data */}
                       <div className="bg-yellow-50/50 rounded-lg p-3">
-                        <div className="grid grid-cols-11 gap-2 mb-2">
-                          {TABLE_SIZES.slice(0, 11).map((s) => (
-                            <div key={s.key} className="text-center">
+                        <div className="flex flex-wrap gap-2">
+                          {TABLE_SIZES.filter((s) => (product as any)[s.key] > 0).map((s) => (
+                            <div key={s.key} className="text-center min-w-[60px]">
                               <div className="text-xs text-gray-500 mb-1">{s.label}</div>
-                              <div className="px-2 py-1.5 text-sm font-medium bg-white rounded border border-gray-200">
-                                {(product as any)[s.key] || "-"}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="grid grid-cols-11 gap-2">
-                          {TABLE_SIZES.slice(11).map((s) => (
-                            <div key={s.key} className="text-center">
-                              <div className="text-xs text-gray-500 mb-1">{s.label}</div>
-                              <div className="px-2 py-1.5 text-sm font-medium bg-white rounded border border-gray-200">
-                                {(product as any)[s.key] || "-"}
+                              <div className="px-3 py-1.5 text-sm font-medium bg-white rounded border border-gray-200">
+                                {(product as any)[s.key]}
                               </div>
                             </div>
                           ))}

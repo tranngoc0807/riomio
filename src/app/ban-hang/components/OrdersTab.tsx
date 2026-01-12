@@ -10,11 +10,14 @@ import {
   X,
   Loader2,
   ChevronDown,
+  Printer,
+  Download,
 } from "lucide-react";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import html2canvas from "html2canvas";
 
 interface Order {
   id: number;
@@ -117,6 +120,20 @@ const INITIAL_ORDER = {
   notes: "",
 };
 
+// Helper function to get cached profile from localStorage as fallback
+const getCachedProfileName = (): string => {
+  try {
+    const cached = localStorage.getItem("riomio_profile_cache");
+    if (cached) {
+      const { profile } = JSON.parse(cached);
+      return profile?.full_name || profile?.email || "";
+    }
+  } catch (e) {
+    console.warn("Error reading cached profile:", e);
+  }
+  return "";
+};
+
 export default function OrdersTab() {
   const { profile } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -133,6 +150,11 @@ export default function OrdersTab() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null); // Order code to delete
   const [viewGroupedOrder, setViewGroupedOrder] = useState<GroupedOrder | null>(null);
+
+  // Print states
+  const [showPrintDropdown, setShowPrintDropdown] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   // Multi-product form states
   const [formOrderCode, setFormOrderCode] = useState("");
@@ -288,8 +310,8 @@ export default function OrdersTab() {
         await Promise.all([
           fetch("/api/customers"),
           fetch("/api/programs"),
-          fetch("/api/san-pham-ban-hang"), // PhatTrienSanPhamBanHang - mã SP bán hàng
-          fetch("/api/san-pham-catalog"), // SanPham catalog - có giá
+          fetch("/api/danh-muc-sp"), // Danh mục SP - lấy Mã SP đầy đủ
+          fetch("/api/san-pham-catalog"), // SanPham catalog - có giá và tên
           fetch("/api/orders"),
         ]);
 
@@ -320,31 +342,42 @@ export default function OrdersTab() {
         );
       }
 
-      // Tạo map giá từ catalog (theo tên sản phẩm)
-      const priceMap: Record<string, ProductCatalog> = {};
+      // Tạo map thông tin sản phẩm từ catalog (theo mã sản phẩm)
+      const catalogMap: Record<string, ProductCatalog & { code: string }> = {};
       if (productCatalogResult.success) {
         productCatalogResult.data.forEach((p: any) => {
-          priceMap[p.name] = {
-            name: p.name,
-            retailPrice: p.retailPrice || 0,
-            wholesalePrice: p.wholesalePrice || 0,
-            image: p.image || "",
-          };
+          if (p.code) {
+            catalogMap[p.code] = {
+              name: p.name || "",
+              retailPrice: p.retailPrice || 0,
+              wholesalePrice: p.wholesalePrice || 0,
+              image: p.image || "",
+              code: p.code,
+            };
+          }
         });
       }
 
-      // Lấy sản phẩm từ PhatTrienSanPhamBanHang - giá đã có sẵn trong sheet
+      // Lấy Mã SP đầy đủ + hình ảnh + giá từ Danh mục SP
       if (productsResult.success) {
-        setProductsList(
-          productsResult.data.map((p: any) => ({
-            id: p.id,
-            code: p.code || "",
-            name: p.name,
-            retailPrice: p.retailPrice || 0,
-            wholesalePrice: p.wholesalePrice || 0,
-            image: p.image || "",
-          }))
-        );
+        const productList: Product[] = productsResult.data
+          .map((item: { maSPDayDu: string; image: string; wholesalePrice: number; retailPrice: number }, index: number) => {
+            const code = item.maSPDayDu || "";
+
+            return {
+              id: index + 1,
+              code: code,
+              name: code, // Dùng Mã SP đầy đủ làm tên
+              size: "", // User sẽ chọn size
+              color: "", // User sẽ chọn màu
+              retailPrice: item.retailPrice || 0,     // Giá lẻ từ Danh mục SP
+              wholesalePrice: item.wholesalePrice || 0, // Giá sỉ từ Danh mục SP
+              image: item.image || "",                // Hình ảnh từ Danh mục SP
+            };
+          })
+          .filter((p: Product) => p.code.trim() !== "");
+
+        setProductsList(productList);
       }
 
       // Generate next order code
@@ -553,7 +586,7 @@ export default function OrdersTab() {
           subtotalAfterDiscount: product.subtotalAfterDiscount,
           paymentDiscount: formPaymentDiscount,
           total: product.subtotalAfterDiscount + paymentDiscountPerProduct,
-          salesUser: profile?.full_name || profile?.email || "",
+          salesUser: profile?.full_name || profile?.email || getCachedProfileName(),
           status: "pending",
           notes: formNotes,
         };
@@ -587,6 +620,82 @@ export default function OrdersTab() {
   const handleViewGrouped = (group: GroupedOrder) => {
     setViewGroupedOrder(group);
     setShowViewModal(true);
+  };
+
+  // Download order as JPG
+  const handleDownloadJPG = async () => {
+    if (!printRef.current || !viewGroupedOrder) return;
+
+    setIsExporting(true);
+    setShowPrintDropdown(false);
+
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const link = document.createElement("a");
+      link.download = `DonHang_${viewGroupedOrder.orderCode}_${new Date().toISOString().split("T")[0]}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+    } catch (error) {
+      console.error("Error exporting to JPG:", error);
+      toast.error("Lỗi khi xuất ảnh");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Print order
+  const handlePrint = () => {
+    setShowPrintDropdown(false);
+
+    const printContent = printRef.current;
+    if (!printContent || !viewGroupedOrder) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Đơn hàng - ${viewGroupedOrder.orderCode}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.outerHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   };
 
   // Edit grouped order
@@ -785,9 +894,53 @@ export default function OrdersTab() {
                 <h3 className="text-xl font-semibold text-gray-900">Chi tiết đơn hàng</h3>
                 <p className="text-sm text-gray-500">Mã ĐH: {viewGroupedOrder.orderCode}</p>
               </div>
-              <button onClick={() => { setShowViewModal(false); setViewGroupedOrder(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Print Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowPrintDropdown(!showPrintDropdown)}
+                    disabled={isExporting}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
+                    {isExporting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Đang xuất...
+                      </>
+                    ) : (
+                      <>
+                        <Printer size={18} />
+                        In / Tải xuống
+                        <ChevronDown size={16} />
+                      </>
+                    )}
+                  </button>
+                  {showPrintDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowPrintDropdown(false)} />
+                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                        <button
+                          onClick={handleDownloadJPG}
+                          className="flex items-center gap-2 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors rounded-t-lg"
+                        >
+                          <Download size={18} className="text-green-600" />
+                          <span>Tải xuống JPG</span>
+                        </button>
+                        <button
+                          onClick={handlePrint}
+                          className="flex items-center gap-2 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100"
+                        >
+                          <Printer size={18} className="text-blue-600" />
+                          <span>In qua máy in</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <button onClick={() => { setShowViewModal(false); setViewGroupedOrder(null); setShowPrintDropdown(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               {/* Order Info */}
@@ -883,6 +1036,117 @@ export default function OrdersTab() {
                 </div>
               )}
             </div>
+
+            {/* Printable content - Hidden but used for export */}
+            <div className="absolute left-[-9999px] top-0">
+              <div
+                ref={printRef}
+                style={{
+                  width: "210mm",
+                  minHeight: "148mm",
+                  padding: "10mm",
+                  backgroundColor: "#fff",
+                  fontFamily: "Arial, sans-serif",
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "15px", borderBottom: "2px solid #2563eb", paddingBottom: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #ef4444 50%, #000 50%)",
+                      }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: "bold", fontSize: "18px" }}>RIOMIO</div>
+                      <div style={{ fontSize: "10px", color: "#666" }}>Thời trang trẻ em</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: "auto", textAlign: "right" }}>
+                    <div style={{ fontWeight: "bold", fontSize: "16px", color: "#2563eb" }}>ĐƠN HÀNG</div>
+                    <div style={{ fontSize: "14px", fontWeight: "bold" }}>{viewGroupedOrder.orderCode}</div>
+                    <div style={{ fontSize: "11px", color: "#666" }}>Ngày: {viewGroupedOrder.date}</div>
+                  </div>
+                </div>
+
+                {/* Customer Info */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "15px", padding: "10px", backgroundColor: "#f9fafb", borderRadius: "6px" }}>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "#666" }}>Khách hàng:</span>
+                    <p style={{ fontWeight: "600", fontSize: "13px" }}>{viewGroupedOrder.customer}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "#666" }}>Nhân viên bán hàng:</span>
+                    <p style={{ fontWeight: "600", fontSize: "13px" }}>{viewGroupedOrder.salesUser || "-"}</p>
+                  </div>
+                </div>
+
+                {/* Products Table */}
+                <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "15px", fontSize: "11px" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f3f4f6" }}>
+                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "center", width: "30px" }}>STT</th>
+                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "left" }}>Mã SP</th>
+                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "center", width: "40px" }}>SL</th>
+                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right" }}>Đơn giá</th>
+                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right" }}>Thành tiền</th>
+                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "center" }}>CK</th>
+                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", backgroundColor: "#fef3c7" }}>Sau CK</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {viewGroupedOrder.products.map((product, index) => (
+                      <tr key={product.id}>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{index + 1}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", fontWeight: "500", color: "#2563eb" }}>{product.productCode}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{product.items}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right" }}>{product.productPrice.toLocaleString("vi-VN")}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right" }}>{product.subtotal.toLocaleString("vi-VN")}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{product.discount || "-"}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right", backgroundColor: "#fffbeb", fontWeight: "500" }}>{product.subtotalAfterDiscount.toLocaleString("vi-VN")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ backgroundColor: "#f3f4f6" }}>
+                      <td colSpan={6} style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "600" }}>Tổng tiền hàng sau CK:</td>
+                      <td style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "600", color: "#2563eb" }}>
+                        {viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}đ
+                      </td>
+                    </tr>
+                    {viewGroupedOrder.paymentDiscount && (
+                      <tr>
+                        <td colSpan={6} style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "500" }}>CK thanh toán:</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", color: "#ea580c" }}>{viewGroupedOrder.paymentDiscount}</td>
+                      </tr>
+                    )}
+                    <tr style={{ backgroundColor: "#dcfce7" }}>
+                      <td colSpan={6} style={{ border: "1px solid #d1d5db", padding: "8px", textAlign: "right", fontWeight: "bold", fontSize: "13px" }}>KHÁCH PHẢI TRẢ:</td>
+                      <td style={{ border: "1px solid #d1d5db", padding: "8px", textAlign: "right", fontWeight: "bold", fontSize: "14px", color: "#16a34a" }}>
+                        {viewGroupedOrder.total.toLocaleString("vi-VN")}đ
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {/* Notes */}
+                {viewGroupedOrder.notes && (
+                  <div style={{ marginTop: "10px", padding: "8px", backgroundColor: "#f9fafb", borderRadius: "4px", fontSize: "11px" }}>
+                    <span style={{ color: "#666" }}>Ghi chú: </span>
+                    <span>{viewGroupedOrder.notes}</span>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#666" }}>
+                  <div>In ngày: {new Date().toLocaleDateString("vi-VN")}</div>
+                  <div>RIOMIO - Thời trang trẻ em</div>
+                </div>
+              </div>
+            </div>
           </div>
         </Portal>
       )}
@@ -970,6 +1234,15 @@ export default function OrdersTab() {
         <Portal>
           <div className="fixed inset-0 z-50 bg-black/30" onClick={() => { setShowAddModal(false); resetAddForm(); setSelectedProducts([]); }} />
           <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Loading Overlay */}
+            {isAdding && (
+              <div className="fixed inset-4 lg:inset-8 bg-white/80 z-70 flex flex-col items-center justify-center rounded-xl">
+                <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+                <p className="text-gray-700 font-medium">Đang tạo đơn hàng...</p>
+                <p className="text-gray-500 text-sm mt-1">Vui lòng đợi trong giây lát</p>
+              </div>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
               <div>
@@ -1074,7 +1347,7 @@ export default function OrdersTab() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">User bán hàng</label>
                       <input
                         type="text"
-                        value={profile?.full_name || profile?.email || "Đang tải..."}
+                        value={profile?.full_name || profile?.email || getCachedProfileName() || "Đang tải..."}
                         readOnly
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
                       />
@@ -1128,9 +1401,9 @@ export default function OrdersTab() {
                       </div>
                     </div>
 
-                    {/* Payment & Notes */}
+                    {/* Payment */}
                     <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">CK thanh toán</label>
                           <input
@@ -1148,16 +1421,6 @@ export default function OrdersTab() {
                             value={calculateTotalAllProducts().toLocaleString("vi-VN") + "đ"}
                             readOnly
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-green-50 text-green-700 font-bold text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                          <input
-                            type="text"
-                            value={formNotes}
-                            onChange={(e) => setFormNotes(e.target.value)}
-                            placeholder="Ghi chú..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                           />
                         </div>
                       </div>
@@ -1182,6 +1445,7 @@ export default function OrdersTab() {
                           <thead>
                             <tr className="bg-gray-50">
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
+                              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-14">Ảnh</th>
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã SP</th>
                               <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-20">SL</th>
                               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Giá SP</th>
@@ -1197,6 +1461,20 @@ export default function OrdersTab() {
                             {selectedProducts.map((product, index) => (
                               <tr key={product.id} className="hover:bg-gray-50">
                                 <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
+                                <td className="px-3 py-2 text-center">
+                                  {product.image ? (
+                                    <img
+                                      src={product.image}
+                                      alt={product.productCode}
+                                      className="w-10 h-10 object-cover rounded mx-auto"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                      }}
+                                    />
+                                  ) : null}
+                                  <span className={product.image ? 'hidden' : 'text-gray-400 text-xs'}>-</span>
+                                </td>
                                 <td className="px-3 py-2 text-sm font-medium text-blue-600">{product.productCode}</td>
                                 <td className="px-3 py-2">
                                   <input
@@ -1251,7 +1529,7 @@ export default function OrdersTab() {
                           </tbody>
                           <tfoot className="bg-gray-100">
                             <tr>
-                              <td colSpan={4} className="px-3 py-2 text-sm font-medium text-right">Tổng tiền hàng sau CK:</td>
+                              <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">Tổng tiền hàng sau CK:</td>
                               <td colSpan={4} className="px-3 py-2"></td>
                               <td className="px-3 py-2 text-sm text-right font-semibold text-blue-600">
                                 {selectedProducts.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}đ

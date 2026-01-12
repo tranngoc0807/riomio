@@ -924,19 +924,21 @@ export interface Order {
   date: string;           // Ngày Đặt (B)
   customer: string;       // Khách hàng (C)
   productCode: string;    // Mã SP (D)
-  image: string;          // Hình ảnh (E)
-  items: number;          // SL (F)
-  productPrice: number;   // Giá Sỉ (G)
-  subtotal: number;       // Tiền Hàng (H)
-  salesProgram: string;   // Chương trình BH (I)
-  discount: string;       // Chiết Khấu (J)
-  priceAfterDiscount: number; // Đơn giá sau chiết khấu (K)
-  subtotalAfterDiscount: number; // Tiền hàng sau chiết khấu (L)
-  paymentDiscount: string; // CK thanh toán (M)
-  total: number;          // Khách phải trả (N)
-  salesUser: string;      // User bán hàng (O)
-  status: "completed" | "processing" | "pending" | "shipping"; // Tình trạng đơn hàng (P)
-  notes: string;          // Ghi chú (Q)
+  color: string;          // Màu sắc (E)
+  size: string;           // Size (F)
+  image: string;          // Hình ảnh (G)
+  items: number;          // SL (H)
+  productPrice: number;   // Giá Sỉ (I)
+  subtotal: number;       // Tiền Hàng (J)
+  salesProgram: string;   // Chương trình BH (K)
+  discount: string;       // Chiết Khấu (L)
+  priceAfterDiscount: number; // Đơn giá sau chiết khấu (M)
+  subtotalAfterDiscount: number; // Tiền hàng sau chiết khấu (N)
+  paymentDiscount: string; // CK thanh toán (O)
+  total: number;          // Khách phải trả (P)
+  salesUser: string;      // User bán hàng (Q)
+  status: "completed" | "processing" | "pending" | "shipping"; // Tình trạng đơn hàng (R)
+  notes: string;          // Ghi chú (S)
   // Deprecated fields for backward compatibility
   freeItems?: string;
   paymentStatus?: "paid" | "partial" | "unpaid";
@@ -952,7 +954,7 @@ export async function getOrdersFromSheet(): Promise<Order[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdDonHang,
-      range: `${sheetNameDonHang}!A2:Q`, // Đọc từ dòng 2, tất cả các cột (A-Q)
+      range: `${sheetNameDonHang}!A2:Q`, // Đọc từ dòng 2, các cột A-Q (không có Màu sắc, Size)
     });
 
     const rows = response.data.values;
@@ -976,6 +978,8 @@ export async function getOrdersFromSheet(): Promise<Order[]> {
         date: row[1] || "",                    // B - Ngày Đặt
         customer: row[2] || "",                // C - Khách hàng
         productCode: row[3] || "",             // D - Mã SP
+        color: "",                             // Không có trong sheet
+        size: "",                              // Không có trong sheet
         image: row[4] || "",                   // E - Hình ảnh
         items: parseInt(row[5]) || 0,          // F - SL
         productPrice: parseFloat((row[6] || "0").toString().replace(/\./g, "")) || 0, // G - Giá Sỉ
@@ -1006,15 +1010,8 @@ export async function addOrderToSheet(order: Order): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Map status to Vietnamese
-    const statusMap: Record<string, string> = {
-      completed: "Hoàn thành",
-      processing: "Đang xử lý",
-      pending: "Chờ xử lý",
-      shipping: "Đang giao",
-    };
-
     // Ghi data vào sheet (sử dụng append để thêm vào cuối)
+    // Không ghi Màu sắc và Size vì sheet không có 2 cột này
     const values = [
       [
         order.code,                                      // A - Mã Đơn hàng
@@ -1032,7 +1029,7 @@ export async function addOrderToSheet(order: Order): Promise<void> {
         order.paymentDiscount || "",                     // M - CK thanh toán
         formatNumberVN(order.total),                     // N - Khách phải trả
         order.salesUser || "",                           // O - User bán hàng
-        statusMap[order.status],                         // P - Tình trạng đơn hàng
+        "",                                              // P - Tình trạng đơn hàng (để trống)
         order.notes || "",                               // Q - Ghi chú
       ],
     ];
@@ -1063,14 +1060,7 @@ export async function updateOrderInSheet(order: Order): Promise<void> {
     // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
     const rowNumber = order.id + 1;
 
-    // Map status to Vietnamese
-    const statusMap: Record<string, string> = {
-      completed: "Hoàn thành",
-      processing: "Đang xử lý",
-      pending: "Chờ xử lý",
-      shipping: "Đang giao",
-    };
-
+    // Không ghi Màu sắc và Size vì sheet không có 2 cột này
     const values = [
       [
         order.code,                                      // A - Mã Đơn hàng
@@ -1088,7 +1078,7 @@ export async function updateOrderInSheet(order: Order): Promise<void> {
         order.paymentDiscount || "",                     // M - CK thanh toán
         formatNumberVN(order.total),                     // N - Khách phải trả
         order.salesUser || "",                           // O - User bán hàng
-        statusMap[order.status],                         // P - Tình trạng đơn hàng
+        "",                                              // P - Tình trạng đơn hàng (để trống)
         order.notes || "",                               // Q - Ghi chú
       ],
     ];
@@ -1165,7 +1155,7 @@ export async function deleteOrderFromSheet(orderId: number): Promise<void> {
 // SUPPLIER MANAGEMENT (Quản lý nhà cung cấp)
 // ============================================
 
-const spreadsheetIdNCC = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const spreadsheetIdNCC = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG || spreadsheetId;
 const sheetNameNCC = process.env.GOOGLE_SHEET_NAME_DON_HANG_NCCNPL || "NCCNPL";
 
 // Interface cho nhà cung cấp
@@ -3027,6 +3017,8 @@ export interface SanPhamBanHang {
   id: number;
   code: string;           // Mã SP (Cột A)
   name: string;           // Tên SP (Cột B)
+  size: string;           // Size (Cột C) - VD: "0/1-7/8" hoặc "XS-XL"
+  color: string;          // Màu sắc (Cột D)
   wholesalePrice: number; // Giá sỉ (Cột E)
   retailPrice: number;    // Giá lẻ (Cột F)
   image: string;          // Hình ảnh (Cột G)
@@ -3056,7 +3048,8 @@ export async function getSanPhamBanHangFromSheet(): Promise<SanPhamBanHang[]> {
         id: index + 1,
         code: row[0] || "",
         name: row[1] || "",
-        // Cột C, D bỏ qua (Size, Xưởng SX)
+        size: row[2] || "",   // Cột C - Size
+        color: row[3] || "",  // Cột D - Màu sắc
         wholesalePrice: parseFloat(String(row[4] || "0").replace(/[,.]/g, "")) || 0, // Cột E - Giá sỉ
         retailPrice: parseFloat(String(row[5] || "0").replace(/[,.]/g, "")) || 0,    // Cột F - Giá lẻ
         image: row[6] || "",  // Cột G - Hình ảnh
@@ -3066,6 +3059,115 @@ export async function getSanPhamBanHangFromSheet(): Promise<SanPhamBanHang[]> {
     return sanPhams;
   } catch (error) {
     console.error("Error reading san pham ban hang from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// TON KHO SAN PHAM (Tồn kho sản phẩm - Tonkhosp)
+// ============================================
+
+const spreadsheetIdTonKhoSP = process.env.GOOGLE_SPREADSHEET_ID_TON_KHO_SP || "1PimiY7-4R6mx2U9Mcr1js4Zw87ReyxIg3e82wwDZhXs";
+const sheetNameTonKhoSP = process.env.GOOGLE_SHEET_NAME_TON_KHO_SP || "Tonkhosp";
+
+// Interface cho tồn kho sản phẩm
+export interface TonKhoSP {
+  id: number;
+  code: string;           // Mã SP (Cột B)
+  nhapDauKy: number;      // Nhập đầu kỳ (Cột C)
+  nhapTrongKy: number;    // Nhập trong kỳ (Cột D)
+  xuatTrongKy: number;    // Xuất trong kỳ (Cột E)
+  tonCuoiKy: number;      // Tồn cuối kỳ (Cột F)
+}
+
+/**
+ * Đọc danh sách tồn kho sản phẩm từ Google Sheets (Tonkhosp)
+ */
+export async function getTonKhoSPFromSheet(): Promise<TonKhoSP[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `${sheetNameTonKhoSP}!B2:F`, // Đọc từ dòng 2, cột B đến F (bỏ STT ở cột A)
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No ton kho SP data found in sheet.");
+      return [];
+    }
+
+    const tonKhoList: TonKhoSP[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        code: row[0] || "",                                                           // Cột B - Mã SP
+        nhapDauKy: parseFloat(String(row[1] || "0").replace(/[,.]/g, "")) || 0,       // Cột C - Nhập đầu kỳ
+        nhapTrongKy: parseFloat(String(row[2] || "0").replace(/[,.]/g, "")) || 0,     // Cột D - Nhập trong kỳ
+        xuatTrongKy: parseFloat(String(row[3] || "0").replace(/[,.]/g, "")) || 0,     // Cột E - Xuất trong kỳ
+        tonCuoiKy: parseFloat(String(row[4] || "0").replace(/[,.]/g, "")) || 0,       // Cột F - Tồn cuối kỳ
+      }))
+      .filter((sp) => sp.code.trim() !== "");
+
+    return tonKhoList;
+  } catch (error) {
+    console.error("Error reading ton kho SP from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// DANH MUC SAN PHAM (Danh mục SP - Mã SP đầy đủ)
+// ============================================
+
+const spreadsheetIdDanhMucSP = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG || "1bIXymFQLB6BJgYDS5qJYQl0SRUu7TtL_4XzzO0LPSis";
+const sheetNameDanhMucSP = process.env.GOOGLE_SHEET_NAME_DANH_MUC_SP || "Danh mục SP";
+
+// Interface cho danh mục sản phẩm (Mã SP đầy đủ + hình ảnh + giá)
+export interface DanhMucSP {
+  id: number;
+  maSPDayDu: string;      // Mã SP đầy đủ (Cột F)
+  image: string;          // Hình ảnh (Cột G)
+  wholesalePrice: number; // Giá sỉ (Cột H)
+  retailPrice: number;    // Giá lẻ (Cột I)
+}
+
+/**
+ * Đọc danh sách Mã SP đầy đủ từ Google Sheets (Danh mục SP)
+ * Header ở dòng 5, dữ liệu từ dòng 6
+ * Cột F: Mã SP đầy đủ, Cột G: Hình ảnh, Cột H: Giá sỉ, Cột I: Giá lẻ
+ */
+export async function getDanhMucSPFromSheet(): Promise<DanhMucSP[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc cột F đến I từ dòng 6 (header ở dòng 5)
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDanhMucSP,
+      range: `'${sheetNameDanhMucSP}'!F6:I`, // Đọc cột F đến I từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No danh muc SP data found in sheet.");
+      return [];
+    }
+
+    const danhMucList: DanhMucSP[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maSPDayDu: row[0] || "",                                                    // Cột F - Mã SP đầy đủ
+        image: row[1] || "",                                                        // Cột G - Hình ảnh
+        wholesalePrice: parseFloat(String(row[2] || "0").replace(/[,.]/g, "")) || 0, // Cột H - Giá sỉ
+        retailPrice: parseFloat(String(row[3] || "0").replace(/[,.]/g, "")) || 0,    // Cột I - Giá lẻ
+      }))
+      .filter((sp) => sp.maSPDayDu.trim() !== "");
+
+    return danhMucList;
+  } catch (error) {
+    console.error("Error reading danh muc SP from Google Sheets:", error);
     throw error;
   }
 }

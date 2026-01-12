@@ -36,6 +36,8 @@ export async function PUT(request: NextRequest) {
       date: body.date || "",
       customer: body.customer || "",
       productCode: body.productCode || "",
+      color: body.color || "",
+      size: body.size || "",
       image: body.image || "",
       items: body.items || 0,
       productPrice: body.productPrice || 0,
