@@ -16,14 +16,12 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Users,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
 import toast, { Toaster } from "react-hot-toast";
 import { ThuChi } from "@/lib/googleSheets";
-import CongNoKHTab from "./components/CongNoKHTab";
 
 
 
@@ -64,16 +62,16 @@ export default function DongTien() {
   const searchParams = useSearchParams();
 
   // Đọc tab từ URL params, mặc định là "transactions"
-  const getTabFromUrl = (): "transactions" | "accounts" | "loans" | "cong-no-kh" => {
+  const getTabFromUrl = (): "transactions" | "accounts" | "loans" => {
     const tab = searchParams.get("tab");
-    if (tab === "transactions" || tab === "accounts" || tab === "loans" || tab === "cong-no-kh") {
+    if (tab === "transactions" || tab === "accounts" || tab === "loans") {
       return tab;
     }
     return "transactions";
   };
 
   const [activeTab, setActiveTab] = useState<
-    "transactions" | "accounts" | "loans" | "cong-no-kh"
+    "transactions" | "accounts" | "loans"
   >(getTabFromUrl);
   const [thuChiList, setThuChiList] = useState<ThuChi[]>([]);
   const [isLoadingThuChi, setIsLoadingThuChi] = useState(false);
@@ -245,7 +243,7 @@ export default function DongTien() {
   };
 
   // Function để đổi tab và cập nhật URL
-  const handleTabChange = (tab: "transactions" | "accounts" | "loans" | "cong-no-kh") => {
+  const handleTabChange = (tab: "transactions" | "accounts" | "loans") => {
     setActiveTab(tab);
     router.push(`/dong-tien?tab=${tab}`);
   };
@@ -724,19 +722,6 @@ export default function DongTien() {
               <div className="flex items-center gap-2">
                 <CreditCard size={20} />
                 Khoản vay
-              </div>
-            </button>
-            <button
-              onClick={() => handleTabChange("cong-no-kh")}
-              className={`px-6 py-4 font-medium transition-colors ${
-                activeTab === "cong-no-kh"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Users size={20} />
-                Công nợ KH
               </div>
             </button>
           </div>
@@ -1244,8 +1229,6 @@ export default function DongTien() {
             </>
           )}
 
-          {/* Tab: Công nợ Khách hàng */}
-          {activeTab === "cong-no-kh" && <CongNoKHTab />}
         </div>
       </div>
 

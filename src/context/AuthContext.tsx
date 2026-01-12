@@ -115,21 +115,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("📋 fetchProfile: Fetching from Supabase...");
 
-      const { data, error } = await supabase
+      // Add timeout to prevent hanging forever
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => {
+          console.warn("⚠️ fetchProfile: Timeout after 10 seconds");
+          resolve(null);
+        }, 10000);
+      });
+
+      const fetchPromise = supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single();
+        .single()
+        .then((response: { data: Profile | null; error: Error | null }) => {
+          if (response.error) {
+            console.error("📋 fetchProfile: Error:", response.error);
+            return null;
+          }
+          return response.data;
+        });
 
-      if (error) {
-        console.error("📋 fetchProfile: Error:", error);
-        return null;
-      }
+      const result = await Promise.race([fetchPromise, timeoutPromise]);
 
-      if (data) {
+      if (result) {
         console.log("📋 fetchProfile: Success, caching profile");
-        setCachedProfile(userId, data);
-        return data as Profile;
+        setCachedProfile(userId, result);
+        return result;
       }
 
       return null;

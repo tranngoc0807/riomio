@@ -4,6 +4,7 @@ import {
   ShoppingCart,
   Users,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,13 +14,15 @@ import { Toaster } from "react-hot-toast";
 import CustomersTab from "./components/CustomersTab";
 import OrdersTab from "./components/OrdersTab";
 import ProgramsTab from "./components/ProgramsTab";
+import CongNoKHTab from "./components/CongNoKHTab";
 
-type TabType = "customers" | "orders" | "programs";
+type TabType = "customers" | "orders" | "programs" | "cong-no-kh";
 
 const TABS = [
   { id: "customers" as TabType, label: "Khách hàng", icon: Users },
   { id: "orders" as TabType, label: "Đơn hàng", icon: ShoppingCart },
   { id: "programs" as TabType, label: "Chương trình bán hàng", icon: TrendingUp },
+  { id: "cong-no-kh" as TabType, label: "Công nợ KH", icon: Wallet },
 ];
 
 export default function BanHang() {
@@ -31,7 +34,7 @@ export default function BanHang() {
   // Read tab from URL on mount
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
-    if (tabFromUrl && ["customers", "orders", "programs"].includes(tabFromUrl)) {
+    if (tabFromUrl && ["customers", "orders", "programs", "cong-no-kh"].includes(tabFromUrl)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
     }
@@ -90,6 +93,7 @@ export default function BanHang() {
           {activeTab === "customers" && <CustomersTab />}
           {activeTab === "orders" && <OrdersTab />}
           {activeTab === "programs" && <ProgramsTab />}
+          {activeTab === "cong-no-kh" && <CongNoKHTab />}
         </div>
       </div>
     </div>
