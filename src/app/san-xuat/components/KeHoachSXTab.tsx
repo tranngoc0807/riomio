@@ -8,11 +8,13 @@ import {
   Trash2,
   X,
   Loader2,
+  Upload,
 } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
-import type { KeHoachSX, Workshop, SanPham } from "@/lib/googleSheets";
+import type { KeHoachSX, Workshop, SanPham, SanPhamBanHang } from "@/lib/googleSheets";
+import PrintableLenhSanXuat from "./PrintableLenhSanXuat";
 
 // Interface for selected product in the form
 interface SelectedProduct {
@@ -66,26 +68,8 @@ const INITIAL_KE_HOACH: Omit<KeHoachSX, "id"> = {
   note: "",
 };
 
-// Simplified sizes for the table view (based on screenshot)
+// All sizes for the table view
 const TABLE_SIZES = [
-  { key: "size0_1", label: "0/1" },
-  { key: "size1_2", label: "1/2" },
-  { key: "size2_3", label: "2/3" },
-  { key: "size3_4", label: "3/4" },
-  { key: "size4_5", label: "4/5" },
-  { key: "size5_6", label: "5/6" },
-  { key: "size6_7", label: "6/7" },
-  { key: "size7_8", label: "7/8" },
-];
-
-const SIZE_KEYS = [
-  "size6m", "size9m", "size0_1", "size1_2", "size2_3", "size3_4",
-  "size4_5", "size5_6", "size6_7", "size7_8", "size8_9", "size9_10",
-  "size10_11", "size11_12", "size12_13", "size13_14", "size14_15",
-  "sizeXS", "sizeS", "sizeM", "sizeL", "sizeXL",
-];
-
-const KID_SIZES = [
   { key: "size6m", label: "6m" },
   { key: "size9m", label: "9m" },
   { key: "size0_1", label: "0/1" },
@@ -103,9 +87,6 @@ const KID_SIZES = [
   { key: "size12_13", label: "12/13" },
   { key: "size13_14", label: "13/14" },
   { key: "size14_15", label: "14/15" },
-];
-
-const ADULT_SIZES = [
   { key: "sizeXS", label: "XS" },
   { key: "sizeS", label: "S" },
   { key: "sizeM", label: "M" },
@@ -113,36 +94,65 @@ const ADULT_SIZES = [
   { key: "sizeXL", label: "XL" },
 ];
 
-// Format date to dd/mm/yyyy
-const formatDate = (dateStr: string): string => {
-  if (!dateStr) return "-";
+const SIZE_KEYS = [
+  "size6m", "size9m", "size0_1", "size1_2", "size2_3", "size3_4",
+  "size4_5", "size5_6", "size6_7", "size7_8", "size8_9", "size9_10",
+  "size10_11", "size11_12", "size12_13", "size13_14", "size14_15",
+  "sizeXS", "sizeS", "sizeM", "sizeL", "sizeXL",
+];
 
-  // Try to parse the date
-  let date: Date;
+
+// Parse date string to Date object (handles multiple formats)
+const parseToDate = (dateStr: string | number | Date | null | undefined): Date | null => {
+  if (!dateStr) return null;
+
+  const strValue = String(dateStr);
 
   // Check if it's already in dd/mm/yy or dd/mm/yyyy format
-  if (dateStr.includes("/")) {
-    const parts = dateStr.split("/");
+  if (strValue.includes("/")) {
+    const parts = strValue.split("/");
     if (parts.length === 3) {
       const day = parseInt(parts[0], 10);
       const month = parseInt(parts[1], 10) - 1;
       let year = parseInt(parts[2], 10);
-      // Handle 2-digit year
       if (year < 100) {
         year = year > 50 ? 1900 + year : 2000 + year;
       }
-      date = new Date(year, month, day);
-    } else {
-      return dateStr;
+      return new Date(year, month, day);
     }
-  } else if (dateStr.includes("-")) {
+  } else if (strValue.includes("-")) {
     // ISO format yyyy-mm-dd
-    date = new Date(dateStr);
+    return new Date(strValue);
   } else {
-    return dateStr;
+    // Check if it's an Excel serial number
+    const numValue = Number(strValue);
+    if (!isNaN(numValue) && numValue > 25000 && numValue < 100000) {
+      return new Date((numValue - 25569) * 86400 * 1000);
+    }
   }
+  return null;
+};
 
-  if (isNaN(date.getTime())) return dateStr;
+// Convert date to yyyy-mm-dd format for input type="date"
+const toInputDateFormat = (dateStr: string | number | Date | null | undefined): string => {
+  const date = parseToDate(dateStr);
+  if (!date || isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// Format date to dd/mm/yyyy for display
+const formatDate = (dateStr: string | number | Date | null | undefined): string => {
+  if (!dateStr) return "-";
+
+  const date = parseToDate(dateStr);
+
+  if (!date || isNaN(date.getTime())) {
+    return String(dateStr);
+  }
 
   const day = date.getDate().toString().padStart(2, "0");
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -156,6 +166,7 @@ export default function KeHoachSXTab() {
   const [keHoachList, setKeHoachList] = useState<KeHoachSX[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [productCatalog, setProductCatalog] = useState<SanPham[]>([]);
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
 
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
@@ -267,9 +278,6 @@ export default function KeHoachSXTab() {
     p.name.toLowerCase().includes(productSearchTerm.toLowerCase())
   );
 
-  const filteredEditProducts = productCatalog.filter((p) =>
-    p.code.toLowerCase().includes(editProductSearchTerm.toLowerCase())
-  );
 
   // Fetch data on mount
   useEffect(() => {
@@ -310,10 +318,28 @@ export default function KeHoachSXTab() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("/api/san-pham");
-      const result = await response.json();
-      if (result.success) {
-        setProductCatalog(result.data);
+      // Fetch both product info and product images
+      const [sanPhamRes, banHangRes] = await Promise.all([
+        fetch("/api/san-pham"),
+        fetch("/api/san-pham-ban-hang"),
+      ]);
+
+      const sanPhamResult = await sanPhamRes.json();
+      const banHangResult = await banHangRes.json();
+
+      if (sanPhamResult.success) {
+        setProductCatalog(sanPhamResult.data);
+      }
+
+      // Build image map from san-pham-ban-hang (code -> image)
+      if (banHangResult.success) {
+        const imageMap: Record<string, string> = {};
+        banHangResult.data.forEach((p: SanPhamBanHang) => {
+          if (p.code && p.image) {
+            imageMap[p.code] = p.image;
+          }
+        });
+        setProductImages(imageMap);
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -326,10 +352,6 @@ export default function KeHoachSXTab() {
     setShowViewModal(true);
   };
 
-  const handleView = (item: KeHoachSX) => {
-    setSelectedItem(item);
-    setShowViewModal(true);
-  };
 
   const handleEditGrouped = (group: GroupedLSX) => {
     // Set up edit state for the entire grouped LSX
@@ -393,7 +415,7 @@ export default function KeHoachSXTab() {
       size: product.size || "",
       mainFabric: product.mainFabric || "",
       color: "",
-      image: "",
+      image: productImages[product.code] || "",
       size0_1: 0,
       size1_2: 0,
       size2_3: 0,
@@ -434,6 +456,59 @@ export default function KeHoachSXTab() {
     setSelectedProducts(selectedProducts.map(p =>
       p.id === id ? { ...p, color } : p
     ));
+  };
+
+  // Update product image
+  const handleUpdateProductImage = (id: string, image: string) => {
+    setSelectedProducts(selectedProducts.map(p =>
+      p.id === id ? { ...p, image } : p
+    ));
+  };
+
+  // Handle file upload to Supabase Storage
+  const handleFileUpload = async (id: string, file: File, isEdit: boolean = false) => {
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file hình ảnh");
+      return;
+    }
+
+    // Check file size (max 5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast.error("Kích thước file tối đa 5MB");
+      return;
+    }
+
+    try {
+      toast.loading("Đang tải hình ảnh...", { id: "upload" });
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        if (isEdit) {
+          handleUpdateEditProductImage(Number(id), result.url);
+        } else {
+          handleUpdateProductImage(id, result.url);
+        }
+        toast.success("Đã tải hình ảnh thành công", { id: "upload" });
+      } else {
+        toast.error(result.error || "Lỗi khi tải hình ảnh", { id: "upload" });
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Lỗi khi tải hình ảnh", { id: "upload" });
+    }
   };
 
   // Save multiple products - Sequential to avoid race condition
@@ -567,6 +642,13 @@ export default function KeHoachSXTab() {
   const handleUpdateEditProductColor = (productId: number, color: string) => {
     setEditProducts(editProducts.map(p =>
       p.id === productId ? { ...p, color } : p
+    ));
+  };
+
+  // Update edit product image
+  const handleUpdateEditProductImage = (productId: number, image: string) => {
+    setEditProducts(editProducts.map(p =>
+      p.id === productId ? { ...p, image } : p
     ));
   };
 
@@ -937,7 +1019,7 @@ export default function KeHoachSXTab() {
                 </div>
               </div>
 
-              {/* Selected Products Table */}
+              {/* Selected Products - Card Layout */}
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-yellow-50 px-4 py-2 border-b border-gray-200">
                   <h4 className="font-medium text-gray-800">
@@ -947,78 +1029,107 @@ export default function KeHoachSXTab() {
                     )}
                   </h4>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-24">Mã SP</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Tên SP</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-20">Dòng size</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-24">Mã vải chính</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-24">Màu sắc</th>
-                        {TABLE_SIZES.map((s) => (
-                          <th key={s.key} className="px-1 py-2 text-center text-xs font-medium text-gray-500 w-12 bg-yellow-50">
-                            {s.label}
-                          </th>
-                        ))}
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 w-16 bg-yellow-100">Tổng SL</th>
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 w-10"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {selectedProducts.length === 0 ? (
-                        <tr>
-                          <td colSpan={16} className="px-4 py-8 text-center text-gray-400">
-                            Chưa có sản phẩm nào. Tìm kiếm và chọn sản phẩm ở trên.
-                          </td>
-                        </tr>
-                      ) : (
-                        selectedProducts.map((product, index) => (
-                          <tr key={product.id} className="hover:bg-gray-50">
-                            <td className="px-2 py-2 text-sm text-gray-600">{index + 1}</td>
-                            <td className="px-2 py-2 text-sm font-medium text-blue-600">{product.productCode}</td>
-                            <td className="px-2 py-2 text-sm text-gray-900">{product.productName}</td>
-                            <td className="px-2 py-2 text-sm text-gray-600">{product.size || "-"}</td>
-                            <td className="px-2 py-2 text-sm text-gray-600">{product.mainFabric || "-"}</td>
-                            <td className="px-2 py-2">
+                <div className="divide-y divide-gray-200 max-h-[400px] overflow-y-auto">
+                  {selectedProducts.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-gray-400">
+                      Chưa có sản phẩm nào. Tìm kiếm và chọn sản phẩm ở trên.
+                    </div>
+                  ) : (
+                    selectedProducts.map((product, index) => (
+                      <div key={product.id} className="p-4 hover:bg-gray-50">
+                        {/* Product Info Row */}
+                        <div className="flex items-start gap-4 mb-3">
+                          <span className="text-sm text-gray-500 font-medium w-6">{index + 1}</span>
+                          {product.image ? (
+                            <img src={product.image} alt={product.productName} className="w-16 h-16 object-cover rounded shrink-0" />
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">No img</div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-blue-600">{product.productCode}</span>
+                              <span className="text-gray-400">|</span>
+                              <span className="text-gray-600">{product.mainFabric || "-"}</span>
+                            </div>
+                            <p className="text-sm text-gray-900 mb-2">{product.productName}</p>
+                            <div className="flex items-center gap-2">
                               <input
                                 type="text"
                                 value={product.color}
                                 onChange={(e) => handleUpdateProductColor(product.id, e.target.value)}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                                placeholder="Màu"
+                                className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                placeholder="Màu sắc"
                               />
-                            </td>
-                            {TABLE_SIZES.map((s) => (
-                              <td key={s.key} className="px-1 py-2 bg-yellow-50/50">
+                              <input
+                                type="text"
+                                value={product.image.startsWith("data:") ? "" : product.image}
+                                onChange={(e) => handleUpdateProductImage(product.id, e.target.value)}
+                                className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                placeholder="URL hình ảnh"
+                              />
+                              <label className="cursor-pointer px-2 py-1 hover:bg-blue-50 rounded border border-gray-300 flex items-center gap-1 text-sm text-blue-600" title="Tải hình lên">
+                                <Upload size={14} />
+                                <span>Tải lên</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleFileUpload(product.id, file, false);
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xs text-gray-500">Tổng SL</div>
+                            <div className="text-xl font-bold text-blue-600">{product.totalQuantity}</div>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveProduct(product.id)}
+                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded shrink-0"
+                            title="Xóa sản phẩm"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                        {/* Sizes Grid - 2 rows */}
+                        <div className="bg-yellow-50/50 rounded-lg p-3">
+                          <div className="grid grid-cols-11 gap-2 mb-2">
+                            {TABLE_SIZES.slice(0, 11).map((s) => (
+                              <div key={s.key} className="text-center">
+                                <div className="text-xs text-gray-500 mb-1">{s.label}</div>
                                 <input
                                   type="number"
                                   min="0"
                                   value={(product as any)[s.key] || ""}
                                   onChange={(e) => handleUpdateProductQuantity(product.id, s.key, Number(e.target.value) || 0)}
                                   onKeyDown={(e) => { if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault(); }}
-                                  className="w-full px-1 py-1 text-sm text-center border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                  className="w-full px-1 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                                 />
-                              </td>
+                              </div>
                             ))}
-                            <td className="px-2 py-2 text-center font-medium text-gray-900 bg-yellow-100/50">
-                              {product.totalQuantity}
-                            </td>
-                            <td className="px-2 py-2">
-                              <button
-                                onClick={() => handleRemoveProduct(product.id)}
-                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                                title="Xóa"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                          </div>
+                          <div className="grid grid-cols-11 gap-2">
+                            {TABLE_SIZES.slice(11).map((s) => (
+                              <div key={s.key} className="text-center">
+                                <div className="text-xs text-gray-500 mb-1">{s.label}</div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={(product as any)[s.key] || ""}
+                                  onChange={(e) => handleUpdateProductQuantity(product.id, s.key, Number(e.target.value) || 0)}
+                                  onKeyDown={(e) => { if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault(); }}
+                                  className="w-full px-1 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -1066,9 +1177,12 @@ export default function KeHoachSXTab() {
                 <h3 className="text-xl font-semibold text-gray-900">Chi tiết lệnh sản xuất</h3>
                 <p className="text-sm text-gray-500">LSX: {selectedGroupedLSX.lsxCode}</p>
               </div>
-              <button onClick={() => { setShowViewModal(false); setSelectedGroupedLSX(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-3">
+                <PrintableLenhSanXuat data={selectedGroupedLSX} />
+                <button onClick={() => { setShowViewModal(false); setSelectedGroupedLSX(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               {/* LSX Info */}
@@ -1091,7 +1205,7 @@ export default function KeHoachSXTab() {
                 </div>
               </div>
 
-              {/* Products Table */}
+              {/* Products - Card Layout */}
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-yellow-50 px-4 py-2 border-b border-gray-200">
                   <h4 className="font-medium text-gray-800">
@@ -1099,43 +1213,57 @@ export default function KeHoachSXTab() {
                     <span className="ml-2 text-blue-600">- Tổng: {selectedGroupedLSX.totalQuantity.toLocaleString("vi-VN")} sản phẩm</span>
                   </h4>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-24">Mã SP</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Tên SP</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-24">Vải chính</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-20">Màu sắc</th>
-                        {TABLE_SIZES.map((s) => (
-                          <th key={s.key} className="px-1 py-2 text-center text-xs font-medium text-gray-500 w-12 bg-yellow-50">
-                            {s.label}
-                          </th>
-                        ))}
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 w-16 bg-yellow-100">Tổng SL</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {selectedGroupedLSX.products.map((product, index) => (
-                        <tr key={product.id} className="hover:bg-gray-50">
-                          <td className="px-2 py-2 text-sm text-gray-600">{index + 1}</td>
-                          <td className="px-2 py-2 text-sm font-medium text-blue-600">{product.productCode}</td>
-                          <td className="px-2 py-2 text-sm text-gray-900">{product.productName}</td>
-                          <td className="px-2 py-2 text-sm text-gray-600">{product.mainFabric || "-"}</td>
-                          <td className="px-2 py-2 text-sm text-gray-600">{product.color || "-"}</td>
-                          {TABLE_SIZES.map((s) => (
-                            <td key={s.key} className="px-1 py-2 text-sm text-center bg-yellow-50/50">
-                              {(product as any)[s.key] || "-"}
-                            </td>
+                <div className="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
+                  {selectedGroupedLSX.products.map((product, index) => (
+                    <div key={product.id} className="p-4 hover:bg-gray-50">
+                      {/* Product Info Row */}
+                      <div className="flex items-start gap-4 mb-3">
+                        <span className="text-sm text-gray-500 font-medium w-6">{index + 1}</span>
+                        {product.image ? (
+                          <img src={product.image} alt={product.productName} className="w-16 h-16 object-cover rounded shrink-0" />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">No img</div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-blue-600">{product.productCode}</span>
+                            <span className="text-gray-400">|</span>
+                            <span className="text-gray-600">{product.mainFabric || "-"}</span>
+                            <span className="text-gray-400">|</span>
+                            <span className="text-gray-600">{product.color || "-"}</span>
+                          </div>
+                          <p className="text-sm text-gray-900">{product.productName}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-xs text-gray-500">Tổng SL</div>
+                          <div className="text-xl font-bold text-blue-600">{product.totalQuantity || 0}</div>
+                        </div>
+                      </div>
+                      {/* Sizes Grid - 2 rows */}
+                      <div className="bg-yellow-50/50 rounded-lg p-3">
+                        <div className="grid grid-cols-11 gap-2 mb-2">
+                          {TABLE_SIZES.slice(0, 11).map((s) => (
+                            <div key={s.key} className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">{s.label}</div>
+                              <div className="px-2 py-1.5 text-sm font-medium bg-white rounded border border-gray-200">
+                                {(product as any)[s.key] || "-"}
+                              </div>
+                            </div>
                           ))}
-                          <td className="px-2 py-2 text-sm text-center font-medium text-gray-900 bg-yellow-100/50">
-                            {product.totalQuantity || 0}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        </div>
+                        <div className="grid grid-cols-11 gap-2">
+                          {TABLE_SIZES.slice(11).map((s) => (
+                            <div key={s.key} className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">{s.label}</div>
+                              <div className="px-2 py-1.5 text-sm font-medium bg-white rounded border border-gray-200">
+                                {(product as any)[s.key] || "-"}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1220,10 +1348,11 @@ export default function KeHoachSXTab() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ngày gửi lệnh</label>
                   <input
                     type="date"
-                    value={editGroupedLSX.orderDate}
+                    value={toInputDateFormat(editGroupedLSX.orderDate)}
                     onChange={(e) => {
                       const newOrderDate = e.target.value;
-                      if (editGroupedLSX.completionDate && newOrderDate > editGroupedLSX.completionDate) {
+                      const completionDateFormatted = toInputDateFormat(editGroupedLSX.completionDate);
+                      if (completionDateFormatted && newOrderDate > completionDateFormatted) {
                         toast.error("Ngày gửi lệnh không được sau ngày hoàn thành");
                         return;
                       }
@@ -1236,16 +1365,17 @@ export default function KeHoachSXTab() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hoàn thành</label>
                   <input
                     type="date"
-                    value={editGroupedLSX.completionDate}
+                    value={toInputDateFormat(editGroupedLSX.completionDate)}
                     onChange={(e) => {
                       const newCompletionDate = e.target.value;
-                      if (editGroupedLSX.orderDate && newCompletionDate < editGroupedLSX.orderDate) {
+                      const orderDateFormatted = toInputDateFormat(editGroupedLSX.orderDate);
+                      if (orderDateFormatted && newCompletionDate < orderDateFormatted) {
                         toast.error("Ngày hoàn thành không được trước ngày gửi lệnh");
                         return;
                       }
                       handleUpdateEditGroupedInfo("completionDate", newCompletionDate);
                     }}
-                    min={editGroupedLSX.orderDate || undefined}
+                    min={toInputDateFormat(editGroupedLSX.orderDate) || undefined}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                   />
                 </div>
@@ -1261,7 +1391,7 @@ export default function KeHoachSXTab() {
                 </div>
               </div>
 
-              {/* Products Table - Editable */}
+              {/* Products - Card Layout */}
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-green-50 px-4 py-2 border-b border-gray-200">
                   <h4 className="font-medium text-gray-800">
@@ -1269,58 +1399,94 @@ export default function KeHoachSXTab() {
                     <span className="ml-2 text-green-600">- Tổng: {editProducts.reduce((sum, p) => sum + (p.totalQuantity || 0), 0).toLocaleString("vi-VN")} sản phẩm</span>
                   </h4>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-24">Mã SP</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Tên SP</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-24">Vải chính</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 w-24">Màu sắc</th>
-                        {TABLE_SIZES.map((s) => (
-                          <th key={s.key} className="px-1 py-2 text-center text-xs font-medium text-gray-500 w-12 bg-green-50">
-                            {s.label}
-                          </th>
-                        ))}
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 w-16 bg-green-100">Tổng SL</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {editProducts.map((product, index) => (
-                        <tr key={product.id} className="hover:bg-gray-50">
-                          <td className="px-2 py-2 text-sm text-gray-600">{index + 1}</td>
-                          <td className="px-2 py-2 text-sm font-medium text-blue-600">{product.productCode}</td>
-                          <td className="px-2 py-2 text-sm text-gray-900">{product.productName}</td>
-                          <td className="px-2 py-2 text-sm text-gray-600">{product.mainFabric || "-"}</td>
-                          <td className="px-2 py-2">
+                <div className="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
+                  {editProducts.map((product, index) => (
+                    <div key={product.id} className="p-4 hover:bg-gray-50">
+                      {/* Product Info Row */}
+                      <div className="flex items-start gap-4 mb-3">
+                        <span className="text-sm text-gray-500 font-medium w-6">{index + 1}</span>
+                        {product.image ? (
+                          <img src={product.image} alt={product.productName} className="w-16 h-16 object-cover rounded shrink-0" />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">No img</div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-blue-600">{product.productCode}</span>
+                            <span className="text-gray-400">|</span>
+                            <span className="text-gray-600">{product.mainFabric || "-"}</span>
+                          </div>
+                          <p className="text-sm text-gray-900 mb-2">{product.productName}</p>
+                          <div className="flex items-center gap-2">
                             <input
                               type="text"
                               value={product.color || ""}
                               onChange={(e) => handleUpdateEditProductColor(product.id, e.target.value)}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
-                              placeholder="Màu"
+                              className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
+                              placeholder="Màu sắc"
                             />
-                          </td>
-                          {TABLE_SIZES.map((s) => (
-                            <td key={s.key} className="px-1 py-2 bg-green-50/50">
+                            <input
+                              type="text"
+                              value={product.image?.startsWith("data:") ? "" : (product.image || "")}
+                              onChange={(e) => handleUpdateEditProductImage(product.id, e.target.value)}
+                              className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
+                              placeholder="URL hình ảnh"
+                            />
+                            <label className="cursor-pointer px-2 py-1 hover:bg-green-50 rounded border border-gray-300 flex items-center gap-1 text-sm text-green-600" title="Tải hình lên">
+                              <Upload size={14} />
+                              <span>Tải lên</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleFileUpload(String(product.id), file, true);
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-xs text-gray-500">Tổng SL</div>
+                          <div className="text-xl font-bold text-green-600">{product.totalQuantity || 0}</div>
+                        </div>
+                      </div>
+                      {/* Sizes Grid - 3 rows */}
+                      <div className="bg-green-50/50 rounded-lg p-3">
+                        <div className="grid grid-cols-11 gap-2 mb-2">
+                          {TABLE_SIZES.slice(0, 11).map((s) => (
+                            <div key={s.key} className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">{s.label}</div>
                               <input
                                 type="number"
                                 min="0"
                                 value={(product as any)[s.key] || ""}
                                 onChange={(e) => handleUpdateEditProductQuantity(product.id, s.key, Number(e.target.value) || 0)}
                                 onKeyDown={(e) => { if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault(); }}
-                                className="w-full px-1 py-1 text-sm text-center border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
+                                className="w-full px-1 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
                               />
-                            </td>
+                            </div>
                           ))}
-                          <td className="px-2 py-2 text-center font-medium text-gray-900 bg-green-100/50">
-                            {product.totalQuantity || 0}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        </div>
+                        <div className="grid grid-cols-11 gap-2">
+                          {TABLE_SIZES.slice(11).map((s) => (
+                            <div key={s.key} className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">{s.label}</div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={(product as any)[s.key] || ""}
+                                onChange={(e) => handleUpdateEditProductQuantity(product.id, s.key, Number(e.target.value) || 0)}
+                                onKeyDown={(e) => { if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault(); }}
+                                className="w-full px-1 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

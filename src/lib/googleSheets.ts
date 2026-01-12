@@ -13,7 +13,7 @@ if (!privateKey || !clientEmail || !spreadsheetId) {
 }
 
 // Tạo Google Sheets client
-async function getGoogleSheetsClient() {
+export async function getGoogleSheetsClient() {
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: clientEmail,
@@ -2207,6 +2207,7 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKeHoachSX,
       range: `${sheetNameKeHoachSX}!A2:AH`, // Đọc từ dòng 2 đến cột AH
+      valueRenderOption: "FORMULA", // Get formula text instead of evaluated value
     });
 
     const rows = response.data.values;
@@ -2217,45 +2218,78 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
     }
 
     const keHoachList: KeHoachSX[] = rows
-      .map((row, index) => ({
-        id: index + 1,
-        lsxCode: row[0] || "",
-        workshop: row[1] || "",
-        orderDate: row[2] || "",
-        completionDate: row[3] || "",
-        productCode: row[4] || "",
-        productName: row[5] || "",
-        size: row[6] || "",
-        mainFabric: row[7] || "",
-        color: row[8] || "",
-        image: row[9] || "",
-        // Sizes cho trẻ em (Cột K-AA)
-        size6m: parseQuantity(row[10]),
-        size9m: parseQuantity(row[11]),
-        size0_1: parseQuantity(row[12]),
-        size1_2: parseQuantity(row[13]),
-        size2_3: parseQuantity(row[14]),
-        size3_4: parseQuantity(row[15]),
-        size4_5: parseQuantity(row[16]),
-        size5_6: parseQuantity(row[17]),
-        size6_7: parseQuantity(row[18]),
-        size7_8: parseQuantity(row[19]),
-        size8_9: parseQuantity(row[20]),
-        size9_10: parseQuantity(row[21]),
-        size10_11: parseQuantity(row[22]),
-        size11_12: parseQuantity(row[23]),
-        size12_13: parseQuantity(row[24]),
-        size13_14: parseQuantity(row[25]),
-        size14_15: parseQuantity(row[26]),
-        // Sizes cho người lớn (Cột AB-AF)
-        sizeXS: parseQuantity(row[27]),
-        sizeS: parseQuantity(row[28]),
-        sizeM: parseQuantity(row[29]),
-        sizeL: parseQuantity(row[30]),
-        sizeXL: parseQuantity(row[31]),
-        totalQuantity: parseQuantity(row[32]),
-        note: row[33] || "",
-      }))
+      .map((row, index) => {
+        // Parse all sizes first
+        const size6m = parseQuantity(row[10]);
+        const size9m = parseQuantity(row[11]);
+        const size0_1 = parseQuantity(row[12]);
+        const size1_2 = parseQuantity(row[13]);
+        const size2_3 = parseQuantity(row[14]);
+        const size3_4 = parseQuantity(row[15]);
+        const size4_5 = parseQuantity(row[16]);
+        const size5_6 = parseQuantity(row[17]);
+        const size6_7 = parseQuantity(row[18]);
+        const size7_8 = parseQuantity(row[19]);
+        const size8_9 = parseQuantity(row[20]);
+        const size9_10 = parseQuantity(row[21]);
+        const size10_11 = parseQuantity(row[22]);
+        const size11_12 = parseQuantity(row[23]);
+        const size12_13 = parseQuantity(row[24]);
+        const size13_14 = parseQuantity(row[25]);
+        const size14_15 = parseQuantity(row[26]);
+        const sizeXS = parseQuantity(row[27]);
+        const sizeS = parseQuantity(row[28]);
+        const sizeM = parseQuantity(row[29]);
+        const sizeL = parseQuantity(row[30]);
+        const sizeXL = parseQuantity(row[31]);
+
+        // Calculate total from all sizes
+        const calculatedTotal = size6m + size9m + size0_1 + size1_2 + size2_3 + size3_4 +
+          size4_5 + size5_6 + size6_7 + size7_8 + size8_9 + size9_10 +
+          size10_11 + size11_12 + size12_13 + size13_14 + size14_15 +
+          sizeXS + sizeS + sizeM + sizeL + sizeXL;
+
+        return {
+          id: index + 1,
+          lsxCode: row[0] || "",
+          workshop: row[1] || "",
+          orderDate: row[2] || "",
+          completionDate: row[3] || "",
+          productCode: row[4] || "",
+          productName: row[5] || "",
+          size: row[6] || "",
+          mainFabric: row[7] || "",
+          color: row[8] || "",
+          image: row[9] || "",
+          // Sizes cho trẻ em
+          size6m,
+          size9m,
+          size0_1,
+          size1_2,
+          size2_3,
+          size3_4,
+          size4_5,
+          size5_6,
+          size6_7,
+          size7_8,
+          size8_9,
+          size9_10,
+          size10_11,
+          size11_12,
+          size12_13,
+          size13_14,
+          size14_15,
+          // Sizes cho người lớn
+          sizeXS,
+          sizeS,
+          sizeM,
+          sizeL,
+          sizeXL,
+          // Use calculated total instead of reading from sheet
+          totalQuantity: calculatedTotal,
+          note: row[33] || "",
+        };
+      })
       .filter((item) =>
         // Bỏ qua header và dòng trống
         item.lsxCode.trim() !== "" &&
@@ -3745,6 +3779,218 @@ export async function getCongNoFromSheet(): Promise<CongNoItem[]> {
     return congNoItems;
   } catch (error) {
     console.error("Error reading debt from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== LƯƠNG NHÂN VIÊN (SALARY) ====================
+
+const sheetNameLuong = process.env.GOOGLE_SHEET_NAME_LUONG || "Lương";
+
+// Interface cho dữ liệu lương từ Google Sheet
+export interface LuongItem {
+  id: number;
+  hoTen: string; // Họ và tên
+  chucVu: string; // Chức vụ
+  luongCoBan: number; // Lương cơ bản
+  ngayCong: number; // Ngày công
+  luongThucTe: number; // Lương thực tế
+  phuCapAnTrua: number; // Phụ cấp ăn trưa
+  phuCapTrachNhiem: number; // Phụ cấp trách nhiệm
+  tongLuong: number; // Tổng lương
+  bhxh: number; // BHXH (8%)
+  bhyt: number; // BHYT (1.5%)
+  thucNhan: number; // Thực nhận
+}
+
+/**
+ * Đọc dữ liệu lương nhân viên từ Google Sheets
+ * Cột A: STT, B: Họ và tên, C: Chức vụ, D: Lương cơ bản, E: Ngày công,
+ * F: Lương thực tế, G: Phụ cấp ăn trưa, H: Phụ cấp trách nhiệm,
+ * I: Tổng lương, J: BHXH, K: BHYT, L: Thực nhận
+ */
+export async function getLuongFromSheet(): Promise<LuongItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId, // Default spreadsheet
+      range: `'${sheetNameLuong}'!A2:L`, // Header dòng 1, dữ liệu từ dòng 2
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No salary data found in sheet.");
+      return [];
+    }
+
+    // Helper function để parse số từ string có format VN (dấu . ngăn cách hàng nghìn)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Chuyển đổi dữ liệu từ sheet thành LuongItem objects
+    const luongItems: LuongItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        hoTen: row[1] || "", // Cột B: Họ và tên
+        chucVu: row[2] || "", // Cột C: Chức vụ
+        luongCoBan: parseNumber(row[3]), // Cột D: Lương cơ bản
+        ngayCong: parseNumber(row[4]), // Cột E: Ngày công
+        luongThucTe: parseNumber(row[5]), // Cột F: Lương thực tế
+        phuCapAnTrua: parseNumber(row[6]), // Cột G: Phụ cấp ăn trưa
+        phuCapTrachNhiem: parseNumber(row[7]), // Cột H: Phụ cấp trách nhiệm
+        tongLuong: parseNumber(row[8]), // Cột I: Tổng lương
+        bhxh: parseNumber(row[9]), // Cột J: BHXH (8%)
+        bhyt: parseNumber(row[10]), // Cột K: BHYT (1.5%)
+        thucNhan: parseNumber(row[11]), // Cột L: Thực nhận
+      }))
+      .filter((item) => item.hoTen.trim() !== ""); // Lọc bỏ các dòng trống
+
+    return luongItems;
+  } catch (error) {
+    console.error("Error reading salary from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== CHẤM CÔNG (ATTENDANCE) ====================
+
+const sheetNameChamCong = process.env.GOOGLE_SHEET_NAME_CHAM_CONG || "ChấmCông";
+
+// Interface cho dữ liệu chấm công
+export interface ChamCongItem {
+  stt: number;
+  hoTen: string;
+  chucVu: string;
+  thang: number;
+  nam: number;
+  days: string[]; // Array 31 phần tử cho 31 ngày, giá trị: P, L, A, O, hoặc ""
+  tongCong: number;
+}
+
+// Trạng thái chấm công
+export type AttendanceStatus = "P" | "L" | "A" | "O" | "";
+
+/**
+ * Đọc dữ liệu chấm công từ Google Sheets theo tháng/năm
+ * Data được lưu từ row 51 trở đi (row 50 là header)
+ * Cấu trúc: STT, HoTen, ChucVu, Thang, Nam, Ngay1-31, TongCong
+ */
+export async function getChamCongFromSheet(
+  thang: number,
+  nam: number
+): Promise<ChamCongItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc data từ row 51 (A51:AK) - bỏ qua row 50 là header
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: `'${sheetNameChamCong}'!A51:AK200`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No attendance data found in sheet.");
+      return [];
+    }
+
+    // Lọc theo tháng và năm (D=Thang index 3, E=Nam index 4)
+    const chamCongItems: ChamCongItem[] = rows
+      .filter((row) => {
+        const rowThang = parseInt(row[3]) || 0;
+        const rowNam = parseInt(row[4]) || 0;
+        return rowThang === thang && rowNam === nam;
+      })
+      .map((row) => ({
+        stt: parseInt(row[0]) || 0,
+        hoTen: row[1] || "",
+        chucVu: row[2] || "",
+        thang: parseInt(row[3]) || 0,
+        nam: parseInt(row[4]) || 0,
+        days: Array.from({ length: 31 }, (_, i) => row[5 + i] || ""),
+        tongCong: parseInt(row[36]) || 0,
+      }));
+
+    return chamCongItems;
+  } catch (error) {
+    console.error("Error reading attendance from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lưu dữ liệu chấm công vào Google Sheets
+ * Data được lưu từ row 51 trở đi
+ */
+export async function saveChamCongToSheet(
+  data: ChamCongItem[]
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ data hiện có từ row 51
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: `'${sheetNameChamCong}'!A51:AK200`,
+    });
+
+    const existingRows = existingResponse.data.values || [];
+    const thang = data[0]?.thang;
+    const nam = data[0]?.nam;
+
+    // Tìm các dòng của tháng khác để giữ lại
+    const otherMonthRows = existingRows.filter((row) => {
+      const rowThang = parseInt(row[3]) || 0;
+      const rowNam = parseInt(row[4]) || 0;
+      return !(rowThang === thang && rowNam === nam);
+    });
+
+    // Chuyển data mới thành rows
+    const newRows = data.map((item) => {
+      const tongCong = item.days.filter((d) => d === "P" || d === "L").length;
+      return [
+        item.stt.toString(),
+        item.hoTen,
+        item.chucVu,
+        item.thang.toString(),
+        item.nam.toString(),
+        ...item.days,
+        tongCong.toString(),
+      ];
+    });
+
+    // Gộp data cũ (các tháng khác) với data mới
+    const allRows = [...otherMonthRows, ...newRows];
+
+    // Clear data area và ghi lại toàn bộ
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetId,
+      range: `'${sheetNameChamCong}'!A51:AK200`,
+    });
+
+    if (allRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetId,
+        range: `'${sheetNameChamCong}'!A51:AK`,
+        valueInputOption: "RAW",
+        requestBody: {
+          values: allRows,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Đã lưu chấm công tháng ${thang}/${nam} thành công!`,
+    };
+  } catch (error) {
+    console.error("Error saving attendance to Google Sheets:", error);
     throw error;
   }
 }

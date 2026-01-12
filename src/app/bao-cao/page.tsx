@@ -6,9 +6,6 @@ import {
   DollarSign,
   Users,
   Package,
-  FileText,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -19,9 +16,6 @@ import {
   CongNoTab,
   TonKhoTab,
   NhanSuTab,
-  revenueData,
-  debtData,
-  inventoryData,
   getDebtStatusBadge,
   getDebtTypeBadge,
   formatCurrency,
@@ -59,50 +53,6 @@ export default function BaoCao() {
     { id: "nhan-su", label: "Nhân sự & Lương", icon: Users },
   ];
 
-  // Stats calculations
-  const totalRevenue = revenueData.reduce((sum, r) => sum + r.revenue, 0);
-  const totalProfit = revenueData.reduce((sum, r) => sum + r.profit, 0);
-  const totalDebtRemaining = debtData.reduce((sum, d) => sum + d.remaining, 0);
-  const totalInventoryValue = inventoryData.reduce(
-    (sum, i) => sum + i.value,
-    0
-  );
-
-  const stats = [
-    {
-      label: "Tổng doanh thu",
-      value: formatCurrency(totalRevenue),
-      change: "+12.5%",
-      isPositive: true,
-      icon: TrendingUp,
-      color: "bg-blue-500",
-    },
-    {
-      label: "Tổng lợi nhuận",
-      value: formatCurrency(totalProfit),
-      change: "+8.3%",
-      isPositive: true,
-      icon: DollarSign,
-      color: "bg-green-500",
-    },
-    {
-      label: "Công nợ còn lại",
-      value: formatCurrency(totalDebtRemaining),
-      change: "-5.2%",
-      isPositive: true,
-      icon: FileText,
-      color: "bg-orange-500",
-    },
-    {
-      label: "Giá trị tồn kho",
-      value: formatCurrency(totalInventoryValue),
-      change: "+3.1%",
-      isPositive: true,
-      icon: Package,
-      color: "bg-purple-500",
-    },
-  ];
-
   const handleViewDetail = (
     report: RevenueReport | DebtReport | InventoryReport | SalaryReport,
     type: string
@@ -137,40 +87,6 @@ export default function BaoCao() {
             <option value="year">Năm nay</option>
           </select>
         </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <div
-            key={index}
-            className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">{stat.label}</p>
-                <p className="text-xl font-bold text-gray-900 mt-1">
-                  {stat.value}
-                </p>
-                <div
-                  className={`flex items-center gap-1 mt-2 text-sm ${
-                    stat.isPositive ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {stat.isPositive ? (
-                    <ArrowUpRight className="w-4 h-4" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4" />
-                  )}
-                  {stat.change} so với kỳ trước
-                </div>
-              </div>
-              <div className={`p-3 rounded-lg ${stat.color}`}>
-                <stat.icon className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* Tabs */}
