@@ -8,22 +8,13 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
+import GiaThanhGiaBanTab from "../components/GiaThanhGiaBanTab";
+
 type TabType = "gia-thanh-gia-ban";
 
 const TABS = [
   { id: "gia-thanh-gia-ban" as TabType, label: "Giá thành & giá bán", icon: DollarSign },
 ];
-
-// Placeholder component for tabs under development
-function PlaceholderTab({ title, icon: Icon }: { title: string; icon: React.ComponentType<{ size?: number; className?: string }> }) {
-  return (
-    <div className="text-center py-12 text-gray-500">
-      <Icon className="mx-auto mb-4 text-gray-300" size={64} />
-      <p className="text-lg font-medium">{title}</p>
-      <p className="text-sm mt-1">Tính năng đang phát triển</p>
-    </div>
-  );
-}
 
 export default function GiaThanh() {
   const router = useRouter();
@@ -84,7 +75,7 @@ export default function GiaThanh() {
         </div>
 
         <div className="p-6">
-          {activeTab === "gia-thanh-gia-ban" && <PlaceholderTab title="Giá thành & giá bán" icon={DollarSign} />}
+          {activeTab === "gia-thanh-gia-ban" && <GiaThanhGiaBanTab />}
         </div>
       </div>
     </div>

@@ -5112,3 +5112,1260 @@ export async function getCNPTXuongNgayFromSheet(): Promise<CNPTXuongNgay[]> {
     throw error;
   }
 }
+
+// ============================================
+// DANH MỤC HÌNH IN
+// ============================================
+
+const spreadsheetIdSanXuat13 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameDanhMucHinhIn = process.env.GOOGLE_SHEET_NAME_DANH_MUC_HINH_IN || "Danh mục HI";
+
+export interface DanhMucHinhIn {
+  id: number;
+  maHinhIn: string;
+  thongTinHinhIn: string;
+  hinhAnh: string;
+  donGiaChuaThue: number;
+  thueSuat: string;
+  donGiaCoThue: number;
+  maSPSuDung: string;
+  xuongIn: string;
+}
+
+/**
+ * Đọc danh mục hình in từ Google Sheets
+ * Header dòng 5, dữ liệu từ dòng 6
+ * Columns: A-H (Mã hình in, Thông tin hình in, Hình ảnh, Đơn giá chưa thuế, Thuế suất, Đơn giá có thuế, Mã SP sử dụng, Xưởng in)
+ */
+export async function getDanhMucHinhInFromSheet(): Promise<DanhMucHinhIn[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat13,
+      range: `'${sheetNameDanhMucHinhIn}'!A6:H`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No danh muc hinh in data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const danhMucList: DanhMucHinhIn[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maHinhIn: row[0] || "",
+        thongTinHinhIn: row[1] || "",
+        hinhAnh: row[2] || "",
+        donGiaChuaThue: parseNumberVN(row[3]),
+        thueSuat: row[4] || "",
+        donGiaCoThue: parseNumberVN(row[5]),
+        maSPSuDung: row[6] || "",
+        xuongIn: row[7] || "",
+      }))
+      .filter((item) => item.maHinhIn.trim() !== "" && !item.maHinhIn.startsWith('#'));
+
+    return danhMucList;
+  } catch (error) {
+    console.error("Error reading danh muc hinh in from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// NHẬP KHO HÌNH IN
+// ============================================
+
+const spreadsheetIdSanXuat14 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameNhapKhoHinhIn = process.env.GOOGLE_SHEET_NAME_NHAP_KHO_HINH_IN || "Nhập kho HI";
+
+export interface NhapKhoHinhIn {
+  id: number;
+  ngayThang: string;
+  maHinhIn: string;
+  soLuong: number;
+  donGia: number;
+  thanhTien: number;
+  ncc: string;
+  maPhieuNhap: string;
+  ghiChu: string;
+}
+
+/**
+ * Đọc dữ liệu nhập kho hình in từ Google Sheets
+ * Header dòng 5, dữ liệu từ dòng 6
+ * Columns: A-H (Ngày tháng, Mã hình in, Số lượng, Đơn giá, Thành tiền, NCC, Mã phiếu nhập, Ghi chú)
+ */
+export async function getNhapKhoHinhInFromSheet(): Promise<NhapKhoHinhIn[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat14,
+      range: `'${sheetNameNhapKhoHinhIn}'!A6:H`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No nhap kho hinh in data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const nhapKhoList: NhapKhoHinhIn[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngayThang: row[0] || "",
+        maHinhIn: row[1] || "",
+        soLuong: parseNumberVN(row[2]),
+        donGia: parseNumberVN(row[3]),
+        thanhTien: parseNumberVN(row[4]),
+        ncc: row[5] || "",
+        maPhieuNhap: row[6] || "",
+        ghiChu: row[7] || "",
+      }))
+      .filter((item) => item.ngayThang.trim() !== "" && !item.ngayThang.startsWith('#') && item.maHinhIn.trim() !== "");
+
+    return nhapKhoList;
+  } catch (error) {
+    console.error("Error reading nhap kho hinh in from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// CHI PHÍ HÌNH IN
+// ============================================
+
+const spreadsheetIdSanXuat15 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameChiPhiHinhIn = process.env.GOOGLE_SHEET_NAME_CHI_PHI_HINH_IN || "Chi phí HI";
+
+export interface ChiPhiHinhIn {
+  id: number;
+  ngayThang: string;
+  maHinhIn: string;
+  soLuong: number;
+  donGiaSauThue: number;
+  thanhTien: number;
+  maSPSuDung: string;
+  ghiChu: string;
+}
+
+/**
+ * Đọc dữ liệu chi phí hình in từ Google Sheets
+ * Header dòng 5, dữ liệu từ dòng 6
+ * Columns: A-G (Ngày tháng, Mã hình in, Số lượng, Đơn giá sau thuế, Thành tiền, Mã SP sử dụng, Ghi chú)
+ */
+export async function getChiPhiHinhInFromSheet(): Promise<ChiPhiHinhIn[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat15,
+      range: `'${sheetNameChiPhiHinhIn}'!A6:G`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No chi phi hinh in data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const chiPhiList: ChiPhiHinhIn[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngayThang: row[0] || "",
+        maHinhIn: row[1] || "",
+        soLuong: parseNumberVN(row[2]),
+        donGiaSauThue: parseNumberVN(row[3]),
+        thanhTien: parseNumberVN(row[4]),
+        maSPSuDung: row[5] || "",
+        ghiChu: row[6] || "",
+      }))
+      .filter((item) => item.ngayThang.trim() !== "" && !item.ngayThang.startsWith('#') && item.maHinhIn.trim() !== "");
+
+    return chiPhiList;
+  } catch (error) {
+    console.error("Error reading chi phi hinh in from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// XUẤT KHO HÌNH IN
+// ============================================
+
+const spreadsheetIdSanXuat16 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameXuatKhoHinhIn = process.env.GOOGLE_SHEET_NAME_XUAT_KHO_HINH_IN || "Xuất kho HI";
+
+export interface XuatKhoHinhIn {
+  id: number;
+  ngayThang: string;
+  maHinhIn: string;
+  soLuong: number;
+  maSPSuDung: string;
+  maPhieuXuat: string;
+  ghiChu: string;
+}
+
+/**
+ * Đọc dữ liệu xuất kho hình in từ Google Sheets
+ * Header dòng 5, dữ liệu từ dòng 6
+ * Columns: A-F (Ngày tháng, Mã hình in, Số lượng, Mã SP sử dụng, Mã phiếu xuất, Ghi chú)
+ */
+export async function getXuatKhoHinhInFromSheet(): Promise<XuatKhoHinhIn[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat16,
+      range: `'${sheetNameXuatKhoHinhIn}'!A6:F`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No xuat kho hinh in data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const xuatKhoList: XuatKhoHinhIn[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngayThang: row[0] || "",
+        maHinhIn: row[1] || "",
+        soLuong: parseNumberVN(row[2]),
+        maSPSuDung: row[3] || "",
+        maPhieuXuat: row[4] || "",
+        ghiChu: row[5] || "",
+      }))
+      .filter((item) => item.ngayThang.trim() !== "" && !item.ngayThang.startsWith('#') && item.maHinhIn.trim() !== "");
+
+    return xuatKhoList;
+  } catch (error) {
+    console.error("Error reading xuat kho hinh in from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// TỒN KHO HÌNH IN
+// ============================================
+
+const spreadsheetIdSanXuat17 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameTonKhoHinhIn = process.env.GOOGLE_SHEET_NAME_TON_KHO_HINH_IN || "Tồn kho HI";
+
+// Bảng 1: Tồn kho theo tháng (A-E)
+export interface TonKhoHinhInThang {
+  id: number;
+  maHI: string;
+  duDauKi: number;
+  nhapKho: number;
+  xuatKho: number;
+  duCuoiKi: number;
+}
+
+// Bảng 2: Số dư đầu kì đến ngày (G-H)
+export interface TonKhoHinhInNgay {
+  id: number;
+  maHI: string;
+  soLuong: number;
+}
+
+/**
+ * Đọc dữ liệu tồn kho hình in theo tháng từ Google Sheets
+ * Bảng 1: Columns A-E (Mã HI, Dư đầu kì, Nhập kho, Xuất kho, Dư cuối kì)
+ * Header dòng 5, dữ liệu từ dòng 6
+ */
+export async function getTonKhoHinhInThangFromSheet(): Promise<TonKhoHinhInThang[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat17,
+      range: `'${sheetNameTonKhoHinhIn}'!A6:E`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No ton kho hinh in thang data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const tonKhoList: TonKhoHinhInThang[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maHI: row[0] || "",
+        duDauKi: parseNumberVN(row[1]),
+        nhapKho: parseNumberVN(row[2]),
+        xuatKho: parseNumberVN(row[3]),
+        duCuoiKi: parseNumberVN(row[4]),
+      }))
+      .filter((item) => item.maHI.trim() !== "" && !item.maHI.startsWith('#'));
+
+    return tonKhoList;
+  } catch (error) {
+    console.error("Error reading ton kho hinh in thang from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu số dư đầu kì hình in đến ngày từ Google Sheets
+ * Bảng 2: Columns G-H (Mã HI, Số lượng)
+ * Header dòng 5, dữ liệu từ dòng 6
+ */
+export async function getTonKhoHinhInNgayFromSheet(): Promise<TonKhoHinhInNgay[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat17,
+      range: `'${sheetNameTonKhoHinhIn}'!G6:H`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No ton kho hinh in ngay data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const tonKhoNgayList: TonKhoHinhInNgay[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maHI: row[0] || "",
+        soLuong: parseNumberVN(row[1]),
+      }))
+      .filter((item) => item.maHI.trim() !== "" && !item.maHI.startsWith('#'));
+
+    return tonKhoNgayList;
+  } catch (error) {
+    console.error("Error reading ton kho hinh in ngay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// LỆNH SẢN XUẤT (LSX)
+// ============================================
+
+const spreadsheetIdLSX = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameLSX = process.env.GOOGLE_SHEET_NAME_KE_HOACH_SAN_XUAT || "LSX";
+
+export interface LSXDetail {
+  id: number;
+  stt: number;
+  maSP: string;
+  tenSP: string;
+  dongSize: string;
+  maVaiChinh: string;
+  mauSac: string;
+  hinhAnh: string;
+  sizes: { [key: string]: number };
+  tongSoLuong: number;
+}
+
+export interface LSXInfo {
+  maLenh: string;
+  ngayRaLenh: string;
+  xuong: string;
+  ngayHoanThanh: string;
+  ghiChu: string;
+  tongSLTrongLenh: number;
+  details: LSXDetail[];
+}
+
+// Size column headers (H to AA)
+const SIZE_COLUMNS = [
+  "0/1", "1/2", "2/3", "3/4", "4/5", "5/6", "6/7", "7/8", "8/9", "9/10",
+  "10/11", "11/12", "12/13", "13/14", "14/15", "XS", "S", "M", "L", "XL"
+];
+
+/**
+ * Đọc thông tin Lệnh Sản Xuất từ Google Sheets
+ * Header info: Row 3-5 (Mã lệnh B3, Ngày ra lệnh F3, Xưởng B4, Ngày hoàn thành F4, Ghi chú B5, Tổng SL F5)
+ * Table header: Row 7
+ * Table data: Row 8+
+ */
+export async function getLSXInfoFromSheet(): Promise<LSXInfo> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc header info (rows 3-5)
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameLSX}'!A3:F5`,
+    });
+
+    const headerRows = headerResponse.data.values || [];
+
+    // Parse header info
+    const maLenh = headerRows[0]?.[1] || ""; // B3
+    const ngayRaLenh = headerRows[0]?.[4] || ""; // E3 (Ngày ra lệnh value is at column E/F)
+    const xuong = headerRows[1]?.[1] || ""; // B4
+    const ngayHoanThanh = headerRows[1]?.[4] || ""; // E4
+    const ghiChu = headerRows[2]?.[1] || ""; // B5
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const tongSLTrongLenh = parseNumberVN(headerRows[2]?.[4]); // E5
+
+    // Đọc table data (từ row 8)
+    const tableResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameLSX}'!A8:AB`, // A to AB (28 columns)
+    });
+
+    const tableRows = tableResponse.data.values || [];
+
+    const details: LSXDetail[] = tableRows
+      .map((row, index) => {
+        // Parse sizes (columns H to AA, index 7 to 26)
+        const sizes: { [key: string]: number } = {};
+        SIZE_COLUMNS.forEach((sizeLabel, i) => {
+          const value = parseNumberVN(row[7 + i]);
+          if (value > 0) {
+            sizes[sizeLabel] = value;
+          }
+        });
+
+        return {
+          id: index + 1,
+          stt: parseNumberVN(row[0]),
+          maSP: row[1] || "",
+          tenSP: row[2] || "",
+          dongSize: row[3] || "",
+          maVaiChinh: row[4] || "",
+          mauSac: row[5] || "",
+          hinhAnh: row[6] || "",
+          sizes,
+          tongSoLuong: parseNumberVN(row[27]), // Column AB (index 27)
+        };
+      })
+      .filter((item) => item.maSP.trim() !== "" && !item.maSP.startsWith('#'));
+
+    return {
+      maLenh,
+      ngayRaLenh,
+      xuong,
+      ngayHoanThanh,
+      ghiChu,
+      tongSLTrongLenh,
+      details,
+    };
+  } catch (error) {
+    console.error("Error reading LSX info from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật mã lệnh LSX vào ô B3 để thay đổi lệnh sản xuất hiển thị
+ */
+export async function updateLSXMaLenh(maLenh: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameLSX}'!B3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[maLenh]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating LSX ma lenh:", error);
+    throw error;
+  }
+}
+
+// ==================== ĐỊNH MỨC SẢN XUẤT ====================
+const sheetNameDinhMucSX = process.env.GOOGLE_SHEET_NAME_DINH_MUC_SAN_XUAT || "Định mức sản xuất";
+
+export interface DinhMucSX {
+  id: number;
+  maSP: string;
+  vaiChinh: string;
+  vaiPhoi1: string;
+  vaiPhoi2: string;
+  vaiPhoi3: string;
+  vaiPhoi4: string;
+  vaiPhoi5: string;
+  phuLieu1: string;
+  phuLieu2: string;
+  phuKien: string;
+  khac: string;
+}
+
+/**
+ * Lấy dữ liệu định mức sản xuất từ Google Sheets
+ * Header row 5, data từ row 6
+ * Columns: Mã SP (A), Vải chính (B), Vải phối 1-5 (C-G), Phụ liệu 1-2 (H-I), Phụ kiện (J), Khác (K)
+ */
+export async function getDinhMucSXFromSheet(): Promise<DinhMucSX[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDinhMucSX}'!A6:K`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    const data: DinhMucSX[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maSP: row[0] || "",
+        vaiChinh: row[1] || "",
+        vaiPhoi1: row[2] || "",
+        vaiPhoi2: row[3] || "",
+        vaiPhoi3: row[4] || "",
+        vaiPhoi4: row[5] || "",
+        vaiPhoi5: row[6] || "",
+        phuLieu1: row[7] || "",
+        phuLieu2: row[8] || "",
+        phuKien: row[9] || "",
+        khac: row[10] || "",
+      }))
+      .filter((item) => item.maSP.trim() !== "");
+
+    return data;
+  } catch (error) {
+    console.error("Error reading Dinh Muc SX from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== YÊU CẦU XUẤT KHO NPL ====================
+const sheetNameYeuCauXuatKhoNPL = process.env.GOOGLE_SHEET_NAME_YEU_CAU_XUAT_KHO_NPL || "Yêu cầu xuất kho NPL";
+
+export interface YeuCauXuatKhoNPL {
+  id: number;
+  ngayThang: string;
+  maPhieuYC: string;
+  maNPL: string;
+  dvt: string;
+  dinhMuc: number;
+  slKHSX: number;
+  tongNPLSX: number;
+  maSPSuDung: string;
+  mauSac: string;
+  xuongSX: string;
+}
+
+/**
+ * Lấy dữ liệu bảng kê yêu cầu xuất kho NPL từ Google Sheets
+ * Header row 5, data từ row 6
+ * Columns: Ngày tháng (A), Mã phiếu YC (B), Mã NPL (C), ĐVT (D), Định mức (E),
+ *          SL KH SX (F), Tổng NPL SX (G), Mã SP sử dụng (H), Màu sắc (I), Xưởng SX (J)
+ */
+export async function getYeuCauXuatKhoNPLFromSheet(): Promise<YeuCauXuatKhoNPL[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      const strValue = String(value).replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A6:J`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    const data: YeuCauXuatKhoNPL[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngayThang: row[0] || "",
+        maPhieuYC: row[1] || "",
+        maNPL: row[2] || "",
+        dvt: row[3] || "",
+        dinhMuc: parseNumberVN(row[4]),
+        slKHSX: parseNumberVN(row[5]),
+        tongNPLSX: parseNumberVN(row[6]),
+        maSPSuDung: row[7] || "",
+        mauSac: row[8] || "",
+        xuongSX: row[9] || "",
+      }))
+      .filter((item) => item.maPhieuYC.trim() !== "" || item.maNPL.trim() !== "");
+
+    return data;
+  } catch (error) {
+    console.error("Error reading Yeu Cau Xuat Kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== PHIẾU YÊU CẦU XUẤT KHO NPL ====================
+const sheetNamePhieuYCXKNPL = process.env.GOOGLE_SHEET_NAME_PHIEU_YEU_CAU_XUAT_KHO_NPL || "Phiếu yêu cầu XK NPL";
+
+export interface PhieuYCXKNPLDetail {
+  id: number;
+  stt: number;
+  maNPL: string;
+  dvt: string;
+  dinhMuc: number;
+  slSX: number;
+  tong: number;
+  maSP: string;
+}
+
+export interface PhieuYCXKNPLInfo {
+  maYeuCau: string;
+  ngayThang: string;
+  xuongSX: string;
+  maSP: string;
+  tenSP: string;
+  dongSize: string;
+  hinhAnh: string;
+  details: PhieuYCXKNPLDetail[];
+}
+
+/**
+ * Lấy dữ liệu phiếu yêu cầu xuất kho NPL từ Google Sheets
+ * Header info rows 5-8, table header row 10, data từ row 11
+ */
+export async function getPhieuYCXKNPLFromSheet(): Promise<PhieuYCXKNPLInfo> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      const strValue = String(value).replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0 : num;
+    };
+
+    // Get header info (rows 5-8)
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhieuYCXKNPL}'!A5:G8`,
+    });
+
+    const headerRows = headerResponse.data.values || [];
+
+    const maYeuCau = headerRows[0]?.[1] || ""; // B5
+    const ngayThang = headerRows[1]?.[1] || ""; // B6
+    const xuongSX = headerRows[2]?.[1] || ""; // B7
+    const maSP = headerRows[0]?.[4] || ""; // E5
+    const tenSP = headerRows[1]?.[4] || ""; // E6
+    const dongSize = headerRows[2]?.[4] || ""; // E7
+    const hinhAnh = ""; // Image not supported
+
+    // Get table data (from row 11)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhieuYCXKNPL}'!A11:G`,
+    });
+
+    const rows = dataResponse.data.values || [];
+
+    const details: PhieuYCXKNPLDetail[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        maNPL: row[1] || "",
+        dvt: row[2] || "",
+        dinhMuc: parseNumberVN(row[3]),
+        slSX: parseNumberVN(row[4]),
+        tong: parseNumberVN(row[5]),
+        maSP: row[6] || "",
+      }))
+      .filter((item) => item.maNPL.trim() !== "");
+
+    return {
+      maYeuCau,
+      ngayThang,
+      xuongSX,
+      maSP,
+      tenSP,
+      dongSize,
+      hinhAnh,
+      details,
+    };
+  } catch (error) {
+    console.error("Error reading Phieu YC XK NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật mã yêu cầu vào ô B5 để thay đổi phiếu hiển thị
+ */
+export async function updatePhieuYCXKNPLMaYeuCau(maYeuCau: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhieuYCXKNPL}'!B5`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[maYeuCau]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating Phieu YC XK NPL ma yeu cau:", error);
+    throw error;
+  }
+}
+
+// ==================== SỐ LƯỢNG CẮT ====================
+const sheetNameSoLuongCat = process.env.GOOGLE_SHEET_NAME_SO_LUONG_CAT || "Số lượng cắt";
+
+export interface SoLuongCat {
+  id: number;
+  maPhieuCat: string;
+  maSP: string;
+  lenhSanXuat: string;
+  xuongSanXuat: string;
+  mauSac: string;
+  soLuongKeHoach: number;
+  ngayCat: string;
+  soLuongCat: number;
+  slCatTruSlKH: number;
+  nguyenNhan1: string;
+  soLuongNhapKho: number;
+  slNKTruSlCat: number;
+  nguyenNhan2: string;
+  ghiChu: string;
+}
+
+/**
+ * Lấy dữ liệu số lượng cắt từ Google Sheets
+ * Header row 5, data từ row 6
+ */
+export async function getSoLuongCatFromSheet(): Promise<SoLuongCat[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      const strValue = String(value).replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameSoLuongCat}'!A6:N`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    const data: SoLuongCat[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maPhieuCat: row[0] || "",
+        maSP: row[1] || "",
+        lenhSanXuat: row[2] || "",
+        xuongSanXuat: row[3] || "",
+        mauSac: row[4] || "",
+        soLuongKeHoach: parseNumberVN(row[5]),
+        ngayCat: row[6] || "",
+        soLuongCat: parseNumberVN(row[7]),
+        slCatTruSlKH: parseNumberVN(row[8]),
+        nguyenNhan1: row[9] || "",
+        soLuongNhapKho: parseNumberVN(row[10]),
+        slNKTruSlCat: parseNumberVN(row[11]),
+        nguyenNhan2: row[12] || "",
+        ghiChu: row[13] || "",
+      }))
+      .filter((item) => item.maPhieuCat.trim() !== "" || item.maSP.trim() !== "");
+
+    return data;
+  } catch (error) {
+    console.error("Error reading So Luong Cat from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== PHIẾU BÁO SỐ LƯỢNG CẮT ====================
+const sheetNamePhieuBaoSLCat = process.env.GOOGLE_SHEET_NAME_PHIEU_BAO_SO_LUONG_CAT || "Phiếu báo Sl cắt";
+
+export interface PhieuBaoSLCatDetail {
+  id: number;
+  stt: number;
+  maSP: string;
+  lsx: string;
+  xuongSX: string;
+  mauSac: string;
+  soLuong: number;
+  ghiChu: string;
+}
+
+export interface PhieuBaoSLCatInfo {
+  maPhieu: string;
+  ngay: string;
+  tongSoLuong: number;
+  details: PhieuBaoSLCatDetail[];
+}
+
+/**
+ * Lấy dữ liệu phiếu báo số lượng cắt từ Google Sheets
+ * Header info rows 5-6, table header row 7, data từ row 8
+ */
+export async function getPhieuBaoSLCatFromSheet(): Promise<PhieuBaoSLCatInfo> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      const strValue = String(value).replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0 : num;
+    };
+
+    // Get header info (rows 5-6)
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhieuBaoSLCat}'!A5:G6`,
+    });
+
+    const headerRows = headerResponse.data.values || [];
+
+    const maPhieu = headerRows[0]?.[1] || ""; // B5
+    const ngay = headerRows[1]?.[1] || ""; // B6
+    const tongSoLuong = parseNumberVN(headerRows[1]?.[3]); // D6
+
+    // Get table data (from row 8)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhieuBaoSLCat}'!A8:G`,
+    });
+
+    const rows = dataResponse.data.values || [];
+
+    const details: PhieuBaoSLCatDetail[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[0]),
+        maSP: row[1] || "",
+        lsx: row[2] || "",
+        xuongSX: row[3] || "",
+        mauSac: row[4] || "",
+        soLuong: parseNumberVN(row[5]),
+        ghiChu: row[6] || "",
+      }))
+      .filter((item) => item.maSP.trim() !== "");
+
+    return {
+      maPhieu,
+      ngay,
+      tongSoLuong,
+      details,
+    };
+  } catch (error) {
+    console.error("Error reading Phieu Bao SL Cat from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật mã phiếu vào ô B5 để thay đổi phiếu hiển thị
+ */
+export async function updatePhieuBaoSLCatMaPhieu(maPhieu: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhieuBaoSLCat}'!B5`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[maPhieu]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating Phieu Bao SL Cat ma phieu:", error);
+    throw error;
+  }
+}
+
+// ==================== GIÁ THÀNH & GIÁ BÁN ====================
+const sheetNameGiaThanhGiaBan = process.env.GOOGLE_SHEET_NAME_GIA_THANH || "Giá thành&giá bán";
+
+export interface GiaThanhGiaBan {
+  id: number;
+  maSP: string;
+  maSPNhapKho: string;
+  cpNPL: number;
+  cpGiaCong: number;
+  cpKhac: number;
+  cpHinhIn: number;
+  tongChiPhi: number;
+  slKeHoach: number;
+  slCat: number;
+  slNhapKho: number;
+  giaThanh: number;
+  giaSi: number;
+  giaLe: number;
+}
+
+/**
+ * Lấy dữ liệu giá thành giá bán từ Google Sheets
+ * Header row 5, data từ row 6
+ */
+export async function getGiaThanhGiaBanFromSheet(): Promise<GiaThanhGiaBan[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      const strValue = String(value).replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameGiaThanhGiaBan}'!A6:M`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    const data: GiaThanhGiaBan[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maSP: row[0] || "",
+        maSPNhapKho: row[1] || "",
+        cpNPL: parseNumberVN(row[2]),
+        cpGiaCong: parseNumberVN(row[3]),
+        cpKhac: parseNumberVN(row[4]),
+        cpHinhIn: parseNumberVN(row[5]),
+        tongChiPhi: parseNumberVN(row[6]),
+        slKeHoach: parseNumberVN(row[7]),
+        slCat: parseNumberVN(row[8]),
+        slNhapKho: parseNumberVN(row[9]),
+        giaThanh: parseNumberVN(row[10]),
+        giaSi: parseNumberVN(row[11]),
+        giaLe: parseNumberVN(row[12]),
+      }))
+      .filter((item) => item.maSP.trim() !== "" || item.maSPNhapKho.trim() !== "");
+
+    return data;
+  } catch (error) {
+    console.error("Error reading Gia Thanh Gia Ban from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== BẢNG KÊ CHI PHÍ KHÁC ====================
+const sheetNameBangKeCPKhac = process.env.GOOGLE_SHEET_NAME_BANG_KE_CP_KHAC || "Bảng kê CP khác";
+
+// Table 1: Bảng kê chi phí khác (columns A-H)
+export interface ChiPhiKhacItem {
+  id: number;
+  ngay: string;
+  noiDung: string;
+  chiHoXuong: string;
+  soChoMa: string;
+  soTien: number;
+  phanBo: string;
+  doiTacVC: string;
+}
+
+// Table 2: Bảng kê tổng hợp cho đối tác vận chuyển (columns I-N)
+export interface DoiTacVanChuyenItem {
+  id: number;
+  stt: number;
+  doiTacVC: string;
+  tienPhatSinh: number;
+  thanhToan: number;
+  congNo: number;
+}
+
+// Table 3: Bảng kê tổng hợp chi hộ xưởng (columns O-W)
+export interface ChiHoXuongItem {
+  id: number;
+  xuongSX: string;
+  tienPhatSinh: number;
+  thanhToan: number;
+  xuongNoRiomio: number;
+}
+
+export interface BangKeCPKhacData {
+  chiPhiKhac: ChiPhiKhacItem[];
+  doiTacVC: DoiTacVanChuyenItem[];
+  chiHoXuong: ChiHoXuongItem[];
+}
+
+/**
+ * Lấy dữ liệu bảng kê chi phí khác từ Google Sheets (3 bảng)
+ * Header row 5, data từ row 6
+ */
+export async function getBangKeCPKhacFromSheet(): Promise<BangKeCPKhacData> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      const strValue = String(value).replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0 : num;
+    };
+
+    // Fetch all data in one request (columns A to W)
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameBangKeCPKhac}'!A6:W`,
+    });
+
+    const rows = response.data.values || [];
+
+    // Table 1: Chi phí khác (A-H)
+    const chiPhiKhac: ChiPhiKhacItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngay: row[0] || "",
+        noiDung: row[1] || "",
+        chiHoXuong: row[2] || "",
+        soChoMa: row[3] || "",
+        soTien: parseNumberVN(row[4]),
+        phanBo: row[5] || "",
+        doiTacVC: row[6] || "",
+      }))
+      .filter((item) => item.ngay.trim() !== "" || item.noiDung.trim() !== "");
+
+    // Table 2: Đối tác vận chuyển (I-N, indexes 8-13)
+    const doiTacVC: DoiTacVanChuyenItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseNumberVN(row[8]),
+        doiTacVC: row[9] || "",
+        tienPhatSinh: parseNumberVN(row[10]),
+        thanhToan: parseNumberVN(row[11]),
+        congNo: parseNumberVN(row[12]),
+      }))
+      .filter((item) => item.doiTacVC.trim() !== "");
+
+    // Table 3: Chi hộ xưởng (O-R, indexes 14-17)
+    const chiHoXuong: ChiHoXuongItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        xuongSX: row[14] || "",
+        tienPhatSinh: parseNumberVN(row[15]),
+        thanhToan: parseNumberVN(row[16]),
+        xuongNoRiomio: parseNumberVN(row[17]),
+      }))
+      .filter((item) => item.xuongSX.trim() !== "");
+
+    return {
+      chiPhiKhac,
+      doiTacVC,
+      chiHoXuong,
+    };
+  } catch (error) {
+    console.error("Error reading Bang Ke CP Khac from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== PHÂN BỔ CHI PHÍ KHÁC ====================
+const sheetNamePhanBoCPKhac = process.env.GOOGLE_SHEET_NAME_PHAN_BO_CP_KHAC || "Phân bổ CP khác";
+
+export interface PhanBoCPKhac {
+  id: number;
+  ngayThang: string;
+  nguoiNhap: string;
+  maPhieu: string;
+  noiDung: string;
+  maSP: string;
+  soTien: number;
+  loaiChiPhi: string;
+}
+
+/**
+ * Lấy dữ liệu phân bổ chi phí khác từ Google Sheets
+ * Header row 5, data từ row 6
+ * Columns: Ngày tháng (A), Người nhập (B), Mã phiếu (C), Nội dung (D), Mã SP (E), Số tiền (F), Loại chi phí (G)
+ */
+export async function getPhanBoCPKhacFromSheet(): Promise<PhanBoCPKhac[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      const strValue = String(value).replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhanBoCPKhac}'!A6:G`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    const data: PhanBoCPKhac[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngayThang: row[0] || "",
+        nguoiNhap: row[1] || "",
+        maPhieu: row[2] || "",
+        noiDung: row[3] || "",
+        maSP: row[4] || "",
+        soTien: parseNumberVN(row[5]),
+        loaiChiPhi: row[6] || "",
+      }))
+      .filter((item) => item.ngayThang.trim() !== "" || item.maPhieu.trim() !== "");
+
+    return data;
+  } catch (error) {
+    console.error("Error reading Phan Bo CP Khac from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== MÃ SẢN PHẨM (PHÁT TRIỂN SẢN PHẨM) ====================
+const sheetNameMaSP = process.env.GOOGLE_SHEET_NAME_MA_SP || "Mã SP";
+
+export interface MaSP {
+  id: number;
+  maSP: string;
+  tenSP: string;
+  size: string;
+  vaiChinh: string;
+  vaiPhoi: string;
+  phuLieuKhac: string;
+  tinhTrangSX: string;
+  lenhSX: string;
+  xuongSX: string;
+  hinhAnh: string;
+}
+
+/**
+ * Lấy dữ liệu mã sản phẩm từ Google Sheets
+ * Header row 5, data từ row 6
+ * Columns: Mã SP (A), Tên SP (B), Size (C), Vải chính (D), Vải phối (E), Phụ liệu khác (F), Tình trạng SX (G), Lệnh SX (H), Xưởng SX (I), Hình ảnh (J)
+ */
+export async function getMaSPFromSheet(): Promise<MaSP[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameMaSP}'!A6:J`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    const data: MaSP[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maSP: row[0] || "",
+        tenSP: row[1] || "",
+        size: row[2] || "",
+        vaiChinh: row[3] || "",
+        vaiPhoi: row[4] || "",
+        phuLieuKhac: row[5] || "",
+        tinhTrangSX: row[6] || "",
+        lenhSX: row[7] || "",
+        xuongSX: row[8] || "",
+        hinhAnh: row[9] || "",
+      }))
+      .filter((item) => item.maSP.trim() !== "");
+
+    return data;
+  } catch (error) {
+    console.error("Error reading Ma SP from Google Sheets:", error);
+    throw error;
+  }
+}

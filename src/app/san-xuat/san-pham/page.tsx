@@ -9,6 +9,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
+import MaSPTab from "../components/MaSPTab";
+
 type TabType = "ma-san-pham" | "chi-tiet-ma-sp";
 
 const TABS = [
@@ -86,7 +88,7 @@ export default function SanPhamSX() {
         </div>
 
         <div className="p-6">
-          {activeTab === "ma-san-pham" && <PlaceholderTab title="Mã sản phẩm" icon={Tag} />}
+          {activeTab === "ma-san-pham" && <MaSPTab />}
           {activeTab === "chi-tiet-ma-sp" && <PlaceholderTab title="Chi tiết mã sản phẩm" icon={FileText} />}
         </div>
       </div>

@@ -14,6 +14,13 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
+// Import tab components
+import DanhMucHinhInTab from "../components/DanhMucHinhInTab";
+import NhapKhoHinhInTab from "../components/NhapKhoHinhInTab";
+import ChiPhiHinhInTab from "../components/ChiPhiHinhInTab";
+import XuatKhoHinhInTab from "../components/XuatKhoHinhInTab";
+import TonKhoHinhInTab from "../components/TonKhoHinhInTab";
+
 type TabType =
   | "danh-muc"
   | "nhap-kho"
@@ -103,13 +110,13 @@ export default function HinhIn() {
         </div>
 
         <div className="p-6">
-          {activeTab === "danh-muc" && <PlaceholderTab title="Danh mục HI" icon={List} />}
-          {activeTab === "nhap-kho" && <PlaceholderTab title="Nhập kho HI" icon={PackagePlus} />}
+          {activeTab === "danh-muc" && <DanhMucHinhInTab />}
+          {activeTab === "nhap-kho" && <NhapKhoHinhInTab />}
           {activeTab === "phieu-nhap" && <PlaceholderTab title="Phiếu nhập kho hình in" icon={FileInput} />}
-          {activeTab === "chi-phi" && <PlaceholderTab title="Chi phí HI" icon={DollarSign} />}
-          {activeTab === "xuat-kho" && <PlaceholderTab title="Xuất kho HI" icon={PackageMinus} />}
+          {activeTab === "chi-phi" && <ChiPhiHinhInTab />}
+          {activeTab === "xuat-kho" && <XuatKhoHinhInTab />}
           {activeTab === "phieu-xuat" && <PlaceholderTab title="Phiếu xuất kho hình in" icon={FileOutput} />}
-          {activeTab === "ton-kho" && <PlaceholderTab title="Tồn kho HI" icon={Archive} />}
+          {activeTab === "ton-kho" && <TonKhoHinhInTab />}
         </div>
       </div>
     </div>

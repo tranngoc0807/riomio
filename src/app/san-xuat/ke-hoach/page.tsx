@@ -17,6 +17,12 @@ import { Toaster } from "react-hot-toast";
 
 // Import existing tab component from parent
 import KeHoachSXTab from "../components/KeHoachSXTab";
+import LSXTab from "../components/LSXTab";
+import DinhMucSXTab from "../components/DinhMucSXTab";
+import BangKeYCXKTab from "../components/BangKeYCXKTab";
+import PhieuYCXKNPLTab from "../components/PhieuYCXKNPLTab";
+import SoLuongCatTab from "../components/SoLuongCatTab";
+import PhieuBaoSLCatTab from "../components/PhieuBaoSLCatTab";
 
 type TabType =
   | "bang-ke-lsx"
@@ -110,13 +116,13 @@ export default function KeHoachSanXuat() {
 
         <div className="p-6">
           {activeTab === "bang-ke-lsx" && <KeHoachSXTab />}
-          {activeTab === "lsx" && <PlaceholderTab title="LSX" icon={ClipboardList} />}
-          {activeTab === "dinh-muc" && <PlaceholderTab title="Định mức sản xuất" icon={ListChecks} />}
+          {activeTab === "lsx" && <LSXTab />}
+          {activeTab === "dinh-muc" && <DinhMucSXTab />}
           {activeTab === "phieu-dinh-muc" && <PlaceholderTab title="Phiếu định mức sản xuất" icon={FileText} />}
-          {activeTab === "bang-ke-yc-xk" && <PlaceholderTab title="Bảng kê Yêu cầu xuất kho NPL" icon={FileOutput} />}
-          {activeTab === "phieu-yc-xk" && <PlaceholderTab title="Phiếu yêu cầu XK NPL" icon={PackageOpen} />}
-          {activeTab === "so-luong-cat" && <PlaceholderTab title="Số lượng cắt" icon={Scissors} />}
-          {activeTab === "phieu-cat" && <PlaceholderTab title="Phiếu báo số lượng cắt hàng" icon={ClipboardCheck} />}
+          {activeTab === "bang-ke-yc-xk" && <BangKeYCXKTab />}
+          {activeTab === "phieu-yc-xk" && <PhieuYCXKNPLTab />}
+          {activeTab === "so-luong-cat" && <SoLuongCatTab />}
+          {activeTab === "phieu-cat" && <PhieuBaoSLCatTab />}
         </div>
       </div>
     </div>
