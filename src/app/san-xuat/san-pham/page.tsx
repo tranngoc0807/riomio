@@ -1,33 +1,24 @@
 "use client";
 
-import {
-  PackageSearch,
-  Tag,
-  FileText,
-} from "lucide-react";
+import { PackageSearch, Tag, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
 import MaSPTab from "../components/MaSPTab";
+import ChiTietMaSPTab from "../components/ChiTietMaSPTab";
 
 type TabType = "ma-san-pham" | "chi-tiet-ma-sp";
 
 const TABS = [
   { id: "ma-san-pham" as TabType, label: "Mã sản phẩm", icon: Tag },
-  { id: "chi-tiet-ma-sp" as TabType, label: "Chi tiết mã sản phẩm", icon: FileText },
+  {
+    id: "chi-tiet-ma-sp" as TabType,
+    label: "Chi tiết mã sản phẩm",
+    icon: FileText,
+  },
 ];
 
-// Placeholder component for tabs under development
-function PlaceholderTab({ title, icon: Icon }: { title: string; icon: React.ComponentType<{ size?: number; className?: string }> }) {
-  return (
-    <div className="text-center py-12 text-gray-500">
-      <Icon className="mx-auto mb-4 text-gray-300" size={64} />
-      <p className="text-lg font-medium">{title}</p>
-      <p className="text-sm mt-1">Tính năng đang phát triển</p>
-    </div>
-  );
-}
 
 export default function SanPhamSX() {
   const router = useRouter();
@@ -37,8 +28,9 @@ export default function SanPhamSX() {
 
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
-    const validTabs = TABS.map(t => t.id);
+    const validTabs = TABS.map((t) => t.id);
     if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
     }
   }, [searchParams]);
@@ -89,7 +81,7 @@ export default function SanPhamSX() {
 
         <div className="p-6">
           {activeTab === "ma-san-pham" && <MaSPTab />}
-          {activeTab === "chi-tiet-ma-sp" && <PlaceholderTab title="Chi tiết mã sản phẩm" icon={FileText} />}
+          {activeTab === "chi-tiet-ma-sp" && <ChiTietMaSPTab />}
         </div>
       </div>
     </div>

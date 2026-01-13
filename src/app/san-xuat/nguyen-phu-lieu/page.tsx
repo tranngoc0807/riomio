@@ -50,16 +50,6 @@ const TABS = [
   { id: "theo-doi-cn" as TabType, label: "Theo dõi CN từng NCC NPL", icon: FileSearch },
 ];
 
-// Placeholder component for tabs under development
-function PlaceholderTab({ title, icon: Icon }: { title: string; icon: React.ComponentType<{ size?: number; className?: string }> }) {
-  return (
-    <div className="text-center py-12 text-gray-500">
-      <Icon className="mx-auto mb-4 text-gray-300" size={64} />
-      <p className="text-lg font-medium">{title}</p>
-      <p className="text-sm mt-1">Tính năng đang phát triển</p>
-    </div>
-  );
-}
 
 export default function NguyenPhuLieu() {
   const router = useRouter();

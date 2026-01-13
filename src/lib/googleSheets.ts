@@ -6312,6 +6312,7 @@ export async function getPhanBoCPKhacFromSheet(): Promise<PhanBoCPKhac[]> {
 
 // ==================== MÃ SẢN PHẨM (PHÁT TRIỂN SẢN PHẨM) ====================
 const sheetNameMaSP = process.env.GOOGLE_SHEET_NAME_MA_SP || "Mã SP";
+const sheetNameChiTietMaSP = process.env.GOOGLE_SHEET_NAME_CHI_TIET_MA_SP || "Chi tiết Mã SP";
 
 export interface MaSP {
   id: number;
@@ -6366,6 +6367,133 @@ export async function getMaSPFromSheet(): Promise<MaSP[]> {
     return data;
   } catch (error) {
     console.error("Error reading Ma SP from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== CHI TIẾT MÃ SẢN PHẨM ====================
+export interface ChiTietMaSP {
+  maSP: string;
+  tenSP: string;
+  bangSizeSanXuat: string;
+  hinhAnh: string;
+  mauSacSanXuat: string;
+  thuocTinhSize: string;
+  giaBanLe: string;
+  giaBanSi: string;
+  giaVon: string;
+  vaiChinh: string;
+  vaiPhoi: string;
+  phuLieuKhac: string;
+  dinhMucVaiChinh: string;
+  dinhMucVaiPhoi1: string;
+  dinhMucVaiPhoi2: string;
+  dinhMucPhuLieu1: string;
+  dinhMucPhuLieu2: string;
+  dinhMucPhuKien: string;
+  dinhMucKhac: string;
+  soLuongKeHoach: string;
+  soLuongCat: string;
+  soLuongNhapKho: string;
+  cdFinal: string;
+  cdDongBoNPL: string;
+  cdSanXuat: string;
+  nhapKho: string;
+}
+
+/**
+ * Lấy chi tiết mã sản phẩm từ Google Sheets
+ * Row 3: Mã SP
+ * Row 5: Headers (STT, Chi tiết, Thông tin)
+ * Row 6-30: Data
+ */
+export async function getChiTietMaSPFromSheet(): Promise<ChiTietMaSP | null> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get Mã SP from B3
+    const maSPResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameChiTietMaSP}'!B3`,
+    });
+
+    const maSP = maSPResponse.data.values?.[0]?.[0] || "";
+
+    // Get data from C6:C30 (Thông tin column)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameChiTietMaSP}'!C6:C30`,
+    });
+
+    const rows = dataResponse.data.values;
+
+    if (!rows || rows.length === 0) {
+      return null;
+    }
+
+    const getValue = (index: number) => rows[index]?.[0] || "";
+
+    const data: ChiTietMaSP = {
+      maSP,
+      tenSP: getValue(0),
+      bangSizeSanXuat: getValue(1),
+      hinhAnh: getValue(2),
+      mauSacSanXuat: getValue(3),
+      thuocTinhSize: getValue(4),
+      giaBanLe: getValue(5),
+      giaBanSi: getValue(6),
+      giaVon: getValue(7),
+      vaiChinh: getValue(8),
+      vaiPhoi: getValue(9),
+      phuLieuKhac: getValue(10),
+      dinhMucVaiChinh: getValue(11),
+      dinhMucVaiPhoi1: getValue(12),
+      dinhMucVaiPhoi2: getValue(13),
+      dinhMucPhuLieu1: getValue(14),
+      dinhMucPhuLieu2: getValue(15),
+      dinhMucPhuKien: getValue(16),
+      dinhMucKhac: getValue(17),
+      soLuongKeHoach: getValue(18),
+      soLuongCat: getValue(19),
+      soLuongNhapKho: getValue(20),
+      cdFinal: getValue(21),
+      cdDongBoNPL: getValue(22),
+      cdSanXuat: getValue(23),
+      nhapKho: getValue(24),
+    };
+
+    return data;
+  } catch (error) {
+    console.error("Error reading Chi Tiet Ma SP from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật Mã SP trong sheet "Chi tiết Mã SP" và lấy dữ liệu mới
+ * @param maSP - Mã sản phẩm cần xem chi tiết
+ */
+export async function updateAndGetChiTietMaSP(maSP: string): Promise<ChiTietMaSP | null> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Update Mã SP in cell B3
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameChiTietMaSP}'!B3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[maSP]],
+      },
+    });
+
+    // Wait a moment for formulas to recalculate
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Fetch the updated data
+    return await getChiTietMaSPFromSheet();
+  } catch (error) {
+    console.error("Error updating and reading Chi Tiet Ma SP:", error);
     throw error;
   }
 }
