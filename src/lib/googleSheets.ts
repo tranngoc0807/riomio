@@ -6497,3 +6497,216 @@ export async function updateAndGetChiTietMaSP(maSP: string): Promise<ChiTietMaSP
     throw error;
   }
 }
+
+/**
+ * Thêm mã sản phẩm mới vào Google Sheets
+ * Tìm dòng cuối cùng có dữ liệu (maSP không trống) và thêm ngay sau đó
+ */
+export async function addMaSPToSheet(data: Omit<MaSP, 'id'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // First, get column A to find the last row with actual data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameMaSP}'!A:A`,
+    });
+
+    const rows = response.data.values || [];
+
+    // Find the last row with actual maSP data (not empty)
+    let lastDataRow = 5; // Header is at row 5, data starts at row 6
+    for (let i = rows.length - 1; i >= 5; i--) {
+      if (rows[i] && rows[i][0] && rows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1; // Convert to 1-based row number
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Write to the next row after the last data row
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameMaSP}'!A${nextRow}:J${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          data.maSP,
+          data.tenSP,
+          data.size,
+          data.vaiChinh,
+          data.vaiPhoi,
+          data.phuLieuKhac,
+          data.tinhTrangSX,
+          data.lenhSX,
+          data.xuongSX,
+          data.hinhAnh,
+        ]],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error adding Ma SP:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật mã sản phẩm trong Google Sheets
+ * rowIndex là vị trí trong data (0-based), cần +6 để có row thực tế trong sheet
+ */
+export async function updateMaSPInSheet(rowIndex: number, data: Omit<MaSP, 'id'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const actualRow = rowIndex + 6; // Data starts from row 6
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameMaSP}'!A${actualRow}:J${actualRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          data.maSP,
+          data.tenSP,
+          data.size,
+          data.vaiChinh,
+          data.vaiPhoi,
+          data.phuLieuKhac,
+          data.tinhTrangSX,
+          data.lenhSX,
+          data.xuongSX,
+          data.hinhAnh,
+        ]],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error updating Ma SP:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xoá mã sản phẩm trong Google Sheets
+ * rowIndex là vị trí trong data (0-based), cần +6 để có row thực tế trong sheet
+ * Xoá nội dung dòng để giữ nguyên cấu trúc sheet và data validation
+ */
+export async function deleteMaSPFromSheet(rowIndex: number): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const actualRow = rowIndex + 6; // Data starts from row 6
+
+    // Clear the row content instead of deleting the row
+    // This preserves the sheet structure and any data validation/dropdowns
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameMaSP}'!A${actualRow}:J${actualRow}`,
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting Ma SP:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy chi tiết một mã sản phẩm theo mã SP
+ */
+export async function getMaSPById(maSP: string): Promise<MaSP | null> {
+  try {
+    const allData = await getMaSPFromSheet();
+    return allData.find((item) => item.maSP === maSP) || null;
+  } catch (error) {
+    console.error("Error getting Ma SP by ID:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật chi tiết mã sản phẩm trong Google Sheets
+ * Cập nhật trực tiếp vào cột C của sheet "Chi tiết Mã SP" (C6:C30)
+ * Lưu ý: Chỉ hoạt động nếu cột C chứa giá trị, không phải công thức
+ */
+export async function updateChiTietMaSPInSheet(
+  maSP: string,
+  data: Partial<ChiTietMaSP>
+): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đầu tiên, cập nhật mã SP trong B3 để đảm bảo đúng sản phẩm
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameChiTietMaSP}'!B3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[maSP]],
+      },
+    });
+
+    // Đợi formulas recalculate
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Mapping các field với vị trí row trong sheet (C6-C30)
+    const fieldToRowMap: { [key: string]: number } = {
+      tenSP: 6,
+      bangSizeSanXuat: 7,
+      hinhAnh: 8,
+      mauSacSanXuat: 9,
+      thuocTinhSize: 10,
+      giaBanLe: 11,
+      giaBanSi: 12,
+      giaVon: 13,
+      vaiChinh: 14,
+      vaiPhoi: 15,
+      phuLieuKhac: 16,
+      dinhMucVaiChinh: 17,
+      dinhMucVaiPhoi1: 18,
+      dinhMucVaiPhoi2: 19,
+      dinhMucPhuLieu1: 20,
+      dinhMucPhuLieu2: 21,
+      dinhMucPhuKien: 22,
+      dinhMucKhac: 23,
+      soLuongKeHoach: 24,
+      soLuongCat: 25,
+      soLuongNhapKho: 26,
+      cdFinal: 27,
+      cdDongBoNPL: 28,
+      cdSanXuat: 29,
+      nhapKho: 30,
+    };
+
+    // Cập nhật từng field
+    const updates: { range: string; values: string[][] }[] = [];
+
+    for (const [field, value] of Object.entries(data)) {
+      const row = fieldToRowMap[field];
+      if (row && value !== undefined) {
+        updates.push({
+          range: `'${sheetNameChiTietMaSP}'!C${row}`,
+          values: [[value]],
+        });
+      }
+    }
+
+    // Batch update tất cả các field
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: spreadsheetIdLSX,
+        requestBody: {
+          valueInputOption: "USER_ENTERED",
+          data: updates,
+        },
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error updating Chi Tiet Ma SP:", error);
+    throw error;
+  }
+}
