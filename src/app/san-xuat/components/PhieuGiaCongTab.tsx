@@ -105,8 +105,13 @@ export default function PhieuGiaCongTab() {
     item.maPGC.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Calculate totals
-  const totalThanhTien = phieuData?.details.reduce((sum, item) => sum + item.thanhTien, 0) || 0;
+  // Filter only rows with data (maSanPham not empty)
+  const filteredDetails = phieuData?.details.filter(
+    (item) => item.maSanPham && item.maSanPham.trim() !== ""
+  ) || [];
+
+  // Calculate totals from filtered data
+  const totalThanhTien = filteredDetails.reduce((sum, item) => sum + item.thanhTien, 0);
 
   return (
     <div>
@@ -237,7 +242,7 @@ export default function PhieuGiaCongTab() {
               </p>
             </div>
           </div>
-        ) : !phieuData || phieuData.details.length === 0 ? (
+        ) : !phieuData || filteredDetails.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <p className="text-gray-500">Không có dữ liệu chi tiết phiếu</p>
@@ -269,7 +274,7 @@ export default function PhieuGiaCongTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {phieuData.details.map((row) => (
+                {filteredDetails.map((row) => (
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {row.stt || "-"}

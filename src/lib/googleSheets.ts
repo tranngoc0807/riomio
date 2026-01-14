@@ -4980,6 +4980,158 @@ export async function getDonGiaGiaCongFromSheet(): Promise<DonGiaGiaCong[]> {
   }
 }
 
+/**
+ * Thêm đơn giá gia công mới vào Google Sheets
+ * Header row 5, data từ row 6
+ * Columns: A-H (maSPNhapKho, maSP, mucLucSX, xuongSX, noiDungKhac, donGia, nguoiNhap, ghiChu)
+ */
+export async function addDonGiaGiaCongToSheet(donGia: Omit<DonGiaGiaCong, "id">): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc dữ liệu từ row 6 để tìm dòng cuối cùng có data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat9,
+      range: `'${sheetNameDonGiaGiaCong}'!A6:H`,
+    });
+
+    const dataRows = response.data.values || [];
+
+    // Tìm dòng cuối cùng có dữ liệu
+    let lastDataIndex = -1;
+    for (let i = dataRows.length - 1; i >= 0; i--) {
+      if (dataRows[i] && (dataRows[i][0] || dataRows[i][1]) &&
+          (dataRows[i][0]?.toString().trim() !== "" || dataRows[i][1]?.toString().trim() !== "")) {
+        lastDataIndex = i;
+        break;
+      }
+    }
+
+    // Row 6 là index 0, nên nextRow = 6 + lastDataIndex + 1
+    const nextRow = lastDataIndex === -1 ? 6 : (6 + lastDataIndex + 1);
+
+    const values = [
+      [
+        donGia.maSPNhapKho,
+        donGia.maSP,
+        donGia.mucLucSX,
+        donGia.xuongSX,
+        donGia.noiDungKhac,
+        donGia.donGia,
+        donGia.nguoiNhap,
+        donGia.ghiChu,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat9,
+      range: `'${sheetNameDonGiaGiaCong}'!A${nextRow}:H${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added don gia gia cong: ${donGia.maSPNhapKho} at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding don gia gia cong to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật đơn giá gia công trong Google Sheets
+ * Header row 5, data từ row 6
+ */
+export async function updateDonGiaGiaCongInSheet(donGia: DonGiaGiaCong): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+    const rowNumber = donGia.id + 5;
+
+    const values = [
+      [
+        donGia.maSPNhapKho,
+        donGia.maSP,
+        donGia.mucLucSX,
+        donGia.xuongSX,
+        donGia.noiDungKhac,
+        donGia.donGia,
+        donGia.nguoiNhap,
+        donGia.ghiChu,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat9,
+      range: `'${sheetNameDonGiaGiaCong}'!A${rowNumber}:H${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated don gia gia cong: ${donGia.maSPNhapKho}`);
+  } catch (error) {
+    console.error("Error updating don gia gia cong in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa đơn giá gia công khỏi Google Sheets
+ * Header row 5, data từ row 6
+ */
+export async function deleteDonGiaGiaCongFromSheet(donGiaId: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+    const rowNumber = donGiaId + 5;
+
+    // Lấy sheetId để xóa dòng
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdSanXuat9,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameDonGiaGiaCong
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      console.error("Available sheets:", sheetMetadata.data.sheets?.map(s => s.properties?.title));
+      throw new Error(`Cannot find sheet named "${sheetNameDonGiaGiaCong}" to delete row`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    // Xóa dòng
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdSanXuat9,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted don gia gia cong with ID: ${donGiaId} from row ${rowNumber}`);
+  } catch (error) {
+    console.error("Error deleting don gia gia cong from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ===================== BẢNG KÊ GIA CÔNG =====================
 const spreadsheetIdSanXuat10 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
 const sheetNameBangKeGiaCong = process.env.GOOGLE_SHEET_NAME_BANG_KE_GIA_CONG || "Bảng kê gia công";
@@ -5361,6 +5513,137 @@ export async function getDanhMucHinhInFromSheet(): Promise<DanhMucHinhIn[]> {
   }
 }
 
+/**
+ * Thêm danh mục hình in mới vào Google Sheets
+ */
+export async function addDanhMucHinhInToSheet(
+  danhMuc: Omit<DanhMucHinhIn, "id">
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Format number for Vietnamese format
+    const formatNumberVN = (num: number): string => {
+      if (!num || num === 0) return "";
+      return num.toLocaleString("vi-VN");
+    };
+
+    const values = [
+      [
+        danhMuc.maHinhIn,
+        danhMuc.thongTinHinhIn,
+        danhMuc.hinhAnh || "",
+        formatNumberVN(danhMuc.donGiaChuaThue),
+        danhMuc.thueSuat || "",
+        formatNumberVN(danhMuc.donGiaCoThue),
+        danhMuc.maSPSuDung || "",
+        danhMuc.xuongIn || "",
+      ],
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetIdSanXuat13,
+      range: `'${sheetNameDanhMucHinhIn}'!A6:H`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+  } catch (error) {
+    console.error("Error adding danh muc hinh in to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật danh mục hình in trong Google Sheets
+ */
+export async function updateDanhMucHinhInInSheet(
+  danhMuc: DanhMucHinhIn
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Row = id + 5 (header ở dòng 5, data từ dòng 6)
+    const rowNumber = danhMuc.id + 5;
+
+    // Format number for Vietnamese format
+    const formatNumberVN = (num: number): string => {
+      if (!num || num === 0) return "";
+      return num.toLocaleString("vi-VN");
+    };
+
+    const values = [
+      [
+        danhMuc.maHinhIn,
+        danhMuc.thongTinHinhIn,
+        danhMuc.hinhAnh || "",
+        formatNumberVN(danhMuc.donGiaChuaThue),
+        danhMuc.thueSuat || "",
+        formatNumberVN(danhMuc.donGiaCoThue),
+        danhMuc.maSPSuDung || "",
+        danhMuc.xuongIn || "",
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat13,
+      range: `'${sheetNameDanhMucHinhIn}'!A${rowNumber}:H${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+  } catch (error) {
+    console.error("Error updating danh muc hinh in in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa danh mục hình in khỏi Google Sheets
+ */
+export async function deleteDanhMucHinhInFromSheet(
+  danhMucId: number
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get sheet ID
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdSanXuat13,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameDanhMucHinhIn
+    );
+
+    if (!sheet?.properties?.sheetId) {
+      throw new Error("Sheet not found");
+    }
+
+    // Row = id + 5 (header ở dòng 5, data từ dòng 6)
+    const rowIndex = danhMucId + 4; // 0-based index
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdSanXuat13,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowIndex,
+                endIndex: rowIndex + 1,
+              },
+            },
+          },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting danh muc hinh in from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ============================================
 // NHẬP KHO HÌNH IN
 // ============================================
@@ -5427,6 +5710,137 @@ export async function getNhapKhoHinhInFromSheet(): Promise<NhapKhoHinhIn[]> {
     return nhapKhoList;
   } catch (error) {
     console.error("Error reading nhap kho hinh in from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm nhập kho hình in vào Google Sheets
+ * Tìm hàng trống đầu tiên (dựa trên cột A - Ngày tháng) để thêm dữ liệu
+ */
+export async function addNhapKhoHinhInToSheet(
+  nhapKho: Omit<NhapKhoHinhIn, "id">
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // First, get all data in column A to find the first empty row
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat14,
+      range: `'${sheetNameNhapKhoHinhIn}'!A6:A`,
+    });
+
+    const rows = response.data.values || [];
+
+    // Find first empty row (row with no date or empty date)
+    let insertRowIndex = 6; // Default to row 6 if no data
+    for (let i = 0; i < rows.length; i++) {
+      const cellValue = rows[i]?.[0] || "";
+      if (cellValue.trim() === "" || cellValue.startsWith("#")) {
+        insertRowIndex = i + 6; // Convert to actual row number (data starts at row 6)
+        break;
+      }
+      insertRowIndex = i + 7; // If all rows have data, insert after the last one
+    }
+
+    // Format number for Vietnamese locale
+    const formatNumber = (num: number): string => {
+      return num.toLocaleString("vi-VN");
+    };
+
+    const values = [
+      [
+        nhapKho.ngayThang,
+        nhapKho.maHinhIn,
+        formatNumber(nhapKho.soLuong),
+        formatNumber(nhapKho.donGia),
+        formatNumber(nhapKho.thanhTien),
+        nhapKho.ncc,
+        nhapKho.maPhieuNhap,
+        nhapKho.ghiChu,
+      ],
+    ];
+
+    // Use update instead of append to insert at the specific row
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat14,
+      range: `'${sheetNameNhapKhoHinhIn}'!A${insertRowIndex}:H${insertRowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+
+    console.log(`Nhap kho hinh in added successfully at row ${insertRowIndex}`);
+  } catch (error) {
+    console.error("Error adding nhap kho hinh in to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật nhập kho hình in trong Google Sheets
+ */
+export async function updateNhapKhoHinhInInSheet(
+  nhapKho: NhapKhoHinhIn
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Format number for Vietnamese locale
+    const formatNumber = (num: number): string => {
+      return num.toLocaleString("vi-VN");
+    };
+
+    // Row index = id + 5 (header at row 5, data starts at row 6)
+    const rowIndex = nhapKho.id + 5;
+
+    const values = [
+      [
+        nhapKho.ngayThang,
+        nhapKho.maHinhIn,
+        formatNumber(nhapKho.soLuong),
+        formatNumber(nhapKho.donGia),
+        formatNumber(nhapKho.thanhTien),
+        nhapKho.ncc,
+        nhapKho.maPhieuNhap,
+        nhapKho.ghiChu,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat14,
+      range: `'${sheetNameNhapKhoHinhIn}'!A${rowIndex}:H${rowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+
+    console.log("Nhap kho hinh in updated successfully");
+  } catch (error) {
+    console.error("Error updating nhap kho hinh in in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa nhập kho hình in khỏi Google Sheets
+ */
+export async function deleteNhapKhoHinhInFromSheet(
+  nhapKhoId: number
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Row index = id + 5 (header at row 5, data starts at row 6)
+    const rowIndex = nhapKhoId + 5;
+
+    // Clear the row content
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdSanXuat14,
+      range: `'${sheetNameNhapKhoHinhIn}'!A${rowIndex}:H${rowIndex}`,
+    });
+
+    console.log("Nhap kho hinh in deleted successfully");
+  } catch (error) {
+    console.error("Error deleting nhap kho hinh in from Google Sheets:", error);
     throw error;
   }
 }
@@ -5565,6 +5979,133 @@ export async function getXuatKhoHinhInFromSheet(): Promise<XuatKhoHinhIn[]> {
   }
 }
 
+/**
+ * Thêm xuất kho hình in vào Google Sheets
+ * Tìm hàng trống đầu tiên (dựa trên cột A - Ngày tháng) để thêm dữ liệu
+ */
+export async function addXuatKhoHinhInToSheet(
+  xuatKho: Omit<XuatKhoHinhIn, "id">
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // First, get all data in column A to find the first empty row
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat16,
+      range: `'${sheetNameXuatKhoHinhIn}'!A6:A`,
+    });
+
+    const rows = response.data.values || [];
+
+    // Find first empty row (row with no date or empty date)
+    let insertRowIndex = 6; // Default to row 6 if no data
+    for (let i = 0; i < rows.length; i++) {
+      const cellValue = rows[i]?.[0] || "";
+      if (cellValue.trim() === "" || cellValue.startsWith("#")) {
+        insertRowIndex = i + 6; // Convert to actual row number (data starts at row 6)
+        break;
+      }
+      insertRowIndex = i + 7; // If all rows have data, insert after the last one
+    }
+
+    // Format number for Vietnamese locale
+    const formatNumber = (num: number): string => {
+      return num.toLocaleString("vi-VN");
+    };
+
+    const values = [
+      [
+        xuatKho.ngayThang,
+        xuatKho.maHinhIn,
+        formatNumber(xuatKho.soLuong),
+        xuatKho.maSPSuDung,
+        xuatKho.maPhieuXuat,
+        xuatKho.ghiChu,
+      ],
+    ];
+
+    // Use update instead of append to insert at the specific row
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat16,
+      range: `'${sheetNameXuatKhoHinhIn}'!A${insertRowIndex}:F${insertRowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+
+    console.log(`Xuat kho hinh in added successfully at row ${insertRowIndex}`);
+  } catch (error) {
+    console.error("Error adding xuat kho hinh in to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật xuất kho hình in trong Google Sheets
+ */
+export async function updateXuatKhoHinhInInSheet(
+  xuatKho: XuatKhoHinhIn
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Format number for Vietnamese locale
+    const formatNumber = (num: number): string => {
+      return num.toLocaleString("vi-VN");
+    };
+
+    // Row index = id + 5 (header at row 5, data starts at row 6)
+    const rowIndex = xuatKho.id + 5;
+
+    const values = [
+      [
+        xuatKho.ngayThang,
+        xuatKho.maHinhIn,
+        formatNumber(xuatKho.soLuong),
+        xuatKho.maSPSuDung,
+        xuatKho.maPhieuXuat,
+        xuatKho.ghiChu,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat16,
+      range: `'${sheetNameXuatKhoHinhIn}'!A${rowIndex}:F${rowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+
+    console.log("Xuat kho hinh in updated successfully");
+  } catch (error) {
+    console.error("Error updating xuat kho hinh in in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa xuất kho hình in khỏi Google Sheets
+ */
+export async function deleteXuatKhoHinhInFromSheet(
+  xuatKhoId: number
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Row index = id + 5 (header at row 5, data starts at row 6)
+    const rowIndex = xuatKhoId + 5;
+
+    // Clear the row content
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdSanXuat16,
+      range: `'${sheetNameXuatKhoHinhIn}'!A${rowIndex}:F${rowIndex}`,
+    });
+
+    console.log("Xuat kho hinh in deleted successfully");
+  } catch (error) {
+    console.error("Error deleting xuat kho hinh in from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ============================================
 // TỒN KHO HÌNH IN
 // ============================================
@@ -5593,10 +6134,25 @@ export interface TonKhoHinhInNgay {
  * Đọc dữ liệu tồn kho hình in theo tháng từ Google Sheets
  * Bảng 1: Columns A-E (Mã HI, Dư đầu kì, Nhập kho, Xuất kho, Dư cuối kì)
  * Header dòng 5, dữ liệu từ dòng 6
+ * @param monthYear - Tháng/năm format "MM/YYYY" (e.g., "12/2025")
  */
-export async function getTonKhoHinhInThangFromSheet(): Promise<TonKhoHinhInThang[]> {
+export async function getTonKhoHinhInThangFromSheet(monthYear?: string): Promise<TonKhoHinhInThang[]> {
   try {
     const sheets = await getGoogleSheetsClient();
+
+    // Nếu có monthYear, cập nhật ô C3 trước khi đọc data
+    if (monthYear) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdSanXuat17,
+        range: `'${sheetNameTonKhoHinhIn}'!C3`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[monthYear]],
+        },
+      });
+      // Đợi một chút để sheet tính toán lại
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanXuat17,
@@ -5641,10 +6197,25 @@ export async function getTonKhoHinhInThangFromSheet(): Promise<TonKhoHinhInThang
  * Đọc dữ liệu số dư đầu kì hình in đến ngày từ Google Sheets
  * Bảng 2: Columns G-H (Mã HI, Số lượng)
  * Header dòng 5, dữ liệu từ dòng 6
+ * @param toDate - Ngày đến format "DD/MM/YY" (e.g., "31/12/25")
  */
-export async function getTonKhoHinhInNgayFromSheet(): Promise<TonKhoHinhInNgay[]> {
+export async function getTonKhoHinhInNgayFromSheet(toDate?: string): Promise<TonKhoHinhInNgay[]> {
   try {
     const sheets = await getGoogleSheetsClient();
+
+    // Nếu có toDate, cập nhật ô I3 trước khi đọc data
+    if (toDate) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdSanXuat17,
+        range: `'${sheetNameTonKhoHinhIn}'!I3`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[toDate]],
+        },
+      });
+      // Đợi một chút để sheet tính toán lại
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanXuat17,
@@ -5678,6 +6249,60 @@ export async function getTonKhoHinhInNgayFromSheet(): Promise<TonKhoHinhInNgay[]
     return tonKhoNgayList;
   } catch (error) {
     console.error("Error reading ton kho hinh in ngay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật số lượng tồn kho hình in (bảng Số dư đầu kì đến ngày)
+ * Column H: Số lượng
+ * @param id - ID của item (row = id + 5)
+ * @param soLuong - Số lượng mới
+ */
+export async function updateTonKhoHinhInNgay(id: number, soLuong: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const rowIndex = id + 5; // Data starts from row 6, id starts from 1
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat17,
+      range: `'${sheetNameTonKhoHinhIn}'!H${rowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[soLuong]],
+      },
+    });
+
+    console.log(`Updated ton kho hinh in ngay at row ${rowIndex}, soLuong: ${soLuong}`);
+  } catch (error) {
+    console.error("Error updating ton kho hinh in ngay:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật tồn kho hình in theo tháng
+ * Column B: Dư đầu kì
+ * @param id - ID của item (row = id + 5)
+ * @param duDauKi - Dư đầu kì mới
+ */
+export async function updateTonKhoHinhInThang(id: number, duDauKi: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const rowIndex = id + 5; // Data starts from row 6, id starts from 1
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat17,
+      range: `'${sheetNameTonKhoHinhIn}'!B${rowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[duDauKi]],
+      },
+    });
+
+    console.log(`Updated ton kho hinh in thang at row ${rowIndex}, duDauKi: ${duDauKi}`);
+  } catch (error) {
+    console.error("Error updating ton kho hinh in thang:", error);
     throw error;
   }
 }

@@ -34,7 +34,12 @@ interface MenuItem {
   href: string;
   icon: React.ComponentType<{ size?: number }>;
   roles?: UserRole[]; // Roles that can access this menu
-  subItems?: { name: string; href: string; icon: React.ComponentType<{ size?: number }>; roles?: UserRole[] }[];
+  subItems?: {
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ size?: number }>;
+    roles?: UserRole[];
+  }[];
 }
 
 // Define role groups for easier management
@@ -196,32 +201,36 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { profile, session, signOut, loading } = useAuth();
+  const { profile, session, signOut, initialized } = useAuth();
 
   // Filter menu items based on user role
-  const filteredMenuItems = menuItems.filter((item) => {
-    if (!profile) return true; // Show all menus as fallback if profile not loaded
-    if (!item.roles) return true;
-    return item.roles.includes(profile.role);
-  }).map((item) => {
-    if (item.subItems) {
-      return {
-        ...item,
-        subItems: item.subItems.filter((sub) => {
-          if (!profile) return true; // Show all sub-items as fallback
-          if (!sub.roles) return true;
-          return sub.roles.includes(profile.role);
-        }),
-      };
-    }
-    return item;
-  });
+  const filteredMenuItems = menuItems
+    .filter((item) => {
+      if (!profile) return true; // Show all menus as fallback if profile not loaded
+      if (!item.roles) return true;
+      return item.roles.includes(profile.role);
+    })
+    .map((item) => {
+      if (item.subItems) {
+        return {
+          ...item,
+          subItems: item.subItems.filter((sub) => {
+            if (!profile) return true; // Show all sub-items as fallback
+            if (!sub.roles) return true;
+            return sub.roles.includes(profile.role);
+          }),
+        };
+      }
+      return item;
+    });
 
   // Auto-expand parent menu if a sub-item is active
   useEffect(() => {
     filteredMenuItems.forEach((item) => {
       if (item.subItems) {
-        const hasActiveSubItem = item.subItems.some((sub) => pathname === sub.href);
+        const hasActiveSubItem = item.subItems.some(
+          (sub) => pathname === sub.href
+        );
         if (hasActiveSubItem) {
           setExpandedMenus((prev) =>
             prev.includes(item.href) ? prev : [...prev, item.href]
@@ -237,8 +246,8 @@ export default function Sidebar() {
     );
   };
 
-  // Don't render sidebar if loading or not authenticated
-  if (loading || !session) {
+  // Don't render sidebar if not initialized or not authenticated
+  if (!initialized || !session) {
     return null;
   }
 
@@ -282,7 +291,9 @@ export default function Sidebar() {
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const isExpanded = expandedMenus.includes(item.href);
               const isActive = pathname === item.href;
-              const hasActiveSubItem = hasSubItems && item.subItems?.some((sub) => pathname === sub.href);
+              const hasActiveSubItem =
+                hasSubItems &&
+                item.subItems?.some((sub) => pathname === sub.href);
 
               return (
                 <li key={item.href}>
@@ -333,7 +344,9 @@ export default function Sidebar() {
                                     }`}
                                   >
                                     <SubIcon size={18} />
-                                    <span className="font-medium">{subItem.name}</span>
+                                    <span className="font-medium">
+                                      {subItem.name}
+                                    </span>
                                   </Link>
                                 </li>
                               );
@@ -380,11 +393,19 @@ export default function Sidebar() {
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {profile ? (
                     <>
-                      <span className={`w-2 h-2 rounded-full ${roleColors[profile.role]}`}></span>
-                      <span className="text-xs text-blue-300">{roleLabels[profile.role]}</span>
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          roleColors[profile.role]
+                        }`}
+                      ></span>
+                      <span className="text-xs text-blue-300">
+                        {roleLabels[profile.role]}
+                      </span>
                     </>
                   ) : (
-                    <span className="text-xs text-blue-300">{session?.user?.email}</span>
+                    <span className="text-xs text-blue-300">
+                      {session?.user?.email}
+                    </span>
                   )}
                 </div>
               </div>

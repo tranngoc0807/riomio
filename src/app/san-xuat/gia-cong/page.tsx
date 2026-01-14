@@ -58,6 +58,7 @@ export default function GiaCong() {
     const tabFromUrl = searchParams.get("tab");
     const validTabs = TABS.map(t => t.id);
     if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
     }
   }, [searchParams]);
