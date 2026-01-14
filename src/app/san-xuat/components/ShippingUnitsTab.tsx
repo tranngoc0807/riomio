@@ -304,9 +304,14 @@ export default function ShippingUnitsTab() {
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
-                      type="text"
+                      type="tel"
                       value={newItem.phone}
-                      onChange={(e) => setNewItem({ ...newItem, phone: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setNewItem({ ...newItem, phone: value });
+                      }}
+                      maxLength={10}
+                      placeholder="Nhập 10 số"
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -466,9 +471,14 @@ export default function ShippingUnitsTab() {
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
-                      type="text"
+                      type="tel"
                       value={editItem.phone}
-                      onChange={(e) => setEditItem({ ...editItem, phone: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setEditItem({ ...editItem, phone: value });
+                      }}
+                      maxLength={10}
+                      placeholder="Nhập 10 số"
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                     />
                   </div>

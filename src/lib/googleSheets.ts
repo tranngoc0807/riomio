@@ -1364,8 +1364,8 @@ export async function deleteSupplierFromSheet(supplierId: number): Promise<void>
 // WORKSHOP MANAGEMENT (Quản lý xưởng sản xuất)
 // ============================================
 
-const spreadsheetIdXuongSX = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
-const sheetNameXuongSX = process.env.GOOGLE_SHEET_NAME_XUONG_SAN_XUAT || "XuongSX";
+const spreadsheetIdXuongSX = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT || spreadsheetId;
+const sheetNameXuongSX = process.env.GOOGLE_SHEET_NAME_XUONG_SAN_XUAT || "Xưởng SX";
 
 // Interface cho xưởng sản xuất
 export interface Workshop {
@@ -1379,7 +1379,7 @@ export interface Workshop {
 
 /**
  * Đọc danh sách xưởng sản xuất từ Google Sheets
- * Sheet: XuongSX
+ * Sheet: Xưởng SX (header row 5, data từ row 6)
  * Cột B: Mã xưởng, C: Điện thoại, D: Địa chỉ, E: Người phụ trách, F: Ghi chú
  */
 export async function getWorkshopsFromSheet(): Promise<Workshop[]> {
@@ -1388,7 +1388,7 @@ export async function getWorkshopsFromSheet(): Promise<Workshop[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdXuongSX,
-      range: `${sheetNameXuongSX}!B2:F`, // Đọc từ dòng 2, cột B đến F
+      range: `'${sheetNameXuongSX}'!B6:F`, // Header row 5, data từ row 6
     });
 
     const rows = response.data.values;
@@ -1400,7 +1400,7 @@ export async function getWorkshopsFromSheet(): Promise<Workshop[]> {
 
     const workshops: Workshop[] = rows
       .map((row, index) => ({
-        id: index + 1,
+        id: index + 1, // id=1 → row 6, id=2 → row 7...
         name: row[0] || "",
         phone: row[1] || "",
         address: row[2] || "",
@@ -1418,33 +1418,35 @@ export async function getWorkshopsFromSheet(): Promise<Workshop[]> {
 
 /**
  * Thêm xưởng sản xuất mới vào Google Sheets
+ * Header row 5, data từ row 6
  * Tự động đánh STT vào cột A, ghi dữ liệu vào cột B-F
  */
 export async function addWorkshopToSheet(workshop: Workshop): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    // Đọc dữ liệu từ row 6 để tìm dòng cuối cùng có data
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdXuongSX,
-      range: `${sheetNameXuongSX}!A:F`,
+      range: `'${sheetNameXuongSX}'!A6:F`,
     });
 
-    const allRows = response.data.values || [];
+    const dataRows = response.data.values || [];
 
-    // Bỏ qua header (dòng 1), tìm dòng cuối cùng có dữ liệu
-    let lastDataRow = 1;
-    for (let i = allRows.length - 1; i >= 1; i--) {
-      if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
-        lastDataRow = i + 1;
+    // Tìm dòng cuối cùng có dữ liệu (cột B - Mã xưởng)
+    let lastDataIndex = -1;
+    for (let i = dataRows.length - 1; i >= 0; i--) {
+      if (dataRows[i] && dataRows[i][1] && dataRows[i][1].toString().trim() !== "") {
+        lastDataIndex = i;
         break;
       }
     }
 
-    const nextRow = lastDataRow + 1;
+    // Row 6 là index 0, nên nextRow = 6 + lastDataIndex + 1
+    const nextRow = lastDataIndex === -1 ? 6 : (6 + lastDataIndex + 1);
 
     // Đếm số xưởng thực tế để đánh STT
-    const workshopRows = allRows.slice(1).filter(
+    const workshopRows = dataRows.filter(
       (row) => row && row[1] && row[1].toString().trim() !== ""
     );
     const sttNumber = workshopRows.length + 1;
@@ -1463,7 +1465,7 @@ export async function addWorkshopToSheet(workshop: Workshop): Promise<void> {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdXuongSX,
-      range: `${sheetNameXuongSX}!A${nextRow}:F${nextRow}`,
+      range: `'${sheetNameXuongSX}'!A${nextRow}:F${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -1479,13 +1481,14 @@ export async function addWorkshopToSheet(workshop: Workshop): Promise<void> {
 
 /**
  * Cập nhật thông tin xưởng sản xuất trong Google Sheets
+ * Header row 5, data từ row 6
  */
 export async function updateWorkshopInSheet(workshop: Workshop): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
-    const rowNumber = workshop.id + 1;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+    const rowNumber = workshop.id + 5;
 
     const values = [
       [
@@ -1499,7 +1502,7 @@ export async function updateWorkshopInSheet(workshop: Workshop): Promise<void> {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdXuongSX,
-      range: `${sheetNameXuongSX}!B${rowNumber}:F${rowNumber}`,
+      range: `'${sheetNameXuongSX}'!B${rowNumber}:F${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -1515,13 +1518,14 @@ export async function updateWorkshopInSheet(workshop: Workshop): Promise<void> {
 
 /**
  * Xóa xưởng sản xuất khỏi Google Sheets
+ * Header row 5, data từ row 6
  */
 export async function deleteWorkshopFromSheet(workshopId: number): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
-    const rowNumber = workshopId + 1;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+    const rowNumber = workshopId + 5;
 
     // Lấy sheetId để xóa dòng - tìm sheet theo tên
     const sheetMetadata = await sheets.spreadsheets.get({
@@ -3594,31 +3598,34 @@ export async function deleteSanPhamCatalogFromSheet(productId: number): Promise<
 // SHIPPING UNIT MANAGEMENT (Quản lý đơn vị vận chuyển)
 // ============================================
 
-const spreadsheetIdVanChuyen = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
-const sheetNameVanChuyen = process.env.GOOGLE_SHEET_NAME_VAN_CHUYEN || "VanChuyen";
+// Sheet: Đối tác vận chuyển trong RIOMIO_DONG_TIEN
+// Header row 5, data từ row 6
+const spreadsheetIdVanChuyen = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN || spreadsheetId;
+const sheetNameVanChuyen = process.env.GOOGLE_SHEET_NAME_VAN_CHUYEN || "Đối tác vận chuyển";
 
 // Interface cho đơn vị vận chuyển
 export interface ShippingUnit {
   id: number;
   name: string;       // Tên đơn vị vận chuyển
-  phone: string;      // Số điện thoại
-  address: string;    // Địa chỉ
-  contact: string;    // Người liên hệ
-  note: string;       // Ghi chú
+  phone: string;      // Số điện thoại (không có trong sheet mới, giữ lại để tương thích UI)
+  address: string;    // Địa chỉ (không có trong sheet mới)
+  contact: string;    // Người liên hệ (không có trong sheet mới)
+  note: string;       // Ghi chú (không có trong sheet mới)
 }
 
 /**
  * Đọc danh sách đơn vị vận chuyển từ Google Sheets
- * Sheet: VanChuyen
- * Cột B: Tên ĐVVC, C: SĐT, D: Địa chỉ, E: Liên hệ, F: Ghi chú
+ * Sheet: Đối tác vận chuyển - Header row 5, data từ row 6
+ * Columns: A=STT, B=Đối tác vận chuyển, C=SDT, D=Địa chỉ, E=Liên hệ, F=Ghi chú
  */
 export async function getShippingUnitsFromSheet(): Promise<ShippingUnit[]> {
   try {
     const sheets = await getGoogleSheetsClient();
 
+    // Đọc từ row 6 (header ở row 5)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdVanChuyen,
-      range: `${sheetNameVanChuyen}!B2:F`,
+      range: `'${sheetNameVanChuyen}'!A6:F`,
     });
 
     const rows = response.data.values;
@@ -3631,11 +3638,11 @@ export async function getShippingUnitsFromSheet(): Promise<ShippingUnit[]> {
     const shippingUnits: ShippingUnit[] = rows
       .map((row, index) => ({
         id: index + 1,
-        name: row[0] || "",
-        phone: row[1] || "",
-        address: row[2] || "",
-        contact: row[3] || "",
-        note: row[4] || "",
+        name: row[1] || "",      // Column B - Đối tác vận chuyển
+        phone: row[2] || "",     // Column C - SDT
+        address: row[3] || "",   // Column D - Địa chỉ
+        contact: row[4] || "",   // Column E - Liên hệ
+        note: row[5] || "",      // Column F - Ghi chú
       }))
       .filter((unit) => unit.name.trim() !== "");
 
@@ -3648,75 +3655,84 @@ export async function getShippingUnitsFromSheet(): Promise<ShippingUnit[]> {
 
 /**
  * Thêm đơn vị vận chuyển mới vào Google Sheets
+ * Sheet: Đối tác vận chuyển - Header row 5, data từ row 6
+ * Columns: A=STT, B=Đối tác vận chuyển, C=SDT, D=Địa chỉ, E=Liên hệ, F=Ghi chú
  */
 export async function addShippingUnitToSheet(shippingUnit: ShippingUnit): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    // Đọc data từ row 6 để tìm dòng cuối và STT lớn nhất
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdVanChuyen,
-      range: `${sheetNameVanChuyen}!A:F`,
+      range: `'${sheetNameVanChuyen}'!A6:B`,
     });
 
-    const allRows = response.data.values || [];
+    const rows = response.data.values || [];
 
-    // Bỏ qua header (dòng 1), tìm dòng cuối cùng có dữ liệu
-    let lastDataRow = 1;
-    for (let i = allRows.length - 1; i >= 1; i--) {
-      if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
-        lastDataRow = i + 1;
-        break;
+    // Tìm STT lớn nhất và dòng cuối có data
+    let maxSTT = 0;
+    let lastRowWithData = 5; // Header ở row 5
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row && row[1] && row[1].toString().trim() !== "") {
+        lastRowWithData = 6 + i;
+        const stt = parseInt(row[0]) || 0;
+        if (stt > maxSTT) maxSTT = stt;
       }
     }
 
-    const newRowNumber = lastDataRow + 1;
-    const newSTT = lastDataRow;
+    const newRowNumber = lastRowWithData + 1;
+    const newSTT = maxSTT + 1;
 
-    // Ghi dữ liệu mới vào dòng tiếp theo
+    // Ghi vào dòng tiếp theo bằng update (không dùng append/INSERT_ROWS)
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdVanChuyen,
-      range: `${sheetNameVanChuyen}!A${newRowNumber}:F${newRowNumber}`,
-      valueInputOption: "USER_ENTERED",
+      range: `'${sheetNameVanChuyen}'!A${newRowNumber}:F${newRowNumber}`,
+      valueInputOption: "RAW",
       requestBody: {
         values: [[
           newSTT,
           shippingUnit.name,
-          shippingUnit.phone,
-          shippingUnit.address,
-          shippingUnit.contact,
-          shippingUnit.note,
+          shippingUnit.phone || "",
+          shippingUnit.address || "",
+          shippingUnit.contact || "",
+          shippingUnit.note || "",
         ]],
       },
     });
 
-    console.log(`Successfully added shipping unit: ${shippingUnit.name} at row ${newRowNumber}`);
+    console.log("Added shipping unit:", shippingUnit.name, "at row:", newRowNumber);
   } catch (error) {
-    console.error("Error adding shipping unit to Google Sheets:", error);
+    console.error("Error adding shipping unit:", error);
     throw error;
   }
 }
 
 /**
  * Cập nhật đơn vị vận chuyển trong Google Sheets
+ * Header row 5, data từ row 6. id=1 -> row 6
+ * Chỉ update cột B-F (giữ nguyên STT ở cột A)
  */
 export async function updateShippingUnitInSheet(shippingUnit: ShippingUnit): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    const rowNumber = shippingUnit.id + 1;
+    // id=1 corresponds to row 6 (first data row after header at row 5)
+    const rowNumber = shippingUnit.id + 5;
 
+    // Update cột B-F (bỏ qua cột A - STT)
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdVanChuyen,
-      range: `${sheetNameVanChuyen}!B${rowNumber}:F${rowNumber}`,
-      valueInputOption: "USER_ENTERED",
+      range: `'${sheetNameVanChuyen}'!B${rowNumber}:F${rowNumber}`,
+      valueInputOption: "RAW",
       requestBody: {
         values: [[
           shippingUnit.name,
-          shippingUnit.phone,
-          shippingUnit.address,
-          shippingUnit.contact,
-          shippingUnit.note,
+          shippingUnit.phone || "",
+          shippingUnit.address || "",
+          shippingUnit.contact || "",
+          shippingUnit.note || "",
         ]],
       },
     });
@@ -3730,12 +3746,14 @@ export async function updateShippingUnitInSheet(shippingUnit: ShippingUnit): Pro
 
 /**
  * Xóa đơn vị vận chuyển khỏi Google Sheets
+ * Header row 5, data từ row 6. id=1 -> row 6
  */
 export async function deleteShippingUnitFromSheet(unitId: number): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    const rowNumber = unitId + 1;
+    // id=1 corresponds to row 6 (first data row)
+    const rowNumber = unitId + 5;
 
     const sheetMetadata = await sheets.spreadsheets.get({
       spreadsheetId: spreadsheetIdVanChuyen,
@@ -6466,6 +6484,256 @@ export async function getPhanBoCPKhacFromSheet(): Promise<PhanBoCPKhac[]> {
     return data;
   } catch (error) {
     console.error("Error reading Phan Bo CP Khac from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm chi phí khác vào Google Sheets
+ * Data từ row 6, columns A-G
+ */
+export async function addChiPhiKhacToSheet(data: Omit<ChiPhiKhacItem, 'id'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const values = [
+      [
+        data.ngay,
+        data.noiDung,
+        data.chiHoXuong,
+        data.soChoMa,
+        data.soTien > 0 ? formatNumberVN(data.soTien) : "",
+        data.phanBo,
+        data.doiTacVC,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameBangKeCPKhac}'!A6:G`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log("Successfully added chi phi khac");
+    return true;
+  } catch (error) {
+    console.error("Error adding chi phi khac to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật chi phí khác trong Google Sheets
+ * rowIndex là index trong mảng (0-based), cần +6 để lấy row thực trong sheet
+ */
+export async function updateChiPhiKhacInSheet(rowIndex: number, data: Omit<ChiPhiKhacItem, 'id'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const actualRow = rowIndex + 6; // Row 6 is first data row
+
+    const values = [
+      [
+        data.ngay,
+        data.noiDung,
+        data.chiHoXuong,
+        data.soChoMa,
+        data.soTien > 0 ? formatNumberVN(data.soTien) : "",
+        data.phanBo,
+        data.doiTacVC,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameBangKeCPKhac}'!A${actualRow}:G${actualRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated chi phi khac at row ${actualRow}`);
+    return true;
+  } catch (error) {
+    console.error("Error updating chi phi khac in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa chi phí khác khỏi Google Sheets
+ */
+export async function deleteChiPhiKhacFromSheet(rowIndex: number): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const actualRow = rowIndex + 6;
+
+    // Lấy sheetId
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdLSX,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameBangKeCPKhac
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      throw new Error(`Cannot find sheet named "${sheetNameBangKeCPKhac}" to delete row`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdLSX,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: actualRow - 1,
+                endIndex: actualRow,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted chi phi khac at row ${actualRow}`);
+    return true;
+  } catch (error) {
+    console.error("Error deleting chi phi khac from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm phân bổ chi phí khác vào Google Sheets
+ * Data từ row 6, columns A-G
+ */
+export async function addPhanBoCPKhacToSheet(data: Omit<PhanBoCPKhac, 'id'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const values = [
+      [
+        data.ngayThang,
+        data.nguoiNhap,
+        data.maPhieu,
+        data.noiDung,
+        data.maSP,
+        data.soTien > 0 ? formatNumberVN(data.soTien) : "",
+        data.loaiChiPhi,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhanBoCPKhac}'!A6:G`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log("Successfully added phan bo cp khac");
+    return true;
+  } catch (error) {
+    console.error("Error adding phan bo cp khac to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật phân bổ chi phí khác trong Google Sheets
+ */
+export async function updatePhanBoCPKhacInSheet(rowIndex: number, data: Omit<PhanBoCPKhac, 'id'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const actualRow = rowIndex + 6;
+
+    const values = [
+      [
+        data.ngayThang,
+        data.nguoiNhap,
+        data.maPhieu,
+        data.noiDung,
+        data.maSP,
+        data.soTien > 0 ? formatNumberVN(data.soTien) : "",
+        data.loaiChiPhi,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhanBoCPKhac}'!A${actualRow}:G${actualRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated phan bo cp khac at row ${actualRow}`);
+    return true;
+  } catch (error) {
+    console.error("Error updating phan bo cp khac in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa phân bổ chi phí khác khỏi Google Sheets
+ */
+export async function deletePhanBoCPKhacFromSheet(rowIndex: number): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const actualRow = rowIndex + 6;
+
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdLSX,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNamePhanBoCPKhac
+    );
+
+    if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
+      throw new Error(`Cannot find sheet named "${sheetNamePhanBoCPKhac}" to delete row`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdLSX,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: actualRow - 1,
+                endIndex: actualRow,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted phan bo cp khac at row ${actualRow}`);
+    return true;
+  } catch (error) {
+    console.error("Error deleting phan bo cp khac from Google Sheets:", error);
     throw error;
   }
 }
