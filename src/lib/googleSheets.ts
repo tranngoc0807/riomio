@@ -1155,8 +1155,8 @@ export async function deleteOrderFromSheet(orderId: number): Promise<void> {
 // SUPPLIER MANAGEMENT (Quản lý nhà cung cấp)
 // ============================================
 
-const spreadsheetIdNCC = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
-const sheetNameNCC = process.env.GOOGLE_SHEET_NAME_DON_HANG_NCCNPL || "NCCNPL";
+const spreadsheetIdNCC = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT || spreadsheetId;
+const sheetNameNCC = process.env.GOOGLE_SHEET_NAME_DON_HANG_NCCNPL || "NCC NPL";
 
 // Interface cho nhà cung cấp
 export interface Supplier {
@@ -1180,7 +1180,7 @@ export async function getSuppliersFromSheet(): Promise<Supplier[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdNCC,
-      range: `${sheetNameNCC}!B2:G`, // Đọc từ dòng 2, cột B đến G
+      range: `'${sheetNameNCC}'!B3:G`, // Đọc từ dòng 3, cột B đến G (header ở dòng 2)
     });
 
     const rows = response.data.values;
@@ -1220,14 +1220,14 @@ export async function addSupplierToSheet(supplier: Supplier): Promise<void> {
     // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdNCC,
-      range: `${sheetNameNCC}!A:G`,
+      range: `'${sheetNameNCC}'!A:G`,
     });
 
     const allRows = response.data.values || [];
 
-    // Bỏ qua header (dòng 1), tìm dòng cuối cùng có dữ liệu
-    let lastDataRow = 1;
-    for (let i = allRows.length - 1; i >= 1; i--) {
+    // Bỏ qua header (dòng 1-2), dữ liệu bắt đầu từ dòng 3
+    let lastDataRow = 2; // Header ở dòng 2
+    for (let i = allRows.length - 1; i >= 2; i--) {
       if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
         lastDataRow = i + 1;
         break;
@@ -1236,8 +1236,8 @@ export async function addSupplierToSheet(supplier: Supplier): Promise<void> {
 
     const nextRow = lastDataRow + 1;
 
-    // Đếm số nhà cung cấp thực tế để đánh STT
-    const supplierRows = allRows.slice(1).filter(
+    // Đếm số nhà cung cấp thực tế để đánh STT (bỏ qua 2 dòng đầu)
+    const supplierRows = allRows.slice(2).filter(
       (row) => row && row[1] && row[1].toString().trim() !== ""
     );
     const sttNumber = supplierRows.length + 1;
@@ -1257,7 +1257,7 @@ export async function addSupplierToSheet(supplier: Supplier): Promise<void> {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdNCC,
-      range: `${sheetNameNCC}!A${nextRow}:G${nextRow}`,
+      range: `'${sheetNameNCC}'!A${nextRow}:G${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -1278,8 +1278,8 @@ export async function updateSupplierInSheet(supplier: Supplier): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
-    const rowNumber = supplier.id + 1;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 3, ID 2 = dòng 4, etc. (header ở dòng 2)
+    const rowNumber = supplier.id + 2;
 
     const values = [
       [
@@ -1294,7 +1294,7 @@ export async function updateSupplierInSheet(supplier: Supplier): Promise<void> {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdNCC,
-      range: `${sheetNameNCC}!B${rowNumber}:G${rowNumber}`,
+      range: `'${sheetNameNCC}'!B${rowNumber}:G${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -1315,8 +1315,8 @@ export async function deleteSupplierFromSheet(supplierId: number): Promise<void>
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
-    const rowNumber = supplierId + 1;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 3, ID 2 = dòng 4, etc. (header ở dòng 2)
+    const rowNumber = supplierId + 2;
 
     // Lấy sheetId để xóa dòng - tìm sheet theo tên
     const sheetMetadata = await sheets.spreadsheets.get({
@@ -1569,8 +1569,8 @@ export async function deleteWorkshopFromSheet(workshopId: number): Promise<void>
 // MATERIAL MANAGEMENT (Quản lý nguyên phụ liệu)
 // ============================================
 
-const spreadsheetIdNPL = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
-const sheetNameNPL = process.env.GOOGLE_SHEET_NAME_NGUYEN_PHU_LIEU || "NPL";
+const spreadsheetIdNPL = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT || spreadsheetId;
+const sheetNameNPL = process.env.GOOGLE_SHEET_NAME_NGUYEN_PHU_LIEU_RIOMIO || "Mã NPL";
 
 // Interface cho nguyên phụ liệu
 export interface Material {
@@ -4172,6 +4172,166 @@ export async function getNhapKhoNPLFromSheet(): Promise<NhapKhoNPL[]> {
     return nhapKhoList;
   } catch (error) {
     console.error("Error reading nhap kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm nhập kho NPL mới vào Google Sheets
+ */
+export async function addNhapKhoNPLToSheet(data: Omit<NhapKhoNPL, 'id' | 'thanhTien' | 'tonThucTe'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get column A to find the last row with data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameNhapKhoNPL}'!A:A`,
+    });
+
+    const rows = response.data.values || [];
+    let lastDataRow = 5; // Header at row 5, data starts at row 6
+    for (let i = rows.length - 1; i >= 5; i--) {
+      if (rows[i] && rows[i][0] && rows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Tính thành tiền = số lượng × đơn giá sau thuế
+    const thanhTien = (data.soLuong || 0) * (data.donGiaSauThue || 0);
+
+    // Lấy tồn kho thực tế từ sheet Tồn kho NPL
+    let tonThucTe = 0;
+    try {
+      const tonKhoList = await getTonKhoNPLThangFromSheet();
+      const tonKho = tonKhoList.find((t) => t.maNPL.trim() === data.maNPL.trim());
+      tonThucTe = tonKho ? tonKho.tonCuoi : 0;
+    } catch (e) {
+      console.warn("Could not fetch ton kho NPL:", e);
+    }
+
+    // Write to the next row (columns A-L)
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameNhapKhoNPL}'!A${nextRow}:L${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          data.maPNKNPL,
+          data.ngayThang,
+          data.nguoiNhap,
+          data.noiDung,
+          data.maNPL,
+          data.ncc,
+          data.dvt,
+          data.soLuong,
+          data.donGiaSauThue,
+          thanhTien, // Thành tiền (tính toán)
+          data.ghiChu,
+          tonThucTe, // Tồn kho thực tế (từ sheet Tồn kho NPL)
+        ]],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error adding nhap kho NPL:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật nhập kho NPL trong Google Sheets
+ */
+export async function updateNhapKhoNPLInSheet(rowIndex: number, data: Partial<NhapKhoNPL>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const actualRow = rowIndex + 6; // Row 6 = index 0
+
+    // Get current row data
+    const currentResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameNhapKhoNPL}'!A${actualRow}:L${actualRow}`,
+    });
+
+    const currentRow = currentResponse.data.values?.[0] || [];
+
+    // Helper to parse number
+    const parseNum = (val: any): number => {
+      if (!val) return 0;
+      const cleaned = String(val).replace(/\./g, "").replace(",", ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    const soLuong = data.soLuong ?? parseNum(currentRow[7]);
+    const donGiaSauThue = data.donGiaSauThue ?? parseNum(currentRow[8]);
+    const maNPL = data.maNPL ?? currentRow[4] ?? "";
+
+    // Tính thành tiền
+    const thanhTien = soLuong * donGiaSauThue;
+
+    // Lấy tồn kho thực tế từ sheet Tồn kho NPL
+    let tonThucTe = parseNum(currentRow[11]);
+    try {
+      const tonKhoList = await getTonKhoNPLThangFromSheet();
+      const tonKho = tonKhoList.find((t) => t.maNPL.trim() === maNPL.trim());
+      tonThucTe = tonKho ? tonKho.tonCuoi : 0;
+    } catch (e) {
+      console.warn("Could not fetch ton kho NPL:", e);
+    }
+
+    // Update with new values
+    const updatedRow = [
+      data.maPNKNPL ?? currentRow[0] ?? "",
+      data.ngayThang ?? currentRow[1] ?? "",
+      data.nguoiNhap ?? currentRow[2] ?? "",
+      data.noiDung ?? currentRow[3] ?? "",
+      maNPL,
+      data.ncc ?? currentRow[5] ?? "",
+      data.dvt ?? currentRow[6] ?? "",
+      soLuong,
+      donGiaSauThue,
+      thanhTien, // Thành tiền (tính toán)
+      data.ghiChu ?? currentRow[10] ?? "",
+      tonThucTe, // Tồn kho thực tế
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameNhapKhoNPL}'!A${actualRow}:L${actualRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [updatedRow],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error updating nhap kho NPL:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xoá nhập kho NPL từ Google Sheets
+ */
+export async function deleteNhapKhoNPLFromSheet(rowIndex: number): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const actualRow = rowIndex + 6; // Row 6 = index 0
+
+    // Clear the row data
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameNhapKhoNPL}'!A${actualRow}:L${actualRow}`,
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting nhap kho NPL:", error);
     throw error;
   }
 }
