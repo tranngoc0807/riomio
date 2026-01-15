@@ -6579,6 +6579,164 @@ export async function getYeuCauXuatKhoNPLFromSheet(): Promise<YeuCauXuatKhoNPL[]
   }
 }
 
+/**
+ * Thêm yêu cầu xuất kho NPL mới vào Google Sheets
+ * Data từ row 6, columns A-J
+ */
+export async function addYeuCauXuatKhoNPLToSheet(data: Omit<YeuCauXuatKhoNPL, "id">): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A:J`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Tìm dòng cuối cùng có dữ liệu (bỏ qua header rows 1-5)
+    let lastDataRow = 5;
+    for (let i = allRows.length - 1; i >= 5; i--) {
+      if (allRows[i] && (allRows[i][0] || allRows[i][1] || allRows[i][2])) {
+        lastDataRow = i;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 2; // +2 vì index từ 0 và cần thêm 1 dòng mới
+
+    // Format số theo định dạng VN
+    const formatNumber = (num: number): string => {
+      if (num === 0) return "";
+      return num.toString().replace(".", ",");
+    };
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${nextRow}:J${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [
+          [
+            data.ngayThang,
+            data.maPhieuYC,
+            data.maNPL,
+            data.dvt,
+            formatNumber(data.dinhMuc),
+            formatNumber(data.slKHSX),
+            formatNumber(data.tongNPLSX),
+            data.maSPSuDung,
+            data.mauSac,
+            data.xuongSX,
+          ],
+        ],
+      },
+    });
+
+    console.log(`Added yeu cau xuat kho NPL at row ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding Yeu Cau Xuat Kho NPL to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật yêu cầu xuất kho NPL trong Google Sheets
+ * @param id - ID của item (1-based, maps to row = id + 5)
+ */
+export async function updateYeuCauXuatKhoNPLInSheet(id: number, data: Partial<YeuCauXuatKhoNPL>): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Row index: data starts from row 6, id starts from 1
+    const rowNumber = id + 5;
+
+    // Format số theo định dạng VN
+    const formatNumber = (num: number | undefined): string => {
+      if (num === undefined || num === 0) return "";
+      return num.toString().replace(".", ",");
+    };
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${rowNumber}:J${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [
+          [
+            data.ngayThang || "",
+            data.maPhieuYC || "",
+            data.maNPL || "",
+            data.dvt || "",
+            formatNumber(data.dinhMuc),
+            formatNumber(data.slKHSX),
+            formatNumber(data.tongNPLSX),
+            data.maSPSuDung || "",
+            data.mauSac || "",
+            data.xuongSX || "",
+          ],
+        ],
+      },
+    });
+
+    console.log(`Updated yeu cau xuat kho NPL at row ${rowNumber}`);
+  } catch (error) {
+    console.error("Error updating Yeu Cau Xuat Kho NPL in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa yêu cầu xuất kho NPL trong Google Sheets
+ * @param id - ID của item (1-based, maps to row = id + 5)
+ */
+export async function deleteYeuCauXuatKhoNPLFromSheet(id: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Row index: data starts from row 6, id starts from 1
+    const rowNumber = id + 5;
+
+    // Get sheet metadata to find sheet ID
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdLSX,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameYeuCauXuatKhoNPL
+    );
+
+    if (!sheet || !sheet.properties?.sheetId) {
+      throw new Error(`Cannot find sheet named "${sheetNameYeuCauXuatKhoNPL}" to delete row`);
+    }
+
+    // Delete row using batchUpdate
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdLSX,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1, // 0-based index
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Deleted yeu cau xuat kho NPL at row ${rowNumber}`);
+  } catch (error) {
+    console.error("Error deleting Yeu Cau Xuat Kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ==================== PHIẾU YÊU CẦU XUẤT KHO NPL ====================
 const sheetNamePhieuYCXKNPL = process.env.GOOGLE_SHEET_NAME_PHIEU_YEU_CAU_XUAT_KHO_NPL || "Phiếu yêu cầu XK NPL";
 
@@ -6790,7 +6948,7 @@ export interface PhieuBaoSLCatInfo {
 
 /**
  * Lấy dữ liệu phiếu báo số lượng cắt từ Google Sheets
- * Header info rows 5-6, table header row 7, data từ row 8
+ * Header info rows 3-4, table header row 6, data từ row 7
  */
 export async function getPhieuBaoSLCatFromSheet(): Promise<PhieuBaoSLCatInfo> {
   try {
@@ -6803,22 +6961,22 @@ export async function getPhieuBaoSLCatFromSheet(): Promise<PhieuBaoSLCatInfo> {
       return isNaN(num) ? 0 : num;
     };
 
-    // Get header info (rows 5-6)
+    // Get header info (rows 3-4)
     const headerResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNamePhieuBaoSLCat}'!A5:G6`,
+      range: `'${sheetNamePhieuBaoSLCat}'!A3:G4`,
     });
 
     const headerRows = headerResponse.data.values || [];
 
-    const maPhieu = headerRows[0]?.[1] || ""; // B5
-    const ngay = headerRows[1]?.[1] || ""; // B6
-    const tongSoLuong = parseNumberVN(headerRows[1]?.[3]); // D6
+    const maPhieu = headerRows[0]?.[1] || ""; // B3
+    const ngay = headerRows[1]?.[1] || ""; // B4
+    const tongSoLuong = parseNumberVN(headerRows[1]?.[3]); // D4
 
-    // Get table data (from row 8)
+    // Get table data (from row 7)
     const dataResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNamePhieuBaoSLCat}'!A8:G`,
+      range: `'${sheetNamePhieuBaoSLCat}'!A7:G`,
     });
 
     const rows = dataResponse.data.values || [];
@@ -6849,7 +7007,7 @@ export async function getPhieuBaoSLCatFromSheet(): Promise<PhieuBaoSLCatInfo> {
 }
 
 /**
- * Cập nhật mã phiếu vào ô B5 để thay đổi phiếu hiển thị
+ * Cập nhật mã phiếu vào ô B3 để thay đổi phiếu hiển thị
  */
 export async function updatePhieuBaoSLCatMaPhieu(maPhieu: string): Promise<void> {
   try {
@@ -6857,7 +7015,7 @@ export async function updatePhieuBaoSLCatMaPhieu(maPhieu: string): Promise<void>
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNamePhieuBaoSLCat}'!B5`,
+      range: `'${sheetNamePhieuBaoSLCat}'!B3`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[maPhieu]],
