@@ -1,23 +1,10 @@
 "use client";
 
-import {
-  Loader2,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Package,
-  DollarSign,
-  Calendar,
-  Plus,
-  Pencil,
-  Trash2,
-  X,
-  Eye,
-  ChevronDown,
-} from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { Eye, Loader2, X, Search, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
+import { useAuth } from "@/context/AuthContext";
 
 interface NhapKhoHinhIn {
   id: number;
@@ -43,198 +30,138 @@ interface DanhMucHinhIn {
   xuongIn: string;
 }
 
-// SearchableDropdown Component
-function SearchableDropdown({
-  options,
-  value,
-  onChange,
-  placeholder,
-  disabled,
-}: {
-  options: { value: string; label: string; donGia?: number; ncc?: string }[];
-  value: string;
-  onChange: (value: string, option?: { donGia?: number; ncc?: string }) => void;
-  placeholder: string;
-  disabled?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const filteredOptions = options.filter(
-    (opt) =>
-      (opt.value || "").toLowerCase().includes(search.toLowerCase()) ||
-      (opt.label || "").toLowerCase().includes(search.toLowerCase())
-  );
-
-  const selectedOption = options.find((opt) => opt.value === value);
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left flex items-center justify-between bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-      >
-        <span className={selectedOption ? "text-gray-900" : "text-gray-400"}>
-          {selectedOption ? `${selectedOption.value} - ${selectedOption.label}` : placeholder}
-        </span>
-        <ChevronDown size={16} className="text-gray-400" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
-          <div className="p-2 border-b border-gray-100">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm kiếm..."
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-          </div>
-          <div className="max-h-48 overflow-y-auto">
-            {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-gray-500 text-sm text-center">Không tìm thấy</div>
-            ) : (
-              filteredOptions.map((opt, idx) => (
-                <div
-                  key={opt.value || idx}
-                  onClick={() => {
-                    onChange(opt.value || "", { donGia: opt.donGia, ncc: opt.ncc });
-                    setIsOpen(false);
-                    setSearch("");
-                  }}
-                  className={`px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm ${
-                    value === opt.value ? "bg-blue-50 text-blue-700 font-medium" : ""
-                  }`}
-                >
-                  {opt.value} - {opt.label}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+// Interface for selected hinh in in the form
+interface SelectedHinhIn {
+  id: string;
+  maHinhIn: string;
+  ncc: string;
+  soLuong: number;
+  donGia: number;
+  thanhTien: number;
+  ghiChu: string;
 }
 
-// Get today's date in DD/MM/YYYY format
-const getTodayDate = () => {
-  const today = new Date();
-  const day = String(today.getDate()).padStart(2, "0");
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const year = today.getFullYear();
-  return `${day}/${month}/${year}`;
-};
+// Interface for grouped phieu nhap
+interface GroupedPhieuNhap {
+  maPhieu: string;
+  ngayThang: string;
+  ncc: string;
+  items: NhapKhoHinhIn[];
+  totalItems: number;
+  totalSoLuong: number;
+  totalThanhTien: number;
+}
 
-// Convert DD/MM/YYYY to YYYY-MM-DD for input[type="date"]
-const toInputDate = (dateStr: string) => {
-  if (!dateStr) return "";
-  const parts = dateStr.split("/");
-  if (parts.length !== 3) return "";
-  return `${parts[2]}-${parts[1]}-${parts[0]}`;
-};
-
-// Convert YYYY-MM-DD to DD/MM/YYYY
-const fromInputDate = (dateStr: string) => {
-  if (!dateStr) return "";
-  const parts = dateStr.split("-");
-  if (parts.length !== 3) return "";
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+// Helper function to get cached profile
+const getCachedProfileName = (): string => {
+  try {
+    const cached = localStorage.getItem("riomio_profile_cache");
+    if (cached) {
+      const { profile } = JSON.parse(cached);
+      return profile?.full_name || profile?.email || "";
+    }
+  } catch (e) {
+    console.warn("Error reading cached profile:", e);
+  }
+  return "";
 };
 
 const ITEMS_PER_PAGE = 50;
 
 export default function NhapKhoHinhInTab() {
+  const { profile } = useAuth();
   const [data, setData] = useState<NhapKhoHinhIn[]>([]);
   const [danhMucHinhIn, setDanhMucHinhIn] = useState<DanhMucHinhIn[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<NhapKhoHinhIn | null>(null);
-  const [itemToDelete, setItemToDelete] = useState<NhapKhoHinhIn | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteItemModal, setShowDeleteItemModal] = useState(false);
+  const [viewGroupedPhieu, setViewGroupedPhieu] = useState<GroupedPhieuNhap | null>(null);
+  const [phieuToDelete, setPhieuToDelete] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    ngayThang: getTodayDate(),
-    maHinhIn: "",
-    soLuong: "",
-    donGia: "",
-    thanhTien: "",
-    ncc: "",
-    maPhieuNhap: "",
-    ghiChu: "",
-  });
+  // Form states
+  const [formMaPhieu, setFormMaPhieu] = useState("");
+  const [formNgayThang, setFormNgayThang] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedHinhIns, setSelectedHinhIns] = useState<SelectedHinhIn[]>([]);
 
-  const resetForm = () => {
-    setFormData({
-      ngayThang: getTodayDate(),
-      maHinhIn: "",
-      soLuong: "",
-      donGia: "",
-      thanhTien: "",
-      ncc: "",
-      maPhieuNhap: "",
-      ghiChu: "",
+  // Hinh In search
+  const [hinhInSearchTerm, setHinhInSearchTerm] = useState("");
+  const [showHinhInDropdown, setShowHinhInDropdown] = useState(false);
+  const hinhInDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filter danh muc hinh in
+  const filteredDanhMuc = danhMucHinhIn.filter(
+    (m) =>
+      (m.maHinhIn && m.maHinhIn.toLowerCase().includes(hinhInSearchTerm.toLowerCase())) ||
+      (m.thongTinHinhIn && m.thongTinHinhIn.toLowerCase().includes(hinhInSearchTerm.toLowerCase()))
+  );
+
+  // Group phieu nhap kho by maPhieuNhap
+  const groupedPhieuNhap: GroupedPhieuNhap[] = useMemo(() => {
+    const groups: Record<string, GroupedPhieuNhap> = {};
+
+    data.forEach((item) => {
+      if (!groups[item.maPhieuNhap]) {
+        groups[item.maPhieuNhap] = {
+          maPhieu: item.maPhieuNhap,
+          ngayThang: item.ngayThang,
+          ncc: item.ncc,
+          items: [],
+          totalItems: 0,
+          totalSoLuong: 0,
+          totalThanhTien: 0,
+        };
+      }
+      groups[item.maPhieuNhap].items.push(item);
+      groups[item.maPhieuNhap].totalItems = groups[item.maPhieuNhap].items.length;
+      groups[item.maPhieuNhap].totalSoLuong += item.soLuong || 0;
+      groups[item.maPhieuNhap].totalThanhTien += item.thanhTien || 0;
     });
-  };
 
-  // Auto-calculate thanhTien when soLuong or donGia changes
-  useEffect(() => {
-    const soLuong = parseFloat(formData.soLuong) || 0;
-    const donGia = parseFloat(formData.donGia) || 0;
-    const thanhTien = soLuong * donGia;
-    setFormData((prev) => ({
-      ...prev,
-      thanhTien: thanhTien > 0 ? thanhTien.toString() : "",
-    }));
-  }, [formData.soLuong, formData.donGia]);
+    return Object.values(groups);
+  }, [data]);
 
-  // Filtered data
-  const filteredList = data.filter(
-    (item) =>
-      item.maHinhIn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.ncc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.maPhieuNhap.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.ngayThang.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filtered grouped phieu
+  const filteredGroupedPhieu = groupedPhieuNhap.filter(
+    (g) =>
+      g.maPhieu.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      g.ncc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      g.items.some((item) =>
+        item.maHinhIn.toLowerCase().includes(searchTerm.toLowerCase())
+      )
   );
 
   // Pagination
-  const totalPages = Math.ceil(filteredList.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredGroupedPhieu.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedList = filteredList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedList = filteredGroupedPhieu.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  // Summary calculations
-  const totalSoLuong = filteredList.reduce((sum, item) => sum + item.soLuong, 0);
-  const totalThanhTien = filteredList.reduce((sum, item) => sum + item.thanhTien, 0);
+  // Click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        hinhInDropdownRef.current &&
+        !hinhInDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowHinhInDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  // Fetch data on mount
   useEffect(() => {
     fetchData();
     fetchDanhMucHinhIn();
@@ -270,282 +197,333 @@ export default function NhapKhoHinhInTab() {
     }
   };
 
-  const handleView = (item: NhapKhoHinhIn) => {
-    setSelectedItem(item);
+  const generateNextMaPhieu = (): string => {
+    if (data.length === 0) {
+      return "PNKHI001";
+    }
+
+    const codeNumbers = data
+      .map((item) => {
+        const match = item.maPhieuNhap.match(/PNKHI(\d+)/i);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+
+    const maxNumber = Math.max(...codeNumbers, 0);
+    return `PNKHI${String(maxNumber + 1).padStart(3, "0")}`;
+  };
+
+  const handleOpenAddModal = () => {
+    const nextCode = generateNextMaPhieu();
+    setFormMaPhieu(nextCode);
+    setFormNgayThang(new Date().toISOString().split("T")[0]);
+    setSelectedHinhIns([]);
+    setShowAddModal(true);
+  };
+
+  const handleAddHinhInToList = (hinhIn: DanhMucHinhIn) => {
+    const donGia = hinhIn.donGiaCoThue || hinhIn.donGiaChuaThue || 0;
+
+    const newHinhIn: SelectedHinhIn = {
+      id: `${hinhIn.maHinhIn}-${Date.now()}`,
+      maHinhIn: hinhIn.maHinhIn,
+      ncc: hinhIn.xuongIn || "",
+      soLuong: 1,
+      donGia: donGia,
+      thanhTien: donGia * 1,
+      ghiChu: "",
+    };
+
+    setSelectedHinhIns([...selectedHinhIns, newHinhIn]);
+    setHinhInSearchTerm("");
+    setShowHinhInDropdown(false);
+  };
+
+  const handleRemoveHinhInFromList = (id: string) => {
+    setSelectedHinhIns(selectedHinhIns.filter((h) => h.id !== id));
+  };
+
+  const handleUpdateHinhIn = (
+    id: string,
+    field: keyof SelectedHinhIn,
+    value: any
+  ) => {
+    setSelectedHinhIns(
+      selectedHinhIns.map((h) => {
+        if (h.id !== id) return h;
+
+        const updated = { ...h, [field]: value };
+
+        if (field === "soLuong" || field === "donGia") {
+          updated.thanhTien = updated.soLuong * updated.donGia;
+        }
+
+        return updated;
+      })
+    );
+  };
+
+  const calculateTotalThanhTien = () => {
+    return selectedHinhIns.reduce((sum, h) => sum + h.thanhTien, 0);
+  };
+
+  const handleAddPhieuNhap = async () => {
+    if (!formMaPhieu || !formNgayThang) {
+      toast.error("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    if (selectedHinhIns.length === 0) {
+      toast.error("Vui lòng thêm ít nhất 1 mã hình in");
+      return;
+    }
+
+    try {
+      setIsAdding(true);
+
+      for (const hinhIn of selectedHinhIns) {
+        const phieuData = {
+          maPhieuNhap: formMaPhieu,
+          ngayThang: new Date(formNgayThang).toLocaleDateString("vi-VN"),
+          maHinhIn: hinhIn.maHinhIn,
+          ncc: hinhIn.ncc,
+          soLuong: hinhIn.soLuong,
+          donGia: hinhIn.donGia,
+          thanhTien: hinhIn.thanhTien,
+          ghiChu: hinhIn.ghiChu,
+        };
+
+        const response = await fetch("/api/nhap-kho-hinh-in/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(phieuData),
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          toast.error(`Lỗi khi thêm mã hình in ${hinhIn.maHinhIn}`);
+        }
+      }
+
+      await fetchData();
+      setShowAddModal(false);
+      toast.success(
+        `Thêm phiếu nhập kho ${formMaPhieu} thành công (${selectedHinhIns.length} mã hình in)`
+      );
+    } catch (error) {
+      console.error("Error adding phieu nhap:", error);
+      toast.error("Lỗi khi thêm phiếu nhập kho");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleViewGrouped = (group: GroupedPhieuNhap) => {
+    setViewGroupedPhieu(group);
     setShowViewModal(true);
   };
 
-  const handleAdd = async () => {
-    if (!formData.maHinhIn.trim()) {
-      toast.error("Mã hình in là bắt buộc");
-      return;
-    }
-    if (!formData.ngayThang.trim()) {
-      toast.error("Ngày tháng là bắt buộc");
-      return;
-    }
+  const handleDeleteGrouped = (maPhieu: string) => {
+    setPhieuToDelete(maPhieu);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteGrouped = async () => {
+    if (!phieuToDelete) return;
 
     try {
-      setSaving(true);
-      const response = await fetch("/api/nhap-kho-hinh-in/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const result = await response.json();
+      setIsDeleting(true);
 
-      if (result.success) {
-        toast.success("Thêm nhập kho hình in thành công");
-        setShowAddModal(false);
-        resetForm();
-        fetchData();
-      } else {
-        toast.error(result.error || "Không thể thêm nhập kho hình in");
+      const itemsToDelete = data.filter((item) => item.maPhieuNhap === phieuToDelete);
+
+      for (const item of itemsToDelete) {
+        const response = await fetch(`/api/nhap-kho-hinh-in/delete?id=${item.id}`, {
+          method: "DELETE",
+        });
+        const result = await response.json();
+        if (!result.success) {
+          toast.error(`Lỗi khi xóa item ${item.id}`);
+        }
       }
+
+      await fetchData();
+      setShowDeleteModal(false);
+      setPhieuToDelete(null);
+      toast.success(
+        `Xóa phiếu nhập kho ${phieuToDelete} thành công (${itemsToDelete.length} mã hình in)`
+      );
     } catch (error) {
-      console.error("Error adding:", error);
-      toast.error("Lỗi kết nối server");
+      console.error("Error deleting phieu nhap:", error);
+      toast.error("Lỗi khi xóa phiếu nhập kho");
     } finally {
-      setSaving(false);
+      setIsDeleting(false);
     }
   };
 
-  const handleEdit = async () => {
-    if (!selectedItem) return;
-    if (!formData.maHinhIn.trim()) {
-      toast.error("Mã hình in là bắt buộc");
-      return;
-    }
-    if (!formData.ngayThang.trim()) {
-      toast.error("Ngày tháng là bắt buộc");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const response = await fetch("/api/nhap-kho-hinh-in/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedItem.id,
-          ...formData,
-        }),
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success("Cập nhật nhập kho hình in thành công");
-        setShowEditModal(false);
-        setSelectedItem(null);
-        resetForm();
-        fetchData();
-      } else {
-        toast.error(result.error || "Không thể cập nhật nhập kho hình in");
-      }
-    } catch (error) {
-      console.error("Error updating:", error);
-      toast.error("Lỗi kết nối server");
-    } finally {
-      setSaving(false);
-    }
+  const handleDeleteItem = (itemId: string) => {
+    setItemToDelete(itemId);
+    setShowDeleteItemModal(true);
   };
 
-  const confirmDelete = (item: NhapKhoHinhIn) => {
-    setItemToDelete(item);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDelete = async () => {
+  const confirmDeleteItem = async () => {
     if (!itemToDelete) return;
 
     try {
-      setDeleting(true);
-      const response = await fetch(`/api/nhap-kho-hinh-in/delete?id=${itemToDelete.id}`, {
+      setIsDeleting(true);
+
+      const response = await fetch(`/api/nhap-kho-hinh-in/delete?id=${itemToDelete}`, {
         method: "DELETE",
       });
       const result = await response.json();
 
       if (result.success) {
-        toast.success("Xóa nhập kho hình in thành công");
-        fetchData();
+        await fetchData();
+
+        // Update viewGroupedPhieu if it's open
+        if (viewGroupedPhieu) {
+          const updatedItems = viewGroupedPhieu.items.filter(item => item.id.toString() !== itemToDelete);
+          if (updatedItems.length === 0) {
+            // If no items left, close the modal
+            setShowViewModal(false);
+            setViewGroupedPhieu(null);
+          } else {
+            // Update the viewGroupedPhieu with remaining items
+            const updatedGroup = {
+              ...viewGroupedPhieu,
+              items: updatedItems,
+              totalItems: updatedItems.length,
+              totalSoLuong: updatedItems.reduce((sum, item) => sum + (item.soLuong || 0), 0),
+              totalThanhTien: updatedItems.reduce((sum, item) => sum + (item.thanhTien || 0), 0),
+            };
+            setViewGroupedPhieu(updatedGroup);
+          }
+        }
+
+        setShowDeleteItemModal(false);
+        setItemToDelete(null);
+        toast.success("Xóa mã hình in thành công");
       } else {
-        toast.error(result.error || "Không thể xóa nhập kho hình in");
+        toast.error("Lỗi khi xóa mã hình in");
       }
     } catch (error) {
-      console.error("Error deleting:", error);
-      toast.error("Lỗi kết nối server");
+      console.error("Error deleting item:", error);
+      toast.error("Lỗi khi xóa mã hình in");
     } finally {
-      setDeleting(false);
-      setShowDeleteConfirm(false);
-      setItemToDelete(null);
+      setIsDeleting(false);
     }
   };
 
-  const openEditModal = (item: NhapKhoHinhIn) => {
-    setSelectedItem(item);
-    setFormData({
-      ngayThang: item.ngayThang,
-      maHinhIn: item.maHinhIn,
-      soLuong: item.soLuong.toString(),
-      donGia: item.donGia.toString(),
-      thanhTien: item.thanhTien.toString(),
-      ncc: item.ncc,
-      maPhieuNhap: item.maPhieuNhap,
-      ghiChu: item.ghiChu,
-    });
-    setShowEditModal(true);
-  };
-
-  // Handle mã hình in selection - auto-fill đơn giá and NCC
-  const handleMaHinhInChange = (value: string, option?: { donGia?: number; ncc?: string }) => {
-    setFormData((prev) => ({
-      ...prev,
-      maHinhIn: value,
-      donGia: option?.donGia ? option.donGia.toString() : prev.donGia,
-      ncc: option?.ncc || prev.ncc,
-    }));
-  };
-
-  // Prepare options for mã hình in dropdown
-  const maHinhInOptions = danhMucHinhIn
-    .filter((item) => item.maHinhIn)
-    .map((item) => ({
-      value: item.maHinhIn,
-      label: item.thongTinHinhIn || item.maHinhIn,
-      donGia: item.donGiaCoThue,
-      ncc: item.xuongIn,
-    }));
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
-      </div>
-    );
-  }
+  // Calculate totals
+  const totalThanhTien = filteredGroupedPhieu.reduce(
+    (sum, group) => sum + group.totalThanhTien,
+    0
+  );
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Header with search and add button */}
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Nhập kho hình in ({filteredList.length})
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-semibold">
+            Danh sách phiếu nhập kho hình in ({filteredGroupedPhieu.length})
           </h3>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                resetForm();
-                setShowAddModal(true);
-              }}
-              disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus size={18} />
-              Thêm mới
-            </button>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Tìm mã HI, NCC, mã phiếu..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-72"
-              />
-            </div>
+          <div className="flex-1 max-w-md relative">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={20}
+            />
+            <input
+              type="text"
+              placeholder="Tìm kiếm..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
         </div>
+        <button
+          onClick={handleOpenAddModal}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+        >
+          <Plus size={20} />
+          Tạo phiếu nhập kho
+        </button>
+      </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-            <div className="flex items-center gap-2 mb-1">
-              <Calendar size={16} className="text-blue-600" />
-              <p className="text-sm text-blue-600">Tổng số phiếu</p>
-            </div>
-            <p className="text-2xl font-bold text-blue-700">{filteredList.length}</p>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-            <div className="flex items-center gap-2 mb-1">
-              <Package size={16} className="text-green-600" />
-              <p className="text-sm text-green-600">Tổng số lượng</p>
-            </div>
-            <p className="text-2xl font-bold text-green-700">{totalSoLuong.toLocaleString("vi-VN")}</p>
-          </div>
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign size={16} className="text-purple-600" />
-              <p className="text-sm text-purple-600">Tổng thành tiền</p>
-            </div>
-            <p className="text-2xl font-bold text-purple-700">{totalThanhTien.toLocaleString("vi-VN")}đ</p>
-          </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+          <p className="text-sm text-blue-600 mb-1">Số lượng phiếu</p>
+          <p className="text-2xl font-bold text-blue-700">
+            {filteredGroupedPhieu.length}
+          </p>
         </div>
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+          <p className="text-sm text-green-600 mb-1">Tổng thành tiền</p>
+          <p className="text-2xl font-bold text-green-700">
+            {totalThanhTien.toLocaleString("vi-VN")}đ
+          </p>
+        </div>
+      </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto border border-gray-200 rounded-xl">
+      {/* Table - Grouped */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
+        </div>
+      ) : filteredGroupedPhieu.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          Không có dữ liệu nhập kho hình in
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-3 py-3 text-left font-medium text-gray-500 w-12">STT</th>
-                <th className="px-3 py-3 text-left font-medium text-gray-500">Ngày tháng</th>
-                <th className="px-3 py-3 text-left font-medium text-gray-500">Mã hình in</th>
-                <th className="px-3 py-3 text-right font-medium text-gray-500">Số lượng</th>
-                <th className="px-3 py-3 text-right font-medium text-gray-500">Đơn giá</th>
-                <th className="px-3 py-3 text-right font-medium text-gray-500">Thành tiền</th>
+              <tr className="bg-gray-50">
+                <th className="px-3 py-3 text-left font-medium text-gray-500">Mã phiếu</th>
+                <th className="px-3 py-3 text-left font-medium text-gray-500">Ngày</th>
                 <th className="px-3 py-3 text-left font-medium text-gray-500">NCC</th>
-                <th className="px-3 py-3 text-left font-medium text-gray-500">Mã phiếu nhập</th>
-                <th className="px-3 py-3 text-left font-medium text-gray-500">Ghi chú</th>
-                <th className="px-3 py-3 text-center font-medium text-gray-500 w-28">Thao tác</th>
+                <th className="px-3 py-3 text-center font-medium text-gray-500">Số mã HI</th>
+                <th className="px-3 py-3 text-center font-medium text-gray-500">Tổng SL</th>
+                <th className="px-3 py-3 text-right font-medium text-gray-500">Tổng tiền</th>
+                <th className="px-3 py-3 text-center font-medium text-gray-500 w-24">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {paginatedList.map((item, index) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-2.5 text-gray-600">{startIndex + index + 1}</td>
-                  <td className="px-3 py-2.5 text-gray-900">{item.ngayThang || "-"}</td>
-                  <td className="px-3 py-2.5 font-medium text-blue-600">{item.maHinhIn || "-"}</td>
-                  <td className="px-3 py-2.5 text-right text-gray-900">
-                    {item.soLuong > 0 ? item.soLuong.toLocaleString("vi-VN") : "-"}
+              {paginatedList.map((group) => (
+                <tr key={group.maPhieu} className="hover:bg-gray-50">
+                  <td className="px-3 py-3 font-medium text-blue-600">{group.maPhieu}</td>
+                  <td className="px-3 py-3 text-gray-600">{group.ngayThang}</td>
+                  <td className="px-3 py-3 text-gray-600 max-w-37.5 truncate" title={group.ncc}>
+                    {group.ncc || "-"}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-gray-600">
-                    {item.donGia > 0 ? item.donGia.toLocaleString("vi-VN") : "-"}
+                  <td className="px-3 py-3 text-center">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
+                      {group.items.length}
+                    </span>
                   </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-green-600">
-                    {item.thanhTien > 0 ? item.thanhTien.toLocaleString("vi-VN") : "-"}
+                  <td className="px-3 py-3 text-center font-medium text-gray-900">
+                    {group.totalSoLuong > 0 ? group.totalSoLuong.toLocaleString("vi-VN") : "-"}
                   </td>
-                  <td className="px-3 py-2.5 text-gray-600 max-w-[150px] truncate" title={item.ncc}>
-                    {item.ncc || "-"}
+                  <td className="px-3 py-3 text-right font-semibold text-green-600">
+                    {group.totalThanhTien > 0 ? group.totalThanhTien.toLocaleString("vi-VN") + "đ" : "-"}
                   </td>
-                  <td className="px-3 py-2.5 text-gray-600">{item.maPhieuNhap || "-"}</td>
-                  <td className="px-3 py-2.5 text-gray-500 max-w-[150px] truncate" title={item.ghiChu}>
-                    {item.ghiChu || "-"}
-                  </td>
-                  <td className="px-3 py-2.5 text-center">
-                    <div className="flex items-center justify-center gap-1">
+                  <td className="px-3 py-3">
+                    <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => handleView(item)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        onClick={() => handleViewGrouped(group)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
                         title="Xem chi tiết"
                       >
-                        <Eye size={16} />
+                        <Eye size={18} />
                       </button>
                       <button
-                        onClick={() => openEditModal(item)}
-                        disabled={saving}
-                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                        title="Sửa"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => confirmDelete(item)}
-                        disabled={deleting}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        onClick={() => handleDeleteGrouped(group.maPhieu)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                         title="Xóa"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </td>
@@ -554,34 +532,24 @@ export default function NhapKhoHinhInTab() {
             </tbody>
             <tfoot>
               <tr className="bg-gray-100 font-semibold">
-                <td colSpan={3} className="px-3 py-3 text-right">Tổng cộng:</td>
-                <td className="px-3 py-3 text-right text-gray-900">
-                  {totalSoLuong.toLocaleString("vi-VN")}
-                </td>
-                <td className="px-3 py-3"></td>
+                <td colSpan={5} className="px-3 py-3 text-right">Tổng cộng:</td>
                 <td className="px-3 py-3 text-right text-green-600">
                   {totalThanhTien.toLocaleString("vi-VN")}đ
                 </td>
-                <td colSpan={4}></td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
-
-          {filteredList.length === 0 && !isLoading && (
-            <div className="text-center py-8 text-gray-500">
-              Không có dữ liệu nhập kho hình in
-            </div>
-          )}
 
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
               <div className="text-sm text-gray-500">
-                Hiển thị {startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, filteredList.length)} / {filteredList.length} mục
+                Hiển thị {startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, filteredGroupedPhieu.length)} / {filteredGroupedPhieu.length} mục
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                   className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -589,7 +557,7 @@ export default function NhapKhoHinhInTab() {
                 </button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((page) => {
+                    .filter(page => {
                       if (totalPages <= 7) return true;
                       if (page === 1 || page === totalPages) return true;
                       if (Math.abs(page - currentPage) <= 1) return true;
@@ -614,7 +582,7 @@ export default function NhapKhoHinhInTab() {
                     ))}
                 </div>
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
                   className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -624,189 +592,378 @@ export default function NhapKhoHinhInTab() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* View Modal */}
-      {showViewModal && selectedItem && (
-        <Portal>
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowViewModal(false)} />
-          <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-60 flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-lg font-semibold">Chi tiết nhập kho hình in</h2>
-              <button onClick={() => setShowViewModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-500">Ngày tháng</label>
-                  <p className="font-medium">{selectedItem.ngayThang || "-"}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">Mã hình in</label>
-                  <p className="font-medium text-blue-600">{selectedItem.maHinhIn || "-"}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm text-gray-500">Số lượng</label>
-                  <p className="font-medium">{selectedItem.soLuong > 0 ? selectedItem.soLuong.toLocaleString("vi-VN") : "-"}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">Đơn giá</label>
-                  <p className="font-medium">{selectedItem.donGia > 0 ? `${selectedItem.donGia.toLocaleString("vi-VN")}đ` : "-"}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">Thành tiền</label>
-                  <p className="font-medium text-green-600">{selectedItem.thanhTien > 0 ? `${selectedItem.thanhTien.toLocaleString("vi-VN")}đ` : "-"}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-500">NCC</label>
-                  <p className="font-medium">{selectedItem.ncc || "-"}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">Mã phiếu nhập</label>
-                  <p className="font-medium">{selectedItem.maPhieuNhap || "-"}</p>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Ghi chú</label>
-                <p className="font-medium">{selectedItem.ghiChu || "-"}</p>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t">
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="w-full py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </Portal>
       )}
 
-      {/* Add Modal */}
+      {/* Modal thêm phiếu nhập kho */}
       {showAddModal && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-2xl h-[80vh] flex flex-col">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Thêm nhập kho hình in</h2>
-                <button onClick={() => setShowAddModal(false)} disabled={saving} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                  <X size={20} />
-                </button>
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => { setShowAddModal(false); }} />
+          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Loading Overlay */}
+            {isAdding && (
+              <div className="fixed inset-4 lg:inset-8 bg-white/80 z-70 flex flex-col items-center justify-center rounded-xl">
+                <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+                <p className="text-gray-700 font-medium">Đang tạo phiếu nhập kho...</p>
               </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày tháng *</label>
-                    <input
-                      type="date"
-                      value={toInputDate(formData.ngayThang)}
-                      onChange={(e) => setFormData({ ...formData, ngayThang: fromInputDate(e.target.value) })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã hình in *</label>
-                    <SearchableDropdown
-                      options={maHinhInOptions}
-                      value={formData.maHinhIn}
-                      onChange={handleMaHinhInChange}
-                      placeholder="Chọn mã hình in"
-                      disabled={saving}
-                    />
-                  </div>
-                </div>
+            )}
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
-                    <input
-                      type="number"
-                      value={formData.soLuong}
-                      onChange={(e) => setFormData({ ...formData, soLuong: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Đơn giá</label>
-                    <input
-                      type="number"
-                      value={formData.donGia}
-                      onChange={(e) => setFormData({ ...formData, donGia: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                      placeholder="Tự động từ mã HI"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Thành tiền</label>
-                    <input
-                      type="number"
-                      value={formData.thanhTien}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                      placeholder="Tự động tính"
-                      readOnly
-                    />
-                  </div>
-                </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Tạo phiếu nhập kho mới</h3>
+                <p className="text-sm text-gray-500">Mã phiếu: {formMaPhieu}</p>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                disabled={isAdding}
+                className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NCC (Xưởng in)</label>
-                    <input
-                      type="text"
-                      value={formData.ncc}
-                      onChange={(e) => setFormData({ ...formData, ncc: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                      placeholder="Tự động từ mã HI"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu nhập</label>
-                    <input
-                      type="text"
-                      value={formData.maPhieuNhap}
-                      onChange={(e) => setFormData({ ...formData, maPhieuNhap: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="VD: PNKHI01"
-                    />
-                  </div>
-                </div>
-
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Form Info */}
+              <div className="flex gap-3 mb-6 p-3 bg-gray-50 rounded-lg">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <textarea
-                    value={formData.ghiChu}
-                    onChange={(e) => setFormData({ ...formData, ghiChu: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="Ghi chú..."
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Mã phiếu</label>
+                  <input
+                    type="text"
+                    value={formMaPhieu}
+                    readOnly
+                    className="w-36 px-2 py-1.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Ngày tháng</label>
+                  <input
+                    type="date"
+                    value={formNgayThang}
+                    onChange={(e) => setFormNgayThang(e.target.value)}
+                    className="w-40 px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
+
+              {/* Add Hinh In Section */}
+              <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 mb-4">
+                <div className="relative" ref={hinhInDropdownRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thêm mã hình in</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={hinhInSearchTerm}
+                      onChange={(e) => {
+                        setHinhInSearchTerm(e.target.value);
+                        setShowHinhInDropdown(true);
+                      }}
+                      onFocus={() => setShowHinhInDropdown(true)}
+                      placeholder="Tìm mã hình in..."
+                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  </div>
+                  {showHinhInDropdown && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredDanhMuc.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy</div>
+                      ) : (
+                        filteredDanhMuc.slice(0, 50).map((hinhIn) => (
+                          <div
+                            key={hinhIn.id}
+                            onClick={() => handleAddHinhInToList(hinhIn)}
+                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-0"
+                          >
+                            <div className="font-medium text-blue-600">{hinhIn.maHinhIn}</div>
+                            <div className="text-xs text-gray-600">{hinhIn.thongTinHinhIn}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Xưởng: {hinhIn.xuongIn || "-"} | Giá: {hinhIn.donGiaCoThue ? hinhIn.donGiaCoThue.toLocaleString("vi-VN") + "đ" : "-"}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Selected Hinh Ins Table */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-blue-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">
+                    Danh sách mã hình in ({selectedHinhIns.length})
+                  </h4>
+                </div>
+                {selectedHinhIns.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    Chưa có mã hình in nào. Tìm và thêm mã hình in ở trên.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã hình in</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">NCC (Xưởng in)</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-24">SL</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-28">Đơn giá</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-yellow-100">Thành tiền</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Ghi chú</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-12"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {selectedHinhIns.map((hinhIn, index) => (
+                          <tr key={hinhIn.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
+                            <td className="px-3 py-2 text-sm font-medium text-blue-600">{hinhIn.maHinhIn}</td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={hinhIn.ncc}
+                                onChange={(e) => handleUpdateHinhIn(hinhIn.id, "ncc", e.target.value)}
+                                placeholder="Nhập xưởng in..."
+                                className="w-40 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={hinhIn.soLuong || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, "");
+                                  handleUpdateHinhIn(hinhIn.id, "soLuong", parseInt(value) || 0);
+                                }}
+                                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={hinhIn.donGia > 0 ? hinhIn.donGia.toLocaleString("vi-VN") : ""}
+                                placeholder="Tự động điền"
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
+                                readOnly
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-sm text-right font-medium bg-yellow-50">
+                              {hinhIn.thanhTien.toLocaleString("vi-VN")}
+                            </td>
+                            <td className="px-3 py-2">
+                              <textarea
+                                value={hinhIn.ghiChu}
+                                onChange={(e) => handleUpdateHinhIn(hinhIn.id, "ghiChu", e.target.value)}
+                                placeholder="Ghi chú"
+                                rows={1}
+                                className="w-32 min-w-32 px-2 py-1 border border-gray-300 rounded text-sm resize"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => handleRemoveHinhInFromList(hinhIn.id)}
+                                className="p-1 text-red-500 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-100">
+                        <tr>
+                          <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">Tổng thành tiền:</td>
+                          <td className="px-3 py-2 text-sm text-right font-semibold text-green-600">
+                            {calculateTotalThanhTien().toLocaleString("vi-VN")}đ
+                          </td>
+                          <td colSpan={2}></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowAddModal(false)}
+                disabled={isAdding}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAddPhieuNhap}
+                disabled={isAdding || selectedHinhIns.length === 0}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isAdding ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang tạo...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={18} />
+                    Tạo phiếu nhập kho ({selectedHinhIns.length} mã HI)
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal xem chi tiết phiếu - Grouped */}
+      {showViewModal && viewGroupedPhieu && (
+        <Portal>
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => { setShowViewModal(false); }} />
+          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-green-50">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Chi tiết phiếu nhập kho</h3>
+                <p className="text-sm text-gray-500">{viewGroupedPhieu.maPhieu}</p>
+              </div>
+              <button onClick={() => { setShowViewModal(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Header Info */}
+              <div className="flex gap-6 mb-6 p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <span className="text-xs text-gray-500">Mã phiếu:</span>
+                  <p className="font-medium text-blue-600 text-sm">{viewGroupedPhieu.maPhieu}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500">Ngày tháng:</span>
+                  <p className="font-medium text-sm">{viewGroupedPhieu.ngayThang}</p>
+                </div>
+              </div>
+
+              {/* Hinh In Table */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-yellow-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">
+                    Danh sách mã hình in ({viewGroupedPhieu.items.length})
+                    <span className="ml-2 text-blue-600">- Tổng SL: {viewGroupedPhieu.totalSoLuong.toLocaleString("vi-VN")}</span>
+                  </h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã hình in</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">NCC (Xưởng in)</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">SL</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-28">Đơn giá</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-yellow-100">Thành tiền</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Ghi chú</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {viewGroupedPhieu.items.map((item, index) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
+                          <td className="px-3 py-2 text-sm font-medium text-blue-600">{item.maHinhIn}</td>
+                          <td className="px-3 py-2 text-sm text-gray-600">{item.ncc || "-"}</td>
+                          <td className="px-3 py-2 text-sm text-right">{item.soLuong.toLocaleString("vi-VN")}</td>
+                          <td className="px-3 py-2 text-sm text-right">
+                            {item.donGia > 0 ? item.donGia.toLocaleString("vi-VN") : "-"}
+                          </td>
+                          <td className="px-3 py-2 text-sm text-right font-medium bg-yellow-50">
+                            {item.thanhTien > 0 ? item.thanhTien.toLocaleString("vi-VN") : "-"}
+                          </td>
+                          <td className="px-3 py-2 text-sm">{item.ghiChu || "-"}</td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              onClick={() => handleDeleteItem(item.id.toString())}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded"
+                              title="Xóa"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-100">
+                      <tr>
+                        <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">Tổng thành tiền:</td>
+                        <td className="px-3 py-2 text-sm text-right font-semibold text-green-600">
+                          {viewGroupedPhieu.totalThanhTien.toLocaleString("vi-VN")}đ
+                        </td>
+                        <td colSpan={2}></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal xác nhận xóa phiếu */}
+      {showDeleteModal && phieuToDelete && (
+        <Portal>
+          <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-red-600">
+                  Xác nhận xóa phiếu nhập kho
+                </h3>
                 <button
-                  onClick={() => setShowAddModal(false)}
-                  disabled={saving}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setPhieuToDelete(null);
+                  }}
+                  disabled={isDeleting}
+                  className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <p className="text-gray-700 mb-2">
+                Bạn có chắc chắn muốn xóa phiếu nhập kho{" "}
+                <span className="font-semibold text-blue-600">
+                  {phieuToDelete}
+                </span>
+                ?
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Hành động này không thể hoàn tác.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setPhieuToDelete(null);
+                  }}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
-                  onClick={handleAdd}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={confirmDeleteGrouped}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Thêm
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Đang xóa...
+                    </>
+                  ) : (
+                    "Xóa"
+                  )}
                 </button>
               </div>
             </div>
@@ -814,172 +971,56 @@ export default function NhapKhoHinhInTab() {
         </Portal>
       )}
 
-      {/* Edit Modal */}
-      {showEditModal && selectedItem && (
+      {/* Modal xác nhận xóa item */}
+      {showDeleteItemModal && itemToDelete && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-2xl h-[80vh] flex flex-col">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Sửa nhập kho hình in</h2>
-                <button onClick={() => setShowEditModal(false)} disabled={saving} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                  <X size={20} />
+          <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-red-600">
+                  Xác nhận xóa mã hình in
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowDeleteItemModal(false);
+                    setItemToDelete(null);
+                  }}
+                  disabled={isDeleting}
+                  className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                >
+                  <X size={24} />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày tháng *</label>
-                    <input
-                      type="date"
-                      value={toInputDate(formData.ngayThang)}
-                      onChange={(e) => setFormData({ ...formData, ngayThang: fromInputDate(e.target.value) })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã hình in *</label>
-                    <SearchableDropdown
-                      options={maHinhInOptions}
-                      value={formData.maHinhIn}
-                      onChange={handleMaHinhInChange}
-                      placeholder="Chọn mã hình in"
-                      disabled={saving}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
-                    <input
-                      type="number"
-                      value={formData.soLuong}
-                      onChange={(e) => setFormData({ ...formData, soLuong: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Đơn giá</label>
-                    <input
-                      type="number"
-                      value={formData.donGia}
-                      onChange={(e) => setFormData({ ...formData, donGia: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                      placeholder="Tự động từ mã HI"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Thành tiền</label>
-                    <input
-                      type="number"
-                      value={formData.thanhTien}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                      placeholder="Tự động tính"
-                      readOnly
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NCC (Xưởng in)</label>
-                    <input
-                      type="text"
-                      value={formData.ncc}
-                      onChange={(e) => setFormData({ ...formData, ncc: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                      placeholder="Tự động từ mã HI"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu nhập</label>
-                    <input
-                      type="text"
-                      value={formData.maPhieuNhap}
-                      onChange={(e) => setFormData({ ...formData, maPhieuNhap: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="VD: PNKHI01"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <textarea
-                    value={formData.ghiChu}
-                    onChange={(e) => setFormData({ ...formData, ghiChu: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="Ghi chú..."
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
+              <p className="text-gray-700 mb-2">
+                Bạn có chắc chắn muốn xóa mã hình in này khỏi phiếu nhập kho?
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Hành động này không thể hoàn tác.
+              </p>
+              <div className="flex gap-3">
                 <button
-                  onClick={() => setShowEditModal(false)}
-                  disabled={saving}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => {
+                    setShowDeleteItemModal(false);
+                    setItemToDelete(null);
+                  }}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
-                  onClick={handleEdit}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={confirmDeleteItem}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Lưu
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && itemToDelete && (
-        <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-md">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Xác nhận xóa</h2>
-                <button
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setItemToDelete(null);
-                  }}
-                  disabled={deleting}
-                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-6">
-                <p className="text-gray-600">
-                  Bạn có chắc muốn xóa phiếu nhập &quot;{itemToDelete.maHinhIn}&quot; ngày {itemToDelete.ngayThang}?
-                </p>
-              </div>
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
-                <button
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setItemToDelete(null);
-                  }}
-                  disabled={deleting}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {deleting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Xóa
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Đang xóa...
+                    </>
+                  ) : (
+                    "Xóa"
+                  )}
                 </button>
               </div>
             </div>

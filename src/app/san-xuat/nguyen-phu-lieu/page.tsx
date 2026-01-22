@@ -5,9 +5,7 @@ import {
   Warehouse,
   Tag,
   PackagePlus,
-  FileInput,
   PackageMinus,
-  FileOutput,
   Archive,
   Receipt,
   FileSearch,
@@ -42,14 +40,17 @@ const TABS = [
   { id: "ncc-npl" as TabType, label: "NCC NPL", icon: Warehouse },
   { id: "ma-npl" as TabType, label: "Mã NPL", icon: Tag },
   { id: "nhap-kho" as TabType, label: "Nhập kho NPL", icon: PackagePlus },
-  { id: "phieu-nhap" as TabType, label: "Phiếu nhập kho NPL, trả NPL NCC", icon: FileInput },
+  // { id: "phieu-nhap" as TabType, label: "Phiếu nhập kho NPL, trả NPL NCC", icon: FileInput },
   { id: "xuat-kho" as TabType, label: "Xuất kho NPL", icon: PackageMinus },
-  { id: "phieu-xuat" as TabType, label: "Phiếu xuất kho NPL, xưởng hoàn lại NPL", icon: FileOutput },
+  // { id: "phieu-xuat" as TabType, label: "Phiếu xuất kho NPL, xưởng hoàn lại NPL", icon: FileOutput },
   { id: "ton-kho" as TabType, label: "Tồn kho NPL", icon: Archive },
   { id: "cnpt-ncc" as TabType, label: "CNPT NCC NPL", icon: Receipt },
-  { id: "theo-doi-cn" as TabType, label: "Theo dõi CN từng NCC NPL", icon: FileSearch },
+  {
+    id: "theo-doi-cn" as TabType,
+    label: "Theo dõi CN từng NCC NPL",
+    icon: FileSearch,
+  },
 ];
-
 
 export default function NguyenPhuLieu() {
   const router = useRouter();
@@ -59,8 +60,9 @@ export default function NguyenPhuLieu() {
 
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
-    const validTabs = TABS.map(t => t.id);
+    const validTabs = TABS.map((t) => t.id);
     if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
     }
   }, [searchParams]);

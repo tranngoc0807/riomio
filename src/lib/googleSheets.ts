@@ -4500,6 +4500,133 @@ export async function getXuatKhoNPLFromSheet(): Promise<XuatKhoNPL[]> {
   }
 }
 
+/**
+ * Thêm phiếu xuất kho NPL mới vào Google Sheets
+ */
+export async function addXuatKhoNPLToSheet(data: {
+  maPhieu: string;
+  ngayThang: string;
+  nguoiNhap: string;
+  noiDung: string;
+  maSP: string;
+  lenhSX: string;
+  xuongSX: string;
+  maNPL: string;
+  dvt: string;
+  soLuong: number;
+  donGia: number;
+  thanhTien: number;
+  loaiChiPhi: string;
+  ghiChu: string;
+  tonThucTe: number;
+}): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameXuatKhoNPL}'!A:O`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Tìm dòng cuối cùng có dữ liệu (bỏ qua header dòng 1-5)
+    let lastDataRow = 5;
+    for (let i = allRows.length - 1; i >= 5; i--) {
+      if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Ghi dữ liệu (cột A-O)
+    const values = [
+      [
+        data.maPhieu,
+        data.ngayThang,
+        data.nguoiNhap,
+        data.noiDung,
+        data.maSP,
+        data.lenhSX,
+        data.xuongSX,
+        data.maNPL,
+        data.dvt,
+        data.soLuong,
+        data.donGia,
+        data.thanhTien,
+        data.loaiChiPhi,
+        data.ghiChu,
+        data.tonThucTe,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameXuatKhoNPL}'!A${nextRow}:O${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Xuất kho NPL added at row ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding xuat kho NPL to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa phiếu xuất kho NPL từ Google Sheets
+ */
+export async function deleteXuatKhoNPLFromSheet(id: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameXuatKhoNPL}'!A6:O`,
+    });
+
+    const rows = response.data.values || [];
+
+    if (id < 1 || id > rows.length) {
+      throw new Error(`Invalid ID: ${id}`);
+    }
+
+    // Row number in sheet (header ở dòng 5, data từ dòng 6)
+    const rowNumber = id + 5;
+
+    // Delete the row
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdSanXuat,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: 0, // Adjust if needed
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Xuất kho NPL deleted at row ${rowNumber}`);
+  } catch (error) {
+    console.error("Error deleting xuat kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ===================== PHIEU XUAT KHO NPL (PXK NPL) =====================
 const spreadsheetIdSanXuat5 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
 const sheetNamePhieuXuatNPL = process.env.GOOGLE_SHEET_NAME_PHIEU_XUAT_NPL || "PXK NPL";
@@ -5201,6 +5328,85 @@ export async function getBangKeGiaCongFromSheet(): Promise<BangKeGiaCong[]> {
     return bangKeList;
   } catch (error) {
     console.error("Error reading bang ke gia cong from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm bảng kê gia công mới vào Google Sheets
+ */
+export async function addBangKeGiaCongToSheet(data: Omit<BangKeGiaCong, 'id' | 'thanhTien'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get column A to find the last row with data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat10,
+      range: `'${sheetNameBangKeGiaCong}'!A:A`,
+    });
+
+    const rows = response.data.values || [];
+    let lastDataRow = 5; // Header at row 5, data starts at row 6
+    for (let i = rows.length - 1; i >= 5; i--) {
+      if (rows[i] && rows[i][0] && rows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Calculate thanhTien
+    const thanhTien = data.soLuong * data.donGia;
+
+    // Format the new row: A-K columns
+    const newRow = [
+      data.maPGC,
+      data.ngayThang,
+      data.maSPSX,
+      data.maSP,
+      data.xuongSX,
+      data.soLuong,
+      data.donGia,
+      thanhTien,
+      data.phanLoai,
+      data.doiSoat,
+      data.ghiChu,
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetIdSanXuat10,
+      range: `'${sheetNameBangKeGiaCong}'!A${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [newRow],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error adding bang ke gia cong:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xoá bảng kê gia công từ Google Sheets
+ */
+export async function deleteBangKeGiaCongFromSheet(rowIndex: number): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const actualRow = rowIndex + 6; // Row 6 = index 0 (since data starts at row 6, header at row 5)
+
+    // Clear the row data
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdSanXuat10,
+      range: `'${sheetNameBangKeGiaCong}'!A${actualRow}:K${actualRow}`,
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting bang ke gia cong:", error);
     throw error;
   }
 }

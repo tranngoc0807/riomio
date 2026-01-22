@@ -32,13 +32,23 @@ const TABS = [
   { id: "xuong-sx" as TabType, label: "Xưởng SX", icon: Factory },
   { id: "don-gia" as TabType, label: "Đơn giá gia công", icon: Calculator },
   { id: "bang-ke" as TabType, label: "Bảng kê gia công", icon: ClipboardList },
-  { id: "phieu-gc" as TabType, label: "Phiếu gia công", icon: FileText },
+  // { id: "phieu-gc" as TabType, label: "Phiếu gia công", icon: FileText },
   { id: "cnpt-xuong" as TabType, label: "CNPT xưởng gia công", icon: Receipt },
-  { id: "theo-doi-cn" as TabType, label: "Theo dõi CN từng xưởng SX", icon: FileSearch },
+  {
+    id: "theo-doi-cn" as TabType,
+    label: "Theo dõi CN từng xưởng SX",
+    icon: FileSearch,
+  },
 ];
 
 // Placeholder component for tabs under development
-function PlaceholderTab({ title, icon: Icon }: { title: string; icon: React.ComponentType<{ size?: number; className?: string }> }) {
+function PlaceholderTab({
+  title,
+  icon: Icon,
+}: {
+  title: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+}) {
   return (
     <div className="text-center py-12 text-gray-500">
       <Icon className="mx-auto mb-4 text-gray-300" size={64} />
@@ -56,7 +66,7 @@ export default function GiaCong() {
 
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
-    const validTabs = TABS.map(t => t.id);
+    const validTabs = TABS.map((t) => t.id);
     if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
@@ -113,7 +123,12 @@ export default function GiaCong() {
           {activeTab === "bang-ke" && <BangKeGiaCongTab />}
           {activeTab === "phieu-gc" && <PhieuGiaCongTab />}
           {activeTab === "cnpt-xuong" && <CNPTXuongGiaCongTab />}
-          {activeTab === "theo-doi-cn" && <PlaceholderTab title="Theo dõi CN từng xưởng SX" icon={FileSearch} />}
+          {activeTab === "theo-doi-cn" && (
+            <PlaceholderTab
+              title="Theo dõi CN từng xưởng SX"
+              icon={FileSearch}
+            />
+          )}
         </div>
       </div>
     </div>

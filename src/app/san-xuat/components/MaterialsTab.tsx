@@ -266,6 +266,8 @@ export default function MaterialsTab() {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Nhà cung cấp</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Thông tin</th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">ĐVT</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Đơn giá chưa thuế</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">Thuế suất</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Đơn giá (có thuế)</th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">Thao tác</th>
               </tr>
@@ -279,6 +281,12 @@ export default function MaterialsTab() {
                   <td className="px-4 py-3 text-sm text-gray-600">{item.supplier || "-"}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{item.info || "-"}</td>
                   <td className="px-4 py-3 text-sm text-center text-gray-600">{item.unit}</td>
+                  <td className="px-4 py-3 text-sm text-right text-gray-900">
+                    {item.priceBeforeTax > 0 ? `${item.priceBeforeTax.toLocaleString("vi-VN")}đ` : "-"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-center text-gray-900">
+                    {item.taxRate > 0 ? `${item.taxRate}%` : "-"}
+                  </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900">
                     {item.priceWithTax > 0 ? `${item.priceWithTax.toLocaleString("vi-VN")}đ` : "-"}
                   </td>

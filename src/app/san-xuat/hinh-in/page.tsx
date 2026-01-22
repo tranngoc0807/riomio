@@ -33,15 +33,29 @@ type TabType =
 const TABS = [
   { id: "danh-muc" as TabType, label: "Danh mục HI", icon: List },
   { id: "nhap-kho" as TabType, label: "Nhập kho HI", icon: PackagePlus },
-  { id: "phieu-nhap" as TabType, label: "Phiếu nhập kho hình in", icon: FileInput },
+  // {
+  //   id: "phieu-nhap" as TabType,
+  //   label: "Phiếu nhập kho hình in",
+  //   icon: FileInput,
+  // },
   { id: "chi-phi" as TabType, label: "Chi phí HI", icon: DollarSign },
   { id: "xuat-kho" as TabType, label: "Xuất kho HI", icon: PackageMinus },
-  { id: "phieu-xuat" as TabType, label: "Phiếu xuất kho hình in", icon: FileOutput },
+  // {
+  //   id: "phieu-xuat" as TabType,
+  //   label: "Phiếu xuất kho hình in",
+  //   icon: FileOutput,
+  // },
   { id: "ton-kho" as TabType, label: "Tồn kho HI", icon: Archive },
 ];
 
 // Placeholder component for tabs under development
-function PlaceholderTab({ title, icon: Icon }: { title: string; icon: React.ComponentType<{ size?: number; className?: string }> }) {
+function PlaceholderTab({
+  title,
+  icon: Icon,
+}: {
+  title: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+}) {
   return (
     <div className="text-center py-12 text-gray-500">
       <Icon className="mx-auto mb-4 text-gray-300" size={64} />
@@ -59,8 +73,9 @@ export default function HinhIn() {
 
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
-    const validTabs = TABS.map(t => t.id);
+    const validTabs = TABS.map((t) => t.id);
     if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
     }
   }, [searchParams]);
@@ -112,10 +127,14 @@ export default function HinhIn() {
         <div className="p-6">
           {activeTab === "danh-muc" && <DanhMucHinhInTab />}
           {activeTab === "nhap-kho" && <NhapKhoHinhInTab />}
-          {activeTab === "phieu-nhap" && <PlaceholderTab title="Phiếu nhập kho hình in" icon={FileInput} />}
+          {/* {activeTab === "phieu-nhap" && (
+            <PlaceholderTab title="Phiếu nhập kho hình in" icon={FileInput} />
+          )} */}
           {activeTab === "chi-phi" && <ChiPhiHinhInTab />}
           {activeTab === "xuat-kho" && <XuatKhoHinhInTab />}
-          {activeTab === "phieu-xuat" && <PlaceholderTab title="Phiếu xuất kho hình in" icon={FileOutput} />}
+          {/* {activeTab === "phieu-xuat" && (
+            <PlaceholderTab title="Phiếu xuất kho hình in" icon={FileOutput} />
+          )} */}
           {activeTab === "ton-kho" && <TonKhoHinhInTab />}
         </div>
       </div>
