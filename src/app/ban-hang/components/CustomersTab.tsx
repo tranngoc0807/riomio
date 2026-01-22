@@ -27,6 +27,7 @@ interface Customer {
   notes: string;
   totalOrders: number;
   totalSpent: number;
+  rowIndex: number;
 }
 
 const INITIAL_CUSTOMER = {
@@ -92,6 +93,7 @@ export default function CustomersTab() {
     ...INITIAL_CUSTOMER,
     totalOrders: 0,
     totalSpent: 0,
+    rowIndex: 0,
   });
 
   const filteredCustomers = customers.filter(
@@ -125,7 +127,7 @@ export default function CustomersTab() {
   const fetchCustomers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/customers");
+      const response = await fetch("/api/khach-hang");
       const result = await response.json();
       if (result.success) {
         const mappedCustomers = result.data.map((customer: any) => ({
@@ -141,6 +143,7 @@ export default function CustomersTab() {
           notes: customer.notes || "",
           totalOrders: 0,
           totalSpent: 0,
+          rowIndex: customer.rowIndex,
         }));
         setCustomers(mappedCustomers);
       } else {
@@ -162,13 +165,10 @@ export default function CustomersTab() {
 
     setIsAdding(true);
     try {
-      const newId = Math.max(...customers.map((c) => c.id), 0) + 1;
-
-      const response = await fetch("/api/customers/add", {
+      const response = await fetch("/api/khach-hang", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: newId,
           name: newCustomer.name,
           category: CATEGORY_LABELS[newCustomer.type] || "",
           cccd: newCustomer.cccd,
@@ -185,7 +185,24 @@ export default function CustomersTab() {
         toast.success("Thêm khách hàng thành công!");
         setNewCustomer(INITIAL_CUSTOMER);
         setShowAddModal(false);
-        fetchCustomers();
+
+        // Update customers with new data from API
+        const mappedCustomers = result.data.map((customer: any) => ({
+          id: customer.id,
+          code: `KH${String(customer.id).padStart(3, "0")}`,
+          name: customer.name,
+          type: mapCategoryFromSheet(customer.category || ""),
+          cccd: customer.cccd || "",
+          phone: customer.phone || "",
+          address: customer.address || "",
+          shippingInfo: customer.shippingInfo || "",
+          birthday: customer.birthday || "",
+          notes: customer.notes || "",
+          totalOrders: 0,
+          totalSpent: 0,
+          rowIndex: customer.rowIndex,
+        }));
+        setCustomers(mappedCustomers);
       } else {
         toast.error("Lỗi: " + result.error);
       }
@@ -210,11 +227,11 @@ export default function CustomersTab() {
 
     setIsUpdating(true);
     try {
-      const response = await fetch("/api/customers/update", {
+      const response = await fetch("/api/khach-hang", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: editCustomer.id,
+          rowIndex: editCustomer.rowIndex,
           name: editCustomer.name,
           category: CATEGORY_LABELS[editCustomer.type] || "",
           cccd: editCustomer.cccd,
@@ -230,7 +247,24 @@ export default function CustomersTab() {
       if (result.success) {
         toast.success("Cập nhật khách hàng thành công!");
         setShowEditModal(false);
-        fetchCustomers();
+
+        // Update customers with new data from API
+        const mappedCustomers = result.data.map((customer: any) => ({
+          id: customer.id,
+          code: `KH${String(customer.id).padStart(3, "0")}`,
+          name: customer.name,
+          type: mapCategoryFromSheet(customer.category || ""),
+          cccd: customer.cccd || "",
+          phone: customer.phone || "",
+          address: customer.address || "",
+          shippingInfo: customer.shippingInfo || "",
+          birthday: customer.birthday || "",
+          notes: customer.notes || "",
+          totalOrders: 0,
+          totalSpent: 0,
+          rowIndex: customer.rowIndex,
+        }));
+        setCustomers(mappedCustomers);
       } else {
         toast.error("Lỗi: " + result.error);
       }
@@ -242,8 +276,8 @@ export default function CustomersTab() {
     }
   };
 
-  const handleDelete = (id: number) => {
-    setCustomerToDelete(id);
+  const handleDelete = (customer: Customer) => {
+    setCustomerToDelete(customer.rowIndex);
     setShowDeleteModal(true);
   };
 
@@ -252,7 +286,7 @@ export default function CustomersTab() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/customers/delete?id=${customerToDelete}`, {
+      const response = await fetch(`/api/khach-hang?rowIndex=${customerToDelete}`, {
         method: "DELETE",
       });
       const result = await response.json();
@@ -260,7 +294,24 @@ export default function CustomersTab() {
         toast.success("Đã xóa khách hàng!");
         setShowDeleteModal(false);
         setCustomerToDelete(null);
-        fetchCustomers();
+
+        // Update customers with new data from API
+        const mappedCustomers = result.data.map((customer: any) => ({
+          id: customer.id,
+          code: `KH${String(customer.id).padStart(3, "0")}`,
+          name: customer.name,
+          type: mapCategoryFromSheet(customer.category || ""),
+          cccd: customer.cccd || "",
+          phone: customer.phone || "",
+          address: customer.address || "",
+          shippingInfo: customer.shippingInfo || "",
+          birthday: customer.birthday || "",
+          notes: customer.notes || "",
+          totalOrders: 0,
+          totalSpent: 0,
+          rowIndex: customer.rowIndex,
+        }));
+        setCustomers(mappedCustomers);
       } else {
         toast.error("Lỗi: " + result.error);
       }
@@ -360,7 +411,7 @@ export default function CustomersTab() {
                           <Edit size={18} />
                         </button>
                         <button
-                          onClick={() => handleDelete(customer.id)}
+                          onClick={() => handleDelete(customer)}
                           className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                           title="Xóa"
                         >

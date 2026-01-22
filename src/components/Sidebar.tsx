@@ -25,6 +25,7 @@ import {
   Cog,
   PackageSearch,
   Receipt,
+  BookOpen,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -133,6 +134,32 @@ const menuItems: MenuItem[] = [
     href: "/ban-hang",
     icon: ShoppingCart,
     roles: ALL_ROLES,
+    subItems: [
+      {
+        name: "Đơn hàng",
+        href: "/ban-hang/don-hang",
+        icon: ShoppingCart,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Khách hàng",
+        href: "/ban-hang/khach-hang",
+        icon: Users,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Chương trình bán hàng",
+        href: "/ban-hang/chuong-trinh",
+        icon: FileBarChart,
+        roles: ALL_ROLES,
+      },
+      {
+        name: "Chi phí bán hàng",
+        href: "/ban-hang/chi-phi",
+        icon: Receipt,
+        roles: ALL_ROLES,
+      },
+    ],
   },
   {
     name: "Dòng tiền",
@@ -150,6 +177,12 @@ const menuItems: MenuItem[] = [
         name: "Quản lý tiền vay",
         href: "/quan-ly-tien-vay",
         icon: HandCoins,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Sổ quỹ",
+        href: "/so-quy",
+        icon: BookOpen,
         roles: FINANCIAL_ROLES,
       },
     ],
@@ -271,20 +304,20 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 h-screen overflow-y-auto bg-gradient-to-b from-blue-900 to-blue-800 text-white transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 h-screen bg-gradient-to-b from-blue-900 to-blue-800 text-white transform transition-transform duration-300 ease-in-out flex flex-col ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         <Link
           href="/"
           onClick={() => setIsOpen(false)}
-          className="block p-6 border-b border-blue-700 hover:bg-blue-700/30 transition-colors cursor-pointer"
+          className="block p-6 border-b border-blue-700 hover:bg-blue-700/30 transition-colors cursor-pointer flex-shrink-0"
         >
           <h1 className="text-xl font-bold">Riomio Shop</h1>
           <p className="text-blue-300 text-sm mt-1">Hệ thống quản lý</p>
         </Link>
 
-        <nav className="p-4 pb-32">
+        <nav className="flex-1 overflow-y-auto p-4">
           <ul className="space-y-2">
             {filteredMenuItems.map((item) => {
               const Icon = item.icon;
@@ -343,8 +376,8 @@ export default function Sidebar() {
                                         : "hover:bg-blue-700/50 text-blue-200"
                                     }`}
                                   >
-                                    <SubIcon size={18} />
-                                    <span className="font-medium">
+                                    <SubIcon size={18} className="flex-shrink-0" />
+                                    <span className="font-medium leading-tight">
                                       {subItem.name}
                                     </span>
                                   </Link>
@@ -377,7 +410,7 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom section - User Profile */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-blue-700">
+        <div className="flex-shrink-0 border-t border-blue-700">
           <div className="px-4 py-4">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}

@@ -5,6 +5,9 @@ import {
   Users,
   TrendingUp,
   Wallet,
+  FileText,
+  UserCheck,
+  DollarSign,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,13 +19,16 @@ import OrdersTab from "./components/OrdersTab";
 import ProgramsTab from "./components/ProgramsTab";
 import CongNoKHTab from "./components/CongNoKHTab";
 
-type TabType = "customers" | "orders" | "programs" | "cong-no-kh";
+type TabType = "customers" | "orders" | "programs" | "cong-no-kh" | "cnpt-kh" | "theo-doi-cong-no" | "chi-phi-ban-hang";
 
 const TABS = [
   { id: "customers" as TabType, label: "Khách hàng", icon: Users },
   { id: "orders" as TabType, label: "Đơn hàng", icon: ShoppingCart },
   { id: "programs" as TabType, label: "Chương trình bán hàng", icon: TrendingUp },
   { id: "cong-no-kh" as TabType, label: "Công nợ KH", icon: Wallet },
+  { id: "cnpt-kh" as TabType, label: "CNPT KH", icon: FileText },
+  { id: "theo-doi-cong-no" as TabType, label: "Theo dõi CN từng KH", icon: UserCheck },
+  { id: "chi-phi-ban-hang" as TabType, label: "Chi phí bán hàng", icon: DollarSign },
 ];
 
 export default function BanHang() {
@@ -34,7 +40,7 @@ export default function BanHang() {
   // Read tab from URL on mount
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
-    if (tabFromUrl && ["customers", "orders", "programs", "cong-no-kh"].includes(tabFromUrl)) {
+    if (tabFromUrl && ["customers", "orders", "programs", "cong-no-kh", "cnpt-kh", "theo-doi-cong-no", "chi-phi-ban-hang"].includes(tabFromUrl)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
     }
@@ -94,6 +100,33 @@ export default function BanHang() {
           {activeTab === "orders" && <OrdersTab />}
           {activeTab === "programs" && <ProgramsTab />}
           {activeTab === "cong-no-kh" && <CongNoKHTab />}
+
+          {/* CNPT KH Tab */}
+          {activeTab === "cnpt-kh" && (
+            <div className="text-center py-16">
+              <FileText className="mx-auto text-gray-300 mb-4" size={64} />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Đang phát triển</h3>
+              <p className="text-gray-500">Tính năng CNPT KH đang được xây dựng</p>
+            </div>
+          )}
+
+          {/* Theo dõi công nợ từng KH Tab */}
+          {activeTab === "theo-doi-cong-no" && (
+            <div className="text-center py-16">
+              <UserCheck className="mx-auto text-gray-300 mb-4" size={64} />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Đang phát triển</h3>
+              <p className="text-gray-500">Tính năng theo dõi công nợ từng khách hàng đang được xây dựng</p>
+            </div>
+          )}
+
+          {/* Chi phí bán hàng Tab */}
+          {activeTab === "chi-phi-ban-hang" && (
+            <div className="text-center py-16">
+              <DollarSign className="mx-auto text-gray-300 mb-4" size={64} />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Đang phát triển</h3>
+              <p className="text-gray-500">Tính năng chi phí bán hàng đang được xây dựng</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

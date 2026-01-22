@@ -16,11 +16,14 @@ import {
   List,
   ShoppingBag,
   Image as ImageIcon,
+  Warehouse,
+  DollarSign,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
 import toast, { Toaster } from "react-hot-toast";
+import QuanLyKhoTab from "./components/QuanLyKhoTab";
 
 // Types - khớp với Google Sheets PhatTrienSanPham
 interface SanPham {
@@ -97,19 +100,32 @@ export default function SanPhamPage() {
 
   // Tab state - read from URL param
   const tabParam = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState<"phat-trien" | "danh-muc">(
-    tabParam === "danh-muc" ? "danh-muc" : "phat-trien"
+  const [activeTab, setActiveTab] = useState<"phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von">(
+    tabParam === "danh-muc"
+      ? "danh-muc"
+      : tabParam === "quan-ly-kho"
+      ? "quan-ly-kho"
+      : tabParam === "dieu-chinh-gia-von"
+      ? "dieu-chinh-gia-von"
+      : "phat-trien"
   );
 
   // Handle tab change with URL update
-  const handleTabChange = (tab: "phat-trien" | "danh-muc") => {
+  const handleTabChange = (tab: "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von") => {
     setActiveTab(tab);
     router.push(`/san-pham?tab=${tab}`, { scroll: false });
   };
 
   // Sync tab state when URL param changes (browser back/forward)
   useEffect(() => {
-    const newTab = tabParam === "danh-muc" ? "danh-muc" : "phat-trien";
+    const newTab =
+      tabParam === "danh-muc"
+        ? "danh-muc"
+        : tabParam === "quan-ly-kho"
+        ? "quan-ly-kho"
+        : tabParam === "dieu-chinh-gia-von"
+        ? "dieu-chinh-gia-von"
+        : "phat-trien";
     setActiveTab(newTab);
   }, [tabParam]);
 
@@ -587,6 +603,28 @@ export default function SanPhamPage() {
             <ShoppingBag size={18} />
             Danh mục sản phẩm
           </button>
+          <button
+            onClick={() => handleTabChange("quan-ly-kho")}
+            className={`flex items-center gap-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === "quan-ly-kho"
+                ? "border-purple-600 text-purple-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <Warehouse size={18} />
+            Quản lý kho
+          </button>
+          <button
+            onClick={() => handleTabChange("dieu-chinh-gia-von")}
+            className={`flex items-center gap-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === "dieu-chinh-gia-von"
+                ? "border-purple-600 text-purple-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <DollarSign size={18} />
+            Điều chỉnh giá vốn
+          </button>
         </nav>
       </div>
 
@@ -918,15 +956,13 @@ export default function SanPhamPage() {
                           <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Màu sắc</th>
                           <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá lẻ</th>
                           <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá sỉ</th>
-                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá vốn</th>
-                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">SL KH</th>
                           <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {paginatedCatalogProducts.length === 0 ? (
                           <tr>
-                            <td colSpan={9} className="px-3 py-8 text-center text-gray-500">
+                            <td colSpan={7} className="px-3 py-8 text-center text-gray-500">
                               {catalogSearchTerm ? "Không tìm thấy sản phẩm phù hợp" : "Chưa có dữ liệu sản phẩm"}
                             </td>
                           </tr>
@@ -957,8 +993,6 @@ export default function SanPhamPage() {
                               <td className="px-3 py-3 text-sm text-gray-600">{product.color || "-"}</td>
                               <td className="px-3 py-3 text-sm text-right font-medium text-green-600">{formatPrice(product.retailPrice)}</td>
                               <td className="px-3 py-3 text-sm text-right text-gray-600">{formatPrice(product.wholesalePrice)}</td>
-                              <td className="px-3 py-3 text-sm text-right text-gray-600">{formatPrice(product.costPrice)}</td>
-                              <td className="px-3 py-3 text-sm text-center text-gray-600">{product.plannedQuantity || 0}</td>
                               <td className="px-3 py-3">
                                 <div className="flex items-center justify-center gap-1">
                                   <button
@@ -2265,6 +2299,39 @@ export default function SanPhamPage() {
             </div>
           </div>
         </Portal>
+      )}
+
+      {/* ======== TAB: QUẢN LÝ KHO ======== */}
+      {activeTab === "quan-ly-kho" && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="p-6">
+            <QuanLyKhoTab />
+          </div>
+        </div>
+      )}
+
+      {/* ======== TAB: ĐIỀU CHỈNH GIÁ VỐN ======== */}
+      {activeTab === "dieu-chinh-gia-von" && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-green-100 p-3 rounded-lg">
+                <DollarSign className="text-green-600" size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Điều chỉnh giá vốn</h2>
+                <p className="text-sm text-gray-500">Cập nhật và điều chỉnh giá vốn sản phẩm</p>
+              </div>
+            </div>
+
+            {/* Coming soon placeholder */}
+            <div className="text-center py-16">
+              <DollarSign className="mx-auto text-gray-300 mb-4" size={64} />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Đang phát triển</h3>
+              <p className="text-gray-500">Tính năng điều chỉnh giá vốn đang được xây dựng</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
