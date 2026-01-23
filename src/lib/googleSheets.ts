@@ -790,6 +790,403 @@ export async function getCongNoDetailFromSheet(): Promise<CongNoDetailData> {
 }
 
 // ============================================
+// CASH FLOW (Dòng tiền)
+// ============================================
+
+const spreadsheetIdDongTien = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN || "1a8ebfB2KVQvrNYqoP5MNnn_gXhhxVH_8sJalPcNpMC8";
+const sheetNameDongTien = process.env.GOOGLE_SHEET_NAME_DONG_TIEN || "Dòng tiền";
+const sheetNameTaiKhoanDongTien = process.env.GOOGLE_SHEET_NAME_TAI_KHOAN || "Thông tin tài khoản";
+
+// Interface cho dòng tiền
+export interface DongTien {
+  id: number;
+  ngayThang: string;         // A - Ngày tháng
+  tenTK: string;             // B - Tên TK
+  nccNPL: string;            // C - NCC NPL
+  xuongSX: string;           // D - Xưởng SX
+  chiVanChuyen: string;      // E - Chi vận chuyển
+  thuTienHang: string;       // F - Thu tiền hàng
+  thuKhac: number;           // G - Thu khác
+  chiKhac: number;           // H - Chi khác
+  doiTuong: string;          // I - Đối tượng
+  noiDung: string;           // J - Nội dung
+  phanLoaiThuChi: string;    // K - Phân loại thu chi
+  tongThu: number;           // L - Tổng thu
+  tongChi: number;           // M - Tổng chi
+  ghiChu: string;            // N - Ghi chú
+  rowIndex: number;          // Actual row number in sheet
+}
+
+/**
+ * Đọc dữ liệu dòng tiền từ Google Sheets
+ * Sheet: Dòng tiền
+ * Row 5: Header
+ * Data starts at row 6
+ */
+export async function getDongTienFromSheet(): Promise<DongTien[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameDongTien}'!A6:N`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No cash flow data found in sheet.");
+      return [];
+    }
+
+    const dongTienList: DongTien[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngayThang: row[0] || "",
+        tenTK: row[1] || "",
+        nccNPL: row[2] || "",
+        xuongSX: row[3] || "",
+        chiVanChuyen: row[4] || "",
+        thuTienHang: row[5] || "",
+        thuKhac: parseFloat(String(row[6]).replace(/\./g, "").replace(",", ".")) || 0,
+        chiKhac: parseFloat(String(row[7]).replace(/\./g, "").replace(",", ".")) || 0,
+        doiTuong: row[8] || "",
+        noiDung: row[9] || "",
+        phanLoaiThuChi: row[10] || "",
+        tongThu: parseFloat(String(row[11]).replace(/\./g, "").replace(",", ".")) || 0,
+        tongChi: parseFloat(String(row[12]).replace(/\./g, "").replace(",", ".")) || 0,
+        ghiChu: row[13] || "",
+        rowIndex: index + 6, // Row 6 is first data row
+      }))
+      .filter((item) => item.ngayThang.trim() !== "");
+
+    return dongTienList;
+  } catch (error) {
+    console.error("Error reading cash flow from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm dòng tiền mới vào Google Sheets
+ */
+export async function addDongTienToSheet(dongTien: Omit<DongTien, 'id' | 'rowIndex'>): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const values = [
+      [
+        dongTien.ngayThang,
+        dongTien.tenTK,
+        dongTien.nccNPL,
+        dongTien.xuongSX,
+        dongTien.chiVanChuyen,
+        dongTien.thuTienHang,
+        dongTien.thuKhac,
+        dongTien.chiKhac,
+        dongTien.doiTuong,
+        dongTien.noiDung,
+        dongTien.phanLoaiThuChi,
+        dongTien.tongThu,
+        dongTien.tongChi,
+        dongTien.ghiChu,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameDongTien}'!A6:N`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added cash flow entry`);
+  } catch (error) {
+    console.error("Error adding cash flow to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật dòng tiền trong Google Sheets
+ */
+export async function updateDongTienInSheet(rowIndex: number, dongTien: Omit<DongTien, 'id' | 'rowIndex'>): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const values = [
+      [
+        dongTien.ngayThang,
+        dongTien.tenTK,
+        dongTien.nccNPL,
+        dongTien.xuongSX,
+        dongTien.chiVanChuyen,
+        dongTien.thuTienHang,
+        dongTien.thuKhac,
+        dongTien.chiKhac,
+        dongTien.doiTuong,
+        dongTien.noiDung,
+        dongTien.phanLoaiThuChi,
+        dongTien.tongThu,
+        dongTien.tongChi,
+        dongTien.ghiChu,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameDongTien}'!A${rowIndex}:N${rowIndex}`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated cash flow at row ${rowIndex}`);
+  } catch (error) {
+    console.error("Error updating cash flow in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa dòng tiền khỏi Google Sheets (clear row content)
+ */
+export async function deleteDongTienFromSheet(rowIndex: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameDongTien}'!A${rowIndex}:N${rowIndex}`,
+    });
+
+    console.log(`Successfully cleared cash flow data at row ${rowIndex}`);
+  } catch (error) {
+    console.error("Error deleting cash flow from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy danh sách tài khoản từ sheet "Thông tin tài khoản"
+ * Header ở row 5, data từ row 6, cột B (Tên TK)
+ */
+export async function getTaiKhoanOptionsFromSheet(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameTaiKhoanDongTien}'!B6:B`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No account data found in sheet.");
+      return [];
+    }
+
+    // Lọc các giá trị không rỗng và loại bỏ trùng lặp
+    const uniqueAccounts = Array.from(new Set(
+      rows
+        .map(row => row[0])
+        .filter(value => value && value.trim() !== "")
+    ));
+
+    return uniqueAccounts;
+  } catch (error) {
+    console.error("Error fetching accounts from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy danh sách phân loại thu chi từ sheet "Phân loại thu, chi"
+ * Header ở row 5, data từ row 6, cột C (Nội dung)
+ */
+export async function getPhanLoaiThuChiOptionsFromSheet(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNamePhanLoaiThuChi}'!C6:C`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No category data found in sheet.");
+      return [];
+    }
+
+    // Lọc các giá trị không rỗng và loại bỏ trùng lặp
+    const uniqueCategories = Array.from(new Set(
+      rows
+        .map(row => row[0])
+        .filter(value => value && value.trim() !== "")
+    ));
+
+    return uniqueCategories;
+  } catch (error) {
+    console.error("Error fetching categories from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy danh sách NCC NPL từ sheet "NCC NPL"
+ * Header ở row 2, data từ row 3, cột B (Tên NCC)
+ */
+export async function getNCCNPLOptionsFromSheet(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const spreadsheetIdNCC = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+    const sheetNameNCC = process.env.GOOGLE_SHEET_NAME_DON_HANG_NCCNPL || "NCC NPL";
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNCC,
+      range: `'${sheetNameNCC}'!B6:B`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No NCC NPL data found in sheet.");
+      return [];
+    }
+
+    // Lọc các giá trị không rỗng và loại bỏ trùng lặp
+    const uniqueNCCs = Array.from(new Set(
+      rows
+        .map(row => row[0])
+        .filter(value => value && value.trim() !== "")
+    ));
+
+    return uniqueNCCs;
+  } catch (error) {
+    console.error("Error fetching NCC NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy danh sách Xưởng SX từ sheet "Xưởng SX"
+ * Header ở row 5, data từ row 6, cột B (Tên xưởng)
+ */
+export async function getXuongSXOptionsFromSheet(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const spreadsheetIdXuongSX = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+    const sheetNameXuongSX = process.env.GOOGLE_SHEET_NAME_XUONG_SAN_XUAT || "Xưởng SX";
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdXuongSX,
+      range: `'${sheetNameXuongSX}'!B6:B`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No Xuong SX data found in sheet.");
+      return [];
+    }
+
+    // Lọc các giá trị không rỗng và loại bỏ trùng lặp
+    const uniqueXuongs = Array.from(new Set(
+      rows
+        .map(row => row[0])
+        .filter(value => value && value.trim() !== "")
+    ));
+
+    return uniqueXuongs;
+  } catch (error) {
+    console.error("Error fetching Xuong SX from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy danh sách Đối tác vận chuyển từ sheet "Đối tác vận chuyển"
+ * Header ở row 5, data từ row 6, cột B (Đối tác vận chuyển)
+ */
+export async function getVanChuyenOptionsFromSheet(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const spreadsheetIdVanChuyen = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN;
+    const sheetNameVanChuyen = process.env.GOOGLE_SHEET_NAME_VAN_CHUYEN || "Đối tác vận chuyển";
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdVanChuyen,
+      range: `'${sheetNameVanChuyen}'!B6:B`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No Van Chuyen data found in sheet.");
+      return [];
+    }
+
+    // Lọc các giá trị không rỗng và loại bỏ trùng lặp
+    const uniqueVanChuyens = Array.from(new Set(
+      rows
+        .map(row => row[0])
+        .filter(value => value && value.trim() !== "")
+    ));
+
+    return uniqueVanChuyens;
+  } catch (error) {
+    console.error("Error fetching Van Chuyen from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy mapping giữa Xưởng SX và Đối tượng từ sheet "Xưởng SX"
+ * Trả về object với key là tên xưởng, value là đối tượng tương ứng
+ */
+export async function getXuongSXToDoiTuongMapping(): Promise<Record<string, string>> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const spreadsheetIdXuongSX = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+    const sheetNameXuongSX = process.env.GOOGLE_SHEET_NAME_XUONG_SAN_XUAT || "Xưởng SX";
+
+    // Lấy cả cột B (Tên xưởng) và cột C (Đối tượng) - giả sử Đối tượng ở cột C
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdXuongSX,
+      range: `'${sheetNameXuongSX}'!B6:C`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No Xuong SX mapping data found in sheet.");
+      return {};
+    }
+
+    // Tạo mapping object
+    const mapping: Record<string, string> = {};
+    rows.forEach((row) => {
+      const xuongName = row[0]; // Cột B
+      const doiTuong = row[1];  // Cột C
+      if (xuongName && xuongName.trim() !== "") {
+        mapping[xuongName] = doiTuong || "";
+      }
+    });
+
+    return mapping;
+  } catch (error) {
+    console.error("Error fetching Xuong SX to Doi Tuong mapping from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // SALES PROGRAM MANAGEMENT (Quản lý chương trình bán hàng)
 // ============================================
 
@@ -1894,7 +2291,7 @@ export async function deleteMaterialFromSheet(materialId: number): Promise<void>
 // PHÂN LOẠI THU CHI (Categories for Thu Chi)
 // ============================================
 
-const sheetNamePhanLoaiThuChi = process.env.GOOGLE_SHEET_NAME_PHAN_LOAI_THU_CHI || "PhanLoaiThuChi";
+const sheetNamePhanLoaiThuChi = process.env.GOOGLE_SHEET_NAME_PHAN_LOAI_THU_CHI_RIOMIO || "Phân loại thu, chi";
 
 // Interface cho phân loại thu chi
 export interface PhanLoaiThuChi {

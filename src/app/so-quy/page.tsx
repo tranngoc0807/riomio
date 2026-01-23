@@ -9,6 +9,7 @@ import {
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
+import DongTienTab from "./components/DongTienTab";
 
 type TabType = "phieu-thu" | "phieu-chi" | "so-quy";
 
@@ -125,18 +126,7 @@ export default function SoQuy() {
           )}
 
           {/* Sổ quỹ Tab */}
-          {activeTab === "so-quy" && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Sổ quỹ tổng hợp</h3>
-              </div>
-              <div className="text-center py-16">
-                <BookOpen className="mx-auto text-gray-300 mb-4" size={64} />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">Đang phát triển</h3>
-                <p className="text-gray-500">Tính năng Sổ quỹ đang được xây dựng</p>
-              </div>
-            </div>
-          )}
+          {activeTab === "so-quy" && <DongTienTab />}
         </div>
       </div>
     </div>
