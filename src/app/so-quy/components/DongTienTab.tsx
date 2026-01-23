@@ -230,13 +230,13 @@ export default function DongTienTab() {
       xuongSX: item.xuongSX,
       chiVanChuyen: item.chiVanChuyen,
       thuTienHang: item.thuTienHang,
-      thuKhac: item.thuKhac,
-      chiKhac: item.chiKhac,
+      thuKhac: String(item.thuKhac || ""),
+      chiKhac: String(item.chiKhac || ""),
       doiTuong: item.doiTuong,
       noiDung: item.noiDung,
       phanLoaiThuChi: item.phanLoaiThuChi,
-      tongThu: item.tongThu,
-      tongChi: item.tongChi,
+      tongThu: String(item.tongThu || ""),
+      tongChi: String(item.tongChi || ""),
       ghiChu: item.ghiChu,
     });
     setShowModal(true);

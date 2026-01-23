@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       shippingInfo: body.shippingInfo || "",
       birthday: body.birthday || "",
       notes: body.notes || "",
+      rowIndex: 0, // Will be assigned when added to sheet
     };
 
     await addCustomerToSheet(customer);

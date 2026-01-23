@@ -45,18 +45,21 @@ interface Loan {
 }
 
 
-// Google Sheets loan interface
+// Google Sheets loan interface - matches new structure
 interface GoogleSheetsLoan {
   id: number;
-  code: string;
-  lender: string;
-  amount: number;
-  remaining: number;
-  interestRate: string;
-  interestType: string;
-  monthlyInterest: number;
-  dueDate: string;
-  status: string;
+  code: string;                    // A - Mã món vay
+  lender: string;                  // B - Người cho vay
+  category: string;                // C - Phân loại
+  maturityDate: string;            // D - Ngày đáo hạn
+  principalAmount: number;         // E - Số tiền vay gốc ban đầu
+  initialInterestRate: string;     // F - Lãi suất ban đầu
+  interestType: string;            // G - Loại lãi suất
+  interestPaymentDate: string;     // H - Ngày trả lãi quy định
+  paymentTerm: string;             // I - Kỳ hạn trả lãi
+  status: string;                  // J - Trạng thái
+  disbursementDate: string;        // K - Ngày giải ngân
+  purpose: string;                 // L - Mục đích vay
 }
 
 // Map Google Sheets status to app status
@@ -77,25 +80,37 @@ const mapLoanType = (interestType: string, lender: string): Loan["type"] => {
 };
 
 // Parse interest rate string (e.g., "12,0%" -> 12.0)
-const parseInterestRate = (rate: string): number => {
+const parseInterestRate = (rate: string | undefined): number => {
+  if (!rate) return 0;
   const cleaned = rate.replace(/[%,]/g, ".").replace(/\s/g, "");
   return parseFloat(cleaned) || 0;
 };
 
-// Convert Google Sheets loan to app loan
-const convertGoogleSheetsLoan = (sheetLoan: GoogleSheetsLoan): Loan => {
+// Convert Google Sheets loan to app loan - keeping all original fields
+const convertGoogleSheetsLoan = (sheetLoan: GoogleSheetsLoan): any => {
   return {
+    // Use code as the primary id (string) for the Loan interface
     id: sheetLoan.code,
+    code: sheetLoan.code,
     lender: sheetLoan.lender,
-    type: mapLoanType(sheetLoan.interestType, sheetLoan.lender),
-    principal: sheetLoan.amount || sheetLoan.remaining, // Use amount as principal, fallback to remaining
-    interestRate: parseInterestRate(sheetLoan.interestRate),
-    startDate: "", // Not available from Google Sheets
-    endDate: sheetLoan.dueDate || "",
-    monthlyPayment: sheetLoan.monthlyInterest,
-    remainingPrincipal: sheetLoan.remaining,
+    category: sheetLoan.category,
+    maturityDate: sheetLoan.maturityDate,
+    principalAmount: sheetLoan.principalAmount,
+    initialInterestRate: sheetLoan.initialInterestRate,
+    interestType: sheetLoan.interestType,
+    interestPaymentDate: sheetLoan.interestPaymentDate,
+    paymentTerm: sheetLoan.paymentTerm,
+    disbursementDate: sheetLoan.disbursementDate,
+    purpose: sheetLoan.purpose,
+    // Mapped fields for compatibility
+    type: mapLoanType(sheetLoan.interestType, sheetLoan.category),
+    principal: sheetLoan.principalAmount,
+    interestRate: parseInterestRate(sheetLoan.initialInterestRate),
+    startDate: sheetLoan.disbursementDate || "",
+    endDate: sheetLoan.maturityDate || "",
+    monthlyPayment: 0,
+    remainingPrincipal: sheetLoan.principalAmount,
     status: mapStatus(sheetLoan.status),
-    purpose: sheetLoan.interestType, // Use interest type as purpose
     notes: undefined,
   };
 };
@@ -709,40 +724,58 @@ export default function QuanLyTienVay() {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã vay</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bên cho vay</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Loại</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Dư nợ gốc</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Lãi suất</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Lãi phải trả/tháng</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã món vay</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Người cho vay</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Phân loại</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày đáo hạn</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Số tiền vay gốc</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Lãi suất ban đầu</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Loại lãi suất</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày trả lãi</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kỳ hạn trả lãi</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày giải ngân</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mục đích vay</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {filteredLoans.map((loan) => (
-                      <tr key={loan.id} className="hover:bg-gray-50">
+                      {filteredLoans.map((loan: any) => (
+                      <tr key={loan.code} className="hover:bg-gray-50">
                         <td className="px-4 py-4">
-                          <span className="font-medium text-blue-600">{loan.id}</span>
+                          <span className="font-medium text-blue-600">{loan.code}</span>
                         </td>
                         <td className="px-4 py-4">
-                          <div>
-                            <span className="font-medium text-gray-900">{loan.lender}</span>
-                            <p className="text-sm text-gray-500">{loan.purpose}</p>
-                          </div>
+                          <span className="text-gray-900">{loan.lender}</span>
                         </td>
-                        <td className="px-4 py-4 text-center">{getTypeBadge(loan.type)}</td>
-                        <td className="px-4 py-4 text-right font-medium text-gray-900">{formatCurrency(loan.remainingPrincipal)}</td>
-                        <td className="px-4 py-4 text-right">
-                          <span className="flex items-center justify-end gap-1 text-gray-600">
-                            <Percent className="w-3 h-3" />
-                            {loan.interestRate}%/năm
-                          </span>
+                        <td className="px-4 py-4">
+                          <span className="text-gray-900">{loan.category || "-"}</span>
                         </td>
-                        <td className="px-4 py-4 text-right">
-                          <span className="font-medium text-orange-600">{formatCurrency(loan.monthlyPayment)}</span>
+                        <td className="px-4 py-4">
+                          <span className="text-gray-900">{loan.maturityDate || "-"}</span>
+                        </td>
+                        <td className="px-4 py-4 text-right font-medium text-gray-900">
+                          {formatCurrency(loan.principalAmount)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-gray-900">{loan.initialInterestRate || "-"}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-gray-900">{loan.interestType || "-"}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-gray-900">{loan.interestPaymentDate || "-"}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-gray-900">{loan.paymentTerm || "-"}</span>
                         </td>
                         <td className="px-4 py-4 text-center">{getStatusBadge(loan.status)}</td>
+                        <td className="px-4 py-4">
+                          <span className="text-gray-900">{loan.disbursementDate || "-"}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-gray-900">{loan.purpose || "-"}</span>
+                        </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center justify-center gap-1">
                             <button

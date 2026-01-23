@@ -376,7 +376,7 @@ export default function Sidebar() {
                                         : "hover:bg-blue-700/50 text-blue-200"
                                     }`}
                                   >
-                                    <SubIcon size={18} className="flex-shrink-0" />
+                                    <SubIcon size={18} />
                                     <span className="font-medium leading-tight">
                                       {subItem.name}
                                     </span>

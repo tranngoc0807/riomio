@@ -30,8 +30,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const customer: Customer = {
-      id: body.id,
+    const rowIndex = body.rowIndex;
+    if (!rowIndex) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Row index is required for update",
+        },
+        { status: 400 }
+      );
+    }
+
+    const customer = {
       name: body.name,
       category: body.category || "",
       cccd: body.cccd || "",
@@ -42,12 +52,12 @@ export async function PUT(request: NextRequest) {
       notes: body.notes || "",
     };
 
-    await updateCustomerInSheet(customer);
+    await updateCustomerInSheet(rowIndex, customer);
 
     return NextResponse.json({
       success: true,
       message: "Customer updated successfully",
-      data: customer,
+      data: { ...customer, id: body.id, rowIndex },
     });
   } catch (error: any) {
     console.error("Error updating customer:", error);

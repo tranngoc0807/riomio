@@ -1224,6 +1224,133 @@ export async function getKhachHangOptionsFromSheet(): Promise<string[]> {
 }
 
 // ============================================
+// ACCOUNT MANAGEMENT (Quản lý tài khoản)
+// ============================================
+
+// Interface cho tài khoản
+export interface TaiKhoan {
+  id: number;
+  taiKhoan: string;      // B - Tên tài khoản
+  rowIndex: number;      // Actual row number in sheet
+}
+
+/**
+ * Đọc danh sách tài khoản từ Google Sheets
+ * Sheet: Thông tin tài khoản
+ * Row 5: Header
+ * Data starts at row 6
+ */
+export async function getTaiKhoanListFromSheet(): Promise<TaiKhoan[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameTaiKhoanDongTien}'!B6:B`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No account data found in sheet.");
+      return [];
+    }
+
+    const taiKhoanList: TaiKhoan[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        taiKhoan: row[0] || "",
+        rowIndex: index + 6, // Row 6 is first data row
+      }))
+      .filter((item) => item.taiKhoan.trim() !== "");
+
+    return taiKhoanList;
+  } catch (error) {
+    console.error("Error reading accounts from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm tài khoản mới vào Google Sheets
+ */
+export async function addTaiKhoanToSheet(taiKhoan: Omit<TaiKhoan, 'id' | 'rowIndex'>): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const values = [
+      [
+        "", // Column A (STT) - leave empty, will be auto-numbered in sheet if needed
+        taiKhoan.taiKhoan,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameTaiKhoanDongTien}'!A6:B`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added account: ${taiKhoan.taiKhoan}`);
+  } catch (error) {
+    console.error("Error adding account to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật tài khoản trong Google Sheets
+ */
+export async function updateTaiKhoanInSheet(rowIndex: number, taiKhoan: Omit<TaiKhoan, 'id' | 'rowIndex'>): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const values = [
+      [
+        "", // Column A (STT) - keep as is
+        taiKhoan.taiKhoan,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameTaiKhoanDongTien}'!A${rowIndex}:B${rowIndex}`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated account at row ${rowIndex}`);
+  } catch (error) {
+    console.error("Error updating account in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa tài khoản khỏi Google Sheets (clear row content)
+ */
+export async function deleteTaiKhoanFromSheet(rowIndex: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameTaiKhoanDongTien}'!A${rowIndex}:B${rowIndex}`,
+    });
+
+    console.log(`Successfully cleared account data at row ${rowIndex}`);
+  } catch (error) {
+    console.error("Error deleting account from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // SALES PROGRAM MANAGEMENT (Quản lý chương trình bán hàng)
 // ============================================
 
@@ -3012,29 +3139,35 @@ export async function deleteKeHoachSXFromSheet(keHoachId: number): Promise<void>
 // LOAN MANAGEMENT (Quản lý khoản vay)
 // ============================================
 
-const spreadsheetIdKhoanVay = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
-const sheetNameKhoanVay = process.env.GOOGLE_SHEET_NAME_KHOAN_VAY || "KhoanVay";
+const spreadsheetIdKhoanVay = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN || "1a8ebfB2KVQvrNYqoP5MNnn_gXhhxVH_8sJalPcNpMC8";
+const sheetNameKhoanVay = process.env.GOOGLE_SHEET_NAME_DANH_SACH_MON_VAY || "Danh sách món vay";
 
 // Interface cho khoản vay
 export interface Loan {
   id: number;
-  code: string;
-  lender: string;
-  amount: number;
-  remaining: number;
-  interestRate: string;
-  interestType: string;
-  monthlyInterest: number;
-  dueDate: string;
-  status: string;
+  code: string;                    // A - Mã món vay
+  lender: string;                  // B - Người cho vay
+  category: string;                // C - Phân loại
+  maturityDate: string;            // D - Ngày đáo hạn
+  principalAmount: number;         // E - Số tiền vay gốc ban đầu
+  initialInterestRate: string;     // F - Lãi suất ban đầu
+  interestType: string;            // G - Loại lãi suất
+  interestPaymentDate: string;     // H - Ngày trả lãi quy định
+  paymentTerm: string;             // I - Kỳ hạn trả lãi
+  status: string;                  // J - Trạng thái
+  disbursementDate: string;        // K - Ngày giải ngân
+  purpose: string;                 // L - Mục đích vay
 }
 
 /**
  * Đọc danh sách khoản vay từ Google Sheets
- * Sheet: KhoanVay
- * Cột A: Mã món vay, B: Chủ nợ, C: Dư nợ gốc hiện tại, D: Lãi suất,
- * E: Kiểu tính lãi, F: Góc tính lãi, G: Dư tinh tiền lãi phải trả tháng này,
- * H: Ngày đến hạn trả lãi, I: Trạng thái
+ * Sheet: Danh sách món vay
+ * Row 5: Headers
+ * Data starts at row 6
+ * Cột A: Mã món vay, B: Người cho vay, C: Phân loại, D: Ngày đáo hạn,
+ * E: Số tiền vay gốc ban đầu, F: Lãi suất ban đầu, G: Loại lãi suất,
+ * H: Ngày trả lãi quy định, I: Kỳ hạn trả lãi, J: Trạng thái,
+ * K: Ngày giải ngân, L: Mục đích vay
  */
 export async function getLoansFromSheet(): Promise<Loan[]> {
   try {
@@ -3042,7 +3175,7 @@ export async function getLoansFromSheet(): Promise<Loan[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKhoanVay,
-      range: `${sheetNameKhoanVay}!A2:I`, // Đọc từ dòng 2, cột A đến I
+      range: `'${sheetNameKhoanVay}'!A6:L`, // Đọc từ dòng 6, cột A đến L
     });
 
     const rows = response.data.values;
@@ -3055,15 +3188,18 @@ export async function getLoansFromSheet(): Promise<Loan[]> {
     const loans: Loan[] = rows
       .map((row, index) => ({
         id: index + 1,
-        code: row[0] || "",
-        lender: row[1] || "",
-        remaining: parseFloat(row[2]?.replace(/[,\.]/g, "") || "0"),
-        interestRate: row[3] || "",
-        interestType: row[4] || "",
-        amount: parseFloat(row[5]?.replace(/[,\.]/g, "") || "0"),
-        monthlyInterest: parseFloat(row[6]?.replace(/[,\.]/g, "") || "0"),
-        dueDate: row[7] || "",
-        status: row[8] || "",
+        code: row[0] || "",                                              // A - Mã món vay
+        lender: row[1] || "",                                            // B - Người cho vay
+        category: row[2] || "",                                          // C - Phân loại
+        maturityDate: row[3] || "",                                      // D - Ngày đáo hạn
+        principalAmount: parseFloat(row[4]?.replace(/[,\.]/g, "") || "0"), // E - Số tiền vay gốc
+        initialInterestRate: row[5] || "",                               // F - Lãi suất ban đầu
+        interestType: row[6] || "",                                      // G - Loại lãi suất
+        interestPaymentDate: row[7] || "",                               // H - Ngày trả lãi quy định
+        paymentTerm: row[8] || "",                                       // I - Kỳ hạn trả lãi
+        status: row[9] || "",                                            // J - Trạng thái
+        disbursementDate: row[10] || "",                                 // K - Ngày giải ngân
+        purpose: row[11] || "",                                          // L - Mục đích vay
       }))
       .filter((loan) => loan.code.trim() !== "");
 
@@ -3103,25 +3239,28 @@ export async function addLoanToSheet(loan: Loan): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Ghi data vào cột A-I (append vào cuối sheet)
+    // Ghi data vào cột A-L (append vào cuối sheet)
     // Format numbers with dots as thousand separators for Vietnamese format
     const values = [
       [
-        loan.code,
-        loan.lender,
-        formatNumberVN(loan.remaining),
-        loan.interestRate,
-        loan.interestType,
-        formatNumberVN(loan.amount),
-        formatNumberVN(loan.monthlyInterest),
-        loan.dueDate,
-        loan.status,
+        loan.code,                                 // A - Mã món vay
+        loan.lender,                              // B - Người cho vay
+        loan.category,                            // C - Phân loại
+        loan.maturityDate,                        // D - Ngày đáo hạn
+        formatNumberVN(loan.principalAmount),     // E - Số tiền vay gốc
+        loan.initialInterestRate,                 // F - Lãi suất ban đầu
+        loan.interestType,                        // G - Loại lãi suất
+        loan.interestPaymentDate,                 // H - Ngày trả lãi quy định
+        loan.paymentTerm,                         // I - Kỳ hạn trả lãi
+        loan.status,                              // J - Trạng thái
+        loan.disbursementDate,                    // K - Ngày giải ngân
+        loan.purpose,                             // L - Mục đích vay
       ],
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: spreadsheetIdKhoanVay,
-      range: `${sheetNameKhoanVay}!A:I`,
+      range: `'${sheetNameKhoanVay}'!A6:L`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -3145,16 +3284,16 @@ export async function updateLoanInSheet(loan: Loan): Promise<void> {
     // Tìm row number dựa trên code
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKhoanVay,
-      range: `${sheetNameKhoanVay}!A:A`,
+      range: `'${sheetNameKhoanVay}'!A6:A`,
     });
 
     const rows = response.data.values || [];
     let rowNumber = -1;
 
-    // Tìm row có code khớp (bắt đầu từ row 2 vì row 1 là header)
-    for (let i = 1; i < rows.length; i++) {
+    // Tìm row có code khớp (data bắt đầu từ row 6)
+    for (let i = 0; i < rows.length; i++) {
       if (rows[i][0] === loan.code) {
-        rowNumber = i + 1; // +1 vì Google Sheets bắt đầu từ 1
+        rowNumber = i + 6; // +6 vì data bắt đầu từ row 6
         break;
       }
     }
@@ -3163,25 +3302,28 @@ export async function updateLoanInSheet(loan: Loan): Promise<void> {
       throw new Error(`Loan with code ${loan.code} not found`);
     }
 
-    // Cập nhật cột A-I
+    // Cập nhật cột A-L
     // Format numbers with dots as thousand separators for Vietnamese format
     const values = [
       [
-        loan.code,
-        loan.lender,
-        formatNumberVN(loan.remaining),
-        loan.interestRate,
-        loan.interestType,
-        formatNumberVN(loan.amount),
-        formatNumberVN(loan.monthlyInterest),
-        loan.dueDate,
-        loan.status,
+        loan.code,                                 // A - Mã món vay
+        loan.lender,                              // B - Người cho vay
+        loan.category,                            // C - Phân loại
+        loan.maturityDate,                        // D - Ngày đáo hạn
+        formatNumberVN(loan.principalAmount),     // E - Số tiền vay gốc
+        loan.initialInterestRate,                 // F - Lãi suất ban đầu
+        loan.interestType,                        // G - Loại lãi suất
+        loan.interestPaymentDate,                 // H - Ngày trả lãi quy định
+        loan.paymentTerm,                         // I - Kỳ hạn trả lãi
+        loan.status,                              // J - Trạng thái
+        loan.disbursementDate,                    // K - Ngày giải ngân
+        loan.purpose,                             // L - Mục đích vay
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKhoanVay,
-      range: `${sheetNameKhoanVay}!A${rowNumber}:I${rowNumber}`,
+      range: `'${sheetNameKhoanVay}'!A${rowNumber}:L${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -3205,16 +3347,16 @@ export async function deleteLoanFromSheet(loanCode: string): Promise<void> {
     // Tìm row number dựa trên code
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKhoanVay,
-      range: `${sheetNameKhoanVay}!A:A`,
+      range: `'${sheetNameKhoanVay}'!A6:A`,
     });
 
     const rows = response.data.values || [];
     let rowNumber = -1;
 
-    // Tìm row có code khớp (bắt đầu từ row 2 vì row 1 là header)
-    for (let i = 1; i < rows.length; i++) {
+    // Tìm row có code khớp (data bắt đầu từ row 6)
+    for (let i = 0; i < rows.length; i++) {
       if (rows[i][0] === loanCode) {
-        rowNumber = i + 1; // +1 vì Google Sheets bắt đầu từ 1
+        rowNumber = i + 6; // +6 vì data bắt đầu từ row 6
         break;
       }
     }

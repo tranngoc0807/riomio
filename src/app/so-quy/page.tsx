@@ -5,13 +5,15 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   Plus,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 import DongTienTab from "./components/DongTienTab";
+import TaiKhoanTab from "./components/TaiKhoanTab";
 
-type TabType = "phieu-thu" | "phieu-chi" | "so-quy";
+type TabType = "phieu-thu" | "phieu-chi" | "so-quy" | "tai-khoan";
 
 export default function SoQuy() {
   const router = useRouter();
@@ -19,7 +21,7 @@ export default function SoQuy() {
   const tabParam = searchParams.get("tab") as TabType | null;
 
   const [activeTab, setActiveTab] = useState<TabType>(
-    tabParam && ["phieu-thu", "phieu-chi", "so-quy"].includes(tabParam)
+    tabParam && ["phieu-thu", "phieu-chi", "so-quy", "tai-khoan"].includes(tabParam)
       ? tabParam
       : "phieu-thu"
   );
@@ -84,6 +86,17 @@ export default function SoQuy() {
               <BookOpen size={20} />
               Sổ quỹ
             </button>
+            <button
+              onClick={() => handleTabChange("tai-khoan")}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "tai-khoan"
+                  ? "text-purple-600 border-purple-600 bg-purple-50/50"
+                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <Wallet size={20} />
+              Tài khoản
+            </button>
           </div>
         </div>
 
@@ -127,6 +140,9 @@ export default function SoQuy() {
 
           {/* Sổ quỹ Tab */}
           {activeTab === "so-quy" && <DongTienTab />}
+
+          {/* Tài khoản Tab */}
+          {activeTab === "tai-khoan" && <TaiKhoanTab />}
         </div>
       </div>
     </div>

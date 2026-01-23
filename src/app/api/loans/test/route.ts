@@ -13,11 +13,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Successfully connected to Google Sheets (KhoanVay)!",
+      message: "Successfully connected to Google Sheets (Danh sách món vay)!",
       data: loans,
       count: loans.length,
       config: {
-        sheetName: process.env.GOOGLE_SHEET_NAME_KHOAN_VAY,
+        spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN,
+        sheetName: process.env.GOOGLE_SHEET_NAME_DANH_SACH_MON_VAY,
       },
     });
   } catch (error: any) {
@@ -29,7 +30,8 @@ export async function GET(request: NextRequest) {
         error: error.message || "Failed to connect to Google Sheets",
         stack: error.stack,
         config: {
-          sheetName: process.env.GOOGLE_SHEET_NAME_KHOAN_VAY,
+          spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN,
+          sheetName: process.env.GOOGLE_SHEET_NAME_DANH_SACH_MON_VAY,
           hasPrivateKey: !!process.env.GOOGLE_SHEETS_PRIVATE_KEY,
           hasClientEmail: !!process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
         },

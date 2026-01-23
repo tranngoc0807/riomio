@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       shippingInfo: shippingInfo || "",
       birthday: birthday || "",
       notes: notes || "",
+      rowIndex: 0, // Will be assigned when added to sheet
     });
 
     // Fetch updated data

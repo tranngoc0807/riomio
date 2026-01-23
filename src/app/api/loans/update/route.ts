@@ -34,13 +34,16 @@ export async function PUT(request: NextRequest) {
       id: body.id,
       code: body.code,
       lender: body.lender || "",
-      amount: body.amount || 0,
-      remaining: body.remaining || 0,
-      interestRate: body.interestRate || "",
+      category: body.category || "",
+      maturityDate: body.maturityDate || body.dueDate || "",
+      principalAmount: body.principalAmount || body.amount || 0,
+      initialInterestRate: body.initialInterestRate || body.interestRate || "",
       interestType: body.interestType || "",
-      monthlyInterest: body.monthlyInterest || 0,
-      dueDate: body.dueDate || "",
+      interestPaymentDate: body.interestPaymentDate || "",
+      paymentTerm: body.paymentTerm || "",
       status: body.status || "",
+      disbursementDate: body.disbursementDate || "",
+      purpose: body.purpose || "",
     };
 
     await updateLoanInSheet(loan);
