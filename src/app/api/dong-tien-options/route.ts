@@ -6,6 +6,7 @@ import {
   getXuongSXOptionsFromSheet,
   getVanChuyenOptionsFromSheet,
   getXuongSXToDoiTuongMapping,
+  getKhachHangOptionsFromSheet,
 } from "@/lib/googleSheets";
 
 /**
@@ -14,13 +15,14 @@ import {
  */
 export async function GET() {
   try {
-    const [taiKhoanOptions, phanLoaiOptions, nccNPLOptions, xuongSXOptions, vanChuyenOptions, xuongSXToDoiTuongMapping] = await Promise.all([
+    const [taiKhoanOptions, phanLoaiOptions, nccNPLOptions, xuongSXOptions, vanChuyenOptions, xuongSXToDoiTuongMapping, khachHangOptions] = await Promise.all([
       getTaiKhoanOptionsFromSheet(),
       getPhanLoaiThuChiOptionsFromSheet(),
       getNCCNPLOptionsFromSheet(),
       getXuongSXOptionsFromSheet(),
       getVanChuyenOptionsFromSheet(),
       getXuongSXToDoiTuongMapping(),
+      getKhachHangOptionsFromSheet(),
     ]);
 
     return NextResponse.json({
@@ -32,6 +34,7 @@ export async function GET() {
         xuongSX: xuongSXOptions,
         vanChuyen: vanChuyenOptions,
         xuongSXToDoiTuong: xuongSXToDoiTuongMapping,
+        khachHang: khachHangOptions,
       },
     });
   } catch (error: any) {

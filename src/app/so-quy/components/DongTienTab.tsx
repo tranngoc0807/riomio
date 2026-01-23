@@ -19,6 +19,7 @@ export default function DongTienTab() {
   const [nccNPLOptions, setNccNPLOptions] = useState<string[]>([]);
   const [xuongSXOptions, setXuongSXOptions] = useState<string[]>([]);
   const [vanChuyenOptions, setVanChuyenOptions] = useState<string[]>([]);
+  const [khachHangOptions, setKhachHangOptions] = useState<string[]>([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -61,6 +62,7 @@ export default function DongTienTab() {
         setNccNPLOptions(result.data.nccNPL);
         setXuongSXOptions(result.data.xuongSX);
         setVanChuyenOptions(result.data.vanChuyen);
+        setKhachHangOptions(result.data.khachHang);
       } else {
         toast.error(result.error || "Không thể tải tùy chọn dropdown");
       }
@@ -624,14 +626,19 @@ export default function DongTienTab() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Thu tiền hàng <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={formData.thuTienHang}
                     onChange={(e) => setFormData({ ...formData, thuTienHang: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập thu tiền hàng"
-                  />
+                  >
+                    <option value="">Chọn khách hàng</option>
+                    {khachHangOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

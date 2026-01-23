@@ -1186,6 +1186,43 @@ export async function getXuongSXToDoiTuongMapping(): Promise<Record<string, stri
   }
 }
 
+/**
+ * Lấy danh sách khách hàng từ sheet "DS KH"
+ * Trả về danh sách tên khách hàng cho dropdown
+ */
+export async function getKhachHangOptionsFromSheet(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const spreadsheetIdBanHang = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG;
+    const sheetNameKhachHang = process.env.GOOGLE_SHEET_NAME_KHACH_HANG || "DS KH";
+
+    // Lấy cột B (Tên khách hàng) từ hàng 6 trở đi
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBanHang,
+      range: `'${sheetNameKhachHang}'!B6:B`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No customer data found in sheet.");
+      return [];
+    }
+
+    // Lọc các giá trị không rỗng và loại bỏ trùng lặp
+    const uniqueCustomers = Array.from(new Set(
+      rows
+        .map(row => row[0])
+        .filter(value => value && value.trim() !== "")
+    ));
+
+    return uniqueCustomers;
+  } catch (error) {
+    console.error("Error fetching customers from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ============================================
 // SALES PROGRAM MANAGEMENT (Quản lý chương trình bán hàng)
 // ============================================
