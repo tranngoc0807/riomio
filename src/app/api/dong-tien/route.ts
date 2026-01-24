@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     } = body;
 
     // Validate required dropdown fields
-    if (!tenTK || !nccNPL || !xuongSX || !chiVanChuyen || !thuTienHang || !phanLoaiThuChi) {
+    if (!tenTK || !nccNPL || !chiVanChuyen || !thuTienHang || !phanLoaiThuChi) {
       return NextResponse.json(
         { success: false, error: "Các trường dropdown là bắt buộc" },
         { status: 400 }
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       ngayThang: ngayThang || "",
       tenTK,
       nccNPL,
-      xuongSX,
+      xuongSX: xuongSX || "",
       chiVanChuyen,
       thuTienHang,
       thuKhac: thuKhac || 0,
@@ -140,7 +140,7 @@ export async function PUT(request: Request) {
     }
 
     // Validate required dropdown fields
-    if (!tenTK || !nccNPL || !xuongSX || !chiVanChuyen || !thuTienHang || !phanLoaiThuChi) {
+    if (!tenTK || !nccNPL || !chiVanChuyen || !thuTienHang || !phanLoaiThuChi) {
       return NextResponse.json(
         { success: false, error: "Các trường dropdown là bắt buộc" },
         { status: 400 }
@@ -151,7 +151,7 @@ export async function PUT(request: Request) {
       ngayThang: ngayThang || "",
       tenTK,
       nccNPL,
-      xuongSX,
+      xuongSX: xuongSX || "",
       chiVanChuyen,
       thuTienHang,
       thuKhac: thuKhac || 0,

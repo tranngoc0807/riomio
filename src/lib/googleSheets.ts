@@ -808,14 +808,15 @@ export interface DongTien {
   thuTienHang: string;       // F - Thu tiền hàng
   thuKhac: number;           // G - Thu khác
   chiKhac: number;           // H - Chi khác
-  maPhieuThu: string;        // I - Mã phiếu thu
-  maPhieuChi: string;        // J - Mã phiếu chi
-  doiTuong: string;          // K - Đối tượng
-  noiDung: string;           // (Not in sheet - kept for backward compatibility)
+  // I - Mã phiếu thu,chi (display column, skipped)
+  doiTuong: string;          // J - Đối tượng
+  noiDung: string;           // K - Nội dung
   phanLoaiThuChi: string;    // L - Phân loại thu chi
   tongThu: number;           // M - Tổng thu
   tongChi: number;           // N - Tổng chi
   ghiChu: string;            // O - Ghi chú
+  maPhieuThu: string;        // P - Mã phiếu thu
+  maPhieuChi: string;        // Q - Mã phiếu chi
   rowIndex: number;          // Actual row number in sheet
 }
 
@@ -831,7 +832,7 @@ export async function getDongTienFromSheet(): Promise<DongTien[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A6:O`,
+      range: `'${sheetNameDongTien}'!A6:Q`,
     });
 
     const rows = response.data.values;
@@ -842,26 +843,36 @@ export async function getDongTienFromSheet(): Promise<DongTien[]> {
     }
 
     const dongTienList: DongTien[] = rows
-      .map((row, index) => ({
-        id: index + 1,
-        ngayThang: row[0] || "",
-        tenTK: row[1] || "",
-        nccNPL: row[2] || "",
-        xuongSX: row[3] || "",
-        chiVanChuyen: row[4] || "",
-        thuTienHang: row[5] || "",
-        thuKhac: parseFloat(String(row[6]).replace(/\./g, "").replace(",", ".")) || 0,
-        chiKhac: parseFloat(String(row[7]).replace(/\./g, "").replace(",", ".")) || 0,
-        maPhieuThu: row[8] || "",
-        maPhieuChi: row[9] || "",
-        doiTuong: row[10] || "",
-        noiDung: "",
-        phanLoaiThuChi: row[11] || "",
-        tongThu: parseFloat(String(row[12]).replace(/\./g, "").replace(",", ".")) || 0,
-        tongChi: parseFloat(String(row[13]).replace(/\./g, "").replace(",", ".")) || 0,
-        ghiChu: row[14] || "",
-        rowIndex: index + 6, // Row 6 is first data row
-      }))
+      .map((row, index) => {
+        // Format date to DD/MM/YYYY if it's in YYYY-MM-DD format
+        let formattedDate = row[0] || "";
+        if (formattedDate && formattedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const [year, month, day] = formattedDate.split('-');
+          formattedDate = `${day}/${month}/${year}`;
+        }
+
+        return {
+          id: index + 1,
+          ngayThang: formattedDate,           // A
+          tenTK: row[1] || "",                 // B
+          nccNPL: row[2] || "",                // C
+          xuongSX: row[3] || "",               // D
+          chiVanChuyen: row[4] || "",          // E
+          thuTienHang: row[5] || "",           // F
+          thuKhac: parseFloat(String(row[6]).replace(/\./g, "").replace(",", ".")) || 0,    // G
+          chiKhac: parseFloat(String(row[7]).replace(/\./g, "").replace(",", ".")) || 0,    // H
+          // Skip row[8] - Column I (Mã phiếu thu,chi display)
+          doiTuong: row[9] || "",              // J
+          noiDung: row[10] || "",              // K
+          phanLoaiThuChi: row[11] || "",       // L
+          tongThu: parseFloat(String(row[12]).replace(/\./g, "").replace(",", ".")) || 0,   // M
+          tongChi: parseFloat(String(row[13]).replace(/\./g, "").replace(",", ".")) || 0,   // N
+          ghiChu: row[14] || "",               // O
+          maPhieuThu: row[15] || "",           // P
+          maPhieuChi: row[16] || "",           // Q
+          rowIndex: index + 6, // Row 6 is first data row
+        };
+      })
       .filter((item) => item.ngayThang.trim() !== "");
 
     return dongTienList;
@@ -878,29 +889,38 @@ export async function addDongTienToSheet(dongTien: Omit<DongTien, 'id' | 'rowInd
   try {
     const sheets = await getGoogleSheetsClient();
 
+    // Format date to DD/MM/YYYY if it's in YYYY-MM-DD format
+    let formattedDate = dongTien.ngayThang;
+    if (dongTien.ngayThang && dongTien.ngayThang.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dongTien.ngayThang.split('-');
+      formattedDate = `${day}/${month}/${year}`;
+    }
+
     const values = [
       [
-        dongTien.ngayThang,
-        dongTien.tenTK,
-        dongTien.nccNPL,
-        dongTien.xuongSX,
-        dongTien.chiVanChuyen,
-        dongTien.thuTienHang,
-        dongTien.thuKhac,
-        dongTien.chiKhac,
-        dongTien.maPhieuThu,
-        dongTien.maPhieuChi,
-        dongTien.doiTuong,
-        dongTien.phanLoaiThuChi,
-        dongTien.tongThu,
-        dongTien.tongChi,
-        dongTien.ghiChu,
+        formattedDate,             // A
+        dongTien.tenTK,            // B
+        dongTien.nccNPL,           // C
+        dongTien.xuongSX,          // D
+        dongTien.chiVanChuyen,     // E
+        dongTien.thuTienHang,      // F
+        dongTien.thuKhac,          // G
+        dongTien.chiKhac,          // H
+        dongTien.maPhieuThu || dongTien.maPhieuChi,  // I - Mã phiếu thu,chi (display)
+        dongTien.doiTuong,         // J
+        dongTien.noiDung,          // K
+        dongTien.phanLoaiThuChi,   // L
+        dongTien.tongThu,          // M
+        dongTien.tongChi,          // N
+        dongTien.ghiChu,           // O
+        dongTien.maPhieuThu,       // P
+        dongTien.maPhieuChi,       // Q
       ],
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A6:O`,
+      range: `'${sheetNameDongTien}'!A6:Q`,
       valueInputOption: "RAW",
       requestBody: {
         values,
@@ -921,29 +941,38 @@ export async function updateDongTienInSheet(rowIndex: number, dongTien: Omit<Don
   try {
     const sheets = await getGoogleSheetsClient();
 
+    // Format date to DD/MM/YYYY if it's in YYYY-MM-DD format
+    let formattedDate = dongTien.ngayThang;
+    if (dongTien.ngayThang && dongTien.ngayThang.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dongTien.ngayThang.split('-');
+      formattedDate = `${day}/${month}/${year}`;
+    }
+
     const values = [
       [
-        dongTien.ngayThang,
-        dongTien.tenTK,
-        dongTien.nccNPL,
-        dongTien.xuongSX,
-        dongTien.chiVanChuyen,
-        dongTien.thuTienHang,
-        dongTien.thuKhac,
-        dongTien.chiKhac,
-        dongTien.maPhieuThu,
-        dongTien.maPhieuChi,
-        dongTien.doiTuong,
-        dongTien.phanLoaiThuChi,
-        dongTien.tongThu,
-        dongTien.tongChi,
-        dongTien.ghiChu,
+        formattedDate,             // A
+        dongTien.tenTK,            // B
+        dongTien.nccNPL,           // C
+        dongTien.xuongSX,          // D
+        dongTien.chiVanChuyen,     // E
+        dongTien.thuTienHang,      // F
+        dongTien.thuKhac,          // G
+        dongTien.chiKhac,          // H
+        dongTien.maPhieuThu || dongTien.maPhieuChi,  // I - Mã phiếu thu,chi (display)
+        dongTien.doiTuong,         // J
+        dongTien.noiDung,          // K
+        dongTien.phanLoaiThuChi,   // L
+        dongTien.tongThu,          // M
+        dongTien.tongChi,          // N
+        dongTien.ghiChu,           // O
+        dongTien.maPhieuThu,       // P
+        dongTien.maPhieuChi,       // Q
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A${rowIndex}:O${rowIndex}`,
+      range: `'${sheetNameDongTien}'!A${rowIndex}:Q${rowIndex}`,
       valueInputOption: "RAW",
       requestBody: {
         values,

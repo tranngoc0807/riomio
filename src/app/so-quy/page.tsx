@@ -23,7 +23,7 @@ export default function SoQuy() {
   const [activeTab, setActiveTab] = useState<TabType>(
     tabParam && ["phieu-thu", "phieu-chi", "so-quy", "tai-khoan"].includes(tabParam)
       ? tabParam
-      : "phieu-thu"
+      : "so-quy"
   );
 
   const handleTabChange = (tab: TabType) => {
@@ -53,7 +53,8 @@ export default function SoQuy() {
         {/* Tab Navigation */}
         <div className="border-b border-gray-200">
           <div className="flex">
-            <button
+            {/* Hidden Phiếu thu tab */}
+            {/* <button
               onClick={() => handleTabChange("phieu-thu")}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "phieu-thu"
@@ -63,8 +64,9 @@ export default function SoQuy() {
             >
               <ArrowUpCircle size={20} />
               Phiếu thu
-            </button>
-            <button
+            </button> */}
+            {/* Hidden Phiếu chi tab */}
+            {/* <button
               onClick={() => handleTabChange("phieu-chi")}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "phieu-chi"
@@ -74,7 +76,7 @@ export default function SoQuy() {
             >
               <ArrowDownCircle size={20} />
               Phiếu chi
-            </button>
+            </button> */}
             <button
               onClick={() => handleTabChange("so-quy")}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
