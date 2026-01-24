@@ -1,14 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Edit2, Trash2, X, DollarSign, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+} from "lucide-react";
 import { DongTien } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function DongTienTab() {
   const [dongTienList, setDongTienList] = useState<DongTien[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [showPhieuThuModal, setShowPhieuThuModal] = useState(false);
+  const [showPhieuChiModal, setShowPhieuChiModal] = useState(false);
   const [editingItem, setEditingItem] = useState<DongTien | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingItem, setViewingItem] = useState<DongTien | null>(null);
@@ -30,7 +40,7 @@ export default function DongTienTab() {
 
   // Form state
   const [formData, setFormData] = useState({
-    ngayThang: new Date().toISOString().split('T')[0],
+    ngayThang: new Date().toISOString().split("T")[0],
     tenTK: "",
     nccNPL: "",
     xuongSX: "",
@@ -38,6 +48,8 @@ export default function DongTienTab() {
     thuTienHang: "",
     thuKhac: "",
     chiKhac: "",
+    maPhieuThu: "",
+    maPhieuChi: "",
     doiTuong: "",
     noiDung: "",
     phanLoaiThuChi: "",
@@ -74,7 +86,9 @@ export default function DongTienTab() {
 
   useEffect(() => {
     const checkScrollAndUpdateBorder = () => {
-      const scrollContainer = document.querySelector('.table-scroll-container') as HTMLElement;
+      const scrollContainer = document.querySelector(
+        ".table-scroll-container",
+      ) as HTMLElement;
       if (!scrollContainer) {
         setShowBorder(false);
         return;
@@ -111,20 +125,20 @@ export default function DongTienTab() {
       setTimeout(checkScrollAndUpdateBorder, 500),
     ];
 
-    const scrollContainer = document.querySelector('.table-scroll-container');
+    const scrollContainer = document.querySelector(".table-scroll-container");
     if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll);
-      window.addEventListener('resize', handleResize);
+      scrollContainer.addEventListener("scroll", handleScroll);
+      window.addEventListener("resize", handleResize);
 
       return () => {
-        timeoutIds.forEach(id => clearTimeout(id));
-        scrollContainer.removeEventListener('scroll', handleScroll);
-        window.removeEventListener('resize', handleResize);
+        timeoutIds.forEach((id) => clearTimeout(id));
+        scrollContainer.removeEventListener("scroll", handleScroll);
+        window.removeEventListener("resize", handleResize);
       };
     }
 
     return () => {
-      timeoutIds.forEach(id => clearTimeout(id));
+      timeoutIds.forEach((id) => clearTimeout(id));
     };
   }, [dongTienList]);
 
@@ -148,13 +162,92 @@ export default function DongTienTab() {
     }
   };
 
+  const getNextMaPhieuThu = (): string => {
+    const ptCodes = dongTienList
+      .map(item => item.maPhieuThu)
+      .filter(code => code && code.toUpperCase().startsWith('PT'))
+      .map(code => {
+        const match = code.match(/PT(\d+)/i);
+        return match ? parseInt(match[1]) : 0;
+      });
+
+    const maxNumber = ptCodes.length > 0 ? Math.max(...ptCodes) : 0;
+    return `PT${String(maxNumber + 1).padStart(2, '0')}`;
+  };
+
+  const getNextMaPhieuChi = (): string => {
+    const pcCodes = dongTienList
+      .map(item => item.maPhieuChi)
+      .filter(code => code && code.toUpperCase().startsWith('PC'))
+      .map(code => {
+        const match = code.match(/PC(\d+)/i);
+        return match ? parseInt(match[1]) : 0;
+      });
+
+    const maxNumber = pcCodes.length > 0 ? Math.max(...pcCodes) : 0;
+    return `PC${String(maxNumber + 1).padStart(2, '0')}`;
+  };
+
+  const handleOpenPhieuThu = () => {
+    const nextMa = getNextMaPhieuThu();
+    setFormData({
+      ngayThang: new Date().toISOString().split("T")[0],
+      tenTK: "",
+      nccNPL: "",
+      xuongSX: "",
+      chiVanChuyen: "",
+      thuTienHang: "",
+      thuKhac: "",
+      chiKhac: "",
+      maPhieuThu: nextMa,
+      maPhieuChi: "",
+      doiTuong: "",
+      noiDung: "",
+      phanLoaiThuChi: "",
+      tongThu: "",
+      tongChi: "",
+      ghiChu: "",
+    });
+    setEditingItem(null);
+    setShowPhieuThuModal(true);
+  };
+
+  const handleOpenPhieuChi = () => {
+    const nextMa = getNextMaPhieuChi();
+    setFormData({
+      ngayThang: new Date().toISOString().split("T")[0],
+      tenTK: "",
+      nccNPL: "",
+      xuongSX: "",
+      chiVanChuyen: "",
+      thuTienHang: "",
+      thuKhac: "",
+      chiKhac: "",
+      maPhieuThu: "",
+      maPhieuChi: nextMa,
+      doiTuong: "",
+      noiDung: "",
+      phanLoaiThuChi: "",
+      tongThu: "",
+      tongChi: "",
+      ghiChu: "",
+    });
+    setEditingItem(null);
+    setShowPhieuChiModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     // Validate required dropdown fields
-    if (!formData.tenTK || !formData.nccNPL ||
-        !formData.chiVanChuyen || !formData.thuTienHang || !formData.phanLoaiThuChi) {
+    if (
+      !formData.tenTK ||
+      !formData.nccNPL ||
+      !formData.chiVanChuyen ||
+      !formData.thuTienHang ||
+      !formData.phanLoaiThuChi
+    ) {
       toast.error("Vui lòng điền đầy đủ các trường bắt buộc");
       setIsLoading(false);
       return;
@@ -165,7 +258,14 @@ export default function DongTienTab() {
       const method = editingItem ? "PUT" : "POST";
 
       // Keep all fields as strings (including thu khac, chi khac, tong thu, tong chi)
-      const payload = formData;
+      // Ensure only one of maPhieuThu or maPhieuChi is filled
+      const payload = {
+        ...formData,
+        // If this is from Phiếu Thu modal, clear maPhieuChi
+        maPhieuChi: showPhieuThuModal ? "" : formData.maPhieuChi,
+        // If this is from Phiếu Chi modal, clear maPhieuThu
+        maPhieuThu: showPhieuChiModal ? "" : formData.maPhieuThu,
+      };
 
       const body = editingItem
         ? { ...payload, rowIndex: editingItem.rowIndex }
@@ -181,9 +281,12 @@ export default function DongTienTab() {
 
       if (result.success) {
         setDongTienList(result.data);
-        setShowModal(false);
-        resetForm();
-        toast.success(editingItem ? "Cập nhật dòng tiền thành công" : "Thêm dòng tiền thành công");
+        handleCloseModal();
+        toast.success(
+          editingItem
+            ? "Cập nhật dòng tiền thành công"
+            : "Thêm dòng tiền thành công",
+        );
       } else {
         toast.error(result.error || "Không thể lưu dòng tiền");
       }
@@ -217,7 +320,7 @@ export default function DongTienTab() {
         loading: "Đang xóa...",
         success: "Xóa dòng tiền thành công",
         error: (err) => err.message || "Đã xảy ra lỗi khi xóa dữ liệu",
-      }
+      },
     );
   };
 
@@ -232,6 +335,8 @@ export default function DongTienTab() {
       thuTienHang: item.thuTienHang,
       thuKhac: String(item.thuKhac || ""),
       chiKhac: String(item.chiKhac || ""),
+      maPhieuThu: item.maPhieuThu || "",
+      maPhieuChi: item.maPhieuChi || "",
       doiTuong: item.doiTuong,
       noiDung: item.noiDung,
       phanLoaiThuChi: item.phanLoaiThuChi,
@@ -239,7 +344,15 @@ export default function DongTienTab() {
       tongChi: String(item.tongChi || ""),
       ghiChu: item.ghiChu,
     });
-    setShowModal(true);
+    // Open the appropriate modal based on which code exists
+    if (item.maPhieuThu && item.maPhieuThu.toUpperCase().startsWith('PT')) {
+      setShowPhieuThuModal(true);
+    } else if (item.maPhieuChi && item.maPhieuChi.toUpperCase().startsWith('PC')) {
+      setShowPhieuChiModal(true);
+    } else {
+      // Default to Phiếu Thu if unclear
+      setShowPhieuThuModal(true);
+    }
   };
 
   const handleView = (item: DongTien) => {
@@ -250,7 +363,7 @@ export default function DongTienTab() {
   const resetForm = () => {
     setEditingItem(null);
     setFormData({
-      ngayThang: new Date().toISOString().split('T')[0],
+      ngayThang: new Date().toISOString().split("T")[0],
       tenTK: "",
       nccNPL: "",
       xuongSX: "",
@@ -258,6 +371,8 @@ export default function DongTienTab() {
       thuTienHang: "",
       thuKhac: "",
       chiKhac: "",
+      maPhieuThu: "",
+      maPhieuChi: "",
       doiTuong: "",
       noiDung: "",
       phanLoaiThuChi: "",
@@ -268,7 +383,8 @@ export default function DongTienTab() {
   };
 
   const handleCloseModal = () => {
-    setShowModal(false);
+    setShowPhieuThuModal(false);
+    setShowPhieuChiModal(false);
     resetForm();
   };
 
@@ -302,31 +418,49 @@ export default function DongTienTab() {
           </h3>
           <div className="flex gap-4 mt-1">
             <p className="text-sm text-gray-600">
-              Tổng thu: <span className="font-semibold text-green-600">{totalThu.toLocaleString()} đ</span>
+              Tổng thu:{" "}
+              <span className="font-semibold text-green-600">
+                {totalThu.toLocaleString()} đ
+              </span>
             </p>
             <p className="text-sm text-gray-600">
-              Tổng chi: <span className="font-semibold text-red-600">{totalChi.toLocaleString()} đ</span>
+              Tổng chi:{" "}
+              <span className="font-semibold text-red-600">
+                {totalChi.toLocaleString()} đ
+              </span>
             </p>
             <p className="text-sm text-gray-600">
-              Chênh lệch: <span className={`font-semibold ${(totalThu - totalChi) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              Chênh lệch:{" "}
+              <span
+                className={`font-semibold ${totalThu - totalChi >= 0 ? "text-blue-600" : "text-red-600"}`}
+              >
                 {(totalThu - totalChi).toLocaleString()} đ
               </span>
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          Thêm dòng tiền
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleOpenPhieuThu}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Plus size={20} />
+            Phiếu Thu
+          </button>
+          <button
+            onClick={handleOpenPhieuChi}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <Plus size={20} />
+            Phiếu Chi
+          </button>
+        </div>
       </div>
 
       {/* Table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="overflow-x-auto table-scroll-container">
-          <table className="w-full text-sm min-w-[1400px]">
+          <table className="w-full text-sm min-w-[1150px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
@@ -342,16 +476,16 @@ export default function DongTienTab() {
                   NCC NPL
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
-                  Xưởng SX
+                  Thu tiền hàng
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
+                  Mã phiếu thu/chi
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
                   Đối tượng
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
-                  Nội dung
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
-                  Phân loại
+                  Phân loại thu chi
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
                   Tổng thu
@@ -359,7 +493,9 @@ export default function DongTienTab() {
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">
                   Tổng chi
                 </th>
-                <th className={`px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase whitespace-nowrap sticky right-0 bg-gray-50 z-10 ${showBorder ? 'border-l border-gray-200 shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.1)]' : ''}`}>
+                <th
+                  className={`px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase whitespace-nowrap sticky right-0 bg-gray-50 z-10 ${showBorder ? "border-l border-gray-200 shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.1)]" : ""}`}
+                >
                   Thao tác
                 </th>
               </tr>
@@ -367,21 +503,57 @@ export default function DongTienTab() {
             <tbody className="divide-y divide-gray-200">
               {dongTienList.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={11}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
                     Chưa có dữ liệu dòng tiền
                   </td>
                 </tr>
               ) : (
                 paginatedList.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-600">{startIndex + index + 1}</td>
-                    <td className="px-4 py-3 text-gray-900 whitespace-nowrap">{item.ngayThang}</td>
+                  <tr
+                    key={item.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-4 py-3 text-gray-600">
+                      {startIndex + index + 1}
+                    </td>
+                    <td className="px-4 py-3 text-gray-900 whitespace-nowrap">
+                      {item.ngayThang}
+                    </td>
                     <td className="px-4 py-3 text-gray-900">{item.tenTK}</td>
                     <td className="px-4 py-3 text-gray-700">{item.nccNPL}</td>
-                    <td className="px-4 py-3 text-gray-700">{item.xuongSX}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {item.thuTienHang}
+                    </td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const maPhieu = item.maPhieuThu || item.maPhieuChi;
+                        if (!maPhieu) return <span className="text-gray-400">-</span>;
+
+                        const isPT = maPhieu.toUpperCase().startsWith('PT');
+                        const isPC = maPhieu.toUpperCase().startsWith('PC');
+
+                        if (isPT) {
+                          return (
+                            <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs">
+                              {maPhieu}
+                            </span>
+                          );
+                        } else if (isPC) {
+                          return (
+                            <span className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs">
+                              {maPhieu}
+                            </span>
+                          );
+                        } else {
+                          return <span className="text-gray-700">{maPhieu}</span>;
+                        }
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-gray-700">{item.doiTuong}</td>
-                    <td className="px-4 py-3 text-gray-700 min-w-[200px]">{item.noiDung}</td>
-                    <td className="px-4 py-3 min-w-[150px]">
+                    <td className="px-4 py-3 min-w-[120px]">
                       <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
                         {item.phanLoaiThuChi}
                       </span>
@@ -392,7 +564,9 @@ export default function DongTienTab() {
                     <td className="px-4 py-3 text-right font-bold text-red-600">
                       {item.tongChi.toLocaleString()}
                     </td>
-                    <td className={`px-4 py-3 sticky right-0 bg-white z-10 ${showBorder ? 'border-l border-gray-200 shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.1)]' : ''}`}>
+                    <td
+                      className={`px-4 py-3 sticky right-0 bg-white z-10 ${showBorder ? "border-l border-gray-200 shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.1)]" : ""}`}
+                    >
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleView(item)}
@@ -428,7 +602,13 @@ export default function DongTienTab() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
             <div className="text-sm text-gray-700">
-              Hiển thị <span className="font-medium">{startIndex + 1}</span> - <span className="font-medium">{Math.min(endIndex, dongTienList.length)}</span> trong tổng số <span className="font-medium">{dongTienList.length}</span> giao dịch
+              Hiển thị <span className="font-medium">{startIndex + 1}</span> -{" "}
+              <span className="font-medium">
+                {Math.min(endIndex, dongTienList.length)}
+              </span>{" "}
+              trong tổng số{" "}
+              <span className="font-medium">{dongTienList.length}</span> giao
+              dịch
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -454,8 +634,8 @@ export default function DongTienTab() {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`px-3 py-1.5 rounded-lg border transition-colors ${
                         pageNum === currentPage
-                          ? 'bg-blue-600 text-white border-blue-600 font-semibold'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          ? "bg-blue-600 text-white border-blue-600 font-semibold"
+                          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                       }`}
                     >
                       {pageNum}
@@ -487,14 +667,14 @@ export default function DongTienTab() {
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
+      {/* Modal Phiếu Thu */}
+      {showPhieuThuModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">
-                {editingItem ? "Sửa dòng tiền" : "Thêm dòng tiền mới"}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-green-50">
+              <h3 className="text-xl font-semibold text-green-800">
+                {editingItem ? "Sửa phiếu thu" : "Tạo phiếu thu mới"}
               </h3>
               <button
                 onClick={handleCloseModal}
@@ -514,7 +694,9 @@ export default function DongTienTab() {
                   <input
                     type="date"
                     value={formData.ngayThang}
-                    onChange={(e) => setFormData({ ...formData, ngayThang: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, ngayThang: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -526,7 +708,9 @@ export default function DongTienTab() {
                   <select
                     required
                     value={formData.tenTK}
-                    onChange={(e) => setFormData({ ...formData, tenTK: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tenTK: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Chọn tài khoản</option>
@@ -547,7 +731,9 @@ export default function DongTienTab() {
                   <select
                     required
                     value={formData.nccNPL}
-                    onChange={(e) => setFormData({ ...formData, nccNPL: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nccNPL: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Chọn NCC NPL</option>
@@ -569,7 +755,13 @@ export default function DongTienTab() {
                       const selectedXuong = e.target.value;
                       // Nếu chọn xưởng SX thì Đối tượng = tên xưởng đó
                       const doiTuong = selectedXuong || formData.doiTuong;
-                      setFormData({ ...formData, xuongSX: selectedXuong, doiTuong: selectedXuong ? selectedXuong : formData.doiTuong });
+                      setFormData({
+                        ...formData,
+                        xuongSX: selectedXuong,
+                        doiTuong: selectedXuong
+                          ? selectedXuong
+                          : formData.doiTuong,
+                      });
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
@@ -589,7 +781,12 @@ export default function DongTienTab() {
                   <select
                     required
                     value={formData.phanLoaiThuChi}
-                    onChange={(e) => setFormData({ ...formData, phanLoaiThuChi: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        phanLoaiThuChi: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Chọn phân loại</option>
@@ -610,7 +807,9 @@ export default function DongTienTab() {
                   <select
                     required
                     value={formData.chiVanChuyen}
-                    onChange={(e) => setFormData({ ...formData, chiVanChuyen: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, chiVanChuyen: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Chọn đối tác vận chuyển</option>
@@ -629,7 +828,9 @@ export default function DongTienTab() {
                   <select
                     required
                     value={formData.thuTienHang}
-                    onChange={(e) => setFormData({ ...formData, thuTienHang: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, thuTienHang: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Chọn khách hàng</option>
@@ -650,7 +851,9 @@ export default function DongTienTab() {
                   <input
                     type="text"
                     value={formData.thuKhac}
-                    onChange={(e) => setFormData({ ...formData, thuKhac: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, thuKhac: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Nhập số tiền hoặc ghi chú"
                   />
@@ -663,9 +866,52 @@ export default function DongTienTab() {
                   <input
                     type="text"
                     value={formData.chiKhac}
-                    onChange={(e) => setFormData({ ...formData, chiKhac: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, chiKhac: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Nhập số tiền hoặc ghi chú"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã phiếu thu
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.maPhieuThu}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
+                    placeholder="Tự động"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đối tượng
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.doiTuong}
+                    onChange={(e) => {
+                      if (!formData.xuongSX) {
+                        setFormData({ ...formData, doiTuong: e.target.value });
+                      }
+                    }}
+                    readOnly={!!formData.xuongSX}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
+                      formData.xuongSX
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : "focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    }`}
+                    placeholder={
+                      formData.xuongSX
+                        ? "Tự động từ Xưởng SX"
+                        : "Nhập đối tượng"
+                    }
                   />
                 </div>
               </div>
@@ -678,7 +924,9 @@ export default function DongTienTab() {
                   <input
                     type="text"
                     value={formData.tongThu}
-                    onChange={(e) => setFormData({ ...formData, tongThu: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tongThu: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Nhập số tiền hoặc ghi chú"
                   />
@@ -691,47 +939,11 @@ export default function DongTienTab() {
                   <input
                     type="text"
                     value={formData.tongChi}
-                    onChange={(e) => setFormData({ ...formData, tongChi: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tongChi: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Nhập số tiền hoặc ghi chú"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Đối tượng
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.doiTuong}
-                    onChange={(e) => {
-                      // Chỉ cho phép nhập nếu không chọn Xưởng SX
-                      if (!formData.xuongSX) {
-                        setFormData({ ...formData, doiTuong: e.target.value });
-                      }
-                    }}
-                    readOnly={!!formData.xuongSX}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
-                      formData.xuongSX
-                        ? 'bg-gray-100 cursor-not-allowed'
-                        : 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                    }`}
-                    placeholder={formData.xuongSX ? "Tự động từ Xưởng SX" : "Nhập đối tượng"}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nội dung
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.noiDung}
-                    onChange={(e) => setFormData({ ...formData, noiDung: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập nội dung"
                   />
                 </div>
               </div>
@@ -742,7 +954,9 @@ export default function DongTienTab() {
                 </label>
                 <textarea
                   value={formData.ghiChu}
-                  onChange={(e) => setFormData({ ...formData, ghiChu: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ghiChu: e.target.value })
+                  }
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Nhập ghi chú (nếu có)"
@@ -761,10 +975,327 @@ export default function DongTienTab() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isLoading && <Loader2 className="animate-spin" size={16} />}
-                  {editingItem ? "Cập nhật" : "Thêm mới"}
+                  {editingItem ? "Cập nhật" : "Tạo phiếu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Phiếu Chi */}
+      {showPhieuChiModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-red-50">
+              <h3 className="text-xl font-semibold text-red-800">
+                {editingItem ? "Sửa phiếu chi" : "Tạo phiếu chi mới"}
+              </h3>
+              <button
+                onClick={handleCloseModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày tháng
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.ngayThang}
+                    onChange={(e) =>
+                      setFormData({ ...formData, ngayThang: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên TK <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.tenTK}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tenTK: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn tài khoản</option>
+                    {taiKhoanOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    NCC NPL <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.nccNPL}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nccNPL: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn NCC NPL</option>
+                    {nccNPLOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Xưởng SX
+                  </label>
+                  <select
+                    value={formData.xuongSX}
+                    onChange={(e) => {
+                      const selectedXuong = e.target.value;
+                      setFormData({
+                        ...formData,
+                        xuongSX: selectedXuong,
+                        doiTuong: selectedXuong
+                          ? selectedXuong
+                          : formData.doiTuong,
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn xưởng SX</option>
+                    {xuongSXOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phân loại thu chi <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.phanLoaiThuChi}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        phanLoaiThuChi: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn phân loại</option>
+                    {phanLoaiOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chi vận chuyển <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.chiVanChuyen}
+                    onChange={(e) =>
+                      setFormData({ ...formData, chiVanChuyen: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn đối tác vận chuyển</option>
+                    {vanChuyenOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Thu tiền hàng <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.thuTienHang}
+                    onChange={(e) =>
+                      setFormData({ ...formData, thuTienHang: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn khách hàng</option>
+                    {khachHangOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Thu khác
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.thuKhac}
+                    onChange={(e) =>
+                      setFormData({ ...formData, thuKhac: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập số tiền hoặc ghi chú"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chi khác
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.chiKhac}
+                    onChange={(e) =>
+                      setFormData({ ...formData, chiKhac: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập số tiền hoặc ghi chú"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã phiếu chi
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.maPhieuChi}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
+                    placeholder="Tự động"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đối tượng
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.doiTuong}
+                    onChange={(e) => {
+                      if (!formData.xuongSX) {
+                        setFormData({ ...formData, doiTuong: e.target.value });
+                      }
+                    }}
+                    readOnly={!!formData.xuongSX}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
+                      formData.xuongSX
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : "focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    }`}
+                    placeholder={
+                      formData.xuongSX
+                        ? "Tự động từ Xưởng SX"
+                        : "Nhập đối tượng"
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tổng thu
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tongThu}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tongThu: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập số tiền hoặc ghi chú"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tổng chi
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tongChi}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tongChi: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập số tiền hoặc ghi chú"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ghi chú
+                </label>
+                <textarea
+                  value={formData.ghiChu}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ghiChu: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập ghi chú (nếu có)"
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isLoading && <Loader2 className="animate-spin" size={16} />}
+                  {editingItem ? "Cập nhật" : "Tạo phiếu"}
                 </button>
               </div>
             </form>
@@ -797,7 +1328,9 @@ export default function DongTienTab() {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Ngày tháng
                   </label>
-                  <p className="text-base text-gray-900">{viewingItem.ngayThang}</p>
+                  <p className="text-base text-gray-900">
+                    {viewingItem.ngayThang}
+                  </p>
                 </div>
 
                 <div>
@@ -814,14 +1347,18 @@ export default function DongTienTab() {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     NCC NPL
                   </label>
-                  <p className="text-base text-gray-900">{viewingItem.nccNPL}</p>
+                  <p className="text-base text-gray-900">
+                    {viewingItem.nccNPL}
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Xưởng SX
                   </label>
-                  <p className="text-base text-gray-900">{viewingItem.xuongSX}</p>
+                  <p className="text-base text-gray-900">
+                    {viewingItem.xuongSX}
+                  </p>
                 </div>
               </div>
 
@@ -831,14 +1368,18 @@ export default function DongTienTab() {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Chi vận chuyển
                   </label>
-                  <p className="text-base text-gray-900">{viewingItem.chiVanChuyen}</p>
+                  <p className="text-base text-gray-900">
+                    {viewingItem.chiVanChuyen}
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Thu tiền hàng
                   </label>
-                  <p className="text-base text-gray-900">{viewingItem.thuTienHang}</p>
+                  <p className="text-base text-gray-900">
+                    {viewingItem.thuTienHang}
+                  </p>
                 </div>
               </div>
 
@@ -849,7 +1390,9 @@ export default function DongTienTab() {
                     Thu khác
                   </label>
                   <p className="text-base font-semibold text-green-600">
-                    {viewingItem.thuKhac > 0 ? viewingItem.thuKhac.toLocaleString() + ' đ' : '-'}
+                    {viewingItem.thuKhac > 0
+                      ? viewingItem.thuKhac.toLocaleString() + " đ"
+                      : "-"}
                   </p>
                 </div>
 
@@ -858,8 +1401,51 @@ export default function DongTienTab() {
                     Chi khác
                   </label>
                   <p className="text-base font-semibold text-red-600">
-                    {viewingItem.chiKhac > 0 ? viewingItem.chiKhac.toLocaleString() + ' đ' : '-'}
+                    {viewingItem.chiKhac > 0
+                      ? viewingItem.chiKhac.toLocaleString() + " đ"
+                      : "-"}
                   </p>
+                </div>
+              </div>
+
+              {/* Mã phiếu thu/chi */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Mã phiếu thu
+                  </label>
+                  {viewingItem.maPhieuThu ? (
+                    <span className={`inline-block px-3 py-1.5 rounded text-sm ${
+                      viewingItem.maPhieuThu.toUpperCase().startsWith('PT')
+                        ? 'bg-green-100 text-green-700'
+                        : viewingItem.maPhieuThu.toUpperCase().startsWith('PC')
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {viewingItem.maPhieuThu}
+                    </span>
+                  ) : (
+                    <p className="text-base text-gray-400">-</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Mã phiếu chi
+                  </label>
+                  {viewingItem.maPhieuChi ? (
+                    <span className={`inline-block px-3 py-1.5 rounded text-sm ${
+                      viewingItem.maPhieuChi.toUpperCase().startsWith('PT')
+                        ? 'bg-green-100 text-green-700'
+                        : viewingItem.maPhieuChi.toUpperCase().startsWith('PC')
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {viewingItem.maPhieuChi}
+                    </span>
+                  ) : (
+                    <p className="text-base text-gray-400">-</p>
+                  )}
                 </div>
               </div>
 
@@ -869,7 +1455,9 @@ export default function DongTienTab() {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Đối tượng
                   </label>
-                  <p className="text-base text-gray-900">{viewingItem.doiTuong || '-'}</p>
+                  <p className="text-base text-gray-900">
+                    {viewingItem.doiTuong || "-"}
+                  </p>
                 </div>
 
                 <div>
@@ -887,7 +1475,9 @@ export default function DongTienTab() {
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   Nội dung
                 </label>
-                <p className="text-base text-gray-900">{viewingItem.noiDung || '-'}</p>
+                <p className="text-base text-gray-900">
+                  {viewingItem.noiDung || "-"}
+                </p>
               </div>
 
               {/* Tổng thu chi */}
@@ -917,7 +1507,7 @@ export default function DongTienTab() {
                   Ghi chú
                 </label>
                 <p className="text-base text-gray-900 whitespace-pre-wrap">
-                  {viewingItem.ghiChu || '-'}
+                  {viewingItem.ghiChu || "-"}
                 </p>
               </div>
             </div>

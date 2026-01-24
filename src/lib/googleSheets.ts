@@ -808,12 +808,14 @@ export interface DongTien {
   thuTienHang: string;       // F - Thu tiền hàng
   thuKhac: number;           // G - Thu khác
   chiKhac: number;           // H - Chi khác
-  doiTuong: string;          // I - Đối tượng
-  noiDung: string;           // J - Nội dung
-  phanLoaiThuChi: string;    // K - Phân loại thu chi
-  tongThu: number;           // L - Tổng thu
-  tongChi: number;           // M - Tổng chi
-  ghiChu: string;            // N - Ghi chú
+  maPhieuThu: string;        // I - Mã phiếu thu
+  maPhieuChi: string;        // J - Mã phiếu chi
+  doiTuong: string;          // K - Đối tượng
+  noiDung: string;           // (Not in sheet - kept for backward compatibility)
+  phanLoaiThuChi: string;    // L - Phân loại thu chi
+  tongThu: number;           // M - Tổng thu
+  tongChi: number;           // N - Tổng chi
+  ghiChu: string;            // O - Ghi chú
   rowIndex: number;          // Actual row number in sheet
 }
 
@@ -829,7 +831,7 @@ export async function getDongTienFromSheet(): Promise<DongTien[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A6:N`,
+      range: `'${sheetNameDongTien}'!A6:O`,
     });
 
     const rows = response.data.values;
@@ -850,12 +852,14 @@ export async function getDongTienFromSheet(): Promise<DongTien[]> {
         thuTienHang: row[5] || "",
         thuKhac: parseFloat(String(row[6]).replace(/\./g, "").replace(",", ".")) || 0,
         chiKhac: parseFloat(String(row[7]).replace(/\./g, "").replace(",", ".")) || 0,
-        doiTuong: row[8] || "",
-        noiDung: row[9] || "",
-        phanLoaiThuChi: row[10] || "",
-        tongThu: parseFloat(String(row[11]).replace(/\./g, "").replace(",", ".")) || 0,
-        tongChi: parseFloat(String(row[12]).replace(/\./g, "").replace(",", ".")) || 0,
-        ghiChu: row[13] || "",
+        maPhieuThu: row[8] || "",
+        maPhieuChi: row[9] || "",
+        doiTuong: row[10] || "",
+        noiDung: "",
+        phanLoaiThuChi: row[11] || "",
+        tongThu: parseFloat(String(row[12]).replace(/\./g, "").replace(",", ".")) || 0,
+        tongChi: parseFloat(String(row[13]).replace(/\./g, "").replace(",", ".")) || 0,
+        ghiChu: row[14] || "",
         rowIndex: index + 6, // Row 6 is first data row
       }))
       .filter((item) => item.ngayThang.trim() !== "");
@@ -884,8 +888,9 @@ export async function addDongTienToSheet(dongTien: Omit<DongTien, 'id' | 'rowInd
         dongTien.thuTienHang,
         dongTien.thuKhac,
         dongTien.chiKhac,
+        dongTien.maPhieuThu,
+        dongTien.maPhieuChi,
         dongTien.doiTuong,
-        dongTien.noiDung,
         dongTien.phanLoaiThuChi,
         dongTien.tongThu,
         dongTien.tongChi,
@@ -895,7 +900,7 @@ export async function addDongTienToSheet(dongTien: Omit<DongTien, 'id' | 'rowInd
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A6:N`,
+      range: `'${sheetNameDongTien}'!A6:O`,
       valueInputOption: "RAW",
       requestBody: {
         values,
@@ -926,8 +931,9 @@ export async function updateDongTienInSheet(rowIndex: number, dongTien: Omit<Don
         dongTien.thuTienHang,
         dongTien.thuKhac,
         dongTien.chiKhac,
+        dongTien.maPhieuThu,
+        dongTien.maPhieuChi,
         dongTien.doiTuong,
-        dongTien.noiDung,
         dongTien.phanLoaiThuChi,
         dongTien.tongThu,
         dongTien.tongChi,
@@ -937,7 +943,7 @@ export async function updateDongTienInSheet(rowIndex: number, dongTien: Omit<Don
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A${rowIndex}:N${rowIndex}`,
+      range: `'${sheetNameDongTien}'!A${rowIndex}:O${rowIndex}`,
       valueInputOption: "RAW",
       requestBody: {
         values,
@@ -960,7 +966,7 @@ export async function deleteDongTienFromSheet(rowIndex: number): Promise<void> {
 
     await sheets.spreadsheets.values.clear({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A${rowIndex}:N${rowIndex}`,
+      range: `'${sheetNameDongTien}'!A${rowIndex}:O${rowIndex}`,
     });
 
     console.log(`Successfully cleared cash flow data at row ${rowIndex}`);
