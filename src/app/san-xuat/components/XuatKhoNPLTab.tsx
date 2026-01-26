@@ -1,7 +1,19 @@
 "use client";
 
-import { Eye, Loader2, X, Search, Printer, Download, ChevronDown, Plus, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  X,
+  Search,
+  Printer,
+  Download,
+  ChevronDown,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  RotateCcw,
+} from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
 import html2canvas from "html2canvas";
@@ -57,15 +69,27 @@ const getCachedProfileName = (): string => {
   return "";
 };
 
+// View types
+type ViewType = "list" | "detail";
+
 export default function XuatKhoNPLTab() {
   const { profile } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<XuatKhoNPL[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
+
+  // View state - "list" or "detail"
+  const [currentView, setCurrentView] = useState<ViewType>("list");
+  const [viewGroupedPhieu, setViewGroupedPhieu] =
+    useState<GroupedPhieuXuat | null>(null);
+  const [selectedItemDetail, setSelectedItemDetail] =
+    useState<XuatKhoNPL | null>(null);
+
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [viewGroupedPhieu, setViewGroupedPhieu] = useState<GroupedPhieuXuat | null>(null);
   const [phieuToDelete, setPhieuToDelete] = useState<string | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [showDeleteItemModal, setShowDeleteItemModal] = useState(false);
@@ -84,6 +108,25 @@ export default function XuatKhoNPLTab() {
   const [formLenhSX, setFormLenhSX] = useState("");
   const [formXuongSX, setFormXuongSX] = useState("");
   const [selectedNPLs, setSelectedNPLs] = useState<SelectedNPL[]>([]);
+
+  // Return form states (Phiếu hoàn NPL)
+  const [returnFormMaPhieu, setReturnFormMaPhieu] = useState("");
+  const [returnFormNgayThang, setReturnFormNgayThang] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [returnFormNguoiNhap, setReturnFormNguoiNhap] = useState("");
+  const [returnFormNoiDung, setReturnFormNoiDung] = useState("");
+  const [returnFormMaSP, setReturnFormMaSP] = useState("");
+  const [returnFormLenhSX, setReturnFormLenhSX] = useState("");
+  const [returnFormXuongSX, setReturnFormXuongSX] = useState("");
+  const [returnSelectedNPLs, setReturnSelectedNPLs] = useState<SelectedNPL[]>(
+    [],
+  );
+
+  // Return NPL search
+  const [returnNplSearchTerm, setReturnNplSearchTerm] = useState("");
+  const [showReturnNPLDropdown, setShowReturnNPLDropdown] = useState(false);
+  const returnNplDropdownRef = useRef<HTMLDivElement>(null);
 
   // NPL search
   const [nplSearchTerm, setNplSearchTerm] = useState("");
@@ -104,6 +147,14 @@ export default function XuatKhoNPLTab() {
   const filteredMaterials = materialsData.filter((m) =>
     (m.code && m.code.toLowerCase().includes(nplSearchTerm.toLowerCase())) ||
     (m.name && m.name.toLowerCase().includes(nplSearchTerm.toLowerCase()))
+  );
+
+  // Filter materials for return
+  const filteredReturnMaterials = materialsData.filter((m) =>
+    (m.code &&
+      m.code.toLowerCase().includes(returnNplSearchTerm.toLowerCase())) ||
+    (m.name &&
+      m.name.toLowerCase().includes(returnNplSearchTerm.toLowerCase()))
   );
 
   // Filter products
@@ -139,6 +190,25 @@ export default function XuatKhoNPLTab() {
     return Object.values(groups);
   }, [data]);
 
+  // Sync view state with URL params - URL is the single source of truth
+  useEffect(() => {
+    const phieuParam = searchParams.get("phieu");
+
+    if (phieuParam && groupedPhieuXuat.length > 0) {
+      // URL has phieu param - show detail view
+      const foundGroup = groupedPhieuXuat.find((g) => g.maPhieu === phieuParam);
+      if (foundGroup) {
+        setViewGroupedPhieu(foundGroup);
+        setCurrentView("detail");
+      }
+    } else if (!phieuParam) {
+      // No phieu param - show list view
+      setCurrentView("list");
+      setViewGroupedPhieu(null);
+      setSelectedItemDetail(null);
+    }
+  }, [searchParams, groupedPhieuXuat]);
+
   // Filtered grouped phieu
   const filteredGroupedPhieu = groupedPhieuXuat.filter(
     (g) =>
@@ -171,6 +241,12 @@ export default function XuatKhoNPLTab() {
         !maSPDropdownRef.current.contains(event.target as Node)
       ) {
         setShowMaSPDropdown(false);
+      }
+      if (
+        returnNplDropdownRef.current &&
+        !returnNplDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowReturnNPLDropdown(false);
       }
     };
 
@@ -232,24 +308,28 @@ export default function XuatKhoNPLTab() {
     }
   };
 
-  const generateNextMaPhieu = (): string => {
-    if (data.length === 0) {
-      return "PXKNPL001";
+  const generateNextMaPhieu = (prefix: string = "PXKNPL"): string => {
+    const relevantData = data.filter((item) =>
+      item.maPhieu.startsWith(prefix),
+    );
+    if (relevantData.length === 0) {
+      return `${prefix}001`;
     }
 
-    const codeNumbers = data
+    const codeNumbers = relevantData
       .map((item) => {
-        const match = item.maPhieu.match(/PXKNPL(\d+)/i);
+        const regex = new RegExp(`${prefix}(\\d+)`, "i");
+        const match = item.maPhieu.match(regex);
         return match ? parseInt(match[1], 10) : 0;
       })
       .filter((n) => !isNaN(n));
 
     const maxNumber = Math.max(...codeNumbers, 0);
-    return `PXKNPL${String(maxNumber + 1).padStart(3, "0")}`;
+    return `${prefix}${String(maxNumber + 1).padStart(3, "0")}`;
   };
 
   const handleOpenAddModal = () => {
-    const nextCode = generateNextMaPhieu();
+    const nextCode = generateNextMaPhieu("PXKNPL");
     setFormMaPhieu(nextCode);
     setFormNgayThang(new Date().toISOString().split("T")[0]);
     setFormNguoiNhap(profile?.full_name || profile?.email || getCachedProfileName() || "");
@@ -259,6 +339,21 @@ export default function XuatKhoNPLTab() {
     setFormXuongSX("");
     setSelectedNPLs([]);
     setShowAddModal(true);
+  };
+
+  const handleOpenReturnModal = () => {
+    const nextCode = generateNextMaPhieu("PHNPL");
+    setReturnFormMaPhieu(nextCode);
+    setReturnFormNgayThang(new Date().toISOString().split("T")[0]);
+    setReturnFormNguoiNhap(
+      profile?.full_name || profile?.email || getCachedProfileName() || "",
+    );
+    setReturnFormNoiDung("Hoàn NPL");
+    setReturnFormMaSP(viewGroupedPhieu?.maSP || "");
+    setReturnFormLenhSX(viewGroupedPhieu?.lenhSX || "");
+    setReturnFormXuongSX(viewGroupedPhieu?.xuongSX || "");
+    setReturnSelectedNPLs([]);
+    setShowReturnModal(true);
   };
 
   const handleAddNPLToList = (material: any) => {
@@ -284,6 +379,54 @@ export default function XuatKhoNPLTab() {
 
   const handleRemoveNPLFromList = (id: string) => {
     setSelectedNPLs(selectedNPLs.filter((n) => n.id !== id));
+  };
+
+  const handleAddReturnNPLToList = (material: any) => {
+    const donGia = material.priceWithTax || material.priceBeforeTax || 0;
+
+    const newNPL: SelectedNPL = {
+      id: `${material.code}-${Date.now()}`,
+      maNPL: material.code,
+      dvt: material.unit || "",
+      soLuong: 1,
+      donGia: donGia,
+      thanhTien: donGia * 1,
+      loaiChiPhi: "",
+      tonThucTe: 0,
+      ghiChu: "",
+    };
+
+    setReturnSelectedNPLs([...returnSelectedNPLs, newNPL]);
+    setReturnNplSearchTerm("");
+    setShowReturnNPLDropdown(false);
+  };
+
+  const handleRemoveReturnNPLFromList = (id: string) => {
+    setReturnSelectedNPLs(returnSelectedNPLs.filter((n) => n.id !== id));
+  };
+
+  const handleUpdateReturnNPL = (
+    id: string,
+    field: keyof SelectedNPL,
+    value: any,
+  ) => {
+    setReturnSelectedNPLs(
+      returnSelectedNPLs.map((n) => {
+        if (n.id !== id) return n;
+
+        const updated = { ...n, [field]: value };
+
+        if (field === "soLuong" || field === "donGia") {
+          updated.thanhTien = updated.soLuong * updated.donGia;
+        }
+
+        return updated;
+      }),
+    );
+  };
+
+  const calculateReturnTotalThanhTien = () => {
+    return returnSelectedNPLs.reduce((sum, n) => sum + n.thanhTien, 0);
   };
 
   const handleUpdateNPL = (
@@ -368,9 +511,77 @@ export default function XuatKhoNPLTab() {
     }
   };
 
+  const handleAddPhieuHoan = async () => {
+    if (!returnFormMaPhieu || !returnFormNgayThang) {
+      toast.error("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    if (returnSelectedNPLs.length === 0) {
+      toast.error("Vui lòng thêm ít nhất 1 mã NPL");
+      return;
+    }
+
+    try {
+      setIsAdding(true);
+
+      for (const npl of returnSelectedNPLs) {
+        const phieuData = {
+          maPhieu: returnFormMaPhieu,
+          ngayThang: returnFormNgayThang,
+          nguoiNhap: returnFormNguoiNhap,
+          noiDung: returnFormNoiDung,
+          maSP: returnFormMaSP,
+          lenhSX: returnFormLenhSX,
+          xuongSX: returnFormXuongSX,
+          maNPL: npl.maNPL,
+          dvt: npl.dvt,
+          soLuong: -Math.abs(npl.soLuong), // Số lượng âm để hoàn kho
+          donGia: npl.donGia,
+          thanhTien: -Math.abs(npl.thanhTien), // Thành tiền âm
+          loaiChiPhi: npl.loaiChiPhi,
+          tonThucTe: npl.tonThucTe,
+          ghiChu: npl.ghiChu,
+        };
+
+        const response = await fetch("/api/xuat-kho-npl/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(phieuData),
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          toast.error(`Lỗi khi thêm mã NPL ${npl.maNPL}`);
+        }
+      }
+
+      await fetchData();
+      setShowReturnModal(false);
+      toast.success(
+        `Tạo phiếu hoàn NPL ${returnFormMaPhieu} thành công (${returnSelectedNPLs.length} mã NPL)`,
+      );
+    } catch (error) {
+      console.error("Error adding phieu hoan:", error);
+      toast.error("Lỗi khi tạo phiếu hoàn NPL");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   const handleViewGrouped = (group: GroupedPhieuXuat) => {
-    setViewGroupedPhieu(group);
-    setShowViewModal(true);
+    // Only update URL, let useEffect handle state changes
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("phieu", group.maPhieu);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const handleBackToList = () => {
+    // Only update URL, let useEffect handle state changes
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("phieu");
+    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    router.push(newUrl, { scroll: false });
   };
 
   const handleDeleteGrouped = (maPhieu: string) => {
@@ -399,6 +610,12 @@ export default function XuatKhoNPLTab() {
       await fetchData();
       setShowDeleteModal(false);
       setPhieuToDelete(null);
+
+      // If we deleted the current viewed phieu, go back to list
+      if (viewGroupedPhieu?.maPhieu === phieuToDelete) {
+        handleBackToList();
+      }
+
       toast.success(
         `Xóa phiếu xuất kho ${phieuToDelete} thành công (${itemsToDelete.length} mã NPL)`
       );
@@ -429,20 +646,30 @@ export default function XuatKhoNPLTab() {
       if (result.success) {
         await fetchData();
 
+        if (selectedItemDetail?.id.toString() === itemToDelete) {
+          setSelectedItemDetail(null);
+        }
+
         // Update viewGroupedPhieu if it's open
         if (viewGroupedPhieu) {
-          const updatedItems = viewGroupedPhieu.items.filter(item => item.id.toString() !== itemToDelete);
+          const updatedItems = viewGroupedPhieu.items.filter(
+            (item) => item.id.toString() !== itemToDelete,
+          );
           if (updatedItems.length === 0) {
-            // If no items left, close the modal
-            setShowViewModal(false);
-            setViewGroupedPhieu(null);
+            handleBackToList();
           } else {
             // Update the viewGroupedPhieu with remaining items
             const updatedGroup = {
               ...viewGroupedPhieu,
               items: updatedItems,
-              totalItems: updatedItems.reduce((sum, item) => sum + (item.soLuong || 0), 0),
-              totalThanhTien: updatedItems.reduce((sum, item) => sum + (item.thanhTien || 0), 0),
+              totalItems: updatedItems.reduce(
+                (sum, item) => sum + (item.soLuong || 0),
+                0,
+              ),
+              totalThanhTien: updatedItems.reduce(
+                (sum, item) => sum + (item.thanhTien || 0),
+                0,
+              ),
             };
             setViewGroupedPhieu(updatedGroup);
           }
@@ -601,7 +828,11 @@ export default function XuatKhoNPLTab() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredGroupedPhieu.map((group) => (
-                <tr key={group.maPhieu} className="hover:bg-gray-50">
+                <tr
+                  key={group.maPhieu}
+                  className="hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => handleViewGrouped(group)}
+                >
                   <td className="px-3 py-3 font-medium text-blue-600">{group.maPhieu}</td>
                   <td className="px-3 py-3 text-gray-600">{group.ngayThang}</td>
                   <td className="px-3 py-3 text-gray-600">{group.lenhSX || "-"}</td>
@@ -623,14 +854,10 @@ export default function XuatKhoNPLTab() {
                   <td className="px-3 py-3">
                     <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => handleViewGrouped(group)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteGrouped(group.maPhieu)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteGrouped(group.maPhieu);
+                        }}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                         title="Xóa"
                       >
@@ -1007,148 +1234,202 @@ export default function XuatKhoNPLTab() {
         </Portal>
       )}
 
-      {/* Modal xem chi tiết phiếu - Grouped */}
-      {showViewModal && viewGroupedPhieu && (
+      {/* Detail View - Full page overlay */}
+      {currentView === "detail" && viewGroupedPhieu && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => { setShowViewModal(false); setShowPrintDropdown(false); }} />
-          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-red-50">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">Chi tiết phiếu xuất kho</h3>
-                <p className="text-sm text-gray-500">{viewGroupedPhieu.maPhieu}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Print Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowPrintDropdown(!showPrintDropdown)}
-                    disabled={isExporting}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                  >
-                    {isExporting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Đang xuất...
-                      </>
-                    ) : (
-                      <>
-                        <Printer size={18} />
-                        In / Tải xuống
-                        <ChevronDown size={16} />
-                      </>
-                    )}
-                  </button>
-                  {showPrintDropdown && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowPrintDropdown(false)} />
-                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                        <button
-                          onClick={handleDownloadJPG}
-                          className="flex items-center gap-2 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors rounded-t-lg"
-                        >
-                          <Download size={18} className="text-green-600" />
-                          <span>Tải xuống JPG</span>
-                        </button>
-                        <button
-                          onClick={handlePrint}
-                          className="flex items-center gap-2 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100"
-                        >
-                          <Printer size={18} className="text-blue-600" />
-                          <span>In qua máy in</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
+          <div className="fixed top-0 right-0 bottom-0 left-64 z-40 bg-gray-50 overflow-y-auto">
+            {/* Page Header */}
+            <div className="bg-white border-b border-gray-200 px-8 py-4">
+              {/* Back button on top */}
+              <button
+                onClick={handleBackToList}
+                className="flex items-center gap-2 -ml-2 px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors mb-3"
+              >
+                <ArrowLeft size={28} />
+              </button>
+              {/* Title and action button below */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    Chi tiết phiếu xuất kho
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {viewGroupedPhieu.maPhieu}
+                  </p>
                 </div>
-                <button onClick={() => { setShowViewModal(false); setShowPrintDropdown(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
-                  <X size={24} />
+                <button
+                  onClick={handleOpenReturnModal}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors font-medium"
+                >
+                  <RotateCcw size={20} />
+                  Phiếu hoàn NPL
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
+
+            {/* Page Content */}
+            <div className="p-8">
               {/* Header Info */}
-              <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-4 gap-6 mb-6 p-5 bg-white rounded-xl shadow-sm">
                 <div>
-                  <span className="text-sm text-gray-500">Mã phiếu:</span>
-                  <p className="font-medium text-blue-600">{viewGroupedPhieu.maPhieu}</p>
+                  <span className="text-sm text-gray-500 block mb-1">
+                    Mã phiếu:
+                  </span>
+                  <p className="font-semibold text-blue-600 text-lg">
+                    {viewGroupedPhieu.maPhieu}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Ngày tháng:</span>
-                  <p className="font-medium">{viewGroupedPhieu.ngayThang}</p>
+                  <span className="text-sm text-gray-500 block mb-1">
+                    Ngày tháng:
+                  </span>
+                  <p className="font-medium text-lg">
+                    {viewGroupedPhieu.ngayThang}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Người nhập:</span>
-                  <p className="font-medium">{viewGroupedPhieu.nguoiNhap || "-"}</p>
+                  <span className="text-sm text-gray-500 block mb-1">
+                    Người nhập:
+                  </span>
+                  <p className="font-medium text-lg">
+                    {viewGroupedPhieu.nguoiNhap || "-"}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Nội dung:</span>
-                  <p className="font-medium">{viewGroupedPhieu.noiDung || "-"}</p>
+                  <span className="text-sm text-gray-500 block mb-1">
+                    Nội dung:
+                  </span>
+                  <p className="font-medium text-lg">
+                    {viewGroupedPhieu.noiDung || "-"}
+                  </p>
                 </div>
               </div>
 
               {/* Production Info */}
-              <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-3 gap-6 mb-6 p-5 bg-white rounded-xl shadow-sm">
                 <div>
-                  <span className="text-sm text-gray-500">Mã SP:</span>
-                  <p className="font-medium">{viewGroupedPhieu.maSP || "-"}</p>
+                  <span className="text-sm text-gray-500 block mb-1">
+                    Mã SP:
+                  </span>
+                  <p className="font-medium text-lg">
+                    {viewGroupedPhieu.maSP || "-"}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Lệnh SX:</span>
-                  <p className="font-medium">{viewGroupedPhieu.lenhSX || "-"}</p>
+                  <span className="text-sm text-gray-500 block mb-1">
+                    Lệnh SX:
+                  </span>
+                  <p className="font-medium text-lg">
+                    {viewGroupedPhieu.lenhSX || "-"}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Xưởng SX:</span>
-                  <p className="font-medium">{viewGroupedPhieu.xuongSX || "-"}</p>
+                  <span className="text-sm text-gray-500 block mb-1">
+                    Xưởng SX:
+                  </span>
+                  <p className="font-medium text-lg">
+                    {viewGroupedPhieu.xuongSX || "-"}
+                  </p>
                 </div>
               </div>
 
               {/* NPL Table */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-yellow-50 px-4 py-2 border-b border-gray-200">
-                  <h4 className="font-medium text-gray-800">
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-yellow-50 px-5 py-4 border-b border-gray-200">
+                  <h4 className="font-semibold text-gray-800 text-lg">
                     Danh sách mã NPL ({viewGroupedPhieu.items.length})
-                    <span className="ml-2 text-blue-600">- Tổng: {viewGroupedPhieu.totalItems.toLocaleString("vi-VN")}</span>
+                    <span className="ml-3 text-blue-600 font-medium">
+                      - Tổng SL:{" "}
+                      {viewGroupedPhieu.totalItems.toLocaleString("vi-VN")}
+                    </span>
                   </h4>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã NPL</th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">ĐVT</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">SL</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Đơn giá</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-yellow-100">Thành tiền</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Loại CP</th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">Tồn TT</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Ghi chú</th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-12"></th>
+                        <th className="px-5 py-4 text-left text-sm font-medium text-gray-500 w-16">
+                          STT
+                        </th>
+                        <th className="px-5 py-4 text-left text-sm font-medium text-gray-500">
+                          Mã NPL
+                        </th>
+                        <th className="px-5 py-4 text-center text-sm font-medium text-gray-500 w-28">
+                          ĐVT
+                        </th>
+                        <th className="px-5 py-4 text-right text-sm font-medium text-gray-500 w-28">
+                          SL
+                        </th>
+                        <th className="px-5 py-4 text-right text-sm font-medium text-gray-500 w-36">
+                          Đơn giá
+                        </th>
+                        <th className="px-5 py-4 text-right text-sm font-medium text-gray-500 bg-yellow-100 w-40">
+                          Thành tiền
+                        </th>
+                        <th className="px-5 py-4 text-left text-sm font-medium text-gray-500">
+                          Loại CP
+                        </th>
+                        <th className="px-5 py-4 text-center text-sm font-medium text-gray-500 w-24">
+                          Tồn TT
+                        </th>
+                        <th className="px-5 py-4 text-left text-sm font-medium text-gray-500">
+                          Ghi chú
+                        </th>
+                        <th className="px-5 py-4 text-center text-sm font-medium text-gray-500 w-20"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {viewGroupedPhieu.items.map((item, index) => (
-                        <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
-                          <td className="px-3 py-2 text-sm font-medium text-blue-600">{item.maNPL}</td>
-                          <td className="px-3 py-2 text-sm text-center">{item.dvt || "-"}</td>
-                          <td className="px-3 py-2 text-sm text-right">{item.soLuong.toLocaleString("vi-VN")}</td>
-                          <td className="px-3 py-2 text-sm text-right">
-                            {item.donGia > 0 ? item.donGia.toLocaleString("vi-VN") : "-"}
+                        <tr
+                          key={item.id}
+                          className={`cursor-pointer transition-colors ${selectedItemDetail?.id === item.id ? "bg-blue-100" : "hover:bg-gray-50"}`}
+                          onClick={() =>
+                            setSelectedItemDetail(
+                              selectedItemDetail?.id === item.id ? null : item,
+                            )
+                          }
+                        >
+                          <td className="px-5 py-4 text-sm text-gray-600">
+                            {index + 1}
                           </td>
-                          <td className="px-3 py-2 text-sm text-right font-medium bg-yellow-50">
-                            {item.thanhTien > 0 ? item.thanhTien.toLocaleString("vi-VN") : "-"}
+                          <td className="px-5 py-4 text-sm font-medium text-blue-600">
+                            {item.maNPL}
                           </td>
-                          <td className="px-3 py-2 text-sm">{item.loaiChiPhi || "-"}</td>
-                          <td className="px-3 py-2 text-sm text-center">{item.tonThucTe.toLocaleString("vi-VN")}</td>
-                          <td className="px-3 py-2 text-sm">{item.ghiChu || "-"}</td>
-                          <td className="px-3 py-2 text-center">
+                          <td className="px-5 py-4 text-sm text-center">
+                            {item.dvt || "-"}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-right font-medium">
+                            {item.soLuong.toLocaleString("vi-VN")}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-right">
+                            {item.donGia > 0
+                              ? item.donGia.toLocaleString("vi-VN")
+                              : "-"}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-right font-semibold bg-yellow-50">
+                            {item.thanhTien > 0
+                              ? item.thanhTien.toLocaleString("vi-VN")
+                              : "-"}
+                          </td>
+                          <td className="px-5 py-4 text-sm">
+                            {item.loaiChiPhi || "-"}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-center">
+                            {item.tonThucTe.toLocaleString("vi-VN")}
+                          </td>
+                          <td className="px-5 py-4 text-sm">
+                            {item.ghiChu || "-"}
+                          </td>
+                          <td className="px-5 py-4 text-center">
                             <button
-                              onClick={() => handleDeleteItem(item.id.toString())}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id.toString());
+                              }}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
                               title="Xóa"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={18} />
                             </button>
                           </td>
                         </tr>
@@ -1156,9 +1437,17 @@ export default function XuatKhoNPLTab() {
                     </tbody>
                     <tfoot className="bg-gray-100">
                       <tr>
-                        <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">Tổng thành tiền:</td>
-                        <td className="px-3 py-2 text-sm text-right font-semibold text-red-600">
-                          {viewGroupedPhieu.totalThanhTien.toLocaleString("vi-VN")}đ
+                        <td
+                          colSpan={5}
+                          className="px-5 py-4 text-sm font-semibold text-right"
+                        >
+                          Tổng thành tiền:
+                        </td>
+                        <td className="px-5 py-4 text-right font-bold text-red-600 text-lg">
+                          {viewGroupedPhieu.totalThanhTien.toLocaleString(
+                            "vi-VN",
+                          )}
+                          đ
                         </td>
                         <td colSpan={4}></td>
                       </tr>
@@ -1166,6 +1455,98 @@ export default function XuatKhoNPLTab() {
                   </table>
                 </div>
               </div>
+
+              {/* Chi tiết item được chọn */}
+              {selectedItemDetail && (
+                <div className="mt-6 p-6 bg-blue-50 rounded-xl border border-blue-200 animate-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between mb-5">
+                    <h4 className="font-semibold text-blue-800 text-xl">
+                      Chi tiết mã NPL
+                    </h4>
+                    <button
+                      onClick={() => setSelectedItemDetail(null)}
+                      className="p-2 hover:bg-blue-100 rounded-lg text-blue-600"
+                    >
+                      <X size={22} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Mã NPL
+                      </span>
+                      <p className="font-semibold text-blue-600 text-lg">
+                        {selectedItemDetail.maNPL}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Đơn vị tính
+                      </span>
+                      <p className="font-medium text-lg">
+                        {selectedItemDetail.dvt || "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Số lượng
+                      </span>
+                      <p className="font-medium text-lg">
+                        {selectedItemDetail.soLuong?.toLocaleString("vi-VN") ||
+                          "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Đơn giá
+                      </span>
+                      <p className="font-medium text-lg">
+                        {selectedItemDetail.donGia > 0
+                          ? selectedItemDetail.donGia.toLocaleString(
+                              "vi-VN",
+                            ) + "đ"
+                          : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Thành tiền
+                      </span>
+                      <p className="font-bold text-red-600 text-lg">
+                        {selectedItemDetail.thanhTien > 0
+                          ? selectedItemDetail.thanhTien.toLocaleString("vi-VN") +
+                            "đ"
+                          : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Loại chi phí
+                      </span>
+                      <p className="font-medium text-lg">
+                        {selectedItemDetail.loaiChiPhi || "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Tồn thực tế
+                      </span>
+                      <p className="font-medium text-lg">
+                        {selectedItemDetail.tonThucTe?.toLocaleString("vi-VN") ||
+                          "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Ghi chú
+                      </span>
+                      <p className="font-medium text-lg">
+                        {selectedItemDetail.ghiChu || "-"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Printable content - Hidden but used for export */}
@@ -1308,6 +1689,406 @@ export default function XuatKhoNPLTab() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal phiếu hoàn NPL */}
+      {showReturnModal && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-50 bg-black/30"
+            onClick={() => {
+              setShowReturnModal(false);
+            }}
+          />
+          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Loading Overlay */}
+            {isAdding && (
+              <div className="fixed inset-4 lg:inset-8 bg-white/80 z-70 flex flex-col items-center justify-center rounded-xl">
+                <Loader2 className="w-12 h-12 animate-spin text-purple-600 mb-4" />
+                <p className="text-gray-700 font-medium">
+                  Đang tạo phiếu hoàn NPL...
+                </p>
+              </div>
+            )}
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-purple-50">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Tạo phiếu hoàn NPL
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Mã phiếu: {returnFormMaPhieu}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReturnModal(false)}
+                disabled={isAdding}
+                className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Form Info */}
+              <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã phiếu
+                  </label>
+                  <input
+                    type="text"
+                    value={returnFormMaPhieu}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày tháng
+                  </label>
+                  <input
+                    type="date"
+                    value={returnFormNgayThang}
+                    onChange={(e) => setReturnFormNgayThang(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Người hoàn
+                  </label>
+                  <input
+                    type="text"
+                    value={returnFormNguoiNhap}
+                    onChange={(e) => setReturnFormNguoiNhap(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nội dung
+                  </label>
+                  <input
+                    type="text"
+                    value={returnFormNoiDung}
+                    onChange={(e) => setReturnFormNoiDung(e.target.value)}
+                    placeholder="Hoàn NPL..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Second row */}
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã SP
+                  </label>
+                  <input
+                    type="text"
+                    value={returnFormMaSP}
+                    onChange={(e) => setReturnFormMaSP(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Lệnh SX
+                  </label>
+                  <input
+                    type="text"
+                    value={returnFormLenhSX}
+                    onChange={(e) => setReturnFormLenhSX(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Xưởng SX
+                  </label>
+                  <select
+                    value={returnFormXuongSX}
+                    onChange={(e) => setReturnFormXuongSX(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-white"
+                  >
+                    <option value="">Chọn xưởng sản xuất...</option>
+                    {xuongSXList.map((xuong) => (
+                      <option key={xuong.id} value={xuong.name}>
+                        {xuong.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Add NPL Section */}
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200 mb-4">
+                <div className="relative" ref={returnNplDropdownRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Thêm mã NPL cần hoàn
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={returnNplSearchTerm}
+                      onChange={(e) => {
+                        setReturnNplSearchTerm(e.target.value);
+                        setShowReturnNPLDropdown(true);
+                      }}
+                      onFocus={() => setShowReturnNPLDropdown(true)}
+                      placeholder="Tìm mã NPL..."
+                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                    <Search
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={16}
+                    />
+                  </div>
+                  {showReturnNPLDropdown && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredReturnMaterials.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">
+                          Không tìm thấy
+                        </div>
+                      ) : (
+                        filteredReturnMaterials.slice(0, 50).map((material) => (
+                          <div
+                            key={material.id}
+                            onClick={() => handleAddReturnNPLToList(material)}
+                            className="px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm border-b border-gray-100 last:border-0"
+                          >
+                            <div className="font-medium text-purple-600">
+                              {material.code}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {material.name}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              ĐVT: {material.unit || "-"} | Giá:{" "}
+                              {material.priceWithTax
+                                ? material.priceWithTax.toLocaleString(
+                                    "vi-VN",
+                                  ) + "đ"
+                                : "-"}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Selected NPLs Table */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-purple-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">
+                    Danh sách mã NPL cần hoàn ({returnSelectedNPLs.length})
+                  </h4>
+                </div>
+                {returnSelectedNPLs.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    Chưa có mã NPL nào. Tìm và thêm mã NPL cần hoàn ở trên.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">
+                            STT
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                            Mã NPL
+                          </th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-20">
+                            ĐVT
+                          </th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-24">
+                            SL hoàn
+                          </th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
+                            Đơn giá
+                          </th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-purple-100">
+                            Thành tiền
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                            Loại CP
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                            Ghi chú
+                          </th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-12"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {returnSelectedNPLs.map((npl, index) => (
+                          <tr key={npl.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-600">
+                              {index + 1}
+                            </td>
+                            <td className="px-3 py-2 text-sm font-medium text-purple-600">
+                              {npl.maNPL}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={npl.dvt}
+                                onChange={(e) =>
+                                  handleUpdateReturnNPL(
+                                    npl.id,
+                                    "dvt",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={npl.soLuong || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(
+                                    /\D/g,
+                                    "",
+                                  );
+                                  handleUpdateReturnNPL(
+                                    npl.id,
+                                    "soLuong",
+                                    parseInt(value) || 0,
+                                  );
+                                }}
+                                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={npl.donGia || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(
+                                    /\D/g,
+                                    "",
+                                  );
+                                  handleUpdateReturnNPL(
+                                    npl.id,
+                                    "donGia",
+                                    parseInt(value) || 0,
+                                  );
+                                }}
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-sm text-right font-medium bg-purple-50">
+                              {npl.thanhTien.toLocaleString("vi-VN")}
+                            </td>
+                            <td className="px-3 py-2">
+                              <select
+                                value={npl.loaiChiPhi}
+                                onChange={(e) =>
+                                  handleUpdateReturnNPL(
+                                    npl.id,
+                                    "loaiChiPhi",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm bg-white"
+                              >
+                                <option value="">-- Chọn --</option>
+                                {LOAI_CHI_PHI_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={npl.ghiChu}
+                                onChange={(e) =>
+                                  handleUpdateReturnNPL(
+                                    npl.id,
+                                    "ghiChu",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Ghi chú"
+                                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() =>
+                                  handleRemoveReturnNPLFromList(npl.id)
+                                }
+                                className="p-1 text-red-500 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-100">
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="px-3 py-2 text-sm font-medium text-right"
+                          >
+                            Tổng thành tiền hoàn:
+                          </td>
+                          <td className="px-3 py-2 text-sm text-right font-semibold text-purple-600">
+                            {calculateReturnTotalThanhTien().toLocaleString(
+                              "vi-VN",
+                            )}
+                            đ
+                          </td>
+                          <td colSpan={3}></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowReturnModal(false)}
+                disabled={isAdding}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAddPhieuHoan}
+                disabled={isAdding || returnSelectedNPLs.length === 0}
+                className="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isAdding ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang tạo...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={18} />
+                    Tạo phiếu hoàn NPL ({returnSelectedNPLs.length} mã NPL)
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </Portal>
