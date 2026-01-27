@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, DollarSign, Calendar } from "lucide-react";
+import { Users, DollarSign, Calendar, FileText } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Toaster } from "react-hot-toast";
@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 import EmployeesTab from "./components/EmployeesTab";
 import AttendanceTab from "./components/AttendanceTab";
 import SalaryTab from "./components/SalaryTab";
+import ContractsTab from "./components/ContractsTab";
 
 // Employee type - khớp với Google Sheets Employee interface
 interface Employee {
@@ -20,7 +21,7 @@ interface Employee {
   address: string;
 }
 
-type TabType = "employees" | "attendance" | "salary";
+type TabType = "employees" | "attendance" | "salary" | "contracts";
 
 export default function LuongBaoHiem() {
   const searchParams = useSearchParams();
@@ -28,7 +29,7 @@ export default function LuongBaoHiem() {
 
   // Lấy tab từ URL param, mặc định là "employees"
   const tabFromUrl = searchParams.get("tab") as TabType | null;
-  const validTabs = useMemo<TabType[]>(() => ["employees", "attendance", "salary"], []);
+  const validTabs = useMemo<TabType[]>(() => ["employees", "attendance", "salary", "contracts"], []);
   const initialTab = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "employees";
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
@@ -141,6 +142,19 @@ export default function LuongBaoHiem() {
                 Bảng lương
               </div>
             </button>
+            <button
+              onClick={() => handleTabChange("contracts")}
+              className={`px-6 py-4 font-medium transition-colors ${
+                activeTab === "contracts"
+                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <FileText size={20} />
+                Hợp đồng
+              </div>
+            </button>
           </div>
         </div>
 
@@ -160,6 +174,9 @@ export default function LuongBaoHiem() {
 
           {/* Tab: Bảng lương */}
           {activeTab === "salary" && <SalaryTab employees={employees} />}
+
+          {/* Tab: Hợp đồng */}
+          {activeTab === "contracts" && <ContractsTab />}
         </div>
       </div>
     </div>
