@@ -9,7 +9,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Eye,
 } from "lucide-react";
 import { DongTien } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
@@ -514,7 +513,8 @@ export default function DongTienTab() {
                 paginatedList.map((item, index) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => handleView(item)}
                   >
                     <td className="px-4 py-3 text-gray-600">
                       {startIndex + index + 1}
@@ -566,15 +566,9 @@ export default function DongTienTab() {
                     </td>
                     <td
                       className={`px-4 py-3 sticky right-0 bg-white z-10 ${showBorder ? "border-l border-gray-200 shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.1)]" : ""}`}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleView(item)}
-                          className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
-                          title="Xem chi tiết"
-                        >
-                          <Eye size={16} />
-                        </button>
                         <button
                           onClick={() => handleEdit(item)}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"

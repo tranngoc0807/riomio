@@ -11,7 +11,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
   X,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -580,7 +579,7 @@ function ChiPhiKhacView({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paginated.map((item, index) => (
-                <tr key={item.id} className="hover:bg-gray-50">
+                <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openViewModal(item)}>
                   <td className="px-3 py-2.5 text-gray-600">
                     {startIndex + index + 1}
                   </td>
@@ -611,15 +610,8 @@ function ChiPhiKhacView({
                   <td className="px-3 py-2.5 text-gray-600">
                     {item.doiTacVC || "-"}
                   </td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => openViewModal(item)}
-                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={16} />
-                      </button>
                       <button
                         onClick={() => openEditModal(item)}
                         className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded"

@@ -1,13 +1,10 @@
 "use client";
 
 import {
-  Image,
+  Image as ImageIcon,
   List,
   PackagePlus,
-  FileInput,
-  DollarSign,
   PackageMinus,
-  FileOutput,
   Archive,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -33,37 +30,9 @@ type TabType =
 const TABS = [
   { id: "danh-muc" as TabType, label: "Danh mục HI", icon: List },
   { id: "nhap-kho" as TabType, label: "Nhập kho HI", icon: PackagePlus },
-  // {
-  //   id: "phieu-nhap" as TabType,
-  //   label: "Phiếu nhập kho hình in",
-  //   icon: FileInput,
-  // },
-  { id: "chi-phi" as TabType, label: "Chi phí HI", icon: DollarSign },
   { id: "xuat-kho" as TabType, label: "Xuất kho HI", icon: PackageMinus },
-  // {
-  //   id: "phieu-xuat" as TabType,
-  //   label: "Phiếu xuất kho hình in",
-  //   icon: FileOutput,
-  // },
   { id: "ton-kho" as TabType, label: "Tồn kho HI", icon: Archive },
 ];
-
-// Placeholder component for tabs under development
-function PlaceholderTab({
-  title,
-  icon: Icon,
-}: {
-  title: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-}) {
-  return (
-    <div className="text-center py-12 text-gray-500">
-      <Icon className="mx-auto mb-4 text-gray-300" size={64} />
-      <p className="text-lg font-medium">{title}</p>
-      <p className="text-sm mt-1">Tính năng đang phát triển</p>
-    </div>
-  );
-}
 
 export default function HinhIn() {
   const router = useRouter();
@@ -92,7 +61,7 @@ export default function HinhIn() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Image className="text-blue-600" size={32} />
+            <ImageIcon className="text-blue-600" size={32} />
             Hình In
           </h1>
           <p className="text-gray-600 mt-1">
@@ -127,14 +96,8 @@ export default function HinhIn() {
         <div className="p-6">
           {activeTab === "danh-muc" && <DanhMucHinhInTab />}
           {activeTab === "nhap-kho" && <NhapKhoHinhInTab />}
-          {/* {activeTab === "phieu-nhap" && (
-            <PlaceholderTab title="Phiếu nhập kho hình in" icon={FileInput} />
-          )} */}
           {activeTab === "chi-phi" && <ChiPhiHinhInTab />}
           {activeTab === "xuat-kho" && <XuatKhoHinhInTab />}
-          {/* {activeTab === "phieu-xuat" && (
-            <PlaceholderTab title="Phiếu xuất kho hình in" icon={FileOutput} />
-          )} */}
           {activeTab === "ton-kho" && <TonKhoHinhInTab />}
         </div>
       </div>

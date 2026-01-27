@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
-  Eye,
   Loader2,
   RefreshCw,
   List,
@@ -747,7 +746,7 @@ export default function SanPhamPage() {
                           </tr>
                         ) : (
                           paginatedProducts.map((product, index) => (
-                            <tr key={product.id} className="hover:bg-gray-50">
+                            <tr key={product.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewProduct(product)}>
                               <td className="px-3 py-3 text-sm text-gray-500">{startIndex + index + 1}</td>
                               <td className="px-3 py-3">
                                 <span className="text-sm font-medium text-purple-600">{product.code || "-"}</span>
@@ -765,15 +764,8 @@ export default function SanPhamPage() {
                                 )}
                               </td>
                               <td className="px-3 py-3 text-sm text-gray-600">{product.workshop || "-"}</td>
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => handleViewProduct(product)}
-                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                                    title="Xem chi tiết"
-                                  >
-                                    <Eye size={16} />
-                                  </button>
                                   <button
                                     onClick={() => handleEditProduct(product)}
                                     className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
@@ -968,7 +960,7 @@ export default function SanPhamPage() {
                           </tr>
                         ) : (
                           paginatedCatalogProducts.map((product, index) => (
-                            <tr key={product.id} className="hover:bg-gray-50">
+                            <tr key={product.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewCatalogProduct(product)}>
                               <td className="px-3 py-3 text-sm text-gray-500">{catalogStartIndex + index + 1}</td>
                               <td className="px-3 py-3">
                                 <div className="flex items-center gap-2">
@@ -993,15 +985,8 @@ export default function SanPhamPage() {
                               <td className="px-3 py-3 text-sm text-gray-600">{product.color || "-"}</td>
                               <td className="px-3 py-3 text-sm text-right font-medium text-green-600">{formatPrice(product.retailPrice)}</td>
                               <td className="px-3 py-3 text-sm text-right text-gray-600">{formatPrice(product.wholesalePrice)}</td>
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => handleViewCatalogProduct(product)}
-                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                                    title="Xem chi tiết"
-                                  >
-                                    <Eye size={16} />
-                                  </button>
                                   <button
                                     onClick={() => handleEditCatalogProduct(product)}
                                     className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"

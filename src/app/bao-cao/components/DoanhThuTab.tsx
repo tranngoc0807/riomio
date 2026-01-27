@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, TrendingUp, TrendingDown, Eye } from "lucide-react";
+import { Calendar, TrendingUp, TrendingDown } from "lucide-react";
 import { RevenueReport, formatCurrency } from "./types";
 
 // Sample data
@@ -89,14 +89,11 @@ export default function DoanhThuTab({ onViewDetail }: DoanhThuTabProps) {
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Đơn hàng
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Thao tác
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {revenueData.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
+              <tr key={row.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onViewDetail(row, "revenue")}>
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gray-400" />
@@ -132,17 +129,6 @@ export default function DoanhThuTab({ onViewDetail }: DoanhThuTabProps) {
                 <td className="px-4 py-4 text-right text-gray-600">
                   {row.orderCount}
                 </td>
-                <td className="px-4 py-4">
-                  <div className="flex items-center justify-center">
-                    <button
-                      onClick={() => onViewDetail(row, "revenue")}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Xem chi tiết"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -162,7 +148,6 @@ export default function DoanhThuTab({ onViewDetail }: DoanhThuTabProps) {
               <td className="px-4 py-3 text-right text-gray-600">
                 {revenueData.reduce((s, r) => s + r.orderCount, 0)}
               </td>
-              <td className="px-4 py-3"></td>
             </tr>
           </tfoot>
         </table>

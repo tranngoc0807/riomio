@@ -2,7 +2,6 @@
 
 import {
   Plus,
-  Eye,
   Edit,
   Trash2,
   X,
@@ -225,7 +224,7 @@ export default function ShippingUnitsTab() {
                 </tr>
               ) : (
                 shippingUnits.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleView(item)}>
                     <td className="px-4 py-3 text-sm text-gray-600">{index + 1}</td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
                       <div className="flex items-center gap-2">
@@ -237,15 +236,8 @@ export default function ShippingUnitsTab() {
                     <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">{item.address || "-"}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{item.contact || "-"}</td>
                     <td className="px-4 py-3 text-sm text-gray-600 max-w-[150px] truncate">{item.note || "-"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleView(item)}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                          title="Xem"
-                        >
-                          <Eye size={18} />
-                        </button>
                         <button
                           onClick={() => handleEdit(item)}
                           className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { InventoryReport, TonKhoItem } from "./types";
 
 const ITEMS_PER_PAGE = 50;
@@ -125,14 +125,11 @@ export default function TonKhoTab({ onViewDetail }: TonKhoTabProps) {
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Tồn cuối
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Thao tác
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {paginatedData.map((row, index) => (
-              <tr key={row.id} className="hover:bg-gray-50">
+              <tr key={row.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewDetail(row)}>
                 <td className="px-4 py-4 text-gray-600">{startIndex + index + 1}</td>
                 <td className="px-4 py-4">
                   <span className="font-medium text-gray-900">{row.maSp}</span>
@@ -152,17 +149,6 @@ export default function TonKhoTab({ onViewDetail }: TonKhoTabProps) {
                   }`}
                 >
                   {row.tonCuoi}
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex items-center justify-center">
-                    <button
-                      onClick={() => handleViewDetail(row)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Xem chi tiết"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </div>
                 </td>
               </tr>
             ))}
@@ -188,7 +174,6 @@ export default function TonKhoTab({ onViewDetail }: TonKhoTabProps) {
               >
                 {totalTonCuoi}
               </td>
-              <td className="px-4 py-3"></td>
             </tr>
           </tfoot>
         </table>

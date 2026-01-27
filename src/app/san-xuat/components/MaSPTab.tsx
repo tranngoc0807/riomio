@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, Package, Image as ImageIcon, Plus, Eye, Pencil, Trash2, X } from "lucide-react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Package, Image as ImageIcon, Plus, Pencil, Trash2, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
@@ -315,7 +315,7 @@ export default function MaSPTab() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paginated.map((item, index) => (
-                <tr key={item.id} className="hover:bg-gray-50">
+                <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openViewModal(item)}>
                   <td className="px-3 py-2.5 text-gray-600">{startIndex + index + 1}</td>
                   <td className="px-3 py-2.5 text-gray-900 font-medium">{item.maSP || "-"}</td>
                   <td className="px-3 py-2.5 text-gray-600 max-w-[250px]">
@@ -341,7 +341,7 @@ export default function MaSPTab() {
                   <td className="px-3 py-2.5 text-gray-600 max-w-[150px]">
                     <div className="truncate" title={item.xuongSX}>{item.xuongSX || "-"}</div>
                   </td>
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                     {item.hinhAnh && item.hinhAnh !== "#N/A" ? (
                       <a
                         href={item.hinhAnh}
@@ -356,15 +356,8 @@ export default function MaSPTab() {
                       <span className="text-gray-300">-</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => openViewModal(item)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={16} />
-                      </button>
                       <button
                         onClick={() => openEditModal(item)}
                         className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"

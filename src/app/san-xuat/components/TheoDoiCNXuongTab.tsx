@@ -3,55 +3,55 @@
 import { useState, useEffect } from "react";
 import { Loader2, ChevronDown, Search } from "lucide-react";
 
-interface CongNoNCCRow {
+interface CongNoXuongRow {
   id: number;
   date: string;
-  maPhieu: string;
-  tienNhap: number;
+  noiDung: string;
+  tienGiaCong: number;
   thanhToan: number;
   duCuoi: number;
 }
 
-interface Supplier {
+interface Workshop {
   id: number;
   name: string;
 }
 
-export default function TheoDoiCNNPLTab() {
-  const [congNoData, setCongNoData] = useState<CongNoNCCRow[]>([]);
-  const [nccNPLName, setNccNPLName] = useState<string>("");
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+export default function TheoDoiCNXuongTab() {
+  const [congNoData, setCongNoData] = useState<CongNoXuongRow[]>([]);
+  const [xuongSXName, setXuongSXName] = useState<string>("");
+  const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isChangingNCC, setIsChangingNCC] = useState(false);
+  const [isChangingXuong, setIsChangingXuong] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchSuppliers();
+    fetchWorkshops();
     fetchData();
   }, []);
 
-  const fetchSuppliers = async () => {
+  const fetchWorkshops = async () => {
     try {
-      const response = await fetch("/api/suppliers");
+      const response = await fetch("/api/workshops");
       const result = await response.json();
       if (result.success) {
-        setSuppliers(result.data || []);
+        setWorkshops(result.data || []);
       }
     } catch (error) {
-      console.error("Error fetching suppliers:", error);
+      console.error("Error fetching workshops:", error);
     }
   };
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/theo-doi-cn-npl");
+      const response = await fetch("/api/theo-doi-cn-xuong");
       const result = await response.json();
 
       if (result.success) {
         setCongNoData(result.data || []);
-        setNccNPLName(result.nccNPL || "");
+        setXuongSXName(result.xuongSX || "");
       }
     } catch (error) {
       console.error("Error fetching cong no data:", error);
@@ -60,21 +60,21 @@ export default function TheoDoiCNNPLTab() {
     }
   };
 
-  const handleSelectNCC = async (name: string) => {
-    if (name === nccNPLName) {
+  const handleSelectXuong = async (name: string) => {
+    if (name === xuongSXName) {
       setShowDropdown(false);
       return;
     }
 
     try {
-      setIsChangingNCC(true);
+      setIsChangingXuong(true);
       setShowDropdown(false);
 
-      // Cập nhật NCC NPL trong Google Sheet
-      const response = await fetch("/api/theo-doi-cn-npl", {
+      // Cập nhật xưởng SX trong Google Sheet
+      const response = await fetch("/api/theo-doi-cn-xuong", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nccNPL: name }),
+        body: JSON.stringify({ xuongSX: name }),
       });
 
       const result = await response.json();
@@ -85,19 +85,19 @@ export default function TheoDoiCNNPLTab() {
         await fetchData();
       }
     } catch (error) {
-      console.error("Error changing NCC NPL:", error);
+      console.error("Error changing xưởng SX:", error);
     } finally {
-      setIsChangingNCC(false);
+      setIsChangingXuong(false);
     }
   };
 
-  // Lọc danh sách NPL theo từ khóa (loại bỏ "NCC" khỏi danh sách)
-  const filteredSuppliers = suppliers.filter((s) =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) && s.name !== "NCC"
+  // Lọc danh sách xưởng SX theo từ khóa
+  const filteredWorkshops = workshops.filter((w) =>
+    w.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Tính tổng
-  const totalTienNhap = congNoData.reduce((sum, row) => sum + row.tienNhap, 0);
+  const totalTienGiaCong = congNoData.reduce((sum, row) => sum + row.tienGiaCong, 0);
   const totalThanhToan = congNoData.reduce((sum, row) => sum + row.thanhToan, 0);
   const lastBalance = congNoData.length > 0 ? congNoData[congNoData.length - 1].duCuoi : 0;
 
@@ -106,26 +106,26 @@ export default function TheoDoiCNNPLTab() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
-          <h3 className="text-lg font-semibold text-gray-900">Theo dõi CN từng NCC NPL</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Theo dõi CN từng xưởng SX</h3>
 
-          {/* NCC NPL Dropdown */}
+          {/* Xưởng SX Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              disabled={isChangingNCC}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors min-w-[200px] disabled:opacity-50"
+              disabled={isChangingXuong}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors min-w-[200px] disabled:opacity-50"
             >
-              {isChangingNCC ? (
+              {isChangingXuong ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                  <span className="text-indigo-700">Đang chuyển...</span>
+                  <Loader2 className="w-4 h-4 animate-spin text-orange-600" />
+                  <span className="text-orange-700">Đang chuyển...</span>
                 </>
               ) : (
                 <>
-                  <span className="font-medium text-indigo-700 truncate flex-1 text-left">
-                    {nccNPLName || "Chọn NPL"}
+                  <span className="font-medium text-orange-700 truncate flex-1 text-left">
+                    {xuongSXName || "Chọn xưởng SX"}
                   </span>
-                  <ChevronDown size={18} className="text-indigo-600" />
+                  <ChevronDown size={18} className="text-orange-600" />
                 </>
               )}
             </button>
@@ -143,33 +143,33 @@ export default function TheoDoiCNNPLTab() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                       <input
                         type="text"
-                        placeholder="Tìm NPL..."
+                        placeholder="Tìm xưởng SX..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         autoFocus
                       />
                     </div>
                   </div>
 
-                  {/* Supplier List */}
+                  {/* Workshop List */}
                   <div className="max-h-64 overflow-y-auto">
-                    {filteredSuppliers.length === 0 ? (
+                    {filteredWorkshops.length === 0 ? (
                       <div className="px-4 py-3 text-gray-500 text-sm text-center">
-                        Không tìm thấy NPL
+                        Không tìm thấy xưởng SX
                       </div>
                     ) : (
-                      filteredSuppliers.map((supplier) => (
+                      filteredWorkshops.map((workshop) => (
                         <div
-                          key={supplier.id}
-                          onClick={() => handleSelectNCC(supplier.name)}
+                          key={workshop.id}
+                          onClick={() => handleSelectXuong(workshop.name)}
                           className={`px-4 py-3 cursor-pointer transition-colors ${
-                            nccNPLName === supplier.name
-                              ? "bg-indigo-50 text-indigo-700 font-medium"
+                            xuongSXName === workshop.name
+                              ? "bg-orange-50 text-orange-700 font-medium"
                               : "hover:bg-gray-50"
                           }`}
                         >
-                          {supplier.name}
+                          {workshop.name}
                         </div>
                       ))
                     )}
@@ -184,9 +184,9 @@ export default function TheoDoiCNNPLTab() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-          <p className="text-sm text-blue-600 mb-1">Tổng tiền nhập</p>
+          <p className="text-sm text-blue-600 mb-1">Tổng tiền gia công</p>
           <p className="text-2xl font-bold text-blue-700">
-            {totalTienNhap.toLocaleString("vi-VN")}đ
+            {totalTienGiaCong.toLocaleString("vi-VN")}đ
           </p>
         </div>
         <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
@@ -217,12 +217,12 @@ export default function TheoDoiCNNPLTab() {
 
       {/* Data Table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        {isLoading || isChangingNCC ? (
+        {isLoading || isChangingXuong ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <Loader2 className="w-10 h-10 animate-spin text-indigo-600 mx-auto mb-3" />
+              <Loader2 className="w-10 h-10 animate-spin text-orange-600 mx-auto mb-3" />
               <p className="text-gray-500">
-                {isChangingNCC ? "Đang chuyển NCC NPL..." : "Đang tải dữ liệu..."}
+                {isChangingXuong ? "Đang chuyển xưởng SX..." : "Đang tải dữ liệu..."}
               </p>
             </div>
           </div>
@@ -244,10 +244,10 @@ export default function TheoDoiCNNPLTab() {
                     Ngày tháng
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Mã phiếu
+                    Nội dung
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Tiền nhập
+                    Tiền gia công
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Thanh toán
@@ -266,11 +266,11 @@ export default function TheoDoiCNNPLTab() {
                     <td className="px-4 py-3 text-sm text-gray-900">
                       {row.date}
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium text-blue-600">
-                      {row.maPhieu || "-"}
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {row.noiDung || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-gray-900">
-                      {row.tienNhap !== 0 ? row.tienNhap.toLocaleString("vi-VN") : "-"}
+                      {row.tienGiaCong !== 0 ? row.tienGiaCong.toLocaleString("vi-VN") : "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-green-600 font-medium">
                       {row.thanhToan !== 0 ? row.thanhToan.toLocaleString("vi-VN") : "-"}
@@ -289,7 +289,7 @@ export default function TheoDoiCNNPLTab() {
                     Tổng cộng:
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900">
-                    {totalTienNhap.toLocaleString("vi-VN")}
+                    {totalTienGiaCong.toLocaleString("vi-VN")}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-green-600">
                     {totalThanhToan.toLocaleString("vi-VN")}

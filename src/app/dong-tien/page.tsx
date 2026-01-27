@@ -6,7 +6,6 @@ import {
   CreditCard,
   Plus,
   Search,
-  Eye,
   Edit,
   Trash2,
   X,
@@ -916,7 +915,7 @@ export default function DongTien() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {paginatedThuChi.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50">
+                        <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewThuChi(item)}>
                           <td className="px-4 py-4 text-sm font-medium">
                             <span className={`px-2 py-1 rounded text-xs ${
                               item.code?.startsWith("PT")
@@ -953,15 +952,8 @@ export default function DongTien() {
                           <td className="px-4 py-4 text-sm text-right font-medium text-red-600">
                             {item.totalExpense > 0 ? `-${item.totalExpense.toLocaleString("vi-VN")}đ` : "-"}
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => handleViewThuChi(item)}
-                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                                title="Xem"
-                              >
-                                <Eye size={18} />
-                              </button>
                               <button
                                 onClick={() => handleEditThuChi(item)}
                                 className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"

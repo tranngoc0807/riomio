@@ -4,7 +4,6 @@ import {
   ShoppingCart,
   Plus,
   Search,
-  Eye,
   Edit,
   Trash2,
   X,
@@ -833,7 +832,7 @@ export default function OrdersTab() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredGroupedOrders.map((group) => (
-                <tr key={group.orderCode} className="hover:bg-gray-50">
+                <tr key={group.orderCode} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewGrouped(group)}>
                   <td className="px-3 py-3 text-sm font-medium text-blue-600">{group.orderCode}</td>
                   <td className="px-3 py-3 text-sm text-gray-600">{group.date}</td>
                   <td className="px-3 py-3 text-sm text-gray-900">{group.customer}</td>
@@ -852,15 +851,8 @@ export default function OrdersTab() {
                   <td className="px-3 py-3 text-sm text-gray-600 max-w-[200px] truncate">
                     {group.notes || "-"}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleViewGrouped(group)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={18} />
-                      </button>
                       <button
                         onClick={() => handleEditGrouped(group)}
                         className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"

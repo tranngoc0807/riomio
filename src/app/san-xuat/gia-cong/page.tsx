@@ -5,7 +5,6 @@ import {
   Factory,
   Calculator,
   ClipboardList,
-  FileText,
   Receipt,
   FileSearch,
 } from "lucide-react";
@@ -19,6 +18,7 @@ import DonGiaGiaCongTab from "../components/DonGiaGiaCongTab";
 import BangKeGiaCongTab from "../components/BangKeGiaCongTab";
 import PhieuGiaCongTab from "../components/PhieuGiaCongTab";
 import CNPTXuongGiaCongTab from "../components/CNPTXuongGiaCongTab";
+import TheoDoiCNXuongTab from "../components/TheoDoiCNXuongTab";
 
 type TabType =
   | "xuong-sx"
@@ -40,23 +40,6 @@ const TABS = [
     icon: FileSearch,
   },
 ];
-
-// Placeholder component for tabs under development
-function PlaceholderTab({
-  title,
-  icon: Icon,
-}: {
-  title: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-}) {
-  return (
-    <div className="text-center py-12 text-gray-500">
-      <Icon className="mx-auto mb-4 text-gray-300" size={64} />
-      <p className="text-lg font-medium">{title}</p>
-      <p className="text-sm mt-1">Tính năng đang phát triển</p>
-    </div>
-  );
-}
 
 export default function GiaCong() {
   const router = useRouter();
@@ -123,12 +106,7 @@ export default function GiaCong() {
           {activeTab === "bang-ke" && <BangKeGiaCongTab />}
           {activeTab === "phieu-gc" && <PhieuGiaCongTab />}
           {activeTab === "cnpt-xuong" && <CNPTXuongGiaCongTab />}
-          {activeTab === "theo-doi-cn" && (
-            <PlaceholderTab
-              title="Theo dõi CN từng xưởng SX"
-              icon={FileSearch}
-            />
-          )}
+          {activeTab === "theo-doi-cn" && <TheoDoiCNXuongTab />}
         </div>
       </div>
     </div>

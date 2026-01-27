@@ -7,7 +7,6 @@ import {
   ListChecks,
   FileOutput,
   PackageOpen,
-  FileInput,
   Scissors,
   ClipboardCheck,
 } from "lucide-react";
@@ -66,6 +65,7 @@ export default function KeHoachSanXuat() {
     const tabFromUrl = searchParams.get("tab");
     const validTabs = TABS.map(t => t.id);
     if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
     }
   }, [searchParams]);

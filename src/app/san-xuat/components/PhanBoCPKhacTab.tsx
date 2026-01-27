@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, PieChart, Plus, Edit, Trash2, Eye, X } from "lucide-react";
+import { Loader2, Search, ChevronLeft, ChevronRight, PieChart, Plus, Edit, Trash2, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
@@ -408,7 +408,7 @@ export default function PhanBoCPKhacTab() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paginated.map((item, index) => (
-                <tr key={item.id} className="hover:bg-gray-50">
+                <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openViewModal(item)}>
                   <td className="px-3 py-2.5 text-gray-600">{startIndex + index + 1}</td>
                   <td className="px-3 py-2.5 text-gray-900">{item.ngayThang || "-"}</td>
                   <td className="px-3 py-2.5 text-gray-600">{item.nguoiNhap || "-"}</td>
@@ -427,15 +427,8 @@ export default function PhanBoCPKhacTab() {
                       </span>
                     ) : "-"}
                   </td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => openViewModal(item)}
-                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={16} />
-                      </button>
                       <button
                         onClick={() => openEditModal(item)}
                         className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded"

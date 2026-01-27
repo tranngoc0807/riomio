@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Loader2, X, Search, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, X, Search, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
@@ -447,7 +447,7 @@ export default function XuatKhoHinhInTab() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {paginatedList.map((group) => (
-                <tr key={group.maPhieu} className="hover:bg-gray-50">
+                <tr key={group.maPhieu} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewGrouped(group)}>
                   <td className="px-3 py-3 font-medium text-blue-600">{group.maPhieu}</td>
                   <td className="px-3 py-3 text-gray-600">{group.ngayThang}</td>
                   <td className="px-3 py-3 text-center">
@@ -458,15 +458,8 @@ export default function XuatKhoHinhInTab() {
                   <td className="px-3 py-3 text-center font-medium text-red-600">
                     {group.totalSoLuong > 0 ? group.totalSoLuong.toLocaleString("vi-VN") : "-"}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleViewGrouped(group)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={18} />
-                      </button>
                       <button
                         onClick={() => handleDeleteGrouped(group.maPhieu)}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"

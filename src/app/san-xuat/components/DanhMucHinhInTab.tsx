@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Loader2, X, Search, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
+import { Loader2, X, Search, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
@@ -451,7 +451,7 @@ export default function DanhMucHinhInTab() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {paginatedList.map((item, index) => (
-                <tr key={item.id} className="hover:bg-gray-50">
+                <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleView(item)}>
                   <td className="px-3 py-2.5 text-gray-600">{startIndex + index + 1}</td>
                   <td className="px-3 py-2.5 font-medium text-blue-600">{item.maHinhIn || "-"}</td>
                   <td className="px-3 py-2.5 text-gray-900 max-w-[200px] truncate" title={item.thongTinHinhIn}>
@@ -472,15 +472,8 @@ export default function DanhMucHinhInTab() {
                   <td className="px-3 py-2.5 text-gray-600 max-w-[150px] truncate" title={item.xuongIn}>
                     {item.xuongIn || "-"}
                   </td>
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => handleView(item)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={16} />
-                      </button>
                       <button
                         onClick={() => openEditModal(item)}
                         disabled={saving}

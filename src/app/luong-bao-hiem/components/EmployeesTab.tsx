@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Search,
   Plus,
-  Eye,
   Edit,
   Trash2,
   X,
@@ -303,7 +302,7 @@ export default function EmployeesTab({
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredEmployees.map((emp, index) => (
-                <tr key={emp.id} className="hover:bg-gray-50">
+                <tr key={emp.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewEmployee(emp)}>
                   <td className="px-4 py-4 text-sm text-gray-600">{index + 1}</td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -323,15 +322,8 @@ export default function EmployeesTab({
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-600">{emp.cccd || "-"}</td>
                   <td className="px-4 py-4 text-sm text-gray-600">{emp.address || "-"}</td>
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleViewEmployee(emp)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={18} />
-                      </button>
                       <button
                         onClick={() => handleOpenEditModal(emp)}
                         className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"

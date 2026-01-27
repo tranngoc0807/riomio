@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Eye,
   Edit,
   Trash2,
   X,
@@ -807,9 +806,6 @@ export default function QuanLyTienVay() {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Ngày giải ngân
                         </th>
-                        {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Mục đích vay
-                        </th> */}
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Thao tác
                         </th>
@@ -817,7 +813,7 @@ export default function QuanLyTienVay() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {filteredLoans.map((loan: any) => (
-                        <tr key={loan.code} className="hover:bg-gray-50">
+                        <tr key={loan.code} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewLoan(loan)}>
                           <td className="px-4 py-4">
                             <span className="font-medium text-blue-600">
                               {loan.code}
@@ -872,15 +868,8 @@ export default function QuanLyTienVay() {
                               {loan.purpose || "-"}
                             </span>
                           </td> */}
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleViewLoan(loan)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Xem chi tiết"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
                               <button
                                 onClick={() => handleEditLoan(loan)}
                                 className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -954,7 +943,7 @@ export default function QuanLyTienVay() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {paymentHistory.map((payment) => (
-                        <tr key={payment.id} className="hover:bg-gray-50">
+                        <tr key={payment.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewPayment(payment)}>
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4 text-gray-400" />
@@ -987,15 +976,8 @@ export default function QuanLyTienVay() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleViewPayment(payment)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Xem chi tiết"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
                               <button
                                 onClick={() => handleEditPayment(payment)}
                                 className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
