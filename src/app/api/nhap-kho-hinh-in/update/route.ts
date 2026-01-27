@@ -49,6 +49,7 @@ export async function PUT(request: NextRequest) {
       thanhTien: parseFloat(body.thanhTien) || 0,
       ncc: body.ncc || "",
       maPhieuNhap: body.maPhieuNhap || "",
+      maSPSuDung: body.maSPSuDung || "",
       ghiChu: body.ghiChu || "",
     };
 

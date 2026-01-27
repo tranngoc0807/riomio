@@ -6,14 +6,20 @@ import {
   ArrowDownCircle,
   Plus,
   Wallet,
+  Calendar,
+  CalendarDays,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 import DongTienTab from "./components/DongTienTab";
 import TaiKhoanTab from "./components/TaiKhoanTab";
+import BCQuyTheoNgayTab from "./components/BCQuyTheoNgayTab";
+import BCQuyTheoThangTab from "./components/BCQuyTheoThangTab";
+import BCTungTaiKhoanTab from "./components/BCTungTaiKhoanTab";
 
-type TabType = "phieu-thu" | "phieu-chi" | "so-quy" | "tai-khoan";
+type TabType = "phieu-thu" | "phieu-chi" | "so-quy" | "tai-khoan" | "bc-ngay" | "bc-thang" | "bc-tai-khoan";
 
 export default function SoQuy() {
   const router = useRouter();
@@ -21,7 +27,7 @@ export default function SoQuy() {
   const tabParam = searchParams.get("tab") as TabType | null;
 
   const [activeTab, setActiveTab] = useState<TabType>(
-    tabParam && ["phieu-thu", "phieu-chi", "so-quy", "tai-khoan"].includes(tabParam)
+    tabParam && ["phieu-thu", "phieu-chi", "so-quy", "tai-khoan", "bc-ngay", "bc-thang", "bc-tai-khoan"].includes(tabParam)
       ? tabParam
       : "so-quy"
   );
@@ -99,6 +105,40 @@ export default function SoQuy() {
               <Wallet size={20} />
               Tài khoản
             </button>
+            <div className="border-l border-gray-300 h-6 self-center mx-2" />
+            <button
+              onClick={() => handleTabChange("bc-ngay")}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "bc-ngay"
+                  ? "text-blue-600 border-blue-600 bg-blue-50/50"
+                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <Calendar size={20} />
+              BC theo ngày
+            </button>
+            <button
+              onClick={() => handleTabChange("bc-thang")}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "bc-thang"
+                  ? "text-purple-600 border-purple-600 bg-purple-50/50"
+                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <CalendarDays size={20} />
+              BC theo tháng
+            </button>
+            <button
+              onClick={() => handleTabChange("bc-tai-khoan")}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "bc-tai-khoan"
+                  ? "text-indigo-600 border-indigo-600 bg-indigo-50/50"
+                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <CreditCard size={20} />
+              BC tài khoản
+            </button>
           </div>
         </div>
 
@@ -145,6 +185,15 @@ export default function SoQuy() {
 
           {/* Tài khoản Tab */}
           {activeTab === "tai-khoan" && <TaiKhoanTab />}
+
+          {/* BC quỹ theo ngày Tab */}
+          {activeTab === "bc-ngay" && <BCQuyTheoNgayTab />}
+
+          {/* BC quỹ theo tháng Tab */}
+          {activeTab === "bc-thang" && <BCQuyTheoThangTab />}
+
+          {/* BC từng tài khoản Tab */}
+          {activeTab === "bc-tai-khoan" && <BCTungTaiKhoanTab />}
         </div>
       </div>
     </div>

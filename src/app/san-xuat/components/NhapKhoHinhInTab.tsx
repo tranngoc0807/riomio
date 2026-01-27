@@ -26,6 +26,7 @@ interface NhapKhoHinhIn {
   thanhTien: number;
   ncc: string;
   maPhieuNhap: string;
+  maSPSuDung: string;
   ghiChu: string;
 }
 
@@ -49,6 +50,7 @@ interface SelectedHinhIn {
   soLuong: number;
   donGia: number;
   thanhTien: number;
+  maSPSuDung: string;
   ghiChu: string;
 }
 
@@ -321,6 +323,7 @@ export default function NhapKhoHinhInTab() {
       soLuong: 1,
       donGia: donGia,
       thanhTien: donGia * 1,
+      maSPSuDung: hinhIn.maSPSuDung || "",
       ghiChu: "",
     };
 
@@ -344,6 +347,7 @@ export default function NhapKhoHinhInTab() {
       soLuong: 1,
       donGia: donGia,
       thanhTien: donGia * 1,
+      maSPSuDung: hinhIn.maSPSuDung || "",
       ghiChu: "",
     };
 
@@ -427,6 +431,7 @@ export default function NhapKhoHinhInTab() {
           soLuong: hinhIn.soLuong,
           donGia: hinhIn.donGia,
           thanhTien: hinhIn.thanhTien,
+          maSPSuDung: hinhIn.maSPSuDung,
           ghiChu: hinhIn.ghiChu,
         };
 
@@ -478,6 +483,7 @@ export default function NhapKhoHinhInTab() {
           soLuong: -Math.abs(hinhIn.soLuong), // Số lượng âm để hoàn kho
           donGia: hinhIn.donGia,
           thanhTien: -Math.abs(hinhIn.thanhTien), // Thành tiền âm
+          maSPSuDung: hinhIn.maSPSuDung,
           ghiChu: hinhIn.ghiChu,
         };
 
@@ -926,6 +932,7 @@ export default function NhapKhoHinhInTab() {
                           <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-24">SL</th>
                           <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-28">Đơn giá</th>
                           <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-yellow-100">Thành tiền</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã SP sử dụng</th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Ghi chú</th>
                           <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-12"></th>
                         </tr>
@@ -969,6 +976,15 @@ export default function NhapKhoHinhInTab() {
                               {hinhIn.thanhTien.toLocaleString("vi-VN")}
                             </td>
                             <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={hinhIn.maSPSuDung}
+                                onChange={(e) => handleUpdateHinhIn(hinhIn.id, "maSPSuDung", e.target.value)}
+                                placeholder="Mã SP..."
+                                className="w-28 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
                               <textarea
                                 value={hinhIn.ghiChu}
                                 onChange={(e) => handleUpdateHinhIn(hinhIn.id, "ghiChu", e.target.value)}
@@ -994,7 +1010,7 @@ export default function NhapKhoHinhInTab() {
                           <td className="px-3 py-2 text-sm text-right font-semibold text-green-600">
                             {calculateTotalThanhTien().toLocaleString("vi-VN")}đ
                           </td>
-                          <td colSpan={2}></td>
+                          <td colSpan={3}></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -1131,6 +1147,9 @@ export default function NhapKhoHinhInTab() {
                           Thành tiền
                         </th>
                         <th className="px-5 py-4 text-left text-sm font-medium text-gray-500">
+                          Mã SP sử dụng
+                        </th>
+                        <th className="px-5 py-4 text-left text-sm font-medium text-gray-500">
                           Ghi chú
                         </th>
                         <th className="px-5 py-4 text-center text-sm font-medium text-gray-500 w-20"></th>
@@ -1168,6 +1187,9 @@ export default function NhapKhoHinhInTab() {
                             {item.thanhTien > 0
                               ? item.thanhTien.toLocaleString("vi-VN")
                               : "-"}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-600">
+                            {item.maSPSuDung || "-"}
                           </td>
                           <td className="px-5 py-4 text-sm">
                             {item.ghiChu || "-"}
@@ -1271,7 +1293,15 @@ export default function NhapKhoHinhInTab() {
                           : "-"}
                       </p>
                     </div>
-                    <div className="col-span-3">
+                    <div>
+                      <span className="text-sm text-gray-500 block mb-1">
+                        Mã SP sử dụng
+                      </span>
+                      <p className="font-medium text-lg">
+                        {selectedItemDetail.maSPSuDung || "-"}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
                       <span className="text-sm text-gray-500 block mb-1">
                         Ghi chú
                       </span>
@@ -1448,6 +1478,9 @@ export default function NhapKhoHinhInTab() {
                             Thành tiền
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                            Mã SP sử dụng
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                             Ghi chú
                           </th>
                           <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-12"></th>
@@ -1513,6 +1546,21 @@ export default function NhapKhoHinhInTab() {
                               {hinhIn.thanhTien.toLocaleString("vi-VN")}
                             </td>
                             <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={hinhIn.maSPSuDung}
+                                onChange={(e) =>
+                                  handleUpdateReturnHinhIn(
+                                    hinhIn.id,
+                                    "maSPSuDung",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Mã SP..."
+                                className="w-28 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
                               <textarea
                                 value={hinhIn.ghiChu}
                                 onChange={(e) =>
@@ -1554,7 +1602,7 @@ export default function NhapKhoHinhInTab() {
                             )}
                             đ
                           </td>
-                          <td colSpan={2}></td>
+                          <td colSpan={3}></td>
                         </tr>
                       </tfoot>
                     </table>

@@ -8,14 +8,10 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Building,
-  Percent,
-  DollarSign,
   Eye,
   Edit,
   Trash2,
   X,
-  CreditCard,
   History,
   TrendingDown,
   ArrowUpRight,
@@ -44,22 +40,21 @@ interface Loan {
   notes?: string;
 }
 
-
 // Google Sheets loan interface - matches new structure
 interface GoogleSheetsLoan {
   id: number;
-  code: string;                    // A - Mã món vay
-  lender: string;                  // B - Người cho vay
-  category: string;                // C - Phân loại
-  maturityDate: string;            // D - Ngày đáo hạn
-  principalAmount: number;         // E - Số tiền vay gốc ban đầu
-  initialInterestRate: string;     // F - Lãi suất ban đầu
-  interestType: string;            // G - Loại lãi suất
-  interestPaymentDate: string;     // H - Ngày trả lãi quy định
-  paymentTerm: string;             // I - Kỳ hạn trả lãi
-  status: string;                  // J - Trạng thái
-  disbursementDate: string;        // K - Ngày giải ngân
-  purpose: string;                 // L - Mục đích vay
+  code: string; // A - Mã món vay
+  lender: string; // B - Người cho vay
+  category: string; // C - Phân loại
+  maturityDate: string; // D - Ngày đáo hạn
+  principalAmount: number; // E - Số tiền vay gốc ban đầu
+  initialInterestRate: string; // F - Lãi suất ban đầu
+  interestType: string; // G - Loại lãi suất
+  interestPaymentDate: string; // H - Ngày trả lãi quy định
+  paymentTerm: string; // I - Kỳ hạn trả lãi
+  status: string; // J - Trạng thái
+  disbursementDate: string; // K - Ngày giải ngân
+  purpose: string; // L - Mục đích vay
 }
 
 // Map Google Sheets status to app status
@@ -67,7 +62,8 @@ const mapStatus = (sheetStatus: string): Loan["status"] => {
   const status = sheetStatus.toLowerCase();
   if (status.includes("ổn định") || status.includes("active")) return "active";
   if (status.includes("sắp") || status.includes("near")) return "near_due";
-  if (status.includes("hoàn") || status.includes("completed")) return "completed";
+  if (status.includes("hoàn") || status.includes("completed"))
+    return "completed";
   if (status.includes("quá") || status.includes("overdue")) return "overdue";
   return "active";
 };
@@ -127,8 +123,8 @@ export default function QuanLyTienVay() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Get tab from URL or default to "khoan-vay"
-  const tabFromUrl = searchParams.get("tab") || "khoan-vay";
+  // Get tab from URL or default to "danh-sach-mon-vay"
+  const tabFromUrl = searchParams.get("tab") || "danh-sach-mon-vay";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -147,7 +143,9 @@ export default function QuanLyTienVay() {
   const [showViewPaymentModal, setShowViewPaymentModal] = useState(false);
   const [showEditPaymentModal, setShowEditPaymentModal] = useState(false);
   const [showDeletePaymentModal, setShowDeletePaymentModal] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentHistory | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentHistory | null>(
+    null,
+  );
   const [paymentToDelete, setPaymentToDelete] = useState<number | null>(null);
   const [newPayment, setNewPayment] = useState<Omit<PaymentHistory, "id">>({
     transactionDate: "",
@@ -165,11 +163,27 @@ export default function QuanLyTienVay() {
     amountOut: 0,
   });
 
+  // Dashboard state
+  interface DashboardData {
+    tongDuNoToanCongTy: number;
+    tongApLucLaiVayThangNay: number;
+    duNoVayBank: number;
+    duNoVayNgoai: number;
+    canhBao: number;
+    laiVayDaTra: number;
+    laiConLai: number;
+    gocDaTra: number;
+    gocConLai: number;
+  }
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null,
+  );
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
+
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [loanToDelete, setLoanToDelete] = useState<Loan | null>(null);
@@ -180,9 +194,9 @@ export default function QuanLyTienVay() {
   });
 
   const tabs = [
-    { id: "khoan-vay", label: "Khoản vay", icon: HandCoins },
-    { id: "lich-thanh-toan", label: "Lịch thanh toán", icon: Calendar },
-    { id: "lich-su-tra", label: "Lịch sử trả nợ", icon: History },
+    { id: "danh-sach-mon-vay", label: "Danh sách món vay", icon: HandCoins },
+    { id: "nhat-ky-mon-vay", label: "Nhật ký món vay", icon: History },
+    { id: "dashboard", label: "DASHBOARD", icon: TrendingDown },
   ];
 
   // Update URL when tab changes
@@ -193,7 +207,7 @@ export default function QuanLyTienVay() {
 
   // Sync activeTab with URL on mount and when URL changes
   useEffect(() => {
-    const tabFromUrl = searchParams.get("tab") || "khoan-vay";
+    const tabFromUrl = searchParams.get("tab") || "danh-sach-mon-vay";
     setActiveTab(tabFromUrl);
   }, [searchParams]);
 
@@ -206,7 +220,7 @@ export default function QuanLyTienVay() {
 
       if (result.success && result.data) {
         const convertedLoans = result.data.map((sheetLoan: GoogleSheetsLoan) =>
-          convertGoogleSheetsLoan(sheetLoan)
+          convertGoogleSheetsLoan(sheetLoan),
         );
         setLoans(convertedLoans);
       } else {
@@ -248,23 +262,41 @@ export default function QuanLyTienVay() {
     fetchPaymentHistory();
   }, []);
 
+  // Fetch dashboard data from API
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoadingDashboard(true);
+      const response = await fetch("/api/dashboard-loan");
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setDashboardData(result.data);
+      } else {
+        console.error("Failed to fetch dashboard data:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setIsLoadingDashboard(false);
+    }
+  };
+
+  // Load dashboard data on component mount
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
   // Calculations
   const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
-  const totalRemaining = loans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
+  const totalRemaining = loans.reduce(
+    (sum, l) => sum + l.remainingPrincipal,
+    0,
+  );
   const totalPaid = totalPrincipal - totalRemaining;
   const monthlyPayment = loans
     .filter((l) => l.status !== "completed")
     .reduce((sum, l) => sum + l.monthlyPayment, 0);
   const activeLoans = loans.filter((l) => l.status !== "completed").length;
-
-  // Generate upcoming payments from loans data
-  const upcomingPayments = loans
-    .filter((l) => l.status !== "completed" && l.monthlyPayment > 0)
-    .map((loan) => ({
-      date: loan.endDate || new Date().toISOString().split("T")[0],
-      loanId: loan.id,
-      amount: loan.monthlyPayment,
-    }));
 
   const stats = [
     {
@@ -336,11 +368,23 @@ export default function QuanLyTienVay() {
   const getTypeBadge = (type: string) => {
     switch (type) {
       case "long_term":
-        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Vay dài hạn</span>;
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+            Vay dài hạn
+          </span>
+        );
       case "short_term":
-        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Vay ngắn hạn</span>;
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+            Vay ngắn hạn
+          </span>
+        );
       case "personal":
-        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">Vay cá nhân</span>;
+        return (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+            Vay cá nhân
+          </span>
+        );
       default:
         return null;
     }
@@ -350,7 +394,8 @@ export default function QuanLyTienVay() {
     const matchesSearch =
       loan.lender.toLowerCase().includes(searchTerm.toLowerCase()) ||
       loan.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === "all" || loan.status === filterStatus;
+    const matchesFilter =
+      filterStatus === "all" || loan.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
@@ -457,9 +502,14 @@ export default function QuanLyTienVay() {
         amount: selectedLoan.principal,
         monthlyInterest: selectedLoan.monthlyPayment,
         dueDate: selectedLoan.endDate,
-        status: selectedLoan.status === "active" ? "Ổn Định" :
-                selectedLoan.status === "near_due" ? "Sắp Đáo Hạn Gốc" :
-                selectedLoan.status === "completed" ? "Hoàn Thành" : "Quá Hạn",
+        status:
+          selectedLoan.status === "active"
+            ? "Ổn Định"
+            : selectedLoan.status === "near_due"
+              ? "Sắp Đáo Hạn Gốc"
+              : selectedLoan.status === "completed"
+                ? "Hoàn Thành"
+                : "Quá Hạn",
       };
 
       const response = await fetch("/api/loans/update", {
@@ -581,9 +631,12 @@ export default function QuanLyTienVay() {
 
     try {
       setIsDeletingPayment(true);
-      const response = await fetch(`/api/payment-history/delete?id=${paymentToDelete}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/payment-history/delete?id=${paymentToDelete}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const result = await response.json();
 
@@ -613,7 +666,9 @@ export default function QuanLyTienVay() {
             <HandCoins className="w-7 h-7 text-blue-600" />
             Quản lý tiền vay
           </h1>
-          <p className="text-gray-500 mt-1">Theo dõi và quản lý các khoản vay</p>
+          <p className="text-gray-500 mt-1">
+            Theo dõi và quản lý các khoản vay
+          </p>
         </div>
       </div>
 
@@ -627,7 +682,9 @@ export default function QuanLyTienVay() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">{stat.label}</p>
-                <p className="text-xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                <p className="text-xl font-bold text-gray-900 mt-1">
+                  {stat.value}
+                </p>
                 <p className="text-sm text-gray-500 mt-1">{stat.change}</p>
               </div>
               <div className={`p-3 rounded-lg ${stat.color}`}>
@@ -658,7 +715,7 @@ export default function QuanLyTienVay() {
                 </button>
               ))}
             </nav>
-            {activeTab === "khoan-vay" && (
+            {activeTab === "danh-sach-mon-vay" && (
               <button
                 onClick={() => setShowAddModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -667,21 +724,12 @@ export default function QuanLyTienVay() {
                 Thêm khoản vay
               </button>
             )}
-            {activeTab === "lich-thanh-toan" && (
-              <button
-                onClick={() => setShowAddPaymentModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Thêm giao dịch
-              </button>
-            )}
           </div>
         </div>
 
         <div className="p-6">
-          {/* Tab: Khoản vay */}
-          {activeTab === "khoan-vay" && (
+          {/* Tab: Danh sách món vay */}
+          {activeTab === "danh-sach-mon-vay" && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
@@ -711,97 +759,145 @@ export default function QuanLyTienVay() {
               {isLoadingLoans ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
+                  <span className="ml-2 text-gray-500">
+                    Đang tải dữ liệu...
+                  </span>
                 </div>
               ) : filteredLoans.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <HandCoins className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                   <p className="font-medium">Chưa có khoản vay nào</p>
-                  <p className="text-sm mt-1">Nhấn &quot;Thêm khoản vay&quot; để bắt đầu</p>
+                  <p className="text-sm mt-1">
+                    Nhấn &quot;Thêm khoản vay&quot; để bắt đầu
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã món vay</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Người cho vay</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Phân loại</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày đáo hạn</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Số tiền vay gốc</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Lãi suất ban đầu</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Loại lãi suất</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày trả lãi</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kỳ hạn trả lãi</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày giải ngân</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mục đích vay</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Thao tác</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Mã món vay
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Người cho vay
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Phân loại
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Ngày đáo hạn
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Số tiền vay gốc
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Lãi suất ban đầu
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Loại lãi suất
+                        </th>
+                        {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày trả lãi</th> */}
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Kỳ hạn trả lãi
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Trạng thái
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Ngày giải ngân
+                        </th>
+                        {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Mục đích vay
+                        </th> */}
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Thao tác
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {filteredLoans.map((loan: any) => (
-                      <tr key={loan.code} className="hover:bg-gray-50">
-                        <td className="px-4 py-4">
-                          <span className="font-medium text-blue-600">{loan.code}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.lender}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.category || "-"}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.maturityDate || "-"}</span>
-                        </td>
-                        <td className="px-4 py-4 text-right font-medium text-gray-900">
-                          {formatCurrency(loan.principalAmount)}
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.initialInterestRate || "-"}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.interestType || "-"}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.interestPaymentDate || "-"}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.paymentTerm || "-"}</span>
-                        </td>
-                        <td className="px-4 py-4 text-center">{getStatusBadge(loan.status)}</td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.disbursementDate || "-"}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-gray-900">{loan.purpose || "-"}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => handleViewLoan(loan)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Xem chi tiết"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleEditLoan(loan)}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                              title="Sửa"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteLoan(loan)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Xóa"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        <tr key={loan.code} className="hover:bg-gray-50">
+                          <td className="px-4 py-4">
+                            <span className="font-medium text-blue-600">
+                              {loan.code}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-gray-900">{loan.lender}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-gray-900">
+                              {loan.category || "-"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-gray-900">
+                              {loan.maturityDate || "-"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right font-medium text-gray-900">
+                            {formatCurrency(loan.principalAmount)}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-gray-900">
+                              {loan.initialInterestRate || "-"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-gray-900">
+                              {loan.interestType || "-"}
+                            </span>
+                          </td>
+                          {/* <td className="px-4 py-4">
+                            <span className="text-gray-900">
+                              {loan.interestPaymentDate || "-"}
+                            </span>
+                          </td> */}
+                          <td className="px-4 py-4">
+                            <span className="text-gray-900">
+                              {loan.paymentTerm || "-"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            {getStatusBadge(loan.status)}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-gray-900">
+                              {loan.disbursementDate || "-"}
+                            </span>
+                          </td>
+                          {/* <td className="px-4 py-4">
+                            <span className="text-gray-900">
+                              {loan.purpose || "-"}
+                            </span>
+                          </td> */}
+                          <td className="px-4 py-4">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleViewLoan(loan)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Xem chi tiết"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleEditLoan(loan)}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="Sửa"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLoan(loan)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Xóa"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
@@ -810,32 +906,50 @@ export default function QuanLyTienVay() {
             </div>
           )}
 
-          {/* Tab: Lịch thanh toán */}
-          {activeTab === "lich-thanh-toan" && (
+          {/* Tab: Nhật ký món vay */}
+          {activeTab === "nhat-ky-mon-vay" && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Lịch sử thanh toán</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Nhật ký món vay
+              </h3>
               {isLoadingPaymentHistory ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
+                  <span className="ml-2 text-gray-500">
+                    Đang tải dữ liệu...
+                  </span>
                 </div>
               ) : paymentHistory.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <History className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                   <p className="font-medium">Chưa có lịch sử thanh toán nào</p>
-                  <p className="text-sm mt-1">Nhấn &quot;Thêm giao dịch&quot; để bắt đầu</p>
+                  <p className="text-sm mt-1">
+                    Nhấn &quot;Thêm giao dịch&quot; để bắt đầu
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày giao dịch</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã món vay</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Loại giao dịch</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Số tiền thu</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Số tiền chi</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Thao tác</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Ngày giao dịch
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Mã món vay
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Loại giao dịch
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Số tiền thu
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Số tiền chi
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Thao tác
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -844,13 +958,19 @@ export default function QuanLyTienVay() {
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4 text-gray-400" />
-                              <span className="text-gray-900">{payment.transactionDate}</span>
+                              <span className="text-gray-900">
+                                {payment.transactionDate}
+                              </span>
                             </div>
                           </td>
                           <td className="px-4 py-4">
-                            <span className="font-medium text-blue-600">{payment.loanCode}</span>
+                            <span className="font-medium text-blue-600">
+                              {payment.loanCode}
+                            </span>
                           </td>
-                          <td className="px-4 py-4 text-gray-900">{payment.transactionType}</td>
+                          <td className="px-4 py-4 text-gray-900">
+                            {payment.transactionType}
+                          </td>
                           <td className="px-4 py-4 text-right">
                             {payment.amountIn > 0 && (
                               <span className="flex items-center justify-end gap-1 text-green-600 font-medium">
@@ -897,12 +1017,18 @@ export default function QuanLyTienVay() {
                     </tbody>
                     <tfoot>
                       <tr className="bg-gray-100 font-semibold">
-                        <td className="px-4 py-3 text-gray-900" colSpan={3}>Tổng cộng</td>
+                        <td className="px-4 py-3 text-gray-900" colSpan={3}>
+                          Tổng cộng
+                        </td>
                         <td className="px-4 py-3 text-right text-green-600">
-                          {formatCurrency(paymentHistory.reduce((s, p) => s + p.amountIn, 0))}
+                          {formatCurrency(
+                            paymentHistory.reduce((s, p) => s + p.amountIn, 0),
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right text-red-600">
-                          {formatCurrency(paymentHistory.reduce((s, p) => s + p.amountOut, 0))}
+                          {formatCurrency(
+                            paymentHistory.reduce((s, p) => s + p.amountOut, 0),
+                          )}
                         </td>
                         <td className="px-4 py-3"></td>
                       </tr>
@@ -913,51 +1039,106 @@ export default function QuanLyTienVay() {
             </div>
           )}
 
-          {/* Tab: Lịch sử trả nợ */}
-          {activeTab === "lich-su-tra" && (
+          {/* Tab: DASHBOARD */}
+          {activeTab === "dashboard" && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Các khoản thanh toán sắp tới</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {upcomingPayments.map((payment, index) => {
-                  const loan = loans.find((l) => l.id === payment.loanId);
-                  const daysLeft = Math.ceil((new Date(payment.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-xl border-l-4 ${
-                        daysLeft <= 3 ? "border-red-500 bg-red-50" : daysLeft <= 7 ? "border-yellow-500 bg-yellow-50" : "border-blue-500 bg-blue-50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-blue-600">{payment.loanId}</span>
-                        <span className={`text-sm font-medium ${daysLeft <= 3 ? "text-red-600" : daysLeft <= 7 ? "text-yellow-600" : "text-blue-600"}`}>
-                          {daysLeft <= 0 ? "Đến hạn hôm nay" : `Còn ${daysLeft} ngày`}
-                        </span>
-                      </div>
-                      <p className="text-gray-900 font-medium">{loan?.lender}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm text-gray-500">
-                          {new Date(payment.date).toLocaleDateString("vi-VN")}
-                        </span>
-                        <span className="text-lg font-bold text-gray-900">{formatCurrency(payment.amount)}</span>
-                      </div>
-                      <button className="w-full mt-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-                        Thanh toán ngay
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                TỔNG QUAN TIỀN VAY
+              </h3>
 
-              <div className="mt-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                <div className="flex items-center gap-2 text-yellow-700 mb-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  <span className="font-semibold">Tổng thanh toán tháng này</span>
+              {isLoadingDashboard ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
                 </div>
-                <p className="text-3xl font-bold text-yellow-700">
-                  {formatCurrency(upcomingPayments.reduce((sum, p) => sum + p.amount, 0))}
-                </p>
-              </div>
+              ) : dashboardData ? (
+                <div className="space-y-6">
+                  {/* Row 1: Tổng dư nợ & Áp lực lãi */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-5 bg-red-50 rounded-xl border border-red-200">
+                      <p className="text-sm text-red-600 font-medium">Tổng dư nợ toàn công ty</p>
+                      <p className="text-3xl font-bold text-red-700 mt-1">
+                        {formatCurrency(dashboardData.tongDuNoToanCongTy)}
+                      </p>
+                    </div>
+                    <div className="p-5 bg-orange-50 rounded-xl border border-orange-200">
+                      <p className="text-sm text-orange-600 font-medium">Tổng áp lực lãi vay tháng này</p>
+                      <p className="text-3xl font-bold text-orange-700 mt-1">
+                        {formatCurrency(dashboardData.tongApLucLaiVayThangNay)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Dư nợ Bank & Ngoài */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-5 bg-blue-50 rounded-xl border border-blue-200">
+                      <p className="text-sm text-blue-600 font-medium">Dư nợ Vay bank</p>
+                      <p className="text-2xl font-bold text-blue-700 mt-1">
+                        {formatCurrency(dashboardData.duNoVayBank)}
+                      </p>
+                    </div>
+                    <div className="p-5 bg-purple-50 rounded-xl border border-purple-200">
+                      <p className="text-sm text-purple-600 font-medium">Dư nợ Vay ngoài</p>
+                      <p className="text-2xl font-bold text-purple-700 mt-1">
+                        {formatCurrency(dashboardData.duNoVayNgoai)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Cảnh báo */}
+                  {dashboardData.canhBao > 0 && (
+                    <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                      <div className="flex items-center gap-2 text-yellow-700">
+                        <AlertTriangle className="w-5 h-5" />
+                        <span className="font-semibold">Cảnh báo: {dashboardData.canhBao}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Row 4: Lãi vay */}
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-800 mb-3">Lãi vay</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                        <p className="text-sm text-green-600 font-medium">Lãi vay đã trả</p>
+                        <p className="text-xl font-bold text-green-700 mt-1">
+                          {formatCurrency(dashboardData.laiVayDaTra)}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-red-50 rounded-xl border border-red-200">
+                        <p className="text-sm text-red-600 font-medium">Lãi còn lại</p>
+                        <p className="text-xl font-bold text-red-700 mt-1">
+                          {formatCurrency(dashboardData.laiConLai)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 5: Gốc */}
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-800 mb-3">Gốc vay</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                        <p className="text-sm text-green-600 font-medium">Gốc đã trả</p>
+                        <p className="text-xl font-bold text-green-700 mt-1">
+                          {formatCurrency(dashboardData.gocDaTra)}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-red-50 rounded-xl border border-red-200">
+                        <p className="text-sm text-red-600 font-medium">Gốc còn lại</p>
+                        <p className="text-xl font-bold text-red-700 mt-1">
+                          {formatCurrency(dashboardData.gocConLai)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <TrendingDown className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>Không có dữ liệu Dashboard</p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -976,8 +1157,12 @@ export default function QuanLyTienVay() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Thêm khoản vay mới</h3>
-                <p className="text-sm text-gray-500">Nhập thông tin khoản vay</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Thêm khoản vay mới
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Nhập thông tin khoản vay
+                </p>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -991,20 +1176,31 @@ export default function QuanLyTienVay() {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bên cho vay *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Bên cho vay *
+                  </label>
                   <input
                     type="text"
                     value={newLoan.lender || ""}
-                    onChange={(e) => setNewLoan({ ...newLoan, lender: e.target.value })}
+                    onChange={(e) =>
+                      setNewLoan({ ...newLoan, lender: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập tên ngân hàng/tổ chức"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Loại vay</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loại vay
+                  </label>
                   <select
                     value={newLoan.type || "long_term"}
-                    onChange={(e) => setNewLoan({ ...newLoan, type: e.target.value as Loan["type"] })}
+                    onChange={(e) =>
+                      setNewLoan({
+                        ...newLoan,
+                        type: e.target.value as Loan["type"],
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="long_term">Vay dài hạn</option>
@@ -1014,28 +1210,42 @@ export default function QuanLyTienVay() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền vay *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Số tiền vay *
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={newLoan.principal || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setNewLoan({ ...newLoan, principal: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+/, "")
+                          .replace(/\D/g, "");
+                        setNewLoan({
+                          ...newLoan,
+                          principal: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Nhập số tiền"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lãi suất (%/năm)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Lãi suất (%/năm)
+                    </label>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={newLoan.interestRate || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+(?=\d)/, "").replace(/[^\d.]/g, "");
-                        setNewLoan({ ...newLoan, interestRate: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+(?=\d)/, "")
+                          .replace(/[^\d.]/g, "");
+                        setNewLoan({
+                          ...newLoan,
+                          interestRate: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Lãi suất"
@@ -1044,53 +1254,76 @@ export default function QuanLyTienVay() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày bắt đầu
+                    </label>
                     <input
                       type="date"
                       value={newLoan.startDate || ""}
-                      onChange={(e) => setNewLoan({ ...newLoan, startDate: e.target.value })}
+                      onChange={(e) =>
+                        setNewLoan({ ...newLoan, startDate: e.target.value })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày kết thúc
+                    </label>
                     <input
                       type="date"
                       value={newLoan.endDate || ""}
-                      onChange={(e) => setNewLoan({ ...newLoan, endDate: e.target.value })}
+                      onChange={(e) =>
+                        setNewLoan({ ...newLoan, endDate: e.target.value })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền trả/tháng</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Số tiền trả/tháng
+                  </label>
                   <input
                     type="text"
                     inputMode="numeric"
                     value={newLoan.monthlyPayment || ""}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                      setNewLoan({ ...newLoan, monthlyPayment: val ? Number(val) : 0 });
+                      const val = e.target.value
+                        .replace(/^0+/, "")
+                        .replace(/\D/g, "");
+                      setNewLoan({
+                        ...newLoan,
+                        monthlyPayment: val ? Number(val) : 0,
+                      });
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập số tiền trả/tháng"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mục đích vay</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mục đích vay
+                  </label>
                   <input
                     type="text"
                     value={newLoan.purpose || ""}
-                    onChange={(e) => setNewLoan({ ...newLoan, purpose: e.target.value })}
+                    onChange={(e) =>
+                      setNewLoan({ ...newLoan, purpose: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập mục đích vay"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú
+                  </label>
                   <textarea
                     value={newLoan.notes || ""}
-                    onChange={(e) => setNewLoan({ ...newLoan, notes: e.target.value })}
+                    onChange={(e) =>
+                      setNewLoan({ ...newLoan, notes: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows={3}
                     placeholder="Ghi chú thêm"
@@ -1138,8 +1371,12 @@ export default function QuanLyTienVay() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Chi tiết khoản vay</h3>
-                <p className="text-sm text-blue-600 font-medium">{selectedLoan.id}</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chi tiết khoản vay
+                </h3>
+                <p className="text-sm text-blue-600 font-medium">
+                  {selectedLoan.id}
+                </p>
               </div>
               <button
                 onClick={() => setShowViewModal(false)}
@@ -1176,13 +1413,21 @@ export default function QuanLyTienVay() {
                     <div className="flex justify-between mb-1 text-sm">
                       <span className="text-gray-600">Tiến độ trả nợ</span>
                       <span className="font-medium">
-                        {Math.round(((selectedLoan.principal - selectedLoan.remainingPrincipal) / selectedLoan.principal) * 100)}%
+                        {Math.round(
+                          ((selectedLoan.principal -
+                            selectedLoan.remainingPrincipal) /
+                            selectedLoan.principal) *
+                            100,
+                        )}
+                        %
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className="bg-green-500 h-2 rounded-full"
-                        style={{ width: `${((selectedLoan.principal - selectedLoan.remainingPrincipal) / selectedLoan.principal) * 100}%` }}
+                        style={{
+                          width: `${((selectedLoan.principal - selectedLoan.remainingPrincipal) / selectedLoan.principal) * 100}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -1193,16 +1438,22 @@ export default function QuanLyTienVay() {
               <div className="space-y-4">
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Bên cho vay</span>
-                  <span className="text-gray-900 font-medium">{selectedLoan.lender}</span>
+                  <span className="text-gray-900 font-medium">
+                    {selectedLoan.lender}
+                  </span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Lãi suất</span>
-                  <span className="text-gray-900 font-medium">{selectedLoan.interestRate}%/năm</span>
+                  <span className="text-gray-900 font-medium">
+                    {selectedLoan.interestRate}%/năm
+                  </span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Ngày bắt đầu</span>
                   <span className="text-gray-900 font-medium">
-                    {new Date(selectedLoan.startDate).toLocaleDateString("vi-VN")}
+                    {new Date(selectedLoan.startDate).toLocaleDateString(
+                      "vi-VN",
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
@@ -1213,11 +1464,15 @@ export default function QuanLyTienVay() {
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Trả góp/tháng</span>
-                  <span className="text-orange-600 font-medium">{formatCurrency(selectedLoan.monthlyPayment)}</span>
+                  <span className="text-orange-600 font-medium">
+                    {formatCurrency(selectedLoan.monthlyPayment)}
+                  </span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Mục đích vay</span>
-                  <span className="text-gray-900 font-medium">{selectedLoan.purpose}</span>
+                  <span className="text-gray-900 font-medium">
+                    {selectedLoan.purpose}
+                  </span>
                 </div>
                 {selectedLoan.notes && (
                   <div className="py-3">
@@ -1268,8 +1523,12 @@ export default function QuanLyTienVay() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Sửa khoản vay</h3>
-                <p className="text-sm text-blue-600 font-medium">{selectedLoan.id}</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Sửa khoản vay
+                </h3>
+                <p className="text-sm text-blue-600 font-medium">
+                  {selectedLoan.id}
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -1286,19 +1545,33 @@ export default function QuanLyTienVay() {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bên cho vay *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Bên cho vay *
+                  </label>
                   <input
                     type="text"
                     value={selectedLoan.lender}
-                    onChange={(e) => setSelectedLoan({ ...selectedLoan, lender: e.target.value })}
+                    onChange={(e) =>
+                      setSelectedLoan({
+                        ...selectedLoan,
+                        lender: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Loại vay</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loại vay
+                  </label>
                   <select
                     value={selectedLoan.type}
-                    onChange={(e) => setSelectedLoan({ ...selectedLoan, type: e.target.value as Loan["type"] })}
+                    onChange={(e) =>
+                      setSelectedLoan({
+                        ...selectedLoan,
+                        type: e.target.value as Loan["type"],
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="long_term">Vay dài hạn</option>
@@ -1308,27 +1581,41 @@ export default function QuanLyTienVay() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền vay</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Số tiền vay
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={selectedLoan.principal || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setSelectedLoan({ ...selectedLoan, principal: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+/, "")
+                          .replace(/\D/g, "");
+                        setSelectedLoan({
+                          ...selectedLoan,
+                          principal: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lãi suất (%/năm)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Lãi suất (%/năm)
+                    </label>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={selectedLoan.interestRate || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+(?=\d)/, "").replace(/[^\d.]/g, "");
-                        setSelectedLoan({ ...selectedLoan, interestRate: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+(?=\d)/, "")
+                          .replace(/[^\d.]/g, "");
+                        setSelectedLoan({
+                          ...selectedLoan,
+                          interestRate: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -1336,37 +1623,58 @@ export default function QuanLyTienVay() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Còn nợ</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Còn nợ
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={selectedLoan.remainingPrincipal || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setSelectedLoan({ ...selectedLoan, remainingPrincipal: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+/, "")
+                          .replace(/\D/g, "");
+                        setSelectedLoan({
+                          ...selectedLoan,
+                          remainingPrincipal: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Trả góp/tháng</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Trả góp/tháng
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={selectedLoan.monthlyPayment || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setSelectedLoan({ ...selectedLoan, monthlyPayment: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+/, "")
+                          .replace(/\D/g, "");
+                        setSelectedLoan({
+                          ...selectedLoan,
+                          monthlyPayment: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Trạng thái
+                  </label>
                   <select
                     value={selectedLoan.status}
-                    onChange={(e) => setSelectedLoan({ ...selectedLoan, status: e.target.value as Loan["status"] })}
+                    onChange={(e) =>
+                      setSelectedLoan({
+                        ...selectedLoan,
+                        status: e.target.value as Loan["status"],
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="active">Đang vay</option>
@@ -1376,19 +1684,33 @@ export default function QuanLyTienVay() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mục đích vay</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mục đích vay
+                  </label>
                   <input
                     type="text"
                     value={selectedLoan.purpose}
-                    onChange={(e) => setSelectedLoan({ ...selectedLoan, purpose: e.target.value })}
+                    onChange={(e) =>
+                      setSelectedLoan({
+                        ...selectedLoan,
+                        purpose: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú
+                  </label>
                   <textarea
                     value={selectedLoan.notes || ""}
-                    onChange={(e) => setSelectedLoan({ ...selectedLoan, notes: e.target.value })}
+                    onChange={(e) =>
+                      setSelectedLoan({
+                        ...selectedLoan,
+                        notes: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows={3}
                   />
@@ -1442,8 +1764,12 @@ export default function QuanLyTienVay() {
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa khoản vay</h3>
-                  <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Xác nhận xóa khoản vay
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Hành động này không thể hoàn tác
+                  </p>
                 </div>
               </div>
             </div>
@@ -1451,12 +1777,17 @@ export default function QuanLyTienVay() {
             {/* Content */}
             <div className="px-6 py-4">
               <p className="text-gray-700">
-                Bạn có chắc chắn muốn xóa khoản vay <span className="font-semibold text-blue-600">{loanToDelete.id}</span> của{" "}
-                <span className="font-semibold">{loanToDelete.lender}</span>?
+                Bạn có chắc chắn muốn xóa khoản vay{" "}
+                <span className="font-semibold text-blue-600">
+                  {loanToDelete.id}
+                </span>{" "}
+                của <span className="font-semibold">{loanToDelete.lender}</span>
+                ?
               </p>
               <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p className="text-sm text-yellow-800">
-                  <strong>Lưu ý:</strong> Dữ liệu sẽ bị xóa vĩnh viễn khỏi Google Sheets.
+                  <strong>Lưu ý:</strong> Dữ liệu sẽ bị xóa vĩnh viễn khỏi
+                  Google Sheets.
                 </p>
               </div>
             </div>
@@ -1500,8 +1831,12 @@ export default function QuanLyTienVay() {
           <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Thêm giao dịch mới</h3>
-                <p className="text-sm text-gray-500">Nhập thông tin giao dịch</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Thêm giao dịch mới
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Nhập thông tin giao dịch
+                </p>
               </div>
               <button
                 onClick={() => setShowAddPaymentModal(false)}
@@ -1514,58 +1849,90 @@ export default function QuanLyTienVay() {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày giao dịch *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày giao dịch *
+                  </label>
                   <input
                     type="date"
                     value={newPayment.transactionDate}
-                    onChange={(e) => setNewPayment({ ...newPayment, transactionDate: e.target.value })}
+                    onChange={(e) =>
+                      setNewPayment({
+                        ...newPayment,
+                        transactionDate: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã món vay</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã món vay
+                  </label>
                   <input
                     type="text"
                     value={newPayment.loanCode}
-                    onChange={(e) => setNewPayment({ ...newPayment, loanCode: e.target.value })}
+                    onChange={(e) =>
+                      setNewPayment({ ...newPayment, loanCode: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="VD: MV01"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Loại giao dịch</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loại giao dịch
+                  </label>
                   <input
                     type="text"
                     value={newPayment.transactionType}
-                    onChange={(e) => setNewPayment({ ...newPayment, transactionType: e.target.value })}
+                    onChange={(e) =>
+                      setNewPayment({
+                        ...newPayment,
+                        transactionType: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="VD: Trả lãi, Trả gốc..."
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền thu</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Số tiền thu
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={newPayment.amountIn || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setNewPayment({ ...newPayment, amountIn: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+/, "")
+                          .replace(/\D/g, "");
+                        setNewPayment({
+                          ...newPayment,
+                          amountIn: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền chi</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Số tiền chi
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={newPayment.amountOut || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setNewPayment({ ...newPayment, amountOut: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+/, "")
+                          .replace(/\D/g, "");
+                        setNewPayment({
+                          ...newPayment,
+                          amountOut: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0"
@@ -1610,8 +1977,12 @@ export default function QuanLyTienVay() {
           <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Chi tiết giao dịch</h3>
-                <p className="text-sm text-gray-500">ID: {selectedPayment.id}</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chi tiết giao dịch
+                </h3>
+                <p className="text-sm text-gray-500">
+                  ID: {selectedPayment.id}
+                </p>
               </div>
               <button
                 onClick={() => setShowViewPaymentModal(false)}
@@ -1625,23 +1996,33 @@ export default function QuanLyTienVay() {
               <div className="space-y-4">
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Ngày giao dịch</span>
-                  <span className="text-gray-900 font-medium">{selectedPayment.transactionDate}</span>
+                  <span className="text-gray-900 font-medium">
+                    {selectedPayment.transactionDate}
+                  </span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Mã món vay</span>
-                  <span className="text-blue-600 font-medium">{selectedPayment.loanCode}</span>
+                  <span className="text-blue-600 font-medium">
+                    {selectedPayment.loanCode}
+                  </span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Loại giao dịch</span>
-                  <span className="text-gray-900 font-medium">{selectedPayment.transactionType}</span>
+                  <span className="text-gray-900 font-medium">
+                    {selectedPayment.transactionType}
+                  </span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Số tiền thu</span>
-                  <span className="text-green-600 font-medium">{formatCurrency(selectedPayment.amountIn)}</span>
+                  <span className="text-green-600 font-medium">
+                    {formatCurrency(selectedPayment.amountIn)}
+                  </span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-gray-500">Số tiền chi</span>
-                  <span className="text-red-600 font-medium">{formatCurrency(selectedPayment.amountOut)}</span>
+                  <span className="text-red-600 font-medium">
+                    {formatCurrency(selectedPayment.amountOut)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1679,7 +2060,9 @@ export default function QuanLyTienVay() {
           <div className="fixed top-0 right-0 w-full max-w-md h-screen bg-white shadow-2xl z-[60] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Sửa giao dịch</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Sửa giao dịch
+                </h3>
                 <p className="text-sm text-gray-500">ID: {editPayment.id}</p>
               </div>
               <button
@@ -1693,58 +2076,93 @@ export default function QuanLyTienVay() {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày giao dịch *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày giao dịch *
+                  </label>
                   <input
                     type="date"
                     value={editPayment.transactionDate}
-                    onChange={(e) => setEditPayment({ ...editPayment, transactionDate: e.target.value })}
+                    onChange={(e) =>
+                      setEditPayment({
+                        ...editPayment,
+                        transactionDate: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã món vay</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã món vay
+                  </label>
                   <input
                     type="text"
                     value={editPayment.loanCode}
-                    onChange={(e) => setEditPayment({ ...editPayment, loanCode: e.target.value })}
+                    onChange={(e) =>
+                      setEditPayment({
+                        ...editPayment,
+                        loanCode: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="VD: MV01"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Loại giao dịch</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loại giao dịch
+                  </label>
                   <input
                     type="text"
                     value={editPayment.transactionType}
-                    onChange={(e) => setEditPayment({ ...editPayment, transactionType: e.target.value })}
+                    onChange={(e) =>
+                      setEditPayment({
+                        ...editPayment,
+                        transactionType: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="VD: Trả lãi, Trả gốc..."
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền thu</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Số tiền thu
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={editPayment.amountIn || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setEditPayment({ ...editPayment, amountIn: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+/, "")
+                          .replace(/\D/g, "");
+                        setEditPayment({
+                          ...editPayment,
+                          amountIn: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền chi</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Số tiền chi
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={editPayment.amountOut || ""}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/^0+/, "").replace(/\D/g, "");
-                        setEditPayment({ ...editPayment, amountOut: val ? Number(val) : 0 });
+                        const val = e.target.value
+                          .replace(/^0+/, "")
+                          .replace(/\D/g, "");
+                        setEditPayment({
+                          ...editPayment,
+                          amountOut: val ? Number(val) : 0,
+                        });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0"
@@ -1784,7 +2202,9 @@ export default function QuanLyTienVay() {
         <Portal>
           <div
             className="fixed inset-0 z-50 bg-black/50"
-            onClick={() => !isDeletingPayment && setShowDeletePaymentModal(false)}
+            onClick={() =>
+              !isDeletingPayment && setShowDeletePaymentModal(false)
+            }
           />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-full max-w-md bg-white rounded-xl shadow-2xl">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -1793,8 +2213,12 @@ export default function QuanLyTienVay() {
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa giao dịch</h3>
-                  <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Xác nhận xóa giao dịch
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Hành động này không thể hoàn tác
+                  </p>
                 </div>
               </div>
             </div>
@@ -1805,7 +2229,8 @@ export default function QuanLyTienVay() {
               </p>
               <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p className="text-sm text-yellow-800">
-                  <strong>Lưu ý:</strong> Dữ liệu sẽ bị xóa vĩnh viễn khỏi Google Sheets.
+                  <strong>Lưu ý:</strong> Dữ liệu sẽ bị xóa vĩnh viễn khỏi
+                  Google Sheets.
                 </p>
               </div>
             </div>

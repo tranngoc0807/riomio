@@ -6766,13 +6766,14 @@ export interface NhapKhoHinhIn {
   thanhTien: number;
   ncc: string;
   maPhieuNhap: string;
+  maSPSuDung: string;
   ghiChu: string;
 }
 
 /**
  * Đọc dữ liệu nhập kho hình in từ Google Sheets
  * Header dòng 5, dữ liệu từ dòng 6
- * Columns: A-H (Ngày tháng, Mã hình in, Số lượng, Đơn giá, Thành tiền, NCC, Mã phiếu nhập, Ghi chú)
+ * Columns: A-J (Ngày tháng, Mã hình in, Số lượng, Đơn giá, Thành tiền, NCC, Mã phiếu nhập, Mã SP sử dụng, Ghi chú)
  */
 export async function getNhapKhoHinhInFromSheet(): Promise<NhapKhoHinhIn[]> {
   try {
@@ -6780,7 +6781,7 @@ export async function getNhapKhoHinhInFromSheet(): Promise<NhapKhoHinhIn[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanXuat14,
-      range: `'${sheetNameNhapKhoHinhIn}'!A6:H`, // Header dòng 5, dữ liệu từ dòng 6
+      range: `'${sheetNameNhapKhoHinhIn}'!A6:J`, // Header dòng 5, dữ liệu từ dòng 6
     });
 
     const rows = response.data.values;
@@ -6809,7 +6810,8 @@ export async function getNhapKhoHinhInFromSheet(): Promise<NhapKhoHinhIn[]> {
         thanhTien: parseNumberVN(row[4]),
         ncc: row[5] || "",
         maPhieuNhap: row[6] || "",
-        ghiChu: row[7] || "",
+        maSPSuDung: row[7] || "",
+        ghiChu: row[8] || "",
       }))
       .filter((item) => item.ngayThang.trim() !== "" && !item.ngayThang.startsWith('#') && item.maHinhIn.trim() !== "");
 
@@ -6863,6 +6865,7 @@ export async function addNhapKhoHinhInToSheet(
         formatNumber(nhapKho.thanhTien),
         nhapKho.ncc,
         nhapKho.maPhieuNhap,
+        nhapKho.maSPSuDung,
         nhapKho.ghiChu,
       ],
     ];
@@ -6870,7 +6873,7 @@ export async function addNhapKhoHinhInToSheet(
     // Use update instead of append to insert at the specific row
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanXuat14,
-      range: `'${sheetNameNhapKhoHinhIn}'!A${insertRowIndex}:H${insertRowIndex}`,
+      range: `'${sheetNameNhapKhoHinhIn}'!A${insertRowIndex}:I${insertRowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
@@ -6908,13 +6911,14 @@ export async function updateNhapKhoHinhInInSheet(
         formatNumber(nhapKho.thanhTien),
         nhapKho.ncc,
         nhapKho.maPhieuNhap,
+        nhapKho.maSPSuDung,
         nhapKho.ghiChu,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanXuat14,
-      range: `'${sheetNameNhapKhoHinhIn}'!A${rowIndex}:H${rowIndex}`,
+      range: `'${sheetNameNhapKhoHinhIn}'!A${rowIndex}:I${rowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
@@ -9024,6 +9028,641 @@ export async function updateChiTietMaSPInSheet(
     return true;
   } catch (error) {
     console.error("Error updating Chi Tiet Ma SP:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BC QUỸ THEO NGÀY
+// ============================================
+
+// Sử dụng spreadsheetIdDongTien đã được định nghĩa ở trên
+const sheetNameBCQuyTheoNgay = process.env.GOOGLE_SHEET_NAME_BC_QUY_THEO_NGAY || "BC quỹ theo ngày";
+
+// Interface cho Bảng 1: Báo cáo quỹ
+export interface BCQuyTable1Row {
+  stt: string;
+  taiKhoan: string;
+  duDau: number;
+  thu: number;
+  chi: number;
+  duCuoi: number;
+}
+
+// Interface cho Bảng 2: Bảng kê số dư quỹ đầu
+export interface BCQuyTable2Row {
+  stt: string;
+  taiKhoan: string;
+  soTien: number;
+}
+
+// Interface cho dữ liệu trả về
+export interface BCQuyTheoNgayData {
+  date1: string;
+  date2: string;
+  table1: BCQuyTable1Row[];
+  table2: BCQuyTable2Row[];
+}
+
+/**
+ * Đọc ngày từ cell C3 (Table 1) và J3 (Table 2)
+ */
+export async function getBCQuyTheoNgayDates(): Promise<{ date1: string; date2: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: spreadsheetIdDongTien,
+      ranges: [
+        `'${sheetNameBCQuyTheoNgay}'!C3`,
+        `'${sheetNameBCQuyTheoNgay}'!J3`,
+      ],
+    });
+
+    const valueRanges = response.data.valueRanges;
+    const date1 = valueRanges?.[0]?.values?.[0]?.[0] || "";
+    const date2 = valueRanges?.[1]?.values?.[0]?.[0] || "";
+
+    return { date1, date2 };
+  } catch (error) {
+    console.error("Error reading BC Quy Theo Ngay dates:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu Bảng 1: Báo cáo quỹ (cột A-F từ hàng 6)
+ */
+export async function getBCQuyTable1(): Promise<BCQuyTable1Row[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCQuyTheoNgay}'!A6:F`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    return rows
+      .filter((row) => row[0] || row[1]) // Lọc bỏ dòng trống
+      .map((row) => ({
+        stt: row[0] || "",
+        taiKhoan: row[1] || "",
+        duDau: parseFloat(String(row[2] || "0").replace(/[,.]/g, "")) || 0,
+        thu: parseFloat(String(row[3] || "0").replace(/[,.]/g, "")) || 0,
+        chi: parseFloat(String(row[4] || "0").replace(/[,.]/g, "")) || 0,
+        duCuoi: parseFloat(String(row[5] || "0").replace(/[,.]/g, "")) || 0,
+      }));
+  } catch (error) {
+    console.error("Error reading BC Quy Table 1:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu Bảng 2: Bảng kê số dư quỹ đầu (cột H-K từ hàng 6)
+ */
+export async function getBCQuyTable2(): Promise<BCQuyTable2Row[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCQuyTheoNgay}'!H6:K`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    return rows
+      .filter((row) => row[0] || row[1]) // Lọc bỏ dòng trống
+      .map((row) => ({
+        stt: row[0] || "",
+        taiKhoan: row[1] || "",
+        soTien: parseFloat(String(row[3] || "0").replace(/[,.]/g, "")) || 0, // Cột K (index 3 trong range H-K)
+      }));
+  } catch (error) {
+    console.error("Error reading BC Quy Table 2:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ngày cho Bảng 1 (cell C3)
+ */
+export async function updateBCQuyDate1(date: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCQuyTheoNgay}'!C3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[date]],
+      },
+    });
+
+    console.log(`Updated BC Quy date1 (C3) with value: ${date}`);
+  } catch (error) {
+    console.error("Error updating BC Quy date1:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ngày cho Bảng 2 (cell J3)
+ */
+export async function updateBCQuyDate2(date: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCQuyTheoNgay}'!J3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[date]],
+      },
+    });
+
+    console.log(`Updated BC Quy date2 (J3) with value: ${date}`);
+  } catch (error) {
+    console.error("Error updating BC Quy date2:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy toàn bộ dữ liệu BC quỹ theo ngày
+ */
+export async function getBCQuyTheoNgayData(): Promise<BCQuyTheoNgayData> {
+  try {
+    const [dates, table1, table2] = await Promise.all([
+      getBCQuyTheoNgayDates(),
+      getBCQuyTable1(),
+      getBCQuyTable2(),
+    ]);
+
+    return {
+      date1: dates.date1,
+      date2: dates.date2,
+      table1,
+      table2,
+    };
+  } catch (error) {
+    console.error("Error fetching BC Quy Theo Ngay data:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ngày và lấy dữ liệu mới
+ */
+export async function updateDateAndGetBCQuyData(
+  tableNumber: 1 | 2,
+  date: string
+): Promise<BCQuyTheoNgayData> {
+  try {
+    // Cập nhật ngày
+    if (tableNumber === 1) {
+      await updateBCQuyDate1(date);
+    } else {
+      await updateBCQuyDate2(date);
+    }
+
+    // Đợi sheet recalculate
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Lấy dữ liệu mới
+    return await getBCQuyTheoNgayData();
+  } catch (error) {
+    console.error("Error updating date and fetching BC Quy data:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BC QUỸ THEO THÁNG
+// ============================================
+
+const sheetNameBCQuyTheoThang = process.env.GOOGLE_SHEET_NAME_BC_QUY_THEO_THANG || "BC quỹ theo tháng";
+
+// Interface cho dữ liệu BC quỹ theo tháng (giống BC theo ngày)
+export interface BCQuyTheoThangData {
+  date1: string; // Tháng: M/YYYY (vd: "1/2026")
+  date2: string; // Ngày: dd/mm/yyyy (vd: "31/12/2025")
+  table1: BCQuyTable1Row[];
+  table2: BCQuyTable2Row[];
+}
+
+/**
+ * Đọc ngày/tháng từ cell C3 (Table 1) và J3 (Table 2) - BC theo tháng
+ */
+export async function getBCQuyTheoThangDates(): Promise<{ date1: string; date2: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: spreadsheetIdDongTien,
+      ranges: [
+        `'${sheetNameBCQuyTheoThang}'!C3`,
+        `'${sheetNameBCQuyTheoThang}'!J3`,
+      ],
+    });
+
+    const valueRanges = response.data.valueRanges;
+    const date1 = valueRanges?.[0]?.values?.[0]?.[0] || "";
+    const date2 = valueRanges?.[1]?.values?.[0]?.[0] || "";
+
+    return { date1, date2 };
+  } catch (error) {
+    console.error("Error reading BC Quy Theo Thang dates:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu Bảng 1: Báo cáo quỹ theo tháng (cột A-F từ hàng 6)
+ */
+export async function getBCQuyThangTable1(): Promise<BCQuyTable1Row[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCQuyTheoThang}'!A6:F`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    return rows
+      .filter((row) => row[0] || row[1])
+      .map((row) => ({
+        stt: row[0] || "",
+        taiKhoan: row[1] || "",
+        duDau: parseFloat(String(row[2] || "0").replace(/[,.]/g, "")) || 0,
+        thu: parseFloat(String(row[3] || "0").replace(/[,.]/g, "")) || 0,
+        chi: parseFloat(String(row[4] || "0").replace(/[,.]/g, "")) || 0,
+        duCuoi: parseFloat(String(row[5] || "0").replace(/[,.]/g, "")) || 0,
+      }));
+  } catch (error) {
+    console.error("Error reading BC Quy Thang Table 1:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu Bảng 2: Bảng kê số dư quỹ đầu kỳ (cột H-K từ hàng 6)
+ */
+export async function getBCQuyThangTable2(): Promise<BCQuyTable2Row[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCQuyTheoThang}'!H6:K`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    return rows
+      .filter((row) => row[0] || row[1])
+      .map((row) => ({
+        stt: row[0] || "",
+        taiKhoan: row[1] || "",
+        soTien: parseFloat(String(row[3] || "0").replace(/[,.]/g, "")) || 0,
+      }));
+  } catch (error) {
+    console.error("Error reading BC Quy Thang Table 2:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật tháng cho Bảng 1 (cell C3) - BC theo tháng
+ */
+export async function updateBCQuyThangDate1(date: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCQuyTheoThang}'!C3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[date]],
+      },
+    });
+
+    console.log(`Updated BC Quy Thang date1 (C3) with value: ${date}`);
+  } catch (error) {
+    console.error("Error updating BC Quy Thang date1:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ngày cho Bảng 2 (cell J3) - BC theo tháng
+ */
+export async function updateBCQuyThangDate2(date: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCQuyTheoThang}'!J3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[date]],
+      },
+    });
+
+    console.log(`Updated BC Quy Thang date2 (J3) with value: ${date}`);
+  } catch (error) {
+    console.error("Error updating BC Quy Thang date2:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy toàn bộ dữ liệu BC quỹ theo tháng
+ */
+export async function getBCQuyTheoThangData(): Promise<BCQuyTheoThangData> {
+  try {
+    const [dates, table1, table2] = await Promise.all([
+      getBCQuyTheoThangDates(),
+      getBCQuyThangTable1(),
+      getBCQuyThangTable2(),
+    ]);
+
+    return {
+      date1: dates.date1,
+      date2: dates.date2,
+      table1,
+      table2,
+    };
+  } catch (error) {
+    console.error("Error fetching BC Quy Theo Thang data:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ngày/tháng và lấy dữ liệu mới - BC theo tháng
+ */
+export async function updateDateAndGetBCQuyThangData(
+  tableNumber: 1 | 2,
+  date: string
+): Promise<BCQuyTheoThangData> {
+  try {
+    if (tableNumber === 1) {
+      await updateBCQuyThangDate1(date);
+    } else {
+      await updateBCQuyThangDate2(date);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return await getBCQuyTheoThangData();
+  } catch (error) {
+    console.error("Error updating date and fetching BC Quy Thang data:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BC TỪNG TÀI KHOẢN
+// ============================================
+
+const sheetNameBCTungTaiKhoan = process.env.GOOGLE_SHEET_NAME_BC_TUNG_TAI_KHOAN || "BC từng tài khoản";
+const sheetNameThongTinTaiKhoan = process.env.GOOGLE_SHEET_NAME_TAI_KHOAN || "Thông tin tài khoản";
+
+// Interface cho dữ liệu BC từng tài khoản
+export interface BCTungTaiKhoanRow {
+  ngayThang: string;
+  doiTuong: string;
+  noiDung: string;
+  phanLoai: string;
+  thu: number;
+  chi: number;
+  duCuoi: number;
+}
+
+export interface BCTungTaiKhoanData {
+  selectedAccount: string;
+  accounts: string[];
+  transactions: BCTungTaiKhoanRow[];
+}
+
+/**
+ * Lấy danh sách tài khoản từ sheet "Thông tin tài khoản"
+ * Đọc cột B từ hàng 2 (bỏ qua header)
+ */
+export async function getTaiKhoanOptionsForBC(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameThongTinTaiKhoan}'!B2:B`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    return rows
+      .map((row) => row[0] || "")
+      .filter((name) => name.trim() !== "" && name.trim().toLowerCase() !== "tài khoản");
+  } catch (error) {
+    console.error("Error fetching Tai Khoan options for BC:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc tài khoản đang được chọn từ cell B3
+ */
+export async function getSelectedAccountForBC(): Promise<string> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCTungTaiKhoan}'!B3`,
+    });
+
+    return response.data.values?.[0]?.[0] || "";
+  } catch (error) {
+    console.error("Error reading selected account for BC:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật tài khoản được chọn (cell B3)
+ */
+export async function updateSelectedAccountForBC(account: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCTungTaiKhoan}'!B3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[account]],
+      },
+    });
+
+    console.log(`Updated BC Tung Tai Khoan selected account (B3) with value: ${account}`);
+  } catch (error) {
+    console.error("Error updating selected account for BC:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu giao dịch từ BC từng tài khoản (từ hàng 6, cột A-G)
+ */
+export async function getBCTungTaiKhoanTransactions(): Promise<BCTungTaiKhoanRow[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameBCTungTaiKhoan}'!A6:G`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    return rows
+      .filter((row) => row[0] || row[1] || row[2]) // Lọc bỏ dòng trống
+      .map((row) => ({
+        ngayThang: row[0] || "",
+        doiTuong: row[1] || "",
+        noiDung: row[2] || "",
+        phanLoai: row[3] || "",
+        thu: parseFloat(String(row[4] || "0").replace(/[,.]/g, "")) || 0,
+        chi: parseFloat(String(row[5] || "0").replace(/[,.]/g, "")) || 0,
+        duCuoi: parseFloat(String(row[6] || "0").replace(/[,.]/g, "")) || 0,
+      }));
+  } catch (error) {
+    console.error("Error reading BC Tung Tai Khoan transactions:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy toàn bộ dữ liệu BC từng tài khoản
+ */
+export async function getBCTungTaiKhoanData(): Promise<BCTungTaiKhoanData> {
+  try {
+    const [selectedAccount, accounts, transactions] = await Promise.all([
+      getSelectedAccountForBC(),
+      getTaiKhoanOptionsForBC(),
+      getBCTungTaiKhoanTransactions(),
+    ]);
+
+    return {
+      selectedAccount,
+      accounts,
+      transactions,
+    };
+  } catch (error) {
+    console.error("Error fetching BC Tung Tai Khoan data:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật tài khoản và lấy dữ liệu mới
+ */
+export async function updateAccountAndGetBCTungTaiKhoanData(
+  account: string
+): Promise<BCTungTaiKhoanData> {
+  try {
+    await updateSelectedAccountForBC(account);
+
+    // Đợi sheet recalculate
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return await getBCTungTaiKhoanData();
+  } catch (error) {
+    console.error("Error updating account and fetching BC Tung Tai Khoan data:", error);
+    throw error;
+  }
+}
+
+// ============================================================
+// DASHBOARD TIỀN VAY
+// ============================================================
+
+const sheetNameDashboard = process.env.GOOGLE_SHEET_NAME_DASHBOARD || "DASHBOARD";
+
+export interface DashboardLoanData {
+  tongDuNoToanCongTy: number;
+  tongApLucLaiVayThangNay: number;
+  duNoVayBank: number;
+  duNoVayNgoai: number;
+  canhBao: number;
+  laiVayDaTra: number;
+  laiConLai: number;
+  gocDaTra: number;
+  gocConLai: number;
+}
+
+/**
+ * Lấy dữ liệu Dashboard tiền vay từ Google Sheets
+ * Đọc từ row 6, columns A-I
+ */
+export async function getDashboardLoanData(): Promise<DashboardLoanData> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameDashboard}'!A6:I6`,
+    });
+
+    const row = response.data.values?.[0] || [];
+
+    const parseNumber = (val: string | undefined): number => {
+      if (!val) return 0;
+      const cleaned = val.toString().replace(/[.,\s]/g, "").replace(/đ/gi, "");
+      return parseInt(cleaned) || 0;
+    };
+
+    return {
+      tongDuNoToanCongTy: parseNumber(row[0]),
+      tongApLucLaiVayThangNay: parseNumber(row[1]),
+      duNoVayBank: parseNumber(row[2]),
+      duNoVayNgoai: parseNumber(row[3]),
+      canhBao: parseNumber(row[4]),
+      laiVayDaTra: parseNumber(row[5]),
+      laiConLai: parseNumber(row[6]),
+      gocDaTra: parseNumber(row[7]),
+      gocConLai: parseNumber(row[8]),
+    };
+  } catch (error) {
+    console.error("Error fetching Dashboard Loan data:", error);
     throw error;
   }
 }

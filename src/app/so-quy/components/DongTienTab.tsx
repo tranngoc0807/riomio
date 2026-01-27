@@ -941,36 +941,19 @@ export default function DongTienTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tổng thu
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tongThu}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tongThu: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập số tiền hoặc ghi chú"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tổng chi
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tongChi}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tongChi: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập số tiền hoặc ghi chú"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tổng thu
+                </label>
+                <input
+                  type="text"
+                  value={formData.tongThu}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tongThu: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập số tiền hoặc ghi chú"
+                />
               </div>
 
               <div>
@@ -1283,36 +1266,19 @@ export default function DongTienTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tổng thu
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tongThu}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tongThu: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập số tiền hoặc ghi chú"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tổng chi
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tongChi}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tongChi: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập số tiền hoặc ghi chú"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tổng chi
+                </label>
+                <input
+                  type="text"
+                  value={formData.tongChi}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tongChi: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập số tiền hoặc ghi chú"
+                />
               </div>
 
               <div>
