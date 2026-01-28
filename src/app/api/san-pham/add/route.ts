@@ -28,10 +28,21 @@ export async function POST(request: NextRequest) {
       mainFabric: body.mainFabric || "",
       accentFabric: body.accentFabric || "",
       otherMaterials: body.otherMaterials || "",
-      productionStatus: body.productionStatus || "",
       productionOrder: body.productionOrder || "",
       workshop: body.workshop || "",
-      note: body.note || "",
+      mainFabricQuota: body.mainFabricQuota || "",
+      accentFabricQuota1: body.accentFabricQuota1 || "",
+      accentFabricQuota2: body.accentFabricQuota2 || "",
+      materialsQuota1: body.materialsQuota1 || "",
+      materialsQuota2: body.materialsQuota2 || "",
+      accessoriesQuota: body.accessoriesQuota || "",
+      otherQuota: body.otherQuota || "",
+      plannedQuantity: body.plannedQuantity || 0,
+      cutQuantity: body.cutQuantity || 0,
+      warehouseQuantity: body.warehouseQuantity || 0,
+      developmentStage: body.developmentStage || "",
+      productionStage: body.productionStage || "",
+      image: body.image || "",
     };
 
     await addSanPhamToSheet(sanPham);

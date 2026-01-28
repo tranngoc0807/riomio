@@ -3646,16 +3646,27 @@ const sheetNameSanPham = process.env.GOOGLE_SHEET_NAME_SAN_PHAM_PHAT_TRIEN || "P
 // Interface cho sản phẩm phát triển
 export interface SanPham {
   id: number;
-  code: string;           // Mã SP (Cột A)
-  name: string;           // Tên SP (Cột B)
-  size: string;           // Size (Cột C)
-  mainFabric: string;     // Vải chính (Cột D)
-  accentFabric: string;   // Vải phối (Cột E)
-  otherMaterials: string; // Phụ liệu khác (Cột F)
-  productionStatus: string; // Tình trạng SX (Cột G)
-  productionOrder: string;  // Lệnh SX (Cột H)
-  workshop: string;       // Xưởng SX (Cột I)
-  note: string;           // Ghi chú (Cột J)
+  code: string;                  // Mã SP (Cột A)
+  name: string;                  // Tên SP (Cột B)
+  size: string;                  // Size (Cột C)
+  mainFabric: string;            // Vải chính (Cột D)
+  accentFabric: string;          // Vải phối (Cột E)
+  otherMaterials: string;        // Phụ liệu khác (Cột F)
+  productionOrder: string;       // Lệnh SX (Cột G)
+  workshop: string;              // Xưởng SX (Cột H)
+  mainFabricQuota: string;       // ĐM Vải chính (Cột I)
+  accentFabricQuota1: string;    // ĐM Vải phối 1 (Cột J)
+  accentFabricQuota2: string;    // ĐM Vải phối 2 (Cột K)
+  materialsQuota1: string;       // ĐM Phụ liệu 1 (Cột L)
+  materialsQuota2: string;       // ĐM Phụ liệu 2 (Cột M)
+  accessoriesQuota: string;      // ĐM Phụ kiện (Cột N)
+  otherQuota: string;            // ĐM Khác (Cột O)
+  plannedQuantity: number;       // Số lượng kế hoạch (Cột P)
+  cutQuantity: number;           // Số lượng cắt (Cột Q)
+  warehouseQuantity: number;     // Số lượng nhập kho (Cột R)
+  developmentStage: string;      // Công đoạn phát triển (Cột S)
+  productionStage: string;       // Công đoạn sản xuất (Cột T)
+  image: string;                 // Hình ảnh (Cột U)
 }
 
 /**
@@ -3667,7 +3678,7 @@ export async function getSanPhamFromSheet(): Promise<SanPham[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanPham,
-      range: `${sheetNameSanPham}!A2:J`, // Đọc từ dòng 2, cột A đến J
+      range: `${sheetNameSanPham}!A2:U`, // Đọc từ dòng 2, cột A đến U (21 cột)
     });
 
     const rows = response.data.values;
@@ -3677,19 +3688,37 @@ export async function getSanPhamFromSheet(): Promise<SanPham[]> {
       return [];
     }
 
+    // Helper function to parse số lượng
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, "");
+      return parseFloat(cleaned) || 0;
+    };
+
     const sanPhams: SanPham[] = rows
       .map((row, index) => ({
         id: index + 1,
-        code: row[0] || "",
-        name: row[1] || "",
-        size: row[2] || "",
-        mainFabric: row[3] || "",
-        accentFabric: row[4] || "",
-        otherMaterials: row[5] || "",
-        productionStatus: row[6] || "",
-        productionOrder: row[7] || "",
-        workshop: row[8] || "",
-        note: row[9] || "",
+        code: row[0] || "",                               // A: Mã SP
+        name: row[1] || "",                               // B: Tên SP
+        size: row[2] || "",                               // C: Size
+        mainFabric: row[3] || "",                         // D: Vải chính
+        accentFabric: row[4] || "",                       // E: Vải phối
+        otherMaterials: row[5] || "",                     // F: Phụ liệu khác
+        productionOrder: row[6] || "",                    // G: Lệnh SX
+        workshop: row[7] || "",                           // H: Xưởng SX
+        mainFabricQuota: row[8] || "",                    // I: ĐM Vải chính
+        accentFabricQuota1: row[9] || "",                 // J: ĐM Vải phối 1
+        accentFabricQuota2: row[10] || "",                // K: ĐM Vải phối 2
+        materialsQuota1: row[11] || "",                   // L: ĐM Phụ liệu 1
+        materialsQuota2: row[12] || "",                   // M: ĐM Phụ liệu 2
+        accessoriesQuota: row[13] || "",                  // N: ĐM Phụ kiện
+        otherQuota: row[14] || "",                        // O: ĐM Khác
+        plannedQuantity: parseNumber(row[15]),            // P: Số lượng kế hoạch
+        cutQuantity: parseNumber(row[16]),                // Q: Số lượng cắt
+        warehouseQuantity: parseNumber(row[17]),          // R: Số lượng nhập kho
+        developmentStage: row[18] || "",                  // S: Công đoạn phát triển
+        productionStage: row[19] || "",                   // T: Công đoạn sản xuất
+        image: row[20] || "",                             // U: Hình ảnh
       }))
       .filter((sp) => sp.code.trim() !== "" || sp.name.trim() !== "");
 
@@ -4110,16 +4139,27 @@ export async function addSanPhamToSheet(sanPham: SanPham): Promise<void> {
         sanPham.mainFabric,
         sanPham.accentFabric,
         sanPham.otherMaterials,
-        sanPham.productionStatus,
         sanPham.productionOrder,
         sanPham.workshop,
-        sanPham.note,
+        sanPham.mainFabricQuota,
+        sanPham.accentFabricQuota1,
+        sanPham.accentFabricQuota2,
+        sanPham.materialsQuota1,
+        sanPham.materialsQuota2,
+        sanPham.accessoriesQuota,
+        sanPham.otherQuota,
+        sanPham.plannedQuantity,
+        sanPham.cutQuantity,
+        sanPham.warehouseQuantity,
+        sanPham.developmentStage,
+        sanPham.productionStage,
+        sanPham.image,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanPham,
-      range: `${sheetNameSanPham}!A${nextRow}:J${nextRow}`,
+      range: `${sheetNameSanPham}!A${nextRow}:U${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -4150,16 +4190,27 @@ export async function updateSanPhamInSheet(sanPham: SanPham): Promise<void> {
         sanPham.mainFabric,
         sanPham.accentFabric,
         sanPham.otherMaterials,
-        sanPham.productionStatus,
         sanPham.productionOrder,
         sanPham.workshop,
-        sanPham.note,
+        sanPham.mainFabricQuota,
+        sanPham.accentFabricQuota1,
+        sanPham.accentFabricQuota2,
+        sanPham.materialsQuota1,
+        sanPham.materialsQuota2,
+        sanPham.accessoriesQuota,
+        sanPham.otherQuota,
+        sanPham.plannedQuantity,
+        sanPham.cutQuantity,
+        sanPham.warehouseQuantity,
+        sanPham.developmentStage,
+        sanPham.productionStage,
+        sanPham.image,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanPham,
-      range: `${sheetNameSanPham}!A${rowNumber}:J${rowNumber}`,
+      range: `${sheetNameSanPham}!A${rowNumber}:U${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -7843,7 +7894,7 @@ export async function addYeuCauXuatKhoNPLToSheet(data: Omit<YeuCauXuatKhoNPL, "i
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${nextRow}:J${nextRow}`,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${nextRow}:U${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [
@@ -7889,7 +7940,7 @@ export async function updateYeuCauXuatKhoNPLInSheet(id: number, data: Partial<Ye
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${rowNumber}:J${rowNumber}`,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${rowNumber}:U${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [
@@ -8968,7 +9019,7 @@ export async function addMaSPToSheet(data: Omit<MaSP, 'id'>): Promise<boolean> {
     // Write to the next row after the last data row
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameMaSP}'!A${nextRow}:J${nextRow}`,
+      range: `'${sheetNameMaSP}'!A${nextRow}:U${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[
