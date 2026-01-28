@@ -4877,6 +4877,125 @@ export async function getLuongFromSheet(): Promise<LuongItem[]> {
   }
 }
 
+// ==================== BẢNG KÊ TIỀN LƯƠNG (SALARY STATEMENT) ====================
+
+const sheetNameBangKeTienLuong = process.env.GOOGLE_SHEET_NAME_BANG_KE_TIEN_LUONG || "Bảng kê tiền lương";
+const spreadsheetIdRiomioLuong = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_LUONG || "";
+
+// Interface cho dữ liệu Bảng kê tiền lương từ Google Sheet
+export interface BangKeTienLuongItem {
+  id: number;
+  maPhieu: string; // A: Mã phiếu
+  ngayBatDau: string; // B: Ngày bắt đầu
+  ngayKetThuc: string; // C: Ngày kết thúc
+  hoVaTen: string; // D: Họ và tên
+  chucVu: string; // E: Chức vụ
+  boPhan: string; // F: Bộ phận
+  mucLuongCoBan: number; // G: Mức lương cơ bản
+  thuongChuyenCan: number; // H: Thưởng chuyên cần
+  quyLuong: number; // I: Quỹ lương
+  phuCapAnTruaNgay: number; // J: Phụ cấp ăn trưa/ngày
+  congThucTe: number; // K: Công thực tế
+  diMuon: number; // L: Đi muộn
+  lamThemGio: number; // M: Làm thêm giờ
+  luongThucTe: number; // N: Lương thực tế
+  truDiMuon: number; // O: Trừ đi muộn
+  luongThemGio: number; // P: Lương thêm giờ
+  phuCapAnTruaThang: number; // Q: Phụ cấp ăn trưa/tháng
+  phuCapXangXeThang: number; // R: Phụ cấp xăng xe/tháng
+  phuCapDienThoaiThang: number; // S: Phụ cấp điện thoại/tháng
+  phuCapDocHaiNangNhocThang: number; // T: Phụ cấp độc hại, nặng nhọc/tháng
+  phuCapTrangPhucThang: number; // U: Phụ cấp trang phục/tháng
+  phuCapNhaOThang: number; // V: Phụ cấp nhà ở/tháng
+  giuTreVaNuoiCon: number; // W: Giữ trẻ và nuôi con
+  phuCapKhac: number; // X: Phụ cấp khác
+  tongPhuCap: number; // Y: Tổng phụ cấp
+  kpi: number; // Z: KPI
+  thuongSangKien: number; // AA: Thưởng sáng kiến
+  congKhac: number; // AB: Cộng khác
+  truBHYTBHXHBHTN: number; // AC: Trừ BHYT, BHXH, BHTN (NLĐ đóng 10,5%)
+  truTNCN: number; // AD: Trừ TNCN
+  truCongDoan: number; // AE: Trừ công đoàn
+  truKhac: number; // AF: Trừ khác
+  thucLinh: number; // AG: Thực lĩnh
+  ghiChu: string; // AH: Ghi chú
+}
+
+/**
+ * Đọc dữ liệu Bảng kê tiền lương từ Google Sheets
+ * Sheet: "Bảng kê tiền lương" trong spreadsheet GOOGLE_SPREADSHEET_ID_RIOMIO_LUONG
+ */
+export async function getBangKeTienLuongFromSheet(): Promise<BangKeTienLuongItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdRiomioLuong,
+      range: `'${sheetNameBangKeTienLuong}'!A6:AH`, // Header từ dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No data found in Bảng kê tiền lương sheet.");
+      return [];
+    }
+
+    // Helper function để parse số từ string có format VN (dấu . ngăn cách hàng nghìn)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, "");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Chuyển đổi dữ liệu từ sheet thành BangKeTienLuongItem objects
+    const bangKeTienLuongItems: BangKeTienLuongItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maPhieu: row[0] || "", // A: Mã phiếu
+        ngayBatDau: row[1] || "", // B: Ngày bắt đầu
+        ngayKetThuc: row[2] || "", // C: Ngày kết thúc
+        hoVaTen: row[3] || "", // D: Họ và tên
+        chucVu: row[4] || "", // E: Chức vụ
+        boPhan: row[5] || "", // F: Bộ phận
+        mucLuongCoBan: parseNumber(row[6]), // G: Mức lương cơ bản
+        thuongChuyenCan: parseNumber(row[7]), // H: Thưởng chuyên cần
+        quyLuong: parseNumber(row[8]), // I: Quỹ lương
+        phuCapAnTruaNgay: parseNumber(row[9]), // J: Phụ cấp ăn trưa/ngày
+        congThucTe: parseNumber(row[10]), // K: Công thực tế
+        diMuon: parseNumber(row[11]), // L: Đi muộn
+        lamThemGio: parseNumber(row[12]), // M: Làm thêm giờ
+        luongThucTe: parseNumber(row[13]), // N: Lương thực tế
+        truDiMuon: parseNumber(row[14]), // O: Trừ đi muộn
+        luongThemGio: parseNumber(row[15]), // P: Lương thêm giờ
+        phuCapAnTruaThang: parseNumber(row[16]), // Q: Phụ cấp ăn trưa/tháng
+        phuCapXangXeThang: parseNumber(row[17]), // R: Phụ cấp xăng xe/tháng
+        phuCapDienThoaiThang: parseNumber(row[18]), // S: Phụ cấp điện thoại/tháng
+        phuCapDocHaiNangNhocThang: parseNumber(row[19]), // T: Phụ cấp độc hại, nặng nhọc/tháng
+        phuCapTrangPhucThang: parseNumber(row[20]), // U: Phụ cấp trang phục/tháng
+        phuCapNhaOThang: parseNumber(row[21]), // V: Phụ cấp nhà ở/tháng
+        giuTreVaNuoiCon: parseNumber(row[22]), // W: Giữ trẻ và nuôi con
+        phuCapKhac: parseNumber(row[23]), // X: Phụ cấp khác
+        tongPhuCap: parseNumber(row[24]), // Y: Tổng phụ cấp
+        kpi: parseNumber(row[25]), // Z: KPI
+        thuongSangKien: parseNumber(row[26]), // AA: Thưởng sáng kiến
+        congKhac: parseNumber(row[27]), // AB: Cộng khác
+        truBHYTBHXHBHTN: parseNumber(row[28]), // AC: Trừ BHYT, BHXH, BHTN
+        truTNCN: parseNumber(row[29]), // AD: Trừ TNCN
+        truCongDoan: parseNumber(row[30]), // AE: Trừ công đoàn
+        truKhac: parseNumber(row[31]), // AF: Trừ khác
+        thucLinh: parseNumber(row[32]), // AG: Thực lĩnh
+        ghiChu: row[33] || "", // AH: Ghi chú
+      }))
+      .filter((item) => item.hoVaTen.trim() !== ""); // Lọc bỏ các dòng trống
+
+    return bangKeTienLuongItems;
+  } catch (error) {
+    console.error("Error reading Bảng kê tiền lương from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ==================== CHẤM CÔNG (ATTENDANCE) ====================
 
 const sheetNameChamCong = process.env.GOOGLE_SHEET_NAME_CHAM_CONG || "ChấmCông";

@@ -173,7 +173,7 @@ export default function LuongBaoHiem() {
           {activeTab === "attendance" && <AttendanceTab />}
 
           {/* Tab: Bảng lương */}
-          {activeTab === "salary" && <SalaryTab employees={employees} />}
+          {activeTab === "salary" && <SalaryTab />}
 
           {/* Tab: Hợp đồng */}
           {activeTab === "contracts" && <ContractsTab />}
