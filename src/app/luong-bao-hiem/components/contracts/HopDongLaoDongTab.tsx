@@ -165,7 +165,15 @@ export default function HopDongLaoDongTab() {
         .eq("contract_type", "hop_dong_lao_dong")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's mock data
+        if (contractId.startsWith("mock-")) {
+          setCurrentContent(getInitialContent());
+          setViewingContractId(contractId);
+          return;
+        }
+        throw error;
+      }
 
       if (data && data.extra_data?.html_content) {
         setCurrentContent(data.extra_data.html_content);
@@ -188,14 +196,44 @@ export default function HopDongLaoDongTab() {
 
       if (error) {
         console.error("Error fetching contracts:", error);
-        // If table doesn't exist or no permission, just set empty array
-        setSavedContracts([]);
+        // Temporary mock data for testing URL params
+        setSavedContracts([
+          {
+            id: "mock-1",
+            employee_name: "Hợp đồng mẫu 1",
+            created_at: new Date().toISOString(),
+            status: "draft",
+            extra_data: {
+              html_content: getInitialContent(),
+            }
+          },
+          {
+            id: "mock-2",
+            employee_name: "Hợp đồng mẫu 2",
+            created_at: new Date().toISOString(),
+            status: "draft",
+            extra_data: {
+              html_content: getInitialContent(),
+            }
+          }
+        ]);
         return;
       }
       setSavedContracts(data || []);
     } catch (error) {
       console.error("Error fetching contracts:", error);
-      setSavedContracts([]);
+      // Mock data for testing
+      setSavedContracts([
+        {
+          id: "mock-1",
+          employee_name: "Hợp đồng mẫu 1",
+          created_at: new Date().toISOString(),
+          status: "draft",
+          extra_data: {
+            html_content: getInitialContent(),
+          }
+        }
+      ]);
     }
   };
 
