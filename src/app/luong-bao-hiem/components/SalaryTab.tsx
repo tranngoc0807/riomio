@@ -48,6 +48,24 @@ export default function SalaryTab() {
     }
   };
 
+  // Helper function to format numbers: show "-" for 0 or empty values
+  const formatMoney = (value: number | null | undefined): string => {
+    if (!value || value === 0) return "-";
+    return value.toLocaleString("vi-VN");
+  };
+
+  // Format with "+" prefix for positive values
+  const formatPositiveMoney = (value: number | null | undefined): string => {
+    if (!value || value === 0) return "-";
+    return `+${value.toLocaleString("vi-VN")}`;
+  };
+
+  // Format with "-" prefix for negative/deduction values
+  const formatNegativeMoney = (value: number | null | undefined): string => {
+    if (!value || value === 0) return "-";
+    return `-${value.toLocaleString("vi-VN")}`;
+  };
+
   // Calculate totals
   const totals = salaryData.reduce(
     (acc, row) => ({
@@ -181,34 +199,34 @@ export default function SalaryTab() {
                   {row.boPhan}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-gray-900 group-hover:bg-blue-50 transition-colors">
-                  {row.mucLuongCoBan.toLocaleString("vi-VN")}
+                  {formatMoney(row.mucLuongCoBan)}
                 </td>
                 <td className="px-4 py-4 text-sm text-center text-gray-600 group-hover:bg-blue-50 transition-colors">
-                  {row.congThucTe}
+                  {row.congThucTe || "-"}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-gray-900 group-hover:bg-blue-50 transition-colors">
-                  {row.luongThucTe.toLocaleString("vi-VN")}
+                  {formatMoney(row.luongThucTe)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-green-600 group-hover:bg-blue-50 transition-colors">
-                  +{row.tongPhuCap.toLocaleString("vi-VN")}
+                  {formatPositiveMoney(row.tongPhuCap)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-blue-600 group-hover:bg-blue-50 transition-colors">
-                  +{row.kpiSXVP.toLocaleString("vi-VN")}
+                  {formatPositiveMoney(row.kpiSXVP)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-blue-600 group-hover:bg-blue-50 transition-colors">
-                  +{row.kpiSale.toLocaleString("vi-VN")}
+                  {formatPositiveMoney(row.kpiSale)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-blue-600 group-hover:bg-blue-50 transition-colors">
-                  +{row.thuongSangKien.toLocaleString("vi-VN")}
+                  {formatPositiveMoney(row.thuongSangKien)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-orange-600 bg-orange-50 group-hover:bg-blue-50 transition-colors">
-                  -{row.truBHYTBHXHBHTN.toLocaleString("vi-VN")}
+                  {formatNegativeMoney(row.truBHYTBHXHBHTN)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-orange-600 bg-orange-50 group-hover:bg-blue-50 transition-colors">
-                  -{row.truTNCN.toLocaleString("vi-VN")}
+                  {formatNegativeMoney(row.truTNCN)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right font-bold text-green-600 bg-green-50 group-hover:bg-blue-50 transition-colors">
-                  {row.thucLinh.toLocaleString("vi-VN")}
+                  {formatMoney(row.thucLinh)}
                 </td>
               </tr>
             ))}
@@ -219,32 +237,32 @@ export default function SalaryTab() {
                 Tổng cộng:
               </td>
               <td className="px-4 py-3 text-right">
-                {totals.mucLuongCoBan.toLocaleString("vi-VN")}
+                {formatMoney(totals.mucLuongCoBan)}
               </td>
               <td className="px-4 py-3 text-center">-</td>
               <td className="px-4 py-3 text-right">
-                {totals.luongThucTe.toLocaleString("vi-VN")}
+                {formatMoney(totals.luongThucTe)}
               </td>
               <td className="px-4 py-3 text-right text-green-600">
-                +{totals.tongPhuCap.toLocaleString("vi-VN")}
+                {formatPositiveMoney(totals.tongPhuCap)}
               </td>
               <td className="px-4 py-3 text-right text-blue-600">
-                +{totals.kpiSXVP.toLocaleString("vi-VN")}
+                {formatPositiveMoney(totals.kpiSXVP)}
               </td>
               <td className="px-4 py-3 text-right text-blue-600">
-                +{totals.kpiSale.toLocaleString("vi-VN")}
+                {formatPositiveMoney(totals.kpiSale)}
               </td>
               <td className="px-4 py-3 text-right text-blue-600">
-                +{totals.thuongSangKien.toLocaleString("vi-VN")}
+                {formatPositiveMoney(totals.thuongSangKien)}
               </td>
               <td className="px-4 py-3 text-right text-orange-600 bg-orange-100">
-                -{totals.truBHYTBHXHBHTN.toLocaleString("vi-VN")}
+                {formatNegativeMoney(totals.truBHYTBHXHBHTN)}
               </td>
               <td className="px-4 py-3 text-right text-orange-600 bg-orange-100">
-                -{totals.truTNCN.toLocaleString("vi-VN")}
+                {formatNegativeMoney(totals.truTNCN)}
               </td>
               <td className="px-4 py-3 text-right text-green-700 bg-green-100">
-                {totals.thucLinh.toLocaleString("vi-VN")}
+                {formatMoney(totals.thucLinh)}
               </td>
             </tr>
           </tfoot>
