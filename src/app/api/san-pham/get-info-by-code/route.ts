@@ -3,6 +3,8 @@ import {
   getDonGiaGiaCongFromSheet,
   getDinhMucSXFromSheet,
   getSoLuongCatFromSheet,
+  getBangKeLSXFromSheet,
+  getBangKeGiaCongFromSheet,
 } from "@/lib/googleSheets";
 
 /**
@@ -25,10 +27,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Lấy dữ liệu từ các bảng
-    const [donGiaGiaCongList, dinhMucList, soLuongCatList] = await Promise.all([
+    const [donGiaGiaCongList, dinhMucList, soLuongCatList, bangKeLSXList, bangKeGiaCongList] = await Promise.all([
       getDonGiaGiaCongFromSheet(),
       getDinhMucSXFromSheet(),
       getSoLuongCatFromSheet(),
+      getBangKeLSXFromSheet(),
+      getBangKeGiaCongFromSheet(),
     ]);
 
     // Tìm thông tin trong Đơn giá gia công để lấy Xưởng SX
@@ -42,6 +46,15 @@ export async function GET(request: NextRequest) {
       .filter((item) => item.maSP === code)
       .reduce((sum, item) => sum + (item.soLuongCat || 0), 0);
 
+    // Lấy số lượng kế hoạch từ bảng "Bảng kê LSX" (cột Tổng SL)
+    const bangKeLSXInfo = bangKeLSXList.find((item) => item.maSP === code);
+    const plannedQuantity = bangKeLSXInfo?.tongSL || 0;
+
+    // Tính tổng số lượng nhập kho từ bảng "Bảng kê gia công" (cột Số lượng)
+    const warehouseQuantity = bangKeGiaCongList
+      .filter((item) => item.maSP === code)
+      .reduce((sum, item) => sum + (item.soLuong || 0), 0);
+
     // Chuẩn bị dữ liệu trả về
     const result = {
       workshop: giaCongInfo?.xuongSX || "",
@@ -52,8 +65,9 @@ export async function GET(request: NextRequest) {
       materialsQuota2: dinhMucInfo?.phuLieu2 || "",
       accessoriesQuota: dinhMucInfo?.phuKien || "",
       otherQuota: dinhMucInfo?.khac || "",
-      plannedQuantity: 0, // Sẽ cập nhật sau khi có LSX
+      plannedQuantity: plannedQuantity, // Số lượng kế hoạch từ bảng "Bảng kê LSX"
       cutQuantity: totalCutQuantity, // Tổng số lượng cắt từ bảng "Số lượng cắt"
+      warehouseQuantity: warehouseQuantity, // Tổng số lượng nhập kho từ bảng "Bảng kê gia công"
     };
 
     return NextResponse.json({

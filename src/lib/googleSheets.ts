@@ -8309,6 +8309,70 @@ export async function updatePhieuBaoSLCatMaPhieu(maPhieu: string): Promise<void>
   }
 }
 
+// ==================== BẢNG KÊ LSX ====================
+const sheetNameBangKeLSX = process.env.GOOGLE_SHEET_NAME_BANG_KE_LSX || "Bảng kê LSX";
+
+export interface BangKeLSX {
+  id: number;
+  maSP: string;         // Mã sản phẩm
+  xs: number;           // Số lượng size XS
+  s: number;            // Số lượng size S
+  m: number;            // Số lượng size M
+  l: number;            // Số lượng size L
+  xl: number;           // Số lượng size XL
+  tongSL: number;       // Tổng số lượng
+  ghiChu: string;       // Ghi chú
+}
+
+/**
+ * Đọc dữ liệu Bảng kê LSX từ Google Sheets
+ * Header ở dòng 5, dữ liệu từ dòng 6
+ */
+export async function getBangKeLSXFromSheet(): Promise<BangKeLSX[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameBangKeLSX}'!A6:H`, // Giả sử: A=Mã SP, B=XS, C=S, D=M, E=L, F=XL, G=Tổng SL, H=Ghi chú
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No Bang Ke LSX data found in sheet.");
+      return [];
+    }
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const data: BangKeLSX[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maSP: row[0] || "",
+        xs: parseNumberVN(row[1]),
+        s: parseNumberVN(row[2]),
+        m: parseNumberVN(row[3]),
+        l: parseNumberVN(row[4]),
+        xl: parseNumberVN(row[5]),
+        tongSL: parseNumberVN(row[6]),
+        ghiChu: row[7] || "",
+      }))
+      .filter((item) => item.maSP.trim() !== "");
+
+    return data;
+  } catch (error) {
+    console.error("Error reading Bang Ke LSX from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ==================== GIÁ THÀNH & GIÁ BÁN ====================
 const sheetNameGiaThanhGiaBan = process.env.GOOGLE_SHEET_NAME_GIA_THANH || "Giá thành&giá bán";
 
