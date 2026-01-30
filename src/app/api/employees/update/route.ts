@@ -34,10 +34,18 @@ export async function PUT(request: NextRequest) {
       id: body.id,
       name: body.name,
       position: body.position,
-      phone: body.phone || "",
+      department: body.department || "",
+      gender: body.gender || "",
+      employmentStatus: body.employmentStatus || "",
       birthday: body.birthday || "",
       cccd: body.cccd || "",
+      cccdDate: body.cccdDate || "",
+      cccdPlace: body.cccdPlace || "",
+      hometown: body.hometown || "",
       address: body.address || "",
+      contractType: body.contractType || "",
+      bankAccount: body.bankAccount || "",
+      phone: body.phone || "",
     };
 
     await updateEmployeeInSheet(employee);
