@@ -8327,6 +8327,7 @@ export interface BangKeLSX {
 /**
  * Đọc dữ liệu Bảng kê LSX từ Google Sheets
  * Header ở dòng 5, dữ liệu từ dòng 6
+ * Cột E: Mã SP, Cột AE: Tổng SL
  */
 export async function getBangKeLSXFromSheet(): Promise<BangKeLSX[]> {
   try {
@@ -8334,7 +8335,7 @@ export async function getBangKeLSXFromSheet(): Promise<BangKeLSX[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameBangKeLSX}'!A6:H`, // Giả sử: A=Mã SP, B=XS, C=S, D=M, E=L, F=XL, G=Tổng SL, H=Ghi chú
+      range: `'${sheetNameBangKeLSX}'!E6:AF`, // E=Mã SP, AE=Tổng SL, AF=Ghi chú
     });
 
     const rows = response.data.values;
@@ -8353,17 +8354,25 @@ export async function getBangKeLSXFromSheet(): Promise<BangKeLSX[]> {
     };
 
     const data: BangKeLSX[] = rows
-      .map((row, index) => ({
-        id: index + 1,
-        maSP: row[0] || "",
-        xs: parseNumberVN(row[1]),
-        s: parseNumberVN(row[2]),
-        m: parseNumberVN(row[3]),
-        l: parseNumberVN(row[4]),
-        xl: parseNumberVN(row[5]),
-        tongSL: parseNumberVN(row[6]),
-        ghiChu: row[7] || "",
-      }))
+      .map((row, index) => {
+        // E6:AF range, so:
+        // row[0] = Cột E (Mã SP)
+        // row[1-25] = Các cột size và thông tin khác
+        // row[26] = Cột AE (Tổng SL) - từ E đến AE là 26 cột (E=0, F=1, ..., AE=26)
+        // row[27] = Cột AF (Ghi chú)
+
+        return {
+          id: index + 1,
+          maSP: row[0] || "",
+          xs: parseNumberVN(row[19]), // Cột XS
+          s: parseNumberVN(row[20]),  // Cột S
+          m: parseNumberVN(row[21]),  // Cột M
+          l: parseNumberVN(row[22]),  // Cột L
+          xl: parseNumberVN(row[23]), // Cột XL
+          tongSL: parseNumberVN(row[26]), // Cột AE (Tổng SL)
+          ghiChu: row[27] || "", // Cột AF (Ghi chú)
+        };
+      })
       .filter((item) => item.maSP.trim() !== "");
 
     return data;
