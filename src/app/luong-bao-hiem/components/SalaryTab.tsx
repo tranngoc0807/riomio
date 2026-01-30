@@ -9,7 +9,6 @@ import {
   Briefcase,
   DollarSign,
   Clock,
-  TrendingUp,
   Gift,
   AlertCircle,
   CheckCircle,
@@ -182,9 +181,11 @@ export default function SalaryTab() {
                   </p>
                 </td>
                 <td className="px-4 py-4 group-hover:bg-blue-50 transition-colors">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
-                    {row.chucVu}
-                  </span>
+                  {row.chucVu && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
+                      {row.chucVu}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-gray-900 group-hover:bg-blue-50 transition-colors">
                   {formatMoney(row.mucLuongCoBan)}
