@@ -21,7 +21,6 @@ import {
   Undo,
   Redo,
   Printer,
-  Save,
   Loader2,
   Table as TableIcon,
   Trash2,
@@ -108,11 +107,6 @@ export default function DocumentEditor({
     `);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 500);
-  };
-
-  const handleSave = async () => {
-    if (!editor || !onSave) return;
-    await onSave(editor.getHTML());
   };
 
   if (!editor) {
@@ -266,20 +260,6 @@ export default function DocumentEditor({
         <div className="flex-1" />
 
         {/* Actions */}
-        {onSave && (
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
-          >
-            {isSaving ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Save size={16} />
-            )}
-            Lưu
-          </button>
-        )}
         <button
           onClick={handlePrint}
           className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
