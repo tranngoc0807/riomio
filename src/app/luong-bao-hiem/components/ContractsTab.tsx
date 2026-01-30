@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   FileText,
   Users,
@@ -44,7 +45,30 @@ const SUB_TABS = [
 ];
 
 export default function ContractsTab() {
-  const [activeSubTab, setActiveSubTab] = useState<SubTabType>("thoa-uoc");
+  const searchParams = useSearchParams();
+  const [activeSubTab, setActiveSubTab] = useState<SubTabType>("hop-dong");
+
+  // Read contractType from URL params on mount
+  useEffect(() => {
+    const contractType = searchParams.get("contractType") as SubTabType;
+    if (contractType && SUB_TABS.find(t => t.id === contractType)) {
+      setActiveSubTab(contractType);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tabId: SubTabType) => {
+    setActiveSubTab(tabId);
+
+    // Update URL params
+    const params = new URLSearchParams(window.location.search);
+    params.set("contractType", tabId);
+
+    // Remove contract param when switching contract types
+    params.delete("contract");
+
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, "", newUrl);
+  };
 
   return (
     <div>
@@ -56,7 +80,7 @@ export default function ContractsTab() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveSubTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
                   activeSubTab === tab.id
                     ? "bg-blue-600 text-white"
