@@ -77,15 +77,7 @@ interface SanPhamCatalog {
   warehouseEntry: string;    // Nhập kho (W)
 }
 
-// Xưởng sản xuất có sẵn
-const workshopOptions = [
-  "Xưởng may Chị Thu",
-  "Xưởng chị Hoa - Gia Lâm",
-  "Xưởng chú Tuyển",
-  "Ms Liễu TQ",
-  "Xưởng Minh Tâm",
-  "Xưởng Hồng Phát",
-];
+// Xưởng sản xuất sẽ được load từ API
 
 // Trạng thái sản xuất
 const productionStatusOptions = [
@@ -146,6 +138,7 @@ export default function SanPhamPage() {
   const [sortOption, setSortOption] = useState("default");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 30;
+  const [workshops, setWorkshops] = useState<string[]>([]); // Danh sách xưởng từ API
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -240,9 +233,26 @@ export default function SanPhamPage() {
     }
   };
 
+  // Load danh sách xưởng từ API
+  const fetchWorkshops = async () => {
+    try {
+      const response = await fetch("/api/xuong-san-xuat");
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Lấy tên xưởng từ danh sách
+        const workshopNames = result.data.map((ws: any) => ws.name);
+        setWorkshops(workshopNames);
+      }
+    } catch (error) {
+      console.error("Error fetching workshops:", error);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchCatalogProducts();
+    fetchWorkshops(); // Load danh sách xưởng
   }, []);
 
   useEffect(() => {
@@ -324,6 +334,24 @@ export default function SanPhamPage() {
     }
   };
 
+  // Helper functions để đóng modal và refresh data
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    fetchProducts();
+  };
+
+  const closeViewModal = () => {
+    setShowViewModal(false);
+    setSelectedProduct(null);
+    fetchProducts();
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditProduct(null);
+    fetchProducts();
+  };
+
   const fetchProductInfoByCode = async (code: string) => {
     if (!code || code.trim() === "") return;
 
@@ -371,7 +399,6 @@ export default function SanPhamPage() {
 
       if (result.success) {
         toast.success("Đã thêm sản phẩm thành công");
-        setShowAddModal(false);
         setNewProduct({
           code: "",
           name: "",
@@ -395,7 +422,7 @@ export default function SanPhamPage() {
           productionStage: "",
           image: "",
         });
-        fetchProducts();
+        closeAddModal(); // Đóng modal và refresh data
       } else {
         toast.error(result.error || "Không thể thêm sản phẩm");
       }
@@ -421,9 +448,7 @@ export default function SanPhamPage() {
 
       if (result.success) {
         toast.success("Đã cập nhật sản phẩm thành công");
-        setShowEditModal(false);
-        setEditProduct(null);
-        fetchProducts();
+        closeEditModal(); // Đóng modal và refresh data
       } else {
         toast.error(result.error || "Không thể cập nhật sản phẩm");
       }
@@ -1145,7 +1170,7 @@ export default function SanPhamPage() {
         <Portal>
           <div
             className="fixed inset-0 z-50 bg-black/20"
-            onClick={() => setShowAddModal(false)}
+            onClick={closeAddModal}
           />
           <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-[60] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -1154,7 +1179,7 @@ export default function SanPhamPage() {
                 <p className="text-sm text-gray-500">Phát triển sản phẩm</p>
               </div>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={closeAddModal}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X size={24} />
@@ -1260,7 +1285,7 @@ export default function SanPhamPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                     >
                       <option value="">-- Chọn xưởng --</option>
-                      {workshopOptions.map(ws => (
+                      {workshops.map(ws => (
                         <option key={ws} value={ws}>{ws}</option>
                       ))}
                     </select>
@@ -1441,7 +1466,7 @@ export default function SanPhamPage() {
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={closeAddModal}
                   className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   disabled={saving}
                 >
@@ -1466,7 +1491,7 @@ export default function SanPhamPage() {
         <Portal>
           <div
             className="fixed inset-0 z-50 bg-black/20"
-            onClick={() => { setShowViewModal(false); setSelectedProduct(null); }}
+            onClick={closeViewModal}
           />
           <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-60 flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-purple-700">
@@ -1475,7 +1500,7 @@ export default function SanPhamPage() {
                 <h3 className="text-xl font-bold text-white">{selectedProduct.code || selectedProduct.name}</h3>
               </div>
               <button
-                onClick={() => { setShowViewModal(false); setSelectedProduct(null); }}
+                onClick={closeViewModal}
                 className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
               >
                 <X size={24} />
@@ -1547,13 +1572,17 @@ export default function SanPhamPage() {
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setShowViewModal(false); setSelectedProduct(null); }}
+                  onClick={closeViewModal}
                   className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                 >
                   Đóng
                 </button>
                 <button
-                  onClick={() => { setShowViewModal(false); handleEditProduct(selectedProduct); }}
+                  onClick={() => {
+                    setShowViewModal(false);
+                    setSelectedProduct(null);
+                    handleEditProduct(selectedProduct);
+                  }}
                   className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2"
                 >
                   <Edit size={18} />
@@ -1570,7 +1599,7 @@ export default function SanPhamPage() {
         <Portal>
           <div
             className="fixed inset-0 z-50 bg-black/20"
-            onClick={() => { setShowEditModal(false); setEditProduct(null); }}
+            onClick={closeEditModal}
           />
           <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-[60] flex flex-col border-l border-gray-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -1579,7 +1608,7 @@ export default function SanPhamPage() {
                 <p className="text-sm text-gray-500">Mã: {editProduct.code}</p>
               </div>
               <button
-                onClick={() => { setShowEditModal(false); setEditProduct(null); }}
+                onClick={closeEditModal}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 <X size={24} />
@@ -1668,7 +1697,7 @@ export default function SanPhamPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     >
                       <option value="">-- Chọn xưởng --</option>
-                      {workshopOptions.map(ws => (
+                      {workshops.map(ws => (
                         <option key={ws} value={ws}>{ws}</option>
                       ))}
                     </select>
@@ -1701,7 +1730,7 @@ export default function SanPhamPage() {
             <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setShowEditModal(false); setEditProduct(null); }}
+                  onClick={closeEditModal}
                   className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-colors"
                   disabled={saving}
                 >
