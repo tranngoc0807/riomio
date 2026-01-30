@@ -8,7 +8,6 @@ import {
   Wallet,
   Receipt,
 } from "lucide-react";
-import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 // Import components
@@ -36,12 +35,12 @@ export default function BaoCao() {
     router.push(`/bao-cao?tab=${tabId}`, { scroll: false });
   };
 
-  const tabs = [
-    { id: "tai-chinh", label: "Báo cáo tài chính", icon: DollarSign },
-    { id: "ban-hang", label: "Báo cáo bán hàng", icon: TrendingUp },
-    { id: "kho", label: "Báo cáo kho", icon: Package },
-    { id: "dong-tien", label: "Báo cáo dòng tiền", icon: Wallet },
-    { id: "chi-phi", label: "Báo cáo chi phí", icon: Receipt },
+  const reportTypes = [
+    { id: "tai-chinh", label: "1. Báo cáo tài chính", icon: DollarSign },
+    { id: "ban-hang", label: "2. Báo cáo bán hàng", icon: TrendingUp },
+    { id: "kho", label: "3. Báo cáo kho", icon: Package },
+    { id: "dong-tien", label: "4. Báo cáo dòng tiền", icon: Wallet },
+    { id: "chi-phi", label: "5. Báo cáo chi phí", icon: Receipt },
   ];
 
 
@@ -55,32 +54,28 @@ export default function BaoCao() {
             Báo cáo & Thống kê
           </h1>
           <p className="text-gray-500 mt-1">
-            Tổng hợp báo cáo doanh thu, công nợ, tồn kho và nhân sự
+            Tổng hợp báo cáo tài chính, bán hàng, kho, dòng tiền và chi phí
           </p>
+        </div>
+
+        {/* Dropdown chọn loại báo cáo */}
+        <div className="w-80">
+          <select
+            value={activeTab}
+            onChange={(e) => handleTabChange(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            {reportTypes.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Report Content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
         <div className="p-6">
           {/* Tab: Báo cáo tài chính */}
           {activeTab === "tai-chinh" && <BaoCaoTaiChinhTab />}
