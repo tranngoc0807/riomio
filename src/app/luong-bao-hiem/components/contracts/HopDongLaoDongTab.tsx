@@ -289,7 +289,7 @@ export default function HopDongLaoDongTab() {
             <option value="">-- Không chọn nhân viên --</option>
             {employees.map((employee) => (
               <option key={employee.id} value={employee.id}>
-                {employee.name} - {employee.position}
+                {employee.name} - {employee.position} {employee.department ? `(${employee.department})` : ""}
               </option>
             ))}
           </select>
