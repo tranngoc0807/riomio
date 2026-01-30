@@ -3640,8 +3640,8 @@ export async function deletePaymentHistoryFromSheet(paymentId: number): Promise<
 // SAN PHAM MANAGEMENT (Quản lý phát triển sản phẩm)
 // ============================================
 
-const spreadsheetIdSanPham = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
-const sheetNameSanPham = process.env.GOOGLE_SHEET_NAME_SAN_PHAM_PHAT_TRIEN || "PhatTrienSanPham";
+const spreadsheetIdSanPham = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT || '16WCta5dfQGsUhSO0oMRWvQNSU-VzwiyWpTctKEDwaHc';
+const sheetNameSanPham = process.env.GOOGLE_SHEET_NAME_MA_SP || "Mã SP";
 
 // Interface cho sản phẩm phát triển
 export interface SanPham {
@@ -3678,7 +3678,7 @@ export async function getSanPhamFromSheet(): Promise<SanPham[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanPham,
-      range: `${sheetNameSanPham}!A2:U`, // Đọc từ dòng 2, cột A đến U (21 cột)
+      range: `'${sheetNameSanPham}'!A6:U`, // Đọc từ dòng 6, cột A đến U (21 cột)
     });
 
     const rows = response.data.values;
@@ -4112,20 +4112,22 @@ export async function addSanPhamToSheet(sanPham: SanPham): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Đọc toàn bộ dữ liệu để tìm dòng cuối
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối (bắt đầu từ dòng 6)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanPham,
-      range: `${sheetNameSanPham}!A:J`,
+      range: `'${sheetNameSanPham}'!A6:U`,
     });
 
     const allRows = response.data.values || [];
 
-    // Tìm dòng cuối có dữ liệu
-    let lastDataRow = 1;
-    for (let i = allRows.length - 1; i >= 1; i--) {
-      if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
-        lastDataRow = i + 1;
-        break;
+    // Tìm dòng cuối có dữ liệu (bắt đầu từ dòng 6)
+    let lastDataRow = 5; // Dòng 5 là header, data bắt đầu từ dòng 6
+    if (allRows.length > 0) {
+      for (let i = allRows.length - 1; i >= 0; i--) {
+        if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
+          lastDataRow = 6 + i; // 6 là dòng đầu tiên có data
+          break;
+        }
       }
     }
 
@@ -4159,7 +4161,7 @@ export async function addSanPhamToSheet(sanPham: SanPham): Promise<void> {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanPham,
-      range: `${sheetNameSanPham}!A${nextRow}:U${nextRow}`,
+      range: `'${sheetNameSanPham}'!A${nextRow}:U${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -4180,7 +4182,7 @@ export async function updateSanPhamInSheet(sanPham: SanPham): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    const rowNumber = sanPham.id + 1; // ID 1 = dòng 2
+    const rowNumber = sanPham.id + 5; // ID 1 = dòng 6 (vì data bắt đầu từ dòng 6)
 
     const values = [
       [
@@ -4210,7 +4212,7 @@ export async function updateSanPhamInSheet(sanPham: SanPham): Promise<void> {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanPham,
-      range: `${sheetNameSanPham}!A${rowNumber}:U${rowNumber}`,
+      range: `'${sheetNameSanPham}'!A${rowNumber}:U${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -4231,7 +4233,7 @@ export async function deleteSanPhamFromSheet(sanPhamId: number): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    const rowNumber = sanPhamId + 1;
+    const rowNumber = sanPhamId + 5; // ID 1 = dòng 6 (vì data bắt đầu từ dòng 6)
 
     const sheetMetadata = await sheets.spreadsheets.get({
       spreadsheetId: spreadsheetIdSanPham,

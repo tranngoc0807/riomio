@@ -79,7 +79,70 @@ interface SanPhamCatalog {
 
 // Xưởng sản xuất sẽ được load từ API
 
-// Trạng thái sản xuất
+// Size options
+const sizeOptions = [
+  "1/2-6/7",
+  "2/3-5/6",
+  "2/3-6/7",
+  "2/3-7/8",
+  "2/3-8/9",
+  "2/3-9/10",
+  "2/3-10/11",
+  "2/3-11/12",
+  "2/3-12/13",
+  "2/3-13/14",
+  "2/3-14/15",
+  "3/4-5/6",
+  "3/4-6/7",
+  "3/4-7/8",
+  "3/4-8/9",
+  "3/4-9/10",
+  "3/4-10/11",
+  "3/4-11/12",
+  "3/4-12/13",
+  "4/5-10/11",
+  "4/5-11/12",
+  "4/5-12/13",
+  "5/6-10/11",
+  "5/6-11/12",
+  "5/6-12/13",
+  "5/6-13/14",
+  "6/7-10/11",
+  "6/7-11/12",
+  "6/7-12/13",
+  "6/7-13/14",
+  "7/8-10/11",
+  "7/8-11/12",
+  "7/8-12/13",
+  "7/8-13/14",
+  "8/9-11/12",
+  "8/9-12/13",
+  "8/9-13/14",
+  "8/9-14/14",
+  "10/11-13/14",
+  "11/12-15/16",
+  "XS-L",
+  "S-XL",
+  "M-XL",
+  "L-XL",
+  "S-L",
+  "1 size",
+  "0/1-7/8",
+];
+
+// Công đoạn sản xuất options
+const productionStageOptions = [
+  "Phát triển",
+  "Mẫu đạt",
+  "Huỷ mẫu",
+  "Lệnh sản xuất",
+  "Đồng bộ NPL",
+  "Đang sản xuất",
+  "Nhập kho 1 phần",
+  "Nhập kho toàn bộ",
+];
+
+// Trạng thái sản xuất (deprecated - không dùng nữa)
 const productionStatusOptions = [
   "Chờ phát triển",
   "Đang phát triển",
@@ -1394,15 +1457,20 @@ export default function SanPhamPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Size
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={newProduct.size || ""}
                       onChange={(e) =>
                         setNewProduct({ ...newProduct, size: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      placeholder="VD: 6/7-10/11"
-                    />
+                    >
+                      <option value="">-- Chọn size --</option>
+                      {sizeOptions.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -1743,8 +1811,7 @@ export default function SanPhamPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Công đoạn sản xuất
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={newProduct.productionStage || ""}
                         onChange={(e) =>
                           setNewProduct({
@@ -1753,8 +1820,14 @@ export default function SanPhamPage() {
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder="Nhập công đoạn"
-                      />
+                      >
+                        <option value="">-- Chọn công đoạn --</option>
+                        {productionStageOptions.map((stage) => (
+                          <option key={stage} value={stage}>
+                            {stage}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -1983,14 +2056,20 @@ export default function SanPhamPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Size
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={editProduct.size}
                       onChange={(e) =>
                         setEditProduct({ ...editProduct, size: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    />
+                    >
+                      <option value="">-- Chọn size --</option>
+                      {sizeOptions.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -2117,8 +2196,7 @@ export default function SanPhamPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Công đoạn sản xuất
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={editProduct.productionStage}
                       onChange={(e) =>
                         setEditProduct({
@@ -2127,7 +2205,14 @@ export default function SanPhamPage() {
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    />
+                    >
+                      <option value="">-- Chọn công đoạn --</option>
+                      {productionStageOptions.map((stage) => (
+                        <option key={stage} value={stage}>
+                          {stage}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
