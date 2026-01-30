@@ -246,7 +246,9 @@ export default function HopDongLaoDongTab() {
     // Create URLSearchParams from current search params
     const params = new URLSearchParams(window.location.search);
     params.set("contract", contractId);
-    router.push(`${window.location.pathname}?${params.toString()}`);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    console.log("Navigating to:", newUrl);
+    router.push(newUrl);
     loadContractFromParams(contractId);
   };
 
