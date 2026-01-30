@@ -165,15 +165,7 @@ export default function HopDongLaoDongTab() {
         .eq("contract_type", "hop_dong_lao_dong")
         .single();
 
-      if (error) {
-        // Check if it's mock data
-        if (contractId.startsWith("mock-")) {
-          setCurrentContent(getInitialContent());
-          setViewingContractId(contractId);
-          return;
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       if (data && data.extra_data?.html_content) {
         setCurrentContent(data.extra_data.html_content);
@@ -196,44 +188,13 @@ export default function HopDongLaoDongTab() {
 
       if (error) {
         console.error("Error fetching contracts:", error);
-        // Temporary mock data for testing URL params
-        setSavedContracts([
-          {
-            id: "mock-1",
-            employee_name: "Hợp đồng mẫu 1",
-            created_at: new Date().toISOString(),
-            status: "draft",
-            extra_data: {
-              html_content: getInitialContent(),
-            }
-          },
-          {
-            id: "mock-2",
-            employee_name: "Hợp đồng mẫu 2",
-            created_at: new Date().toISOString(),
-            status: "draft",
-            extra_data: {
-              html_content: getInitialContent(),
-            }
-          }
-        ]);
+        setSavedContracts([]);
         return;
       }
       setSavedContracts(data || []);
     } catch (error) {
       console.error("Error fetching contracts:", error);
-      // Mock data for testing
-      setSavedContracts([
-        {
-          id: "mock-1",
-          employee_name: "Hợp đồng mẫu 1",
-          created_at: new Date().toISOString(),
-          status: "draft",
-          extra_data: {
-            html_content: getInitialContent(),
-          }
-        }
-      ]);
+      setSavedContracts([]);
     }
   };
 
@@ -285,8 +246,11 @@ export default function HopDongLaoDongTab() {
     const params = new URLSearchParams(window.location.search);
     params.set("contract", contractId);
     const newUrl = `${window.location.pathname}?${params.toString()}`;
-    console.log("Navigating to:", newUrl);
-    router.push(newUrl);
+
+    // Update URL using window.history
+    window.history.pushState({}, "", newUrl);
+
+    // Load the contract
     loadContractFromParams(contractId);
   };
 
@@ -294,10 +258,14 @@ export default function HopDongLaoDongTab() {
     setViewingContractId(null);
     setSelectedEmployee(null);
     setCurrentContent(getInitialContent());
+
     // Keep other params but remove contract param
     const params = new URLSearchParams(window.location.search);
     params.delete("contract");
-    router.push(`${window.location.pathname}?${params.toString()}`);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+
+    // Update URL using window.history
+    window.history.pushState({}, "", newUrl);
   };
 
   return (
