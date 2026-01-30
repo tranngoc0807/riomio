@@ -140,17 +140,11 @@ export default function SalaryTab() {
               >
                 Chức vụ
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                Bộ phận
-              </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 Lương cơ bản
               </th>
               <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
                 Công thực tế
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
-                Lương thực tế
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 Tổng phụ cấp
@@ -160,9 +154,6 @@ export default function SalaryTab() {
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 KPI Sale
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
-                Thưởng sáng kiến
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500 bg-orange-50">
                 Trừ BHXH/BHYT/BHTN
@@ -195,17 +186,11 @@ export default function SalaryTab() {
                     {row.chucVu}
                   </span>
                 </td>
-                <td className="px-4 py-4 text-sm text-gray-600 group-hover:bg-blue-50 transition-colors">
-                  {row.boPhan}
-                </td>
                 <td className="px-4 py-4 text-sm text-right text-gray-900 group-hover:bg-blue-50 transition-colors">
                   {formatMoney(row.mucLuongCoBan)}
                 </td>
                 <td className="px-4 py-4 text-sm text-center text-gray-600 group-hover:bg-blue-50 transition-colors">
                   {row.congThucTe || "-"}
-                </td>
-                <td className="px-4 py-4 text-sm text-right text-gray-900 group-hover:bg-blue-50 transition-colors">
-                  {formatMoney(row.luongThucTe)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-green-600 group-hover:bg-blue-50 transition-colors">
                   {formatPositiveMoney(row.tongPhuCap)}
@@ -215,9 +200,6 @@ export default function SalaryTab() {
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-blue-600 group-hover:bg-blue-50 transition-colors">
                   {formatPositiveMoney(row.kpiSale)}
-                </td>
-                <td className="px-4 py-4 text-sm text-right text-blue-600 group-hover:bg-blue-50 transition-colors">
-                  {formatPositiveMoney(row.thuongSangKien)}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-orange-600 bg-orange-50 group-hover:bg-blue-50 transition-colors">
                   {formatNegativeMoney(row.truBHYTBHXHBHTN)}
@@ -233,16 +215,13 @@ export default function SalaryTab() {
           </tbody>
           <tfoot>
             <tr className="bg-gray-100 font-semibold">
-              <td colSpan={4} className="px-4 py-3 text-right">
+              <td colSpan={3} className="px-4 py-3 text-right">
                 Tổng cộng:
               </td>
               <td className="px-4 py-3 text-right">
                 {formatMoney(totals.mucLuongCoBan)}
               </td>
               <td className="px-4 py-3 text-center">-</td>
-              <td className="px-4 py-3 text-right">
-                {formatMoney(totals.luongThucTe)}
-              </td>
               <td className="px-4 py-3 text-right text-green-600">
                 {formatPositiveMoney(totals.tongPhuCap)}
               </td>
@@ -251,9 +230,6 @@ export default function SalaryTab() {
               </td>
               <td className="px-4 py-3 text-right text-blue-600">
                 {formatPositiveMoney(totals.kpiSale)}
-              </td>
-              <td className="px-4 py-3 text-right text-blue-600">
-                {formatPositiveMoney(totals.thuongSangKien)}
               </td>
               <td className="px-4 py-3 text-right text-orange-600 bg-orange-100">
                 {formatNegativeMoney(totals.truBHYTBHXHBHTN)}
