@@ -4,28 +4,24 @@ import {
   BarChart3,
   TrendingUp,
   DollarSign,
-  Users,
   Package,
+  Wallet,
+  Receipt,
 } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 // Import components
 import {
-  DoanhThuTab,
-  CongNoTab,
-  TonKhoTab,
-  NhanSuTab,
-  getDebtStatusBadge,
-  getDebtTypeBadge,
+  BaoCaoTaiChinhTab,
+  BaoCaoBanHangTab,
+  BaoCaoKhoTab,
+  BaoCaoDongTienTab,
+  BaoCaoChiPhiTab,
   formatCurrency,
-  RevenueReport,
-  DebtReport,
-  InventoryReport,
-  SalaryReport,
 } from "./components";
 
-const VALID_TABS = ["doanh-thu", "cong-no", "ton-kho", "nhan-su"];
+const VALID_TABS = ["tai-chinh", "ban-hang", "kho", "dong-tien", "chi-phi"];
 
 export default function BaoCao() {
   const searchParams = useSearchParams();
@@ -33,34 +29,21 @@ export default function BaoCao() {
 
   // Get active tab directly from URL (no useState needed for tab)
   const tabFromUrl = searchParams.get("tab");
-  const activeTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : "doanh-thu";
+  const activeTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : "tai-chinh";
 
   // Update URL when tab changes
   const handleTabChange = (tabId: string) => {
     router.push(`/bao-cao?tab=${tabId}`, { scroll: false });
   };
-  const [dateRange, setDateRange] = useState("month");
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<
-    RevenueReport | DebtReport | InventoryReport | SalaryReport | null
-  >(null);
-  const [reportType, setReportType] = useState<string>("");
 
   const tabs = [
-    { id: "doanh-thu", label: "Doanh thu & Lợi nhuận", icon: TrendingUp },
-    { id: "cong-no", label: "Công nợ", icon: DollarSign },
-    { id: "ton-kho", label: "Tồn kho", icon: Package },
-    { id: "nhan-su", label: "Nhân sự & Lương", icon: Users },
+    { id: "tai-chinh", label: "Báo cáo tài chính", icon: DollarSign },
+    { id: "ban-hang", label: "Báo cáo bán hàng", icon: TrendingUp },
+    { id: "kho", label: "Báo cáo kho", icon: Package },
+    { id: "dong-tien", label: "Báo cáo dòng tiền", icon: Wallet },
+    { id: "chi-phi", label: "Báo cáo chi phí", icon: Receipt },
   ];
 
-  const handleViewDetail = (
-    report: RevenueReport | DebtReport | InventoryReport | SalaryReport,
-    type: string
-  ) => {
-    setSelectedReport(report);
-    setReportType(type);
-    setShowDetailModal(true);
-  };
 
   return (
     <div className="space-y-6">
@@ -74,18 +57,6 @@ export default function BaoCao() {
           <p className="text-gray-500 mt-1">
             Tổng hợp báo cáo doanh thu, công nợ, tồn kho và nhân sự
           </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="week">Tuần này</option>
-            <option value="month">Tháng này</option>
-            <option value="quarter">Quý này</option>
-            <option value="year">Năm nay</option>
-          </select>
         </div>
       </div>
 
@@ -111,256 +82,22 @@ export default function BaoCao() {
         </div>
 
         <div className="p-6">
-          {/* Tab: Doanh thu & Lợi nhuận */}
-          {activeTab === "doanh-thu" && (
-            <DoanhThuTab onViewDetail={handleViewDetail} />
-          )}
+          {/* Tab: Báo cáo tài chính */}
+          {activeTab === "tai-chinh" && <BaoCaoTaiChinhTab />}
 
-          {/* Tab: Công nợ */}
-          {activeTab === "cong-no" && (
-            <CongNoTab onViewDetail={handleViewDetail} />
-          )}
+          {/* Tab: Báo cáo bán hàng */}
+          {activeTab === "ban-hang" && <BaoCaoBanHangTab />}
 
-          {/* Tab: Tồn kho */}
-          {activeTab === "ton-kho" && (
-            <TonKhoTab onViewDetail={handleViewDetail} />
-          )}
+          {/* Tab: Báo cáo kho */}
+          {activeTab === "kho" && <BaoCaoKhoTab />}
 
-          {/* Tab: Nhân sự & Lương */}
-          {activeTab === "nhan-su" && (
-            <NhanSuTab onViewDetail={handleViewDetail} />
-          )}
+          {/* Tab: Báo cáo dòng tiền */}
+          {activeTab === "dong-tien" && <BaoCaoDongTienTab />}
+
+          {/* Tab: Báo cáo chi phí */}
+          {activeTab === "chi-phi" && <BaoCaoChiPhiTab />}
         </div>
       </div>
-
-      {/* Detail Modal */}
-      {showDetailModal && selectedReport && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Chi tiết báo cáo
-            </h3>
-
-            {reportType === "revenue" && (
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Tháng:</span>
-                  <span className="font-medium">
-                    {(selectedReport as RevenueReport).month}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Doanh thu:</span>
-                  <span className="font-medium text-blue-600">
-                    {formatCurrency((selectedReport as RevenueReport).revenue)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Chi phí:</span>
-                  <span className="font-medium">
-                    {formatCurrency((selectedReport as RevenueReport).cost)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Lợi nhuận:</span>
-                  <span className="font-medium text-green-600">
-                    {formatCurrency((selectedReport as RevenueReport).profit)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Tỷ lệ lợi nhuận:</span>
-                  <span className="font-medium">
-                    {(
-                      ((selectedReport as RevenueReport).profit /
-                        (selectedReport as RevenueReport).revenue) *
-                      100
-                    ).toFixed(1)}
-                    %
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Số đơn hàng:</span>
-                  <span className="font-medium">
-                    {(selectedReport as RevenueReport).orderCount}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Tăng trưởng:</span>
-                  <span
-                    className={`font-medium ${
-                      (selectedReport as RevenueReport).growthRate >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {(selectedReport as RevenueReport).growthRate >= 0
-                      ? "+"
-                      : ""}
-                    {(selectedReport as RevenueReport).growthRate}%
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {reportType === "debt" && (
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Đối tượng:</span>
-                  <span className="font-medium">
-                    {(selectedReport as DebtReport).name}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Loại:</span>
-                  {getDebtTypeBadge((selectedReport as DebtReport).type)}
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Tổng nợ:</span>
-                  <span className="font-medium">
-                    {formatCurrency((selectedReport as DebtReport).totalDebt)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Đã trả:</span>
-                  <span className="font-medium text-green-600">
-                    {formatCurrency((selectedReport as DebtReport).paid)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Còn lại:</span>
-                  <span className="font-medium text-orange-600">
-                    {formatCurrency((selectedReport as DebtReport).remaining)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Hạn trả:</span>
-                  <span className="font-medium">
-                    {new Date(
-                      (selectedReport as DebtReport).dueDate
-                    ).toLocaleDateString("vi-VN")}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Trạng thái:</span>
-                  {getDebtStatusBadge((selectedReport as DebtReport).status)}
-                </div>
-              </div>
-            )}
-
-            {reportType === "inventory" && (
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Sản phẩm:</span>
-                  <span className="font-medium">
-                    {(selectedReport as InventoryReport).productName}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Mã SKU:</span>
-                  <span className="font-medium">
-                    {(selectedReport as InventoryReport).sku}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Danh mục:</span>
-                  <span className="font-medium">
-                    {(selectedReport as InventoryReport).category}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Nhập kho:</span>
-                  <span className="font-medium text-green-600">
-                    +{(selectedReport as InventoryReport).stockIn}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Xuất kho:</span>
-                  <span className="font-medium text-red-600">
-                    -{(selectedReport as InventoryReport).stockOut}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Tồn kho hiện tại:</span>
-                  <span className="font-medium">
-                    {(selectedReport as InventoryReport).currentStock}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Giá trị tồn kho:</span>
-                  <span className="font-medium text-blue-600">
-                    {formatCurrency((selectedReport as InventoryReport).value)}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {reportType === "salary" && (
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Nhân viên:</span>
-                  <span className="font-medium">
-                    {(selectedReport as SalaryReport).employeeName}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Phòng ban:</span>
-                  <span className="font-medium">
-                    {(selectedReport as SalaryReport).department}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Tháng:</span>
-                  <span className="font-medium">
-                    {(selectedReport as SalaryReport).month}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Lương cơ bản:</span>
-                  <span className="font-medium">
-                    {formatCurrency(
-                      (selectedReport as SalaryReport).baseSalary
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Phụ cấp:</span>
-                  <span className="font-medium">
-                    {formatCurrency((selectedReport as SalaryReport).allowance)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Thưởng:</span>
-                  <span className="font-medium text-green-600">
-                    +{formatCurrency((selectedReport as SalaryReport).bonus)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Khấu trừ:</span>
-                  <span className="font-medium text-red-600">
-                    -
-                    {formatCurrency((selectedReport as SalaryReport).deduction)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Thực lãnh:</span>
-                  <span className="font-bold text-blue-600">
-                    {formatCurrency((selectedReport as SalaryReport).netSalary)}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
