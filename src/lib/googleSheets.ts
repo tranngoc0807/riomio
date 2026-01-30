@@ -28,6 +28,10 @@ export async function getGoogleSheetsClient() {
   return sheets;
 }
 
+// Constants cho nhân viên lương
+const spreadsheetIdNhanVienLuong = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_LUONG || "";
+const sheetNameNhanVienLuong = process.env.GOOGLE_SHEET_NAME_NHAN_VIEN_LUONG || "Nhân viên";
+
 // Interface cho dữ liệu nhân viên
 export interface Employee {
   id: number;
@@ -49,8 +53,8 @@ export async function getEmployeesFromSheet(): Promise<Employee[]> {
     const sheets = await getGoogleSheetsClient();
 
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${sheetName}!B2:G`, // Header dòng 1, dữ liệu từ dòng 2, đọc cột B-G
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `${sheetNameNhanVienLuong}!B2:G`, // Header dòng 1, dữ liệu từ dòng 2, đọc cột B-G
     });
 
     const rows = response.data.values;
