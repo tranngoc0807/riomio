@@ -186,10 +186,16 @@ export default function HopDongLaoDongTab() {
         .eq("contract_type", "hop_dong_lao_dong")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching contracts:", error);
+        // If table doesn't exist or no permission, just set empty array
+        setSavedContracts([]);
+        return;
+      }
       setSavedContracts(data || []);
     } catch (error) {
       console.error("Error fetching contracts:", error);
+      setSavedContracts([]);
     }
   };
 
