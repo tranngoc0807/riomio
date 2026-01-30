@@ -27,54 +27,54 @@ import QuanLyKhoTab from "./components/QuanLyKhoTab";
 // Types - khớp với Google Sheets PhatTrienSanPham
 interface SanPham {
   id: number;
-  code: string;                  // Mã SP (Cột A)
-  name: string;                  // Tên SP (Cột B)
-  size: string;                  // Size (Cột C)
-  mainFabric: string;            // Vải chính (Cột D)
-  accentFabric: string;          // Vải phối (Cột E)
-  otherMaterials: string;        // Phụ liệu khác (Cột F)
-  productionOrder: string;       // Lệnh SX (Cột G)
-  workshop: string;              // Xưởng SX (Cột H)
-  mainFabricQuota: string;       // ĐM Vải chính (Cột I)
-  accentFabricQuota1: string;    // ĐM Vải phối 1 (Cột J)
-  accentFabricQuota2: string;    // ĐM Vải phối 2 (Cột K)
-  materialsQuota1: string;       // ĐM Phụ liệu 1 (Cột L)
-  materialsQuota2: string;       // ĐM Phụ liệu 2 (Cột M)
-  accessoriesQuota: string;      // ĐM Phụ kiện (Cột N)
-  otherQuota: string;            // ĐM Khác (Cột O)
-  plannedQuantity: number;       // Số lượng kế hoạch (Cột P)
-  cutQuantity: number;           // Số lượng cắt (Cột Q)
-  warehouseQuantity: number;     // Số lượng nhập kho (Cột R)
-  developmentStage: string;      // Công đoạn phát triển (Cột S)
-  productionStage: string;       // Công đoạn sản xuất (Cột T)
-  image: string;                 // Hình ảnh (Cột U)
+  code: string; // Mã SP (Cột A)
+  name: string; // Tên SP (Cột B)
+  size: string; // Size (Cột C)
+  mainFabric: string; // Vải chính (Cột D)
+  accentFabric: string; // Vải phối (Cột E)
+  otherMaterials: string; // Phụ liệu khác (Cột F)
+  productionOrder: string; // Lệnh SX (Cột G)
+  workshop: string; // Xưởng SX (Cột H)
+  mainFabricQuota: string; // ĐM Vải chính (Cột I)
+  accentFabricQuota1: string; // ĐM Vải phối 1 (Cột J)
+  accentFabricQuota2: string; // ĐM Vải phối 2 (Cột K)
+  materialsQuota1: string; // ĐM Phụ liệu 1 (Cột L)
+  materialsQuota2: string; // ĐM Phụ liệu 2 (Cột M)
+  accessoriesQuota: string; // ĐM Phụ kiện (Cột N)
+  otherQuota: string; // ĐM Khác (Cột O)
+  plannedQuantity: number; // Số lượng kế hoạch (Cột P)
+  cutQuantity: number; // Số lượng cắt (Cột Q)
+  warehouseQuantity: number; // Số lượng nhập kho (Cột R)
+  developmentStage: string; // Công đoạn phát triển (Cột S)
+  productionStage: string; // Công đoạn sản xuất (Cột T)
+  image: string; // Hình ảnh (Cột U)
 }
 
 // Types - khớp với Google Sheets SanPham (Danh mục sản phẩm)
 interface SanPhamCatalog {
   id: number;
-  name: string;              // Tên SP (B)
-  sizeChart: string;         // Bảng size sản xuất (C)
-  image: string;             // Hình ảnh (D)
-  color: string;             // Màu sắc sản xuất (E)
-  retailPrice: number;       // Giá bán lẻ (F)
-  wholesalePrice: number;    // Giá bán sỉ (G)
-  costPrice: number;         // Giá vốn (H)
-  mainFabric: string;        // Vải chính (I)
-  accentFabric: string;      // Vải phối (J)
-  otherMaterials: string;    // Phụ liệu khác (K)
-  mainFabricQuota: string;   // Định mức vải chính (L)
+  name: string; // Tên SP (B)
+  sizeChart: string; // Bảng size sản xuất (C)
+  image: string; // Hình ảnh (D)
+  color: string; // Màu sắc sản xuất (E)
+  retailPrice: number; // Giá bán lẻ (F)
+  wholesalePrice: number; // Giá bán sỉ (G)
+  costPrice: number; // Giá vốn (H)
+  mainFabric: string; // Vải chính (I)
+  accentFabric: string; // Vải phối (J)
+  otherMaterials: string; // Phụ liệu khác (K)
+  mainFabricQuota: string; // Định mức vải chính (L)
   accentFabricQuota: string; // Định mức vải phối 1 (M)
-  materialsQuota: string;    // Định mức phụ liệu 2 (N)
-  accessoriesQuota: string;  // Định mức phụ kiện (O)
-  otherQuota: string;        // Định mức khác (P)
-  plannedQuantity: number;   // Số lượng kế hoạch (Q)
-  cutQuantity: number;       // Số lượng cắt (R)
+  materialsQuota: string; // Định mức phụ liệu 2 (N)
+  accessoriesQuota: string; // Định mức phụ kiện (O)
+  otherQuota: string; // Định mức khác (P)
+  plannedQuantity: number; // Số lượng kế hoạch (Q)
+  cutQuantity: number; // Số lượng cắt (R)
   warehouseQuantity: number; // Số lượng nhập kho (S)
-  finalStatus: string;       // CĐ Final (T)
-  nplSyncStatus: string;     // CĐ đồng bộ NPL (U)
-  productionStatus: string;  // CĐ sản xuất (V)
-  warehouseEntry: string;    // Nhập kho (W)
+  finalStatus: string; // CĐ Final (T)
+  nplSyncStatus: string; // CĐ đồng bộ NPL (U)
+  productionStatus: string; // CĐ sản xuất (V)
+  warehouseEntry: string; // Nhập kho (W)
 }
 
 // Xưởng sản xuất sẽ được load từ API
@@ -102,18 +102,22 @@ export default function SanPhamPage() {
 
   // Tab state - read from URL param
   const tabParam = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState<"phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von">(
+  const [activeTab, setActiveTab] = useState<
+    "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von"
+  >(
     tabParam === "danh-muc"
       ? "danh-muc"
       : tabParam === "quan-ly-kho"
-      ? "quan-ly-kho"
-      : tabParam === "dieu-chinh-gia-von"
-      ? "dieu-chinh-gia-von"
-      : "phat-trien"
+        ? "quan-ly-kho"
+        : tabParam === "dieu-chinh-gia-von"
+          ? "dieu-chinh-gia-von"
+          : "phat-trien",
   );
 
   // Handle tab change with URL update
-  const handleTabChange = (tab: "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von") => {
+  const handleTabChange = (
+    tab: "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von",
+  ) => {
     setActiveTab(tab);
     router.push(`/san-pham?tab=${tab}`, { scroll: false });
   };
@@ -124,10 +128,10 @@ export default function SanPhamPage() {
       tabParam === "danh-muc"
         ? "danh-muc"
         : tabParam === "quan-ly-kho"
-        ? "quan-ly-kho"
-        : tabParam === "dieu-chinh-gia-von"
-        ? "dieu-chinh-gia-von"
-        : "phat-trien";
+          ? "quan-ly-kho"
+          : tabParam === "dieu-chinh-gia-von"
+            ? "dieu-chinh-gia-von"
+            : "phat-trien";
     setActiveTab(newTab);
   }, [tabParam]);
 
@@ -138,7 +142,6 @@ export default function SanPhamPage() {
   const [sortOption, setSortOption] = useState("default");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 30;
-  const [workshops, setWorkshops] = useState<string[]>([]); // Danh sách xưởng từ API
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -183,10 +186,13 @@ export default function SanPhamPage() {
   const [showCatalogAddModal, setShowCatalogAddModal] = useState(false);
   const [showCatalogViewModal, setShowCatalogViewModal] = useState(false);
   const [showCatalogEditModal, setShowCatalogEditModal] = useState(false);
-  const [selectedCatalogProduct, setSelectedCatalogProduct] = useState<SanPhamCatalog | null>(null);
+  const [selectedCatalogProduct, setSelectedCatalogProduct] =
+    useState<SanPhamCatalog | null>(null);
   const [catalogSaving, setCatalogSaving] = useState(false);
 
-  const [newCatalogProduct, setNewCatalogProduct] = useState<Partial<SanPhamCatalog>>({
+  const [newCatalogProduct, setNewCatalogProduct] = useState<
+    Partial<SanPhamCatalog>
+  >({
     name: "",
     sizeChart: "",
     image: "",
@@ -211,7 +217,8 @@ export default function SanPhamPage() {
     warehouseEntry: "",
   });
 
-  const [editCatalogProduct, setEditCatalogProduct] = useState<SanPhamCatalog | null>(null);
+  const [editCatalogProduct, setEditCatalogProduct] =
+    useState<SanPhamCatalog | null>(null);
 
   // ======== PHÁT TRIỂN SẢN PHẨM FUNCTIONS ========
   const fetchProducts = async () => {
@@ -233,26 +240,10 @@ export default function SanPhamPage() {
     }
   };
 
-  // Load danh sách xưởng từ API
-  const fetchWorkshops = async () => {
-    try {
-      const response = await fetch("/api/xuong-san-xuat");
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        // Lấy tên xưởng từ danh sách
-        const workshopNames = result.data.map((ws: any) => ws.name);
-        setWorkshops(workshopNames);
-      }
-    } catch (error) {
-      console.error("Error fetching workshops:", error);
-    }
-  };
 
   useEffect(() => {
     fetchProducts();
     fetchCatalogProducts();
-    fetchWorkshops(); // Load danh sách xưởng
   }, []);
 
   useEffect(() => {
@@ -267,12 +258,17 @@ export default function SanPhamPage() {
   }, [showEditModal, showCatalogEditModal]);
 
   const filteredProducts = products
-    .filter(p =>
-      p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.workshop.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.productionStage || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.developmentStage || "").toLowerCase().includes(searchTerm.toLowerCase())
+    .filter(
+      (p) =>
+        p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.workshop.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.productionStage || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        (p.developmentStage || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       switch (sortOption) {
@@ -357,11 +353,13 @@ export default function SanPhamPage() {
 
     setIsAutoFilling(true);
     try {
-      const response = await fetch(`/api/san-pham/get-info-by-code?code=${encodeURIComponent(code)}`);
+      const response = await fetch(
+        `/api/san-pham/get-info-by-code?code=${encodeURIComponent(code)}`,
+      );
       const data = await response.json();
 
       if (data.success && data.data) {
-        setNewProduct(prev => ({
+        setNewProduct((prev) => ({
           ...prev,
           workshop: data.data.workshop,
           mainFabricQuota: data.data.mainFabricQuota,
@@ -462,18 +460,20 @@ export default function SanPhamPage() {
 
   // Stats for PhatTrienSanPham
   const totalProducts = products.length;
-  const inProductionCount = products.filter(p =>
-    (p.productionStage || "").toLowerCase().includes("đang sản xuất") ||
-    (p.developmentStage || "").toLowerCase().includes("đang phát triển")
+  const inProductionCount = products.filter(
+    (p) =>
+      (p.productionStage || "").toLowerCase().includes("đang sản xuất") ||
+      (p.developmentStage || "").toLowerCase().includes("đang phát triển"),
   ).length;
-  const completedCount = products.filter(p =>
-    (p.productionStage || "").toLowerCase().includes("hoàn thành")
+  const completedCount = products.filter((p) =>
+    (p.productionStage || "").toLowerCase().includes("hoàn thành"),
   ).length;
 
   const getStatusBadge = (status: string) => {
     const s = status.toLowerCase();
     if (s.includes("hoàn thành")) return "bg-green-100 text-green-700";
-    if (s.includes("đang sản xuất") || s.includes("đang phát triển")) return "bg-blue-100 text-blue-700";
+    if (s.includes("đang sản xuất") || s.includes("đang phát triển"))
+      return "bg-blue-100 text-blue-700";
     if (s.includes("sẵn sàng")) return "bg-purple-100 text-purple-700";
     if (s.includes("tạm dừng")) return "bg-red-100 text-red-700";
     if (s.includes("chờ")) return "bg-yellow-100 text-yellow-700";
@@ -501,10 +501,11 @@ export default function SanPhamPage() {
   };
 
   const filteredCatalogProducts = catalogProducts
-    .filter(p =>
-      p.name.toLowerCase().includes(catalogSearchTerm.toLowerCase()) ||
-      p.color.toLowerCase().includes(catalogSearchTerm.toLowerCase()) ||
-      p.mainFabric.toLowerCase().includes(catalogSearchTerm.toLowerCase())
+    .filter(
+      (p) =>
+        p.name.toLowerCase().includes(catalogSearchTerm.toLowerCase()) ||
+        p.color.toLowerCase().includes(catalogSearchTerm.toLowerCase()) ||
+        p.mainFabric.toLowerCase().includes(catalogSearchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       switch (catalogSortOption) {
@@ -525,10 +526,15 @@ export default function SanPhamPage() {
       }
     });
 
-  const catalogTotalPages = Math.ceil(filteredCatalogProducts.length / itemsPerPage);
+  const catalogTotalPages = Math.ceil(
+    filteredCatalogProducts.length / itemsPerPage,
+  );
   const catalogStartIndex = (catalogCurrentPage - 1) * itemsPerPage;
   const catalogEndIndex = catalogStartIndex + itemsPerPage;
-  const paginatedCatalogProducts = filteredCatalogProducts.slice(catalogStartIndex, catalogEndIndex);
+  const paginatedCatalogProducts = filteredCatalogProducts.slice(
+    catalogStartIndex,
+    catalogEndIndex,
+  );
 
   const handleCatalogSearchChange = (value: string) => {
     setCatalogSearchTerm(value);
@@ -650,7 +656,10 @@ export default function SanPhamPage() {
 
   // Stats for Catalog
   const catalogTotalProducts = catalogProducts.length;
-  const catalogTotalValue = catalogProducts.reduce((sum, p) => sum + (p.retailPrice || 0), 0);
+  const catalogTotalValue = catalogProducts.reduce(
+    (sum, p) => sum + (p.retailPrice || 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -663,7 +672,9 @@ export default function SanPhamPage() {
             <Package className="w-7 h-7 text-purple-600" />
             Quản lý sản phẩm
           </h1>
-          <p className="text-gray-500 mt-1">Quản lý danh mục và phát triển sản phẩm</p>
+          <p className="text-gray-500 mt-1">
+            Quản lý danh mục và phát triển sản phẩm
+          </p>
         </div>
       </div>
 
@@ -729,7 +740,9 @@ export default function SanPhamPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Tổng sản phẩm</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalProducts}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {totalProducts}
+                  </p>
                 </div>
               </div>
             </div>
@@ -740,7 +753,9 @@ export default function SanPhamPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Đang phát triển/SX</p>
-                  <p className="text-2xl font-bold text-blue-600">{inProductionCount}</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {inProductionCount}
+                  </p>
                 </div>
               </div>
             </div>
@@ -751,7 +766,9 @@ export default function SanPhamPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Đã hoàn thành</p>
-                  <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {completedCount}
+                  </p>
                 </div>
               </div>
             </div>
@@ -764,7 +781,10 @@ export default function SanPhamPage() {
               <div className="flex items-center justify-between mb-6 gap-4">
                 <div className="flex items-center gap-3 flex-1">
                   <div className="flex-1 max-w-md relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <Search
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={20}
+                    />
                     <input
                       type="text"
                       placeholder="Tìm kiếm mã SP, tên, xưởng SX, trạng thái..."
@@ -775,7 +795,10 @@ export default function SanPhamPage() {
                   </div>
 
                   <div className="relative">
-                    <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <ArrowUpDown
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={18}
+                    />
                     <select
                       value={sortOption}
                       onChange={(e) => {
@@ -808,7 +831,9 @@ export default function SanPhamPage() {
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
+                  <span className="ml-2 text-gray-500">
+                    Đang tải dữ liệu...
+                  </span>
                 </div>
               ) : (
                 <>
@@ -817,44 +842,86 @@ export default function SanPhamPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gray-50">
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">STT</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Mã SP</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[200px]">Tên sản phẩm</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Size</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Vải chính</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tình trạng SX</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Xưởng SX</th>
-                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Thao tác</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            STT
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Mã SP
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[200px]">
+                            Tên sản phẩm
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Size
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Vải chính
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Tình trạng SX
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Xưởng SX
+                          </th>
+                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                            Thao tác
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {paginatedProducts.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="px-3 py-8 text-center text-gray-500">
-                              {searchTerm ? "Không tìm thấy sản phẩm phù hợp" : "Chưa có dữ liệu sản phẩm"}
+                            <td
+                              colSpan={8}
+                              className="px-3 py-8 text-center text-gray-500"
+                            >
+                              {searchTerm
+                                ? "Không tìm thấy sản phẩm phù hợp"
+                                : "Chưa có dữ liệu sản phẩm"}
                             </td>
                           </tr>
                         ) : (
                           paginatedProducts.map((product, index) => (
-                            <tr key={product.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewProduct(product)}>
-                              <td className="px-3 py-3 text-sm text-gray-500">{startIndex + index + 1}</td>
-                              <td className="px-3 py-3">
-                                <span className="text-sm font-medium text-purple-600">{product.code || "-"}</span>
+                            <tr
+                              key={product.id}
+                              className="hover:bg-gray-50 cursor-pointer"
+                              onClick={() => handleViewProduct(product)}
+                            >
+                              <td className="px-3 py-3 text-sm text-gray-500">
+                                {startIndex + index + 1}
                               </td>
-                              <td className="px-3 py-3 text-sm text-gray-900">{product.name || "-"}</td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.size || "-"}</td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.mainFabric || "-"}</td>
+                              <td className="px-3 py-3">
+                                <span className="text-sm font-medium text-purple-600">
+                                  {product.code || "-"}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-900">
+                                {product.name || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.size || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.mainFabric || "-"}
+                              </td>
                               <td className="px-3 py-3">
                                 {product.productionStage ? (
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(product.productionStage)}`}>
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(product.productionStage)}`}
+                                  >
                                     {product.productionStage}
                                   </span>
                                 ) : (
                                   <span className="text-gray-400">-</span>
                                 )}
                               </td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.workshop || "-"}</td>
-                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.workshop || "-"}
+                              </td>
+                              <td
+                                className="px-3 py-3"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <div className="flex items-center justify-center gap-1">
                                   <button
                                     onClick={() => handleEditProduct(product)}
@@ -864,7 +931,9 @@ export default function SanPhamPage() {
                                     <Edit size={16} />
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteProduct(product.id)}
+                                    onClick={() =>
+                                      handleDeleteProduct(product.id)
+                                    }
                                     className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                                     title="Xóa"
                                   >
@@ -882,14 +951,19 @@ export default function SanPhamPage() {
                   {/* Pagination */}
                   <div className="mt-4 flex items-center justify-between">
                     <div className="text-sm text-gray-500">
-                      Hiển thị {filteredProducts.length > 0 ? startIndex + 1 : 0}-{Math.min(endIndex, filteredProducts.length)} / {filteredProducts.length} sản phẩm
+                      Hiển thị{" "}
+                      {filteredProducts.length > 0 ? startIndex + 1 : 0}-
+                      {Math.min(endIndex, filteredProducts.length)} /{" "}
+                      {filteredProducts.length} sản phẩm
                       {searchTerm && ` (lọc từ ${products.length} sản phẩm)`}
                     </div>
 
                     {totalPages > 1 && (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(prev - 1, 1))
+                          }
                           disabled={currentPage === 1}
                           className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
@@ -897,11 +971,15 @@ export default function SanPhamPage() {
                         </button>
 
                         <div className="flex items-center gap-1">
-                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                          {Array.from(
+                            { length: totalPages },
+                            (_, i) => i + 1,
+                          ).map((page) => {
                             if (
                               page === 1 ||
                               page === totalPages ||
-                              (page >= currentPage - 1 && page <= currentPage + 1)
+                              (page >= currentPage - 1 &&
+                                page <= currentPage + 1)
                             ) {
                               return (
                                 <button
@@ -920,14 +998,22 @@ export default function SanPhamPage() {
                               page === currentPage - 2 ||
                               page === currentPage + 2
                             ) {
-                              return <span key={page} className="px-1 text-gray-400">...</span>;
+                              return (
+                                <span key={page} className="px-1 text-gray-400">
+                                  ...
+                                </span>
+                              );
                             }
                             return null;
                           })}
                         </div>
 
                         <button
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          onClick={() =>
+                            setCurrentPage((prev) =>
+                              Math.min(prev + 1, totalPages),
+                            )
+                          }
                           disabled={currentPage === totalPages}
                           className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
@@ -955,7 +1041,9 @@ export default function SanPhamPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Tổng sản phẩm</p>
-                  <p className="text-2xl font-bold text-gray-900">{catalogTotalProducts}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {catalogTotalProducts}
+                  </p>
                 </div>
               </div>
             </div>
@@ -966,7 +1054,9 @@ export default function SanPhamPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Tổng giá trị (giá lẻ)</p>
-                  <p className="text-2xl font-bold text-green-600">{formatPrice(catalogTotalValue)}</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatPrice(catalogTotalValue)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -979,18 +1069,26 @@ export default function SanPhamPage() {
               <div className="flex items-center justify-between mb-6 gap-4">
                 <div className="flex items-center gap-3 flex-1">
                   <div className="flex-1 max-w-md relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <Search
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={20}
+                    />
                     <input
                       type="text"
                       placeholder="Tìm kiếm tên SP, màu sắc, vải chính..."
                       value={catalogSearchTerm}
-                      onChange={(e) => handleCatalogSearchChange(e.target.value)}
+                      onChange={(e) =>
+                        handleCatalogSearchChange(e.target.value)
+                      }
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     />
                   </div>
 
                   <div className="relative">
-                    <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <ArrowUpDown
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={18}
+                    />
                     <select
                       value={catalogSortOption}
                       onChange={(e) => {
@@ -1023,7 +1121,9 @@ export default function SanPhamPage() {
               {catalogLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
+                  <span className="ml-2 text-gray-500">
+                    Đang tải dữ liệu...
+                  </span>
                 </div>
               ) : (
                 <>
@@ -1032,26 +1132,51 @@ export default function SanPhamPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gray-50">
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">STT</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[200px]">Tên SP</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Bảng size</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Màu sắc</th>
-                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá lẻ</th>
-                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá sỉ</th>
-                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Thao tác</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            STT
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[200px]">
+                            Tên SP
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Bảng size
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Màu sắc
+                          </th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                            Giá lẻ
+                          </th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                            Giá sỉ
+                          </th>
+                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                            Thao tác
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {paginatedCatalogProducts.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-3 py-8 text-center text-gray-500">
-                              {catalogSearchTerm ? "Không tìm thấy sản phẩm phù hợp" : "Chưa có dữ liệu sản phẩm"}
+                            <td
+                              colSpan={7}
+                              className="px-3 py-8 text-center text-gray-500"
+                            >
+                              {catalogSearchTerm
+                                ? "Không tìm thấy sản phẩm phù hợp"
+                                : "Chưa có dữ liệu sản phẩm"}
                             </td>
                           </tr>
                         ) : (
                           paginatedCatalogProducts.map((product, index) => (
-                            <tr key={product.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewCatalogProduct(product)}>
-                              <td className="px-3 py-3 text-sm text-gray-500">{catalogStartIndex + index + 1}</td>
+                            <tr
+                              key={product.id}
+                              className="hover:bg-gray-50 cursor-pointer"
+                              onClick={() => handleViewCatalogProduct(product)}
+                            >
+                              <td className="px-3 py-3 text-sm text-gray-500">
+                                {catalogStartIndex + index + 1}
+                              </td>
                               <td className="px-3 py-3">
                                 <div className="flex items-center gap-2">
                                   {product.image ? (
@@ -1060,32 +1185,54 @@ export default function SanPhamPage() {
                                       alt={product.name}
                                       className="w-10 h-10 rounded object-cover"
                                       onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
+                                        (
+                                          e.target as HTMLImageElement
+                                        ).style.display = "none";
                                       }}
                                     />
                                   ) : (
                                     <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
-                                      <ImageIcon size={16} className="text-gray-400" />
+                                      <ImageIcon
+                                        size={16}
+                                        className="text-gray-400"
+                                      />
                                     </div>
                                   )}
-                                  <span className="text-sm font-medium text-gray-900">{product.name || "-"}</span>
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {product.name || "-"}
+                                  </span>
                                 </div>
                               </td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.sizeChart || "-"}</td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.color || "-"}</td>
-                              <td className="px-3 py-3 text-sm text-right font-medium text-green-600">{formatPrice(product.retailPrice)}</td>
-                              <td className="px-3 py-3 text-sm text-right text-gray-600">{formatPrice(product.wholesalePrice)}</td>
-                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.sizeChart || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.color || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-right font-medium text-green-600">
+                                {formatPrice(product.retailPrice)}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-right text-gray-600">
+                                {formatPrice(product.wholesalePrice)}
+                              </td>
+                              <td
+                                className="px-3 py-3"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <div className="flex items-center justify-center gap-1">
                                   <button
-                                    onClick={() => handleEditCatalogProduct(product)}
+                                    onClick={() =>
+                                      handleEditCatalogProduct(product)
+                                    }
                                     className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
                                     title="Sửa"
                                   >
                                     <Edit size={16} />
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteCatalogProduct(product.id)}
+                                    onClick={() =>
+                                      handleDeleteCatalogProduct(product.id)
+                                    }
                                     className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                                     title="Xóa"
                                   >
@@ -1103,14 +1250,28 @@ export default function SanPhamPage() {
                   {/* Pagination */}
                   <div className="mt-4 flex items-center justify-between">
                     <div className="text-sm text-gray-500">
-                      Hiển thị {filteredCatalogProducts.length > 0 ? catalogStartIndex + 1 : 0}-{Math.min(catalogEndIndex, filteredCatalogProducts.length)} / {filteredCatalogProducts.length} sản phẩm
-                      {catalogSearchTerm && ` (lọc từ ${catalogProducts.length} sản phẩm)`}
+                      Hiển thị{" "}
+                      {filteredCatalogProducts.length > 0
+                        ? catalogStartIndex + 1
+                        : 0}
+                      -
+                      {Math.min(
+                        catalogEndIndex,
+                        filteredCatalogProducts.length,
+                      )}{" "}
+                      / {filteredCatalogProducts.length} sản phẩm
+                      {catalogSearchTerm &&
+                        ` (lọc từ ${catalogProducts.length} sản phẩm)`}
                     </div>
 
                     {catalogTotalPages > 1 && (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setCatalogCurrentPage(prev => Math.max(prev - 1, 1))}
+                          onClick={() =>
+                            setCatalogCurrentPage((prev) =>
+                              Math.max(prev - 1, 1),
+                            )
+                          }
                           disabled={catalogCurrentPage === 1}
                           className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
@@ -1118,11 +1279,15 @@ export default function SanPhamPage() {
                         </button>
 
                         <div className="flex items-center gap-1">
-                          {Array.from({ length: catalogTotalPages }, (_, i) => i + 1).map(page => {
+                          {Array.from(
+                            { length: catalogTotalPages },
+                            (_, i) => i + 1,
+                          ).map((page) => {
                             if (
                               page === 1 ||
                               page === catalogTotalPages ||
-                              (page >= catalogCurrentPage - 1 && page <= catalogCurrentPage + 1)
+                              (page >= catalogCurrentPage - 1 &&
+                                page <= catalogCurrentPage + 1)
                             ) {
                               return (
                                 <button
@@ -1141,14 +1306,22 @@ export default function SanPhamPage() {
                               page === catalogCurrentPage - 2 ||
                               page === catalogCurrentPage + 2
                             ) {
-                              return <span key={page} className="px-1 text-gray-400">...</span>;
+                              return (
+                                <span key={page} className="px-1 text-gray-400">
+                                  ...
+                                </span>
+                              );
                             }
                             return null;
                           })}
                         </div>
 
                         <button
-                          onClick={() => setCatalogCurrentPage(prev => Math.min(prev + 1, catalogTotalPages))}
+                          onClick={() =>
+                            setCatalogCurrentPage((prev) =>
+                              Math.min(prev + 1, catalogTotalPages),
+                            )
+                          }
                           disabled={catalogCurrentPage === catalogTotalPages}
                           className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
@@ -1175,7 +1348,9 @@ export default function SanPhamPage() {
           <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-[60] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Thêm sản phẩm mới</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Thêm sản phẩm mới
+                </h3>
                 <p className="text-sm text-gray-500">Phát triển sản phẩm</p>
               </div>
               <button
@@ -1198,22 +1373,33 @@ export default function SanPhamPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã SP *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã SP *
+                    </label>
                     <input
                       type="text"
                       value={newProduct.code || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, code: e.target.value.toUpperCase() })}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          code: e.target.value.toUpperCase(),
+                        })
+                      }
                       onBlur={(e) => fetchProductInfoByCode(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       placeholder="VD: RM001"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Size
+                    </label>
                     <input
                       type="text"
                       value={newProduct.size || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, size: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, size: e.target.value })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       placeholder="VD: 6/7-10/11"
                     />
@@ -1221,11 +1407,15 @@ export default function SanPhamPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên sản phẩm *
+                  </label>
                   <input
                     type="text"
                     value={newProduct.name || ""}
-                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, name: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     placeholder="Nhập tên sản phẩm"
                   />
@@ -1233,21 +1423,35 @@ export default function SanPhamPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Vải chính</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vải chính
+                    </label>
                     <input
                       type="text"
                       value={newProduct.mainFabric || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, mainFabric: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          mainFabric: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       placeholder="VD: Jeans cotton"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Vải phối</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vải phối
+                    </label>
                     <input
                       type="text"
                       value={newProduct.accentFabric || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, accentFabric: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          accentFabric: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       placeholder="VD: Thun"
                     />
@@ -1255,11 +1459,18 @@ export default function SanPhamPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phụ liệu khác</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phụ liệu khác
+                  </label>
                   <input
                     type="text"
                     value={newProduct.otherMaterials || ""}
-                    onChange={(e) => setNewProduct({ ...newProduct, otherMaterials: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        otherMaterials: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     placeholder="VD: Khóa, nút, chỉ"
                   />
@@ -1267,51 +1478,75 @@ export default function SanPhamPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lệnh SX</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Lệnh SX
+                    </label>
                     <input
                       type="text"
                       value={newProduct.productionOrder || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, productionOrder: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          productionOrder: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       placeholder="VD: LSX001"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Xưởng SX</label>
-                    <select
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Xưởng SX
+                    </label>
+                    <input
+                      type="text"
                       value={newProduct.workshop || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, workshop: e.target.value })}
-                      disabled={true}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
-                    >
-                      <option value="">-- Chọn xưởng --</option>
-                      {workshops.map(ws => (
-                        <option key={ws} value={ws}>{ws}</option>
-                      ))}
-                    </select>
+                      readOnly
+                      placeholder="Tự động điền theo mã SP"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tự động lấy từ bảng &quot;Đơn giá gia công&quot;
+                    </p>
                   </div>
                 </div>
 
                 <div className="border-t pt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Định mức nguyên vật liệu</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Định mức nguyên vật liệu
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải chính</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM Vải chính
+                      </label>
                       <input
                         type="text"
                         value={newProduct.mainFabricQuota || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, mainFabricQuota: e.target.value })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            mainFabricQuota: e.target.value,
+                          })
+                        }
                         disabled={true}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                         placeholder="VD: 1.5m"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải phối 1</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM Vải phối 1
+                      </label>
                       <input
                         type="text"
                         value={newProduct.accentFabricQuota1 || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, accentFabricQuota1: e.target.value })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            accentFabricQuota1: e.target.value,
+                          })
+                        }
                         disabled={true}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                         placeholder="VD: 0.5m"
@@ -1321,22 +1556,36 @@ export default function SanPhamPage() {
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải phối 2</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM Vải phối 2
+                      </label>
                       <input
                         type="text"
                         value={newProduct.accentFabricQuota2 || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, accentFabricQuota2: e.target.value })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            accentFabricQuota2: e.target.value,
+                          })
+                        }
                         disabled={true}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                         placeholder="VD: 0.3m"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ liệu 1</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM Phụ liệu 1
+                      </label>
                       <input
                         type="text"
                         value={newProduct.materialsQuota1 || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, materialsQuota1: e.target.value })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            materialsQuota1: e.target.value,
+                          })
+                        }
                         disabled={true}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                         placeholder="VD: 2 nút"
@@ -1346,22 +1595,36 @@ export default function SanPhamPage() {
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ liệu 2</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM Phụ liệu 2
+                      </label>
                       <input
                         type="text"
                         value={newProduct.materialsQuota2 || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, materialsQuota2: e.target.value })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            materialsQuota2: e.target.value,
+                          })
+                        }
                         disabled={true}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                         placeholder="VD: 1 khóa"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ kiện</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM Phụ kiện
+                      </label>
                       <input
                         type="text"
                         value={newProduct.accessoriesQuota || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, accessoriesQuota: e.target.value })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            accessoriesQuota: e.target.value,
+                          })
+                        }
                         disabled={true}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                         placeholder="VD: 1 nhãn"
@@ -1370,11 +1633,18 @@ export default function SanPhamPage() {
                   </div>
 
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Khác</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ĐM Khác
+                    </label>
                     <input
                       type="text"
                       value={newProduct.otherQuota || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, otherQuota: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          otherQuota: e.target.value,
+                        })
+                      }
                       disabled={true}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                       placeholder="Nhập định mức khác"
@@ -1383,14 +1653,23 @@ export default function SanPhamPage() {
                 </div>
 
                 <div className="border-t pt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Số lượng</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Số lượng
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng kế hoạch</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Số lượng kế hoạch
+                      </label>
                       <input
                         type="number"
                         value={newProduct.plannedQuantity || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, plannedQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            plannedQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         disabled={true}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                         placeholder="0"
@@ -1398,11 +1677,18 @@ export default function SanPhamPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng cắt</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Số lượng cắt
+                      </label>
                       <input
                         type="number"
                         value={newProduct.cutQuantity || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, cutQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            cutQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         disabled={true}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
                         placeholder="0"
@@ -1412,11 +1698,18 @@ export default function SanPhamPage() {
                   </div>
 
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng nhập kho</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Số lượng nhập kho
+                    </label>
                     <input
                       type="number"
                       value={newProduct.warehouseQuantity || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, warehouseQuantity: parseInt(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          warehouseQuantity: parseInt(e.target.value) || 0,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       placeholder="0"
                       min="0"
@@ -1425,24 +1718,40 @@ export default function SanPhamPage() {
                 </div>
 
                 <div className="border-t pt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Công đoạn</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Công đoạn
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Công đoạn phát triển</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Công đoạn phát triển
+                      </label>
                       <input
                         type="text"
                         value={newProduct.developmentStage || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, developmentStage: e.target.value })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            developmentStage: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="Nhập công đoạn"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Công đoạn sản xuất</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Công đoạn sản xuất
+                      </label>
                       <input
                         type="text"
                         value={newProduct.productionStage || ""}
-                        onChange={(e) => setNewProduct({ ...newProduct, productionStage: e.target.value })}
+                        onChange={(e) =>
+                          setNewProduct({
+                            ...newProduct,
+                            productionStage: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="Nhập công đoạn"
                       />
@@ -1451,11 +1760,15 @@ export default function SanPhamPage() {
                 </div>
 
                 <div className="border-t pt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Hình ảnh
+                  </label>
                   <input
                     type="text"
                     value={newProduct.image || ""}
-                    onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, image: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     placeholder="Nhập URL hình ảnh"
                   />
@@ -1497,7 +1810,9 @@ export default function SanPhamPage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-purple-700">
               <div>
                 <p className="text-purple-100 text-sm">Chi tiết sản phẩm</p>
-                <h3 className="text-xl font-bold text-white">{selectedProduct.code || selectedProduct.name}</h3>
+                <h3 className="text-xl font-bold text-white">
+                  {selectedProduct.code || selectedProduct.name}
+                </h3>
               </div>
               <button
                 onClick={closeViewModal}
@@ -1510,59 +1825,87 @@ export default function SanPhamPage() {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Thông tin cơ bản</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Thông tin cơ bản
+                  </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Mã SP:</span>
-                      <span className="font-medium text-purple-600">{selectedProduct.code || "-"}</span>
+                      <span className="font-medium text-purple-600">
+                        {selectedProduct.code || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Tên SP:</span>
-                      <span className="font-medium">{selectedProduct.name || "-"}</span>
+                      <span className="font-medium">
+                        {selectedProduct.name || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Size:</span>
-                      <span className="font-medium">{selectedProduct.size || "-"}</span>
+                      <span className="font-medium">
+                        {selectedProduct.size || "-"}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-orange-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-orange-900 mb-3">Nguyên vật liệu</h4>
+                  <h4 className="text-sm font-semibold text-orange-900 mb-3">
+                    Nguyên vật liệu
+                  </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Vải chính:</span>
-                      <span className="font-medium">{selectedProduct.mainFabric || "-"}</span>
+                      <span className="font-medium">
+                        {selectedProduct.mainFabric || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Vải phối:</span>
-                      <span className="font-medium">{selectedProduct.accentFabric || "-"}</span>
+                      <span className="font-medium">
+                        {selectedProduct.accentFabric || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Phụ liệu khác:</span>
-                      <span className="font-medium">{selectedProduct.otherMaterials || "-"}</span>
+                      <span className="font-medium">
+                        {selectedProduct.otherMaterials || "-"}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-blue-900 mb-3">Thông tin sản xuất</h4>
+                  <h4 className="text-sm font-semibold text-blue-900 mb-3">
+                    Thông tin sản xuất
+                  </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Lệnh SX:</span>
-                      <span className="font-medium">{selectedProduct.productionOrder || "-"}</span>
+                      <span className="font-medium">
+                        {selectedProduct.productionOrder || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Xưởng SX:</span>
-                      <span className="font-medium">{selectedProduct.workshop || "-"}</span>
+                      <span className="font-medium">
+                        {selectedProduct.workshop || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Công đoạn phát triển:</span>
-                      <span className="font-medium">{selectedProduct.developmentStage || "-"}</span>
+                      <span className="text-gray-500">
+                        Công đoạn phát triển:
+                      </span>
+                      <span className="font-medium">
+                        {selectedProduct.developmentStage || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Công đoạn sản xuất:</span>
-                      <span className="font-medium">{selectedProduct.productionStage || "-"}</span>
+                      <span className="font-medium">
+                        {selectedProduct.productionStage || "-"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1604,7 +1947,9 @@ export default function SanPhamPage() {
           <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-[60] flex flex-col border-l border-gray-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Chỉnh sửa sản phẩm</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chỉnh sửa sản phẩm
+                </h3>
                 <p className="text-sm text-gray-500">Mã: {editProduct.code}</p>
               </div>
               <button
@@ -1619,107 +1964,168 @@ export default function SanPhamPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã SP</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã SP
+                    </label>
                     <input
                       type="text"
                       value={editProduct.code}
-                      onChange={(e) => setEditProduct({ ...editProduct, code: e.target.value.toUpperCase() })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          code: e.target.value.toUpperCase(),
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Size
+                    </label>
                     <input
                       type="text"
                       value={editProduct.size}
-                      onChange={(e) => setEditProduct({ ...editProduct, size: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({ ...editProduct, size: e.target.value })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên sản phẩm
+                  </label>
                   <input
                     type="text"
                     value={editProduct.name}
-                    onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })}
+                    onChange={(e) =>
+                      setEditProduct({ ...editProduct, name: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Vải chính</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vải chính
+                    </label>
                     <input
                       type="text"
                       value={editProduct.mainFabric}
-                      onChange={(e) => setEditProduct({ ...editProduct, mainFabric: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          mainFabric: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Vải phối</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vải phối
+                    </label>
                     <input
                       type="text"
                       value={editProduct.accentFabric}
-                      onChange={(e) => setEditProduct({ ...editProduct, accentFabric: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          accentFabric: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phụ liệu khác</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phụ liệu khác
+                  </label>
                   <input
                     type="text"
                     value={editProduct.otherMaterials}
-                    onChange={(e) => setEditProduct({ ...editProduct, otherMaterials: e.target.value })}
+                    onChange={(e) =>
+                      setEditProduct({
+                        ...editProduct,
+                        otherMaterials: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lệnh SX</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Lệnh SX
+                    </label>
                     <input
                       type="text"
                       value={editProduct.productionOrder}
-                      onChange={(e) => setEditProduct({ ...editProduct, productionOrder: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          productionOrder: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Xưởng SX</label>
-                    <select
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Xưởng SX
+                    </label>
+                    <input
+                      type="text"
                       value={editProduct.workshop}
-                      onChange={(e) => setEditProduct({ ...editProduct, workshop: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          workshop: e.target.value,
+                        })
+                      }
+                      placeholder="VD: Xưởng may 365"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    >
-                      <option value="">-- Chọn xưởng --</option>
-                      {workshops.map(ws => (
-                        <option key={ws} value={ws}>{ws}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Công đoạn phát triển</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Công đoạn phát triển
+                    </label>
                     <input
                       type="text"
                       value={editProduct.developmentStage}
-                      onChange={(e) => setEditProduct({ ...editProduct, developmentStage: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          developmentStage: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Công đoạn sản xuất</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Công đoạn sản xuất
+                    </label>
                     <input
                       type="text"
                       value={editProduct.productionStage}
-                      onChange={(e) => setEditProduct({ ...editProduct, productionStage: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          productionStage: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
@@ -1761,7 +2167,9 @@ export default function SanPhamPage() {
           <div className="fixed top-0 right-0 w-full max-w-2xl h-screen bg-white shadow-2xl z-[60] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Thêm sản phẩm mới</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Thêm sản phẩm mới
+                </h3>
                 <p className="text-sm text-gray-500">Danh mục sản phẩm</p>
               </div>
               <button
@@ -1776,46 +2184,76 @@ export default function SanPhamPage() {
               <div className="space-y-6">
                 {/* Thông tin cơ bản */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Thông tin cơ bản</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Thông tin cơ bản
+                  </h4>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tên sản phẩm *
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.name || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, name: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            name: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="Nhập tên sản phẩm"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bảng size</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Bảng size
+                        </label>
                         <input
                           type="text"
                           value={newCatalogProduct.sizeChart || ""}
-                          onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, sizeChart: e.target.value })}
+                          onChange={(e) =>
+                            setNewCatalogProduct({
+                              ...newCatalogProduct,
+                              sizeChart: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                           placeholder="VD: S, M, L, XL"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Màu sắc</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Màu sắc
+                        </label>
                         <input
                           type="text"
                           value={newCatalogProduct.color || ""}
-                          onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, color: e.target.value })}
+                          onChange={(e) =>
+                            setNewCatalogProduct({
+                              ...newCatalogProduct,
+                              color: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                           placeholder="VD: Đỏ, Xanh, Trắng"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Link hình ảnh</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Link hình ảnh
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.image || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, image: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            image: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="https://..."
                       />
@@ -1825,34 +2263,57 @@ export default function SanPhamPage() {
 
                 {/* Giá cả */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Giá cả</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Giá cả
+                  </h4>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Giá bán lẻ</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Giá bán lẻ
+                      </label>
                       <input
                         type="number"
                         value={newCatalogProduct.retailPrice || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, retailPrice: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            retailPrice: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Giá bán sỉ</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Giá bán sỉ
+                      </label>
                       <input
                         type="number"
                         value={newCatalogProduct.wholesalePrice || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, wholesalePrice: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            wholesalePrice: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Giá vốn</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Giá vốn
+                      </label>
                       <input
                         type="number"
                         value={newCatalogProduct.costPrice || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, costPrice: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            costPrice: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="0"
                       />
@@ -1862,32 +2323,55 @@ export default function SanPhamPage() {
 
                 {/* Nguyên vật liệu */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Nguyên vật liệu</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Nguyên vật liệu
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Vải chính</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vải chính
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.mainFabric || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, mainFabric: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            mainFabric: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Vải phối</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vải phối
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.accentFabric || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, accentFabric: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            accentFabric: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phụ liệu khác</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phụ liệu khác
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.otherMaterials || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, otherMaterials: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            otherMaterials: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -1896,50 +2380,87 @@ export default function SanPhamPage() {
 
                 {/* Định mức */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Định mức</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Định mức
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM vải chính</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM vải chính
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.mainFabricQuota || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, mainFabricQuota: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            mainFabricQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM vải phối</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM vải phối
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.accentFabricQuota || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, accentFabricQuota: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            accentFabricQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM phụ liệu</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM phụ liệu
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.materialsQuota || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, materialsQuota: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            materialsQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM phụ kiện</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM phụ kiện
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.accessoriesQuota || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, accessoriesQuota: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            accessoriesQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM khác</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM khác
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.otherQuota || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, otherQuota: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            otherQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -1948,32 +2469,55 @@ export default function SanPhamPage() {
 
                 {/* Số lượng */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Số lượng</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Số lượng
+                  </h4>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">SL kế hoạch</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SL kế hoạch
+                      </label>
                       <input
                         type="number"
                         value={newCatalogProduct.plannedQuantity || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, plannedQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            plannedQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">SL cắt</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SL cắt
+                      </label>
                       <input
                         type="number"
                         value={newCatalogProduct.cutQuantity || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, cutQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            cutQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">SL nhập kho</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SL nhập kho
+                      </label>
                       <input
                         type="number"
                         value={newCatalogProduct.warehouseQuantity || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, warehouseQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            warehouseQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -1982,41 +2526,71 @@ export default function SanPhamPage() {
 
                 {/* Trạng thái */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Trạng thái</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Trạng thái
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CĐ Final</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        CĐ Final
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.finalStatus || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, finalStatus: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            finalStatus: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CĐ đồng bộ NPL</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        CĐ đồng bộ NPL
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.nplSyncStatus || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, nplSyncStatus: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            nplSyncStatus: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CĐ sản xuất</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        CĐ sản xuất
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.productionStatus || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, productionStatus: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            productionStatus: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nhập kho</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nhập kho
+                      </label>
                       <input
                         type="text"
                         value={newCatalogProduct.warehouseEntry || ""}
-                        onChange={(e) => setNewCatalogProduct({ ...newCatalogProduct, warehouseEntry: e.target.value })}
+                        onChange={(e) =>
+                          setNewCatalogProduct({
+                            ...newCatalogProduct,
+                            warehouseEntry: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -2039,7 +2613,9 @@ export default function SanPhamPage() {
                   disabled={catalogSaving}
                   className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2"
                 >
-                  {catalogSaving && <Loader2 size={18} className="animate-spin" />}
+                  {catalogSaving && (
+                    <Loader2 size={18} className="animate-spin" />
+                  )}
                   {catalogSaving ? "Đang lưu..." : "Thêm sản phẩm"}
                 </button>
               </div>
@@ -2053,7 +2629,10 @@ export default function SanPhamPage() {
         <Portal>
           <div
             className="fixed inset-0 z-50 bg-black/20"
-            onClick={() => { setShowCatalogViewModal(false); setSelectedCatalogProduct(null); }}
+            onClick={() => {
+              setShowCatalogViewModal(false);
+              setSelectedCatalogProduct(null);
+            }}
           />
           <div className="fixed top-0 right-0 w-full max-w-2xl h-screen bg-white shadow-2xl z-60 flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-purple-700">
@@ -2064,17 +2643,22 @@ export default function SanPhamPage() {
                     alt={selectedCatalogProduct.name}
                     className="w-14 h-14 rounded-lg object-cover border-2 border-white/30"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).style.display = "none";
                     }}
                   />
                 )}
                 <div>
                   <p className="text-purple-100 text-sm">Chi tiết sản phẩm</p>
-                  <h3 className="text-xl font-bold text-white">{selectedCatalogProduct.name}</h3>
+                  <h3 className="text-xl font-bold text-white">
+                    {selectedCatalogProduct.name}
+                  </h3>
                 </div>
               </div>
               <button
-                onClick={() => { setShowCatalogViewModal(false); setSelectedCatalogProduct(null); }}
+                onClick={() => {
+                  setShowCatalogViewModal(false);
+                  setSelectedCatalogProduct(null);
+                }}
                 className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
               >
                 <X size={24} />
@@ -2085,126 +2669,180 @@ export default function SanPhamPage() {
               <div className="space-y-4">
                 {/* Thông tin cơ bản */}
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Thông tin cơ bản</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Thông tin cơ bản
+                  </h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Tên SP:</span>
-                      <span className="font-medium">{selectedCatalogProduct.name || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.name || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Bảng size:</span>
-                      <span className="font-medium">{selectedCatalogProduct.sizeChart || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.sizeChart || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Màu sắc:</span>
-                      <span className="font-medium">{selectedCatalogProduct.color || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.color || "-"}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Giá cả */}
                 <div className="bg-green-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-green-900 mb-3">Giá cả</h4>
+                  <h4 className="text-sm font-semibold text-green-900 mb-3">
+                    Giá cả
+                  </h4>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div className="text-center">
                       <p className="text-gray-500 mb-1">Giá lẻ</p>
-                      <p className="font-bold text-green-600 text-lg">{formatPrice(selectedCatalogProduct.retailPrice)}</p>
+                      <p className="font-bold text-green-600 text-lg">
+                        {formatPrice(selectedCatalogProduct.retailPrice)}
+                      </p>
                     </div>
                     <div className="text-center">
                       <p className="text-gray-500 mb-1">Giá sỉ</p>
-                      <p className="font-bold text-blue-600 text-lg">{formatPrice(selectedCatalogProduct.wholesalePrice)}</p>
+                      <p className="font-bold text-blue-600 text-lg">
+                        {formatPrice(selectedCatalogProduct.wholesalePrice)}
+                      </p>
                     </div>
                     <div className="text-center">
                       <p className="text-gray-500 mb-1">Giá vốn</p>
-                      <p className="font-bold text-orange-600 text-lg">{formatPrice(selectedCatalogProduct.costPrice)}</p>
+                      <p className="font-bold text-orange-600 text-lg">
+                        {formatPrice(selectedCatalogProduct.costPrice)}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Nguyên vật liệu */}
                 <div className="bg-orange-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-orange-900 mb-3">Nguyên vật liệu</h4>
+                  <h4 className="text-sm font-semibold text-orange-900 mb-3">
+                    Nguyên vật liệu
+                  </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Vải chính:</span>
-                      <span className="font-medium">{selectedCatalogProduct.mainFabric || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.mainFabric || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Vải phối:</span>
-                      <span className="font-medium">{selectedCatalogProduct.accentFabric || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.accentFabric || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Phụ liệu khác:</span>
-                      <span className="font-medium">{selectedCatalogProduct.otherMaterials || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.otherMaterials || "-"}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Định mức */}
                 <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-blue-900 mb-3">Định mức</h4>
+                  <h4 className="text-sm font-semibold text-blue-900 mb-3">
+                    Định mức
+                  </h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">ĐM vải chính:</span>
-                      <span className="font-medium">{selectedCatalogProduct.mainFabricQuota || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.mainFabricQuota || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">ĐM vải phối:</span>
-                      <span className="font-medium">{selectedCatalogProduct.accentFabricQuota || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.accentFabricQuota || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">ĐM phụ liệu:</span>
-                      <span className="font-medium">{selectedCatalogProduct.materialsQuota || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.materialsQuota || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">ĐM phụ kiện:</span>
-                      <span className="font-medium">{selectedCatalogProduct.accessoriesQuota || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.accessoriesQuota || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between col-span-2">
                       <span className="text-gray-500">ĐM khác:</span>
-                      <span className="font-medium">{selectedCatalogProduct.otherQuota || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.otherQuota || "-"}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Số lượng */}
                 <div className="bg-purple-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-purple-900 mb-3">Số lượng</h4>
+                  <h4 className="text-sm font-semibold text-purple-900 mb-3">
+                    Số lượng
+                  </h4>
                   <div className="grid grid-cols-3 gap-4 text-sm text-center">
                     <div>
                       <p className="text-gray-500 mb-1">SL kế hoạch</p>
-                      <p className="font-bold text-purple-600 text-lg">{selectedCatalogProduct.plannedQuantity || 0}</p>
+                      <p className="font-bold text-purple-600 text-lg">
+                        {selectedCatalogProduct.plannedQuantity || 0}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-1">SL cắt</p>
-                      <p className="font-bold text-blue-600 text-lg">{selectedCatalogProduct.cutQuantity || 0}</p>
+                      <p className="font-bold text-blue-600 text-lg">
+                        {selectedCatalogProduct.cutQuantity || 0}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-1">SL nhập kho</p>
-                      <p className="font-bold text-green-600 text-lg">{selectedCatalogProduct.warehouseQuantity || 0}</p>
+                      <p className="font-bold text-green-600 text-lg">
+                        {selectedCatalogProduct.warehouseQuantity || 0}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Trạng thái */}
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Trạng thái</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Trạng thái
+                  </h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">CĐ Final:</span>
-                      <span className="font-medium">{selectedCatalogProduct.finalStatus || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.finalStatus || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">CĐ đồng bộ NPL:</span>
-                      <span className="font-medium">{selectedCatalogProduct.nplSyncStatus || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.nplSyncStatus || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">CĐ sản xuất:</span>
-                      <span className="font-medium">{selectedCatalogProduct.productionStatus || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.productionStatus || "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Nhập kho:</span>
-                      <span className="font-medium">{selectedCatalogProduct.warehouseEntry || "-"}</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.warehouseEntry || "-"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2214,13 +2852,19 @@ export default function SanPhamPage() {
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setShowCatalogViewModal(false); setSelectedCatalogProduct(null); }}
+                  onClick={() => {
+                    setShowCatalogViewModal(false);
+                    setSelectedCatalogProduct(null);
+                  }}
                   className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                 >
                   Đóng
                 </button>
                 <button
-                  onClick={() => { setShowCatalogViewModal(false); handleEditCatalogProduct(selectedCatalogProduct); }}
+                  onClick={() => {
+                    setShowCatalogViewModal(false);
+                    handleEditCatalogProduct(selectedCatalogProduct);
+                  }}
                   className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2"
                 >
                   <Edit size={18} />
@@ -2237,16 +2881,26 @@ export default function SanPhamPage() {
         <Portal>
           <div
             className="fixed inset-0 z-50 bg-black/20"
-            onClick={() => { setShowCatalogEditModal(false); setEditCatalogProduct(null); }}
+            onClick={() => {
+              setShowCatalogEditModal(false);
+              setEditCatalogProduct(null);
+            }}
           />
           <div className="fixed top-0 right-0 w-full max-w-2xl h-screen bg-white shadow-2xl z-[60] flex flex-col border-l border-gray-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Chỉnh sửa sản phẩm</h3>
-                <p className="text-sm text-gray-500">{editCatalogProduct.name}</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chỉnh sửa sản phẩm
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {editCatalogProduct.name}
+                </p>
               </div>
               <button
-                onClick={() => { setShowCatalogEditModal(false); setEditCatalogProduct(null); }}
+                onClick={() => {
+                  setShowCatalogEditModal(false);
+                  setEditCatalogProduct(null);
+                }}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 <X size={24} />
@@ -2257,43 +2911,73 @@ export default function SanPhamPage() {
               <div className="space-y-6">
                 {/* Thông tin cơ bản */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Thông tin cơ bản</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Thông tin cơ bản
+                  </h4>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tên sản phẩm *
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.name}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, name: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            name: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bảng size</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Bảng size
+                        </label>
                         <input
                           type="text"
                           value={editCatalogProduct.sizeChart}
-                          onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, sizeChart: e.target.value })}
+                          onChange={(e) =>
+                            setEditCatalogProduct({
+                              ...editCatalogProduct,
+                              sizeChart: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Màu sắc</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Màu sắc
+                        </label>
                         <input
                           type="text"
                           value={editCatalogProduct.color}
-                          onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, color: e.target.value })}
+                          onChange={(e) =>
+                            setEditCatalogProduct({
+                              ...editCatalogProduct,
+                              color: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Link hình ảnh</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Link hình ảnh
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.image}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, image: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            image: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -2302,32 +2986,55 @@ export default function SanPhamPage() {
 
                 {/* Giá cả */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Giá cả</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Giá cả
+                  </h4>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Giá bán lẻ</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Giá bán lẻ
+                      </label>
                       <input
                         type="number"
                         value={editCatalogProduct.retailPrice}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, retailPrice: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            retailPrice: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Giá bán sỉ</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Giá bán sỉ
+                      </label>
                       <input
                         type="number"
                         value={editCatalogProduct.wholesalePrice}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, wholesalePrice: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            wholesalePrice: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Giá vốn</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Giá vốn
+                      </label>
                       <input
                         type="number"
                         value={editCatalogProduct.costPrice}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, costPrice: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            costPrice: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -2336,32 +3043,55 @@ export default function SanPhamPage() {
 
                 {/* Nguyên vật liệu */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Nguyên vật liệu</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Nguyên vật liệu
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Vải chính</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vải chính
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.mainFabric}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, mainFabric: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            mainFabric: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Vải phối</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vải phối
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.accentFabric}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, accentFabric: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            accentFabric: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phụ liệu khác</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phụ liệu khác
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.otherMaterials}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, otherMaterials: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            otherMaterials: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -2370,50 +3100,87 @@ export default function SanPhamPage() {
 
                 {/* Định mức */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Định mức</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Định mức
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM vải chính</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM vải chính
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.mainFabricQuota}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, mainFabricQuota: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            mainFabricQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM vải phối</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM vải phối
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.accentFabricQuota}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, accentFabricQuota: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            accentFabricQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM phụ liệu</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM phụ liệu
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.materialsQuota}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, materialsQuota: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            materialsQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM phụ kiện</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM phụ kiện
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.accessoriesQuota}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, accessoriesQuota: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            accessoriesQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM khác</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ĐM khác
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.otherQuota}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, otherQuota: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            otherQuota: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -2422,32 +3189,55 @@ export default function SanPhamPage() {
 
                 {/* Số lượng */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Số lượng</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Số lượng
+                  </h4>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">SL kế hoạch</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SL kế hoạch
+                      </label>
                       <input
                         type="number"
                         value={editCatalogProduct.plannedQuantity}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, plannedQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            plannedQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">SL cắt</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SL cắt
+                      </label>
                       <input
                         type="number"
                         value={editCatalogProduct.cutQuantity}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, cutQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            cutQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">SL nhập kho</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SL nhập kho
+                      </label>
                       <input
                         type="number"
                         value={editCatalogProduct.warehouseQuantity}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, warehouseQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            warehouseQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -2456,41 +3246,71 @@ export default function SanPhamPage() {
 
                 {/* Trạng thái */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Trạng thái</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Trạng thái
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CĐ Final</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        CĐ Final
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.finalStatus}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, finalStatus: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            finalStatus: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CĐ đồng bộ NPL</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        CĐ đồng bộ NPL
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.nplSyncStatus}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, nplSyncStatus: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            nplSyncStatus: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CĐ sản xuất</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        CĐ sản xuất
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.productionStatus}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, productionStatus: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            productionStatus: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nhập kho</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nhập kho
+                      </label>
                       <input
                         type="text"
                         value={editCatalogProduct.warehouseEntry}
-                        onChange={(e) => setEditCatalogProduct({ ...editCatalogProduct, warehouseEntry: e.target.value })}
+                        onChange={(e) =>
+                          setEditCatalogProduct({
+                            ...editCatalogProduct,
+                            warehouseEntry: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -2502,7 +3322,10 @@ export default function SanPhamPage() {
             <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setShowCatalogEditModal(false); setEditCatalogProduct(null); }}
+                  onClick={() => {
+                    setShowCatalogEditModal(false);
+                    setEditCatalogProduct(null);
+                  }}
                   className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-colors"
                   disabled={catalogSaving}
                 >
@@ -2513,7 +3336,9 @@ export default function SanPhamPage() {
                   disabled={catalogSaving}
                   className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors flex items-center justify-center gap-2"
                 >
-                  {catalogSaving && <Loader2 size={18} className="animate-spin" />}
+                  {catalogSaving && (
+                    <Loader2 size={18} className="animate-spin" />
+                  )}
                   {catalogSaving ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
               </div>
@@ -2540,16 +3365,24 @@ export default function SanPhamPage() {
                 <DollarSign className="text-green-600" size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Điều chỉnh giá vốn</h2>
-                <p className="text-sm text-gray-500">Cập nhật và điều chỉnh giá vốn sản phẩm</p>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Điều chỉnh giá vốn
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Cập nhật và điều chỉnh giá vốn sản phẩm
+                </p>
               </div>
             </div>
 
             {/* Coming soon placeholder */}
             <div className="text-center py-16">
               <DollarSign className="mx-auto text-gray-300 mb-4" size={64} />
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">Đang phát triển</h3>
-              <p className="text-gray-500">Tính năng điều chỉnh giá vốn đang được xây dựng</p>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                Đang phát triển
+              </h3>
+              <p className="text-gray-500">
+                Tính năng điều chỉnh giá vốn đang được xây dựng
+              </p>
             </div>
           </div>
         </div>
