@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getDonGiaGiaCongFromSheet,
   getDinhMucSXFromSheet,
+  getSoLuongCatFromSheet,
 } from "@/lib/googleSheets";
 
 /**
@@ -24,9 +25,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Lấy dữ liệu từ các bảng
-    const [donGiaGiaCongList, dinhMucList] = await Promise.all([
+    const [donGiaGiaCongList, dinhMucList, soLuongCatList] = await Promise.all([
       getDonGiaGiaCongFromSheet(),
       getDinhMucSXFromSheet(),
+      getSoLuongCatFromSheet(),
     ]);
 
     // Tìm thông tin trong Đơn giá gia công để lấy Xưởng SX
@@ -34,6 +36,11 @@ export async function GET(request: NextRequest) {
 
     // Tìm thông tin trong Định mức sản xuất
     const dinhMucInfo = dinhMucList.find((item) => item.maSP === code);
+
+    // Tính tổng số lượng cắt từ bảng "Số lượng cắt"
+    const totalCutQuantity = soLuongCatList
+      .filter((item) => item.maSP === code)
+      .reduce((sum, item) => sum + (item.soLuongCat || 0), 0);
 
     // Chuẩn bị dữ liệu trả về
     const result = {
@@ -46,7 +53,7 @@ export async function GET(request: NextRequest) {
       accessoriesQuota: dinhMucInfo?.phuKien || "",
       otherQuota: dinhMucInfo?.khac || "",
       plannedQuantity: 0, // Sẽ cập nhật sau khi có LSX
-      cutQuantity: 0, // Sẽ cập nhật sau khi có Số lượng cắt
+      cutQuantity: totalCutQuantity, // Tổng số lượng cắt từ bảng "Số lượng cắt"
     };
 
     return NextResponse.json({
