@@ -21,6 +21,7 @@ export default function SalaryTab() {
   const [error, setError] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] =
     useState<BangKeTienLuongItem | null>(null);
+  const [selectedMaPhieu, setSelectedMaPhieu] = useState<string>("all");
 
   // Load salary data from Google Sheets on mount
   useEffect(() => {
@@ -65,8 +66,19 @@ export default function SalaryTab() {
     return `-${value.toLocaleString("vi-VN")}`;
   };
 
-  // Calculate totals
-  const totals = salaryData.reduce(
+  // Get unique Mã phiếu list
+  const uniqueMaPhieuList = Array.from(
+    new Set(salaryData.map((item) => item.maPhieu).filter((m) => m))
+  ).sort((a, b) => b.localeCompare(a)); // Sort descending (newest first)
+
+  // Filter data by selected Mã phiếu
+  const filteredData =
+    selectedMaPhieu === "all"
+      ? salaryData
+      : salaryData.filter((item) => item.maPhieu === selectedMaPhieu);
+
+  // Calculate totals from filtered data
+  const totals = filteredData.reduce(
     (acc, row) => ({
       mucLuongCoBan: acc.mucLuongCoBan + row.mucLuongCoBan,
       luongThucTe: acc.luongThucTe + row.luongThucTe,
@@ -112,8 +124,25 @@ export default function SalaryTab() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-semibold">
-            Bảng kê tiền lương ({salaryData.length} nhân viên)
+            Bảng kê tiền lương ({filteredData.length} nhân viên)
           </h2>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">
+              Kỳ lương:
+            </label>
+            <select
+              value={selectedMaPhieu}
+              onChange={(e) => setSelectedMaPhieu(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">Tất cả</option>
+              {uniqueMaPhieuList.map((maPhieu) => (
+                <option key={maPhieu} value={maPhieu}>
+                  {maPhieu}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={loadSalaryFromSheet}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -166,7 +195,7 @@ export default function SalaryTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {salaryData.map((row, index) => (
+            {filteredData.map((row, index) => (
               <tr
                 key={row.id}
                 className="group cursor-pointer transition-colors"
