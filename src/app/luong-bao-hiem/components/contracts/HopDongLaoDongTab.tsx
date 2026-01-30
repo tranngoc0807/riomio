@@ -1,11 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import DocumentEditor from "./DocumentEditor";
+import { Eye } from "lucide-react";
 
-const getInitialContent = () => {
+interface Employee {
+  id: number;
+  name: string;
+  position: string;
+  phone: string;
+  birthday: string;
+  cccd: string;
+  address: string;
+}
+
+const getInitialContent = (employee?: Employee | null) => {
   return `
     <p style="text-align: center;"><strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong></p>
     <p style="text-align: center;"><strong><u>Độc lập – Tự do – Hạnh phúc</u></strong></p>
@@ -25,16 +37,16 @@ const getInitialContent = () => {
     <p>Mã số thuế: 0109531866</p>
 
     <p style="margin-top: 16px;"><strong>BÊN B: NGƯỜI LAO ĐỘNG (Nhân viên)</strong></p>
-    <p>Ông/Bà: <strong>................................</strong></p>
-    <p>Sinh ngày: ................................</p>
-    <p>CMND/CCCD số: ................................ Cấp ngày: ................................ Tại: ................................</p>
+    <p>Ông/Bà: <strong>${employee ? employee.name : "................................"}</strong></p>
+    <p>Sinh ngày: ${employee ? employee.birthday : "................................"}</p>
+    <p>CMND/CCCD số: ${employee ? employee.cccd : "................................"} Cấp ngày: ................................ Tại: ................................</p>
     <p>Quê quán: ................................</p>
-    <p>Chỗ ở hiện tại: ................................</p>
+    <p>Chỗ ở hiện tại: ${employee ? employee.address : "................................"}</p>
 
     <p style="margin-top: 16px;">Thỏa thuận ký kết hợp đồng lao động với các điều khoản sau đây:</p>
 
     <p style="margin-top: 16px;"><strong>ĐIỀU 1: CÔNG VIỆC, ĐỊA ĐIỂM VÀ THỜI HẠN HỢP ĐỒNG</strong></p>
-    <p><strong>Vị trí chuyên môn:</strong> ................................</p>
+    <p><strong>Vị trí chuyên môn:</strong> ${employee ? employee.position : "................................"}</p>
     <p><strong>Mô tả công việc:</strong> Thực hiện công việc theo sự sắp xếp của lãnh đạo Công ty và các trưởng, phó bộ phận.</p>
     <p>Người lao động đồng ý rằng Người sử dụng lao động có thể quyết định một cách hợp lý chức vụ của Người lao động và việc thuyên chuyển Người lao động trong các phòng ban của Công ty phù hợp với chuyên môn và năng lực của Người lao động.</p>
     <p>Hoàn thành tốt công việc được giao theo định mức sản lượng, thời gian công nghệ và đạt chất lượng theo quy định – chấp hành tốt nội quy kỷ luật, chấp hành nghiêm chỉnh quy trình vận hành, quy trình thao tác công nghệ, bảo quản thiết bị, quy trình an toàn lao động.</p>
@@ -111,12 +123,59 @@ const getInitialContent = () => {
 };
 
 export default function HopDongLaoDongTab() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [savedContracts, setSavedContracts] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [currentContent, setCurrentContent] = useState<string>("");
+  const [viewingContractId, setViewingContractId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSavedContracts();
+    fetchEmployees();
+
+    // Check if there's a contract ID in URL params
+    const contractId = searchParams.get("contract");
+    if (contractId) {
+      loadContractFromParams(contractId);
+    }
   }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch("/api/nhan-vien");
+      const data = await response.json();
+      if (data.success && data.data) {
+        setEmployees(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+    }
+  };
+
+  const loadContractFromParams = async (contractId: string) => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("contracts")
+        .select("*")
+        .eq("id", contractId)
+        .eq("contract_type", "hop_dong_lao_dong")
+        .single();
+
+      if (error) throw error;
+
+      if (data && data.extra_data?.html_content) {
+        setCurrentContent(data.extra_data.html_content);
+        setViewingContractId(contractId);
+      }
+    } catch (error) {
+      console.error("Error loading contract:", error);
+      toast.error("Không thể tải hợp đồng");
+    }
+  };
 
   const fetchSavedContracts = async () => {
     try {
@@ -141,10 +200,11 @@ export default function HopDongLaoDongTab() {
 
       const data = {
         contract_type: "hop_dong_lao_dong",
-        employee_name: "Hợp đồng lao động",
+        employee_name: selectedEmployee ? selectedEmployee.name : "Hợp đồng lao động",
         year: new Date().getFullYear(),
         extra_data: {
           html_content: html,
+          employee_id: selectedEmployee?.id || null,
         },
         status: "draft",
       };
@@ -153,6 +213,8 @@ export default function HopDongLaoDongTab() {
       if (error) throw error;
       toast.success("Đã lưu hợp đồng");
       fetchSavedContracts();
+      setCurrentContent("");
+      setSelectedEmployee(null);
     } catch (error: any) {
       toast.error("Lỗi: " + error.message);
     } finally {
@@ -160,13 +222,76 @@ export default function HopDongLaoDongTab() {
     }
   };
 
+  const handleEmployeeChange = (employeeId: string) => {
+    if (!employeeId) {
+      setSelectedEmployee(null);
+      setCurrentContent(getInitialContent());
+      return;
+    }
+
+    const employee = employees.find((e) => e.id === parseInt(employeeId));
+    if (employee) {
+      setSelectedEmployee(employee);
+      setCurrentContent(getInitialContent(employee));
+    }
+  };
+
+  const handleViewContract = (contractId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("contract", contractId);
+    router.push(url.pathname + url.search);
+    loadContractFromParams(contractId);
+  };
+
+  const handleCreateNew = () => {
+    setViewingContractId(null);
+    setSelectedEmployee(null);
+    setCurrentContent(getInitialContent());
+    const url = new URL(window.location.href);
+    url.searchParams.delete("contract");
+    router.push(url.pathname);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Hợp đồng lao động</h3>
+        <h3 className="text-lg font-semibold">
+          {viewingContractId ? "Xem hợp đồng đã lưu" : "Tạo hợp đồng lao động mới"}
+        </h3>
+        {viewingContractId && (
+          <button
+            onClick={handleCreateNew}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Tạo mới
+          </button>
+        )}
       </div>
+
+      {/* Employee selector - only show when creating new contract */}
+      {!viewingContractId && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Chọn nhân viên (tùy chọn - để tự động điền thông tin)
+          </label>
+          <select
+            value={selectedEmployee?.id || ""}
+            onChange={(e) => handleEmployeeChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">-- Không chọn nhân viên --</option>
+            {employees.map((employee) => (
+              <option key={employee.id} value={employee.id}>
+                {employee.name} - {employee.position}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <DocumentEditor
-        initialContent={getInitialContent()}
+        key={currentContent || "empty"}
+        initialContent={currentContent || getInitialContent()}
         title="Hợp đồng lao động"
         onSave={handleSave}
         isSaving={isSaving}
@@ -183,14 +308,19 @@ export default function HopDongLaoDongTab() {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">STT</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Nhân viên</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Ngày tạo</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Trạng thái</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {savedContracts.map((contract, index) => (
                   <tr key={contract.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">{index + 1}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      {contract.employee_name || "Không có tên"}
+                    </td>
                     <td className="px-4 py-3 text-sm">
                       {new Date(contract.created_at).toLocaleDateString("vi-VN")}
                     </td>
@@ -200,6 +330,15 @@ export default function HopDongLaoDongTab() {
                       }`}>
                         {contract.status === "signed" ? "Đã ký" : "Nháp"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <button
+                        onClick={() => handleViewContract(contract.id)}
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      >
+                        <Eye size={14} />
+                        Xem
+                      </button>
                     </td>
                   </tr>
                 ))}
