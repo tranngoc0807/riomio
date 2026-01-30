@@ -237,9 +237,10 @@ export default function HopDongLaoDongTab() {
   };
 
   const handleViewContract = (contractId: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("contract", contractId);
-    router.push(url.pathname + url.search);
+    // Create URLSearchParams from current search params
+    const params = new URLSearchParams(window.location.search);
+    params.set("contract", contractId);
+    router.push(`${window.location.pathname}?${params.toString()}`);
     loadContractFromParams(contractId);
   };
 
@@ -247,9 +248,10 @@ export default function HopDongLaoDongTab() {
     setViewingContractId(null);
     setSelectedEmployee(null);
     setCurrentContent(getInitialContent());
-    const url = new URL(window.location.href);
-    url.searchParams.delete("contract");
-    router.push(url.pathname);
+    // Keep other params but remove contract param
+    const params = new URLSearchParams(window.location.search);
+    params.delete("contract");
+    router.push(`${window.location.pathname}?${params.toString()}`);
   };
 
   return (
