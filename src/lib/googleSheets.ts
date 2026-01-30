@@ -4961,15 +4961,16 @@ export interface BangKeTienLuongItem {
   giuTreVaNuoiCon: number; // W: Giữ trẻ và nuôi con
   phuCapKhac: number; // X: Phụ cấp khác
   tongPhuCap: number; // Y: Tổng phụ cấp
-  kpi: number; // Z: KPI
-  thuongSangKien: number; // AA: Thưởng sáng kiến
-  congKhac: number; // AB: Cộng khác
-  truBHYTBHXHBHTN: number; // AC: Trừ BHYT, BHXH, BHTN (NLĐ đóng 10,5%)
-  truTNCN: number; // AD: Trừ TNCN
-  truCongDoan: number; // AE: Trừ công đoàn
-  truKhac: number; // AF: Trừ khác
-  thucLinh: number; // AG: Thực lĩnh
-  ghiChu: string; // AH: Ghi chú
+  kpiSXVP: number; // Z: KPI SX, VP
+  kpiSale: number; // AA: KPI Sale
+  thuongSangKien: number; // AB: Thưởng sáng kiến
+  congKhac: number; // AC: Cộng khác
+  truBHYTBHXHBHTN: number; // AD: Trừ BHYT, BHXH, BHTN (NLĐ đóng 10,5%)
+  truTNCN: number; // AE: Trừ TNCN
+  truCongDoan: number; // AF: Trừ công đoàn
+  truKhac: number; // AG: Trừ khác
+  thucLinh: number; // AH: Thực lĩnh
+  ghiChu: string; // AI: Ghi chú
 }
 
 /**
@@ -4982,7 +4983,7 @@ export async function getBangKeTienLuongFromSheet(): Promise<BangKeTienLuongItem
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdRiomioLuong,
-      range: `'${sheetNameBangKeTienLuong}'!A6:AH`, // Header từ dòng 5, dữ liệu từ dòng 6
+      range: `'${sheetNameBangKeTienLuong}'!A6:AI`, // Header từ dòng 5, dữ liệu từ dòng 6
     });
 
     const rows = response.data.values;
@@ -5028,15 +5029,16 @@ export async function getBangKeTienLuongFromSheet(): Promise<BangKeTienLuongItem
         giuTreVaNuoiCon: parseNumber(row[22]), // W: Giữ trẻ và nuôi con
         phuCapKhac: parseNumber(row[23]), // X: Phụ cấp khác
         tongPhuCap: parseNumber(row[24]), // Y: Tổng phụ cấp
-        kpi: parseNumber(row[25]), // Z: KPI
-        thuongSangKien: parseNumber(row[26]), // AA: Thưởng sáng kiến
-        congKhac: parseNumber(row[27]), // AB: Cộng khác
-        truBHYTBHXHBHTN: parseNumber(row[28]), // AC: Trừ BHYT, BHXH, BHTN
-        truTNCN: parseNumber(row[29]), // AD: Trừ TNCN
-        truCongDoan: parseNumber(row[30]), // AE: Trừ công đoàn
-        truKhac: parseNumber(row[31]), // AF: Trừ khác
-        thucLinh: parseNumber(row[32]), // AG: Thực lĩnh
-        ghiChu: row[33] || "", // AH: Ghi chú
+        kpiSXVP: parseNumber(row[25]), // Z: KPI SX, VP
+        kpiSale: parseNumber(row[26]), // AA: KPI Sale
+        thuongSangKien: parseNumber(row[27]), // AB: Thưởng sáng kiến
+        congKhac: parseNumber(row[28]), // AC: Cộng khác
+        truBHYTBHXHBHTN: parseNumber(row[29]), // AD: Trừ BHYT, BHXH, BHTN
+        truTNCN: parseNumber(row[30]), // AE: Trừ TNCN
+        truCongDoan: parseNumber(row[31]), // AF: Trừ công đoàn
+        truKhac: parseNumber(row[32]), // AG: Trừ khác
+        thucLinh: parseNumber(row[33]), // AH: Thực lĩnh
+        ghiChu: row[34] || "", // AI: Ghi chú
       }))
       .filter((item) => item.hoVaTen.trim() !== ""); // Lọc bỏ các dòng trống
 

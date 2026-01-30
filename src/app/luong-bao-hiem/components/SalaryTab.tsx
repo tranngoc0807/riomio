@@ -53,7 +53,8 @@ export default function SalaryTab() {
       mucLuongCoBan: acc.mucLuongCoBan + row.mucLuongCoBan,
       luongThucTe: acc.luongThucTe + row.luongThucTe,
       tongPhuCap: acc.tongPhuCap + row.tongPhuCap,
-      kpi: acc.kpi + row.kpi,
+      kpiSXVP: acc.kpiSXVP + row.kpiSXVP,
+      kpiSale: acc.kpiSale + row.kpiSale,
       thuongSangKien: acc.thuongSangKien + row.thuongSangKien,
       truBHYTBHXHBHTN: acc.truBHYTBHXHBHTN + row.truBHYTBHXHBHTN,
       truTNCN: acc.truTNCN + row.truTNCN,
@@ -63,7 +64,8 @@ export default function SalaryTab() {
       mucLuongCoBan: 0,
       luongThucTe: 0,
       tongPhuCap: 0,
-      kpi: 0,
+      kpiSXVP: 0,
+      kpiSale: 0,
       thuongSangKien: 0,
       truBHYTBHXHBHTN: 0,
       truTNCN: 0,
@@ -127,7 +129,8 @@ export default function SalaryTab() {
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 Tổng phụ cấp
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">KPI</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">KPI SX, VP</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">KPI Sale</th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 Thưởng sáng kiến
               </th>
@@ -172,7 +175,10 @@ export default function SalaryTab() {
                   +{row.tongPhuCap.toLocaleString("vi-VN")}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-blue-600">
-                  +{row.kpi.toLocaleString("vi-VN")}
+                  +{row.kpiSXVP.toLocaleString("vi-VN")}
+                </td>
+                <td className="px-4 py-4 text-sm text-right text-blue-600">
+                  +{row.kpiSale.toLocaleString("vi-VN")}
                 </td>
                 <td className="px-4 py-4 text-sm text-right text-blue-600">
                   +{row.thuongSangKien.toLocaleString("vi-VN")}
@@ -205,7 +211,10 @@ export default function SalaryTab() {
                 +{totals.tongPhuCap.toLocaleString("vi-VN")}
               </td>
               <td className="px-4 py-3 text-right text-blue-600">
-                +{totals.kpi.toLocaleString("vi-VN")}
+                +{totals.kpiSXVP.toLocaleString("vi-VN")}
+              </td>
+              <td className="px-4 py-3 text-right text-blue-600">
+                +{totals.kpiSale.toLocaleString("vi-VN")}
               </td>
               <td className="px-4 py-3 text-right text-blue-600">
                 +{totals.thuongSangKien.toLocaleString("vi-VN")}
@@ -434,9 +443,15 @@ export default function SalaryTab() {
                   </div>
                   <div className="p-6 space-y-3">
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                      <p className="text-xs text-gray-600 mb-1">KPI</p>
+                      <p className="text-xs text-gray-600 mb-1">KPI SX, VP</p>
                       <p className="font-bold text-xl text-blue-600">
-                        +{selectedEmployee.kpi.toLocaleString("vi-VN")} đ
+                        +{selectedEmployee.kpiSXVP.toLocaleString("vi-VN")} đ
+                      </p>
+                    </div>
+                    <div className="bg-cyan-50 rounded-lg p-4 border border-cyan-200">
+                      <p className="text-xs text-gray-600 mb-1">KPI Sale</p>
+                      <p className="font-bold text-xl text-cyan-600">
+                        +{selectedEmployee.kpiSale.toLocaleString("vi-VN")} đ
                       </p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4 border border-green-200">
