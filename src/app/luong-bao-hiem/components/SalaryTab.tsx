@@ -20,7 +20,8 @@ export default function SalaryTab() {
   const [salaryData, setSalaryData] = useState<BangKeTienLuongItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<BangKeTienLuongItem | null>(null);
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<BangKeTienLuongItem | null>(null);
 
   // Load salary data from Google Sheets on mount
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function SalaryTab() {
       truBHYTBHXHBHTN: 0,
       truTNCN: 0,
       thucLinh: 0,
-    }
+    },
   );
 
   if (isLoading) {
@@ -115,8 +116,15 @@ export default function SalaryTab() {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 sticky left-14 bg-gray-50">
                 Họ và tên
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Chức vụ</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Bộ phận</th>
+              <th
+                className="px-4 py-3 text-left text-sm font-medium text-gray-500"
+                style={{ minWidth: "200px" }}
+              >
+                Chức vụ
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                Bộ phận
+              </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 Lương cơ bản
               </th>
@@ -129,8 +137,12 @@ export default function SalaryTab() {
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 Tổng phụ cấp
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">KPI SX, VP</th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">KPI Sale</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                KPI SX, VP
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                KPI Sale
+              </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 Thưởng sáng kiến
               </th>
@@ -149,47 +161,53 @@ export default function SalaryTab() {
             {salaryData.map((row, index) => (
               <tr
                 key={row.id}
-                className="hover:bg-blue-50 cursor-pointer transition-colors"
+                className="group cursor-pointer transition-colors"
                 onClick={() => setSelectedEmployee(row)}
               >
-                <td className="px-4 py-4 text-sm text-gray-600 sticky left-0 bg-white hover:bg-blue-50">
+                <td className="px-4 py-4 text-sm text-gray-600 sticky left-0 bg-white group-hover:bg-blue-50 transition-colors">
                   {index + 1}
                 </td>
-                <td className="px-4 py-4 sticky left-14 bg-white hover:bg-blue-50">
-                  <p className="text-sm font-medium text-gray-900">{row.hoVaTen}</p>
+                <td className="px-4 py-4 sticky left-14 bg-white group-hover:bg-blue-50 transition-colors">
+                  <p className="text-sm font-medium text-gray-900">
+                    {row.hoVaTen}
+                  </p>
                 </td>
-                <td className="px-4 py-4">
+                <td className="px-4 py-4 group-hover:bg-blue-50 transition-colors">
                   <span className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
                     {row.chucVu}
                   </span>
                 </td>
-                <td className="px-4 py-4 text-sm text-gray-600">{row.boPhan}</td>
-                <td className="px-4 py-4 text-sm text-right text-gray-900">
+                <td className="px-4 py-4 text-sm text-gray-600 group-hover:bg-blue-50 transition-colors">
+                  {row.boPhan}
+                </td>
+                <td className="px-4 py-4 text-sm text-right text-gray-900 group-hover:bg-blue-50 transition-colors">
                   {row.mucLuongCoBan.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-4 py-4 text-sm text-center text-gray-600">{row.congThucTe}</td>
-                <td className="px-4 py-4 text-sm text-right text-gray-900">
+                <td className="px-4 py-4 text-sm text-center text-gray-600 group-hover:bg-blue-50 transition-colors">
+                  {row.congThucTe}
+                </td>
+                <td className="px-4 py-4 text-sm text-right text-gray-900 group-hover:bg-blue-50 transition-colors">
                   {row.luongThucTe.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-4 py-4 text-sm text-right text-green-600">
+                <td className="px-4 py-4 text-sm text-right text-green-600 group-hover:bg-blue-50 transition-colors">
                   +{row.tongPhuCap.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-4 py-4 text-sm text-right text-blue-600">
+                <td className="px-4 py-4 text-sm text-right text-blue-600 group-hover:bg-blue-50 transition-colors">
                   +{row.kpiSXVP.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-4 py-4 text-sm text-right text-blue-600">
+                <td className="px-4 py-4 text-sm text-right text-blue-600 group-hover:bg-blue-50 transition-colors">
                   +{row.kpiSale.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-4 py-4 text-sm text-right text-blue-600">
+                <td className="px-4 py-4 text-sm text-right text-blue-600 group-hover:bg-blue-50 transition-colors">
                   +{row.thuongSangKien.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-4 py-4 text-sm text-right text-orange-600 bg-orange-50">
+                <td className="px-4 py-4 text-sm text-right text-orange-600 bg-orange-50 group-hover:bg-blue-50 transition-colors">
                   -{row.truBHYTBHXHBHTN.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-4 py-4 text-sm text-right text-orange-600 bg-orange-50">
+                <td className="px-4 py-4 text-sm text-right text-orange-600 bg-orange-50 group-hover:bg-blue-50 transition-colors">
                   -{row.truTNCN.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-4 py-4 text-sm text-right font-bold text-green-600 bg-green-50">
+                <td className="px-4 py-4 text-sm text-right font-bold text-green-600 bg-green-50 group-hover:bg-blue-50 transition-colors">
                   {row.thucLinh.toLocaleString("vi-VN")}
                 </td>
               </tr>
@@ -281,12 +299,16 @@ export default function SalaryTab() {
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
                   <div className="flex items-center gap-3">
                     <FileText className="text-blue-600" size={24} />
-                    <h4 className="font-bold text-lg text-gray-800">Thông tin cơ bản</h4>
+                    <h4 className="font-bold text-lg text-gray-800">
+                      Thông tin cơ bản
+                    </h4>
                   </div>
                 </div>
                 <div className="p-6 grid grid-cols-3 gap-6">
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Mã phiếu</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">
+                      Mã phiếu
+                    </p>
                     <p className="font-semibold text-gray-900 text-lg">
                       {selectedEmployee.maPhieu || "N/A"}
                     </p>
@@ -294,7 +316,9 @@ export default function SalaryTab() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Calendar size={14} className="text-gray-500" />
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">Ngày bắt đầu</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        Ngày bắt đầu
+                      </p>
                     </div>
                     <p className="font-semibold text-gray-900">
                       {selectedEmployee.ngayBatDau || "N/A"}
@@ -303,7 +327,9 @@ export default function SalaryTab() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Calendar size={14} className="text-gray-500" />
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">Ngày kết thúc</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        Ngày kết thúc
+                      </p>
                     </div>
                     <p className="font-semibold text-gray-900">
                       {selectedEmployee.ngayKetThuc || "N/A"}
@@ -317,7 +343,9 @@ export default function SalaryTab() {
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200">
                   <div className="flex items-center gap-3">
                     <DollarSign className="text-green-600" size={24} />
-                    <h4 className="font-bold text-lg text-gray-800">Lương & Công</h4>
+                    <h4 className="font-bold text-lg text-gray-800">
+                      Lương & Công
+                    </h4>
                   </div>
                 </div>
                 <div className="p-6">
@@ -330,9 +358,14 @@ export default function SalaryTab() {
                       <p className="text-xs text-gray-500 mt-1">VNĐ</p>
                     </div>
                     <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-                      <p className="text-xs text-gray-600 mb-1">Thưởng chuyên cần</p>
+                      <p className="text-xs text-gray-600 mb-1">
+                        Thưởng chuyên cần
+                      </p>
                       <p className="font-bold text-xl text-green-700">
-                        +{selectedEmployee.thuongChuyenCan.toLocaleString("vi-VN")}
+                        +
+                        {selectedEmployee.thuongChuyenCan.toLocaleString(
+                          "vi-VN",
+                        )}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">VNĐ</p>
                     </div>
@@ -350,26 +383,34 @@ export default function SalaryTab() {
                         <Clock size={16} className="text-gray-600" />
                         <p className="text-xs text-gray-600">Công thực tế</p>
                       </div>
-                      <p className="font-bold text-2xl text-gray-900">{selectedEmployee.congThucTe}</p>
+                      <p className="font-bold text-2xl text-gray-900">
+                        {selectedEmployee.congThucTe}
+                      </p>
                     </div>
                     <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
                       <div className="flex items-center gap-2 mb-2">
                         <AlertCircle size={16} className="text-orange-600" />
                         <p className="text-xs text-gray-600">Đi muộn</p>
                       </div>
-                      <p className="font-bold text-2xl text-orange-600">{selectedEmployee.diMuon}</p>
+                      <p className="font-bold text-2xl text-orange-600">
+                        {selectedEmployee.diMuon}
+                      </p>
                     </div>
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                       <div className="flex items-center gap-2 mb-2">
                         <Clock size={16} className="text-blue-600" />
                         <p className="text-xs text-gray-600">Làm thêm giờ</p>
                       </div>
-                      <p className="font-bold text-2xl text-blue-600">{selectedEmployee.lamThemGio}</p>
+                      <p className="font-bold text-2xl text-blue-600">
+                        {selectedEmployee.lamThemGio}
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4 mt-4">
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Lương thực tế</p>
+                      <p className="text-xs text-gray-600 mb-1">
+                        Lương thực tế
+                      </p>
                       <p className="font-bold text-lg text-gray-900">
                         {selectedEmployee.luongThucTe.toLocaleString("vi-VN")} đ
                       </p>
@@ -381,9 +422,12 @@ export default function SalaryTab() {
                       </p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <p className="text-xs text-gray-600 mb-1">Lương thêm giờ</p>
+                      <p className="text-xs text-gray-600 mb-1">
+                        Lương thêm giờ
+                      </p>
                       <p className="font-bold text-lg text-green-600">
-                        +{selectedEmployee.luongThemGio.toLocaleString("vi-VN")} đ
+                        +{selectedEmployee.luongThemGio.toLocaleString("vi-VN")}{" "}
+                        đ
                       </p>
                     </div>
                   </div>
@@ -400,15 +444,39 @@ export default function SalaryTab() {
                 </div>
                 <div className="p-6 grid grid-cols-2 gap-3">
                   {[
-                    { label: "Ăn trưa/ngày", value: selectedEmployee.phuCapAnTruaNgay },
-                    { label: "Ăn trưa/tháng", value: selectedEmployee.phuCapAnTruaThang },
-                    { label: "Xăng xe", value: selectedEmployee.phuCapXangXeThang },
-                    { label: "Điện thoại", value: selectedEmployee.phuCapDienThoaiThang },
-                    { label: "Độc hại, nặng nhọc", value: selectedEmployee.phuCapDocHaiNangNhocThang },
-                    { label: "Trang phục", value: selectedEmployee.phuCapTrangPhucThang },
+                    {
+                      label: "Ăn trưa/ngày",
+                      value: selectedEmployee.phuCapAnTruaNgay,
+                    },
+                    {
+                      label: "Ăn trưa/tháng",
+                      value: selectedEmployee.phuCapAnTruaThang,
+                    },
+                    {
+                      label: "Xăng xe",
+                      value: selectedEmployee.phuCapXangXeThang,
+                    },
+                    {
+                      label: "Điện thoại",
+                      value: selectedEmployee.phuCapDienThoaiThang,
+                    },
+                    {
+                      label: "Độc hại, nặng nhọc",
+                      value: selectedEmployee.phuCapDocHaiNangNhocThang,
+                    },
+                    {
+                      label: "Trang phục",
+                      value: selectedEmployee.phuCapTrangPhucThang,
+                    },
                     { label: "Nhà ở", value: selectedEmployee.phuCapNhaOThang },
-                    { label: "Giữ trẻ và nuôi con", value: selectedEmployee.giuTreVaNuoiCon },
-                    { label: "Phụ cấp khác", value: selectedEmployee.phuCapKhac },
+                    {
+                      label: "Giữ trẻ và nuôi con",
+                      value: selectedEmployee.giuTreVaNuoiCon,
+                    },
+                    {
+                      label: "Phụ cấp khác",
+                      value: selectedEmployee.phuCapKhac,
+                    },
                   ].map((item, idx) => (
                     <div
                       key={idx}
@@ -438,7 +506,9 @@ export default function SalaryTab() {
                   <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center gap-3">
                       <Gift className="text-blue-600" size={24} />
-                      <h4 className="font-bold text-lg text-gray-800">Thưởng</h4>
+                      <h4 className="font-bold text-lg text-gray-800">
+                        Thưởng
+                      </h4>
                     </div>
                   </div>
                   <div className="p-6 space-y-3">
@@ -455,9 +525,15 @@ export default function SalaryTab() {
                       </p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <p className="text-xs text-gray-600 mb-1">Thưởng sáng kiến</p>
+                      <p className="text-xs text-gray-600 mb-1">
+                        Thưởng sáng kiến
+                      </p>
                       <p className="font-bold text-xl text-green-600">
-                        +{selectedEmployee.thuongSangKien.toLocaleString("vi-VN")} đ
+                        +
+                        {selectedEmployee.thuongSangKien.toLocaleString(
+                          "vi-VN",
+                        )}{" "}
+                        đ
                       </p>
                     </div>
                     <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
@@ -474,14 +550,22 @@ export default function SalaryTab() {
                   <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center gap-3">
                       <AlertCircle className="text-orange-600" size={24} />
-                      <h4 className="font-bold text-lg text-gray-800">Các khoản trừ</h4>
+                      <h4 className="font-bold text-lg text-gray-800">
+                        Các khoản trừ
+                      </h4>
                     </div>
                   </div>
                   <div className="p-6 space-y-3">
                     <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-                      <p className="text-xs text-gray-600 mb-1">BHXH, BHYT, BHTN</p>
+                      <p className="text-xs text-gray-600 mb-1">
+                        BHXH, BHYT, BHTN
+                      </p>
                       <p className="font-bold text-xl text-orange-600">
-                        -{selectedEmployee.truBHYTBHXHBHTN.toLocaleString("vi-VN")} đ
+                        -
+                        {selectedEmployee.truBHYTBHXHBHTN.toLocaleString(
+                          "vi-VN",
+                        )}{" "}
+                        đ
                       </p>
                     </div>
                     <div className="bg-red-50 rounded-lg p-4 border border-red-200">
@@ -491,11 +575,15 @@ export default function SalaryTab() {
                       </p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Công đoàn & Khác</p>
+                      <p className="text-xs text-gray-600 mb-1">
+                        Công đoàn & Khác
+                      </p>
                       <p className="font-bold text-xl text-gray-600">
-                        -{(selectedEmployee.truCongDoan + selectedEmployee.truKhac).toLocaleString(
-                          "vi-VN"
-                        )}{" "}
+                        -
+                        {(
+                          selectedEmployee.truCongDoan +
+                          selectedEmployee.truKhac
+                        ).toLocaleString("vi-VN")}{" "}
                         đ
                       </p>
                     </div>
@@ -517,7 +605,9 @@ export default function SalaryTab() {
                     <p className="text-6xl font-black text-white drop-shadow-lg">
                       {selectedEmployee.thucLinh.toLocaleString("vi-VN")}
                     </p>
-                    <p className="text-2xl text-white/90 font-semibold mt-2">VNĐ</p>
+                    <p className="text-2xl text-white/90 font-semibold mt-2">
+                      VNĐ
+                    </p>
                   </div>
                 </div>
               </div>
@@ -526,10 +616,15 @@ export default function SalaryTab() {
               {selectedEmployee.ghiChu && (
                 <div className="bg-yellow-50 rounded-xl shadow-md border-2 border-yellow-200 p-6">
                   <div className="flex items-start gap-3">
-                    <FileText className="text-yellow-600 flex-shrink-0 mt-1" size={20} />
+                    <FileText
+                      className="text-yellow-600 flex-shrink-0 mt-1"
+                      size={20}
+                    />
                     <div>
                       <h4 className="font-bold text-gray-800 mb-2">Ghi chú</h4>
-                      <p className="text-gray-700 leading-relaxed">{selectedEmployee.ghiChu}</p>
+                      <p className="text-gray-700 leading-relaxed">
+                        {selectedEmployee.ghiChu}
+                      </p>
                     </div>
                   </div>
                 </div>
