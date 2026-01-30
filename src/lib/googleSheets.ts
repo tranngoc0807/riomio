@@ -37,16 +37,27 @@ export interface Employee {
   id: number;
   name: string;
   position: string;
-  phone: string;
+  department: string;
+  gender: string;
+  employmentStatus: string;
   birthday: string;
   cccd: string;
+  cccdDate: string;
+  cccdPlace: string;
+  hometown: string;
   address: string;
+  contractType: string;
+  bankAccount: string;
+  phone: string; // Kept for backward compatibility
 }
 
 /**
  * Đọc dữ liệu nhân viên từ Google Sheets
  * ID được tự động generate, bỏ qua cột A (STT)
- * Header ở dòng 1, đọc dữ liệu từ dòng 2, cột B đến G
+ * Header ở dòng 1, đọc dữ liệu từ dòng 2, cột B đến N
+ * B: Họ và tên, C: Vị trí, D: Bộ phận, E: Giới tính, F: Tình trạng lao động,
+ * G: Ngày sinh, H: CCCD, I: Ngày cấp, J: Nơi Cấp, K: Quê Quán,
+ * L: Địa chỉ hiện tại, M: Loại hợp đồng, N: Tài khoản
  */
 export async function getEmployeesFromSheet(): Promise<Employee[]> {
   try {
@@ -54,7 +65,7 @@ export async function getEmployeesFromSheet(): Promise<Employee[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdNhanVienLuong,
-      range: `${sheetNameNhanVienLuong}!B2:G`, // Header dòng 1, dữ liệu từ dòng 2, đọc cột B-G
+      range: `${sheetNameNhanVienLuong}!B2:N`, // Header dòng 1, dữ liệu từ dòng 2, đọc cột B-N
     });
 
     const rows = response.data.values;
@@ -70,10 +81,18 @@ export async function getEmployeesFromSheet(): Promise<Employee[]> {
         id: index + 1, // Auto-generate ID từ 1, 2, 3...
         name: row[0] || "",
         position: row[1] || "",
-        phone: row[2] || "",
-        birthday: row[3] || "",
-        cccd: row[4] || "",
-        address: row[5] || "",
+        department: row[2] || "",
+        gender: row[3] || "",
+        employmentStatus: row[4] || "",
+        birthday: row[5] || "",
+        cccd: row[6] || "",
+        cccdDate: row[7] || "",
+        cccdPlace: row[8] || "",
+        hometown: row[9] || "",
+        address: row[10] || "",
+        contractType: row[11] || "",
+        bankAccount: row[12] || "",
+        phone: "", // Phone not available in this sheet
       }))
       .filter((emp) => emp.name.trim() !== ""); // Lọc bỏ các dòng trống
 

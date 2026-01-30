@@ -6,16 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import DocumentEditor from "./DocumentEditor";
 import { Eye } from "lucide-react";
-
-interface Employee {
-  id: number;
-  name: string;
-  position: string;
-  phone: string;
-  birthday: string;
-  cccd: string;
-  address: string;
-}
+import { Employee } from "@/lib/googleSheets";
 
 const getInitialContent = (employee?: Employee | null) => {
   return `
@@ -39,8 +30,8 @@ const getInitialContent = (employee?: Employee | null) => {
     <p style="margin-top: 16px;"><strong>BÊN B: NGƯỜI LAO ĐỘNG (Nhân viên)</strong></p>
     <p>Ông/Bà: <strong>${employee ? employee.name : "................................"}</strong></p>
     <p>Sinh ngày: ${employee ? employee.birthday : "................................"}</p>
-    <p>CMND/CCCD số: ${employee ? employee.cccd : "................................"} Cấp ngày: ................................ Tại: ................................</p>
-    <p>Quê quán: ................................</p>
+    <p>CMND/CCCD số: ${employee ? employee.cccd : "................................"} Cấp ngày: ${employee ? employee.cccdDate : "................................"} Tại: ${employee ? employee.cccdPlace : "................................"}</p>
+    <p>Quê quán: ${employee ? employee.hometown : "................................"}</p>
     <p>Chỗ ở hiện tại: ${employee ? employee.address : "................................"}</p>
 
     <p style="margin-top: 16px;">Thỏa thuận ký kết hợp đồng lao động với các điều khoản sau đây:</p>
