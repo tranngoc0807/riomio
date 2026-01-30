@@ -21,7 +21,7 @@ export default function SalaryTab() {
   const [error, setError] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] =
     useState<BangKeTienLuongItem | null>(null);
-  const [selectedMaPhieu, setSelectedMaPhieu] = useState<string>("all");
+  const [selectedMaPhieu, setSelectedMaPhieu] = useState<string>("");
 
   // Load salary data from Google Sheets on mount
   useEffect(() => {
@@ -37,6 +37,28 @@ export default function SalaryTab() {
 
       if (data.success && data.data.length > 0) {
         setSalaryData(data.data);
+
+        // Auto-select the current month's period if not already selected
+        if (!selectedMaPhieu) {
+          const uniqueList = (Array.from(
+            new Set(data.data.map((item: BangKeTienLuongItem) => item.maPhieu).filter((m: string) => m))
+          ) as string[]).sort((a, b) => b.localeCompare(a));
+
+          // Try to find the current month's period (e.g., BL01/26 for January 2026)
+          const now = new Date();
+          const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+          const currentYear = String(now.getFullYear()).slice(-2); // Get last 2 digits of year
+          const currentPeriod = `BL${currentMonth}/${currentYear}`;
+
+          // Check if current period exists, otherwise use the latest one
+          const defaultPeriod = uniqueList.includes(currentPeriod)
+            ? currentPeriod
+            : uniqueList[0];
+
+          if (defaultPeriod) {
+            setSelectedMaPhieu(defaultPeriod);
+          }
+        }
       } else {
         setError("Không có dữ liệu trong sheet");
       }
@@ -71,11 +93,8 @@ export default function SalaryTab() {
     new Set(salaryData.map((item) => item.maPhieu).filter((m) => m))
   ).sort((a, b) => b.localeCompare(a)); // Sort descending (newest first)
 
-  // Filter data by selected Mã phiếu
-  const filteredData =
-    selectedMaPhieu === "all"
-      ? salaryData
-      : salaryData.filter((item) => item.maPhieu === selectedMaPhieu);
+  // Filter data by selected Mã phiếu (always filter, no "all" option)
+  const filteredData = salaryData.filter((item) => item.maPhieu === selectedMaPhieu);
 
   // Calculate totals from filtered data
   const totals = filteredData.reduce(
@@ -135,7 +154,6 @@ export default function SalaryTab() {
               onChange={(e) => setSelectedMaPhieu(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="all">Tất cả</option>
               {uniqueMaPhieuList.map((maPhieu) => (
                 <option key={maPhieu} value={maPhieu}>
                   {maPhieu}
