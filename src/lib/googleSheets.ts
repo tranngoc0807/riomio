@@ -4936,9 +4936,9 @@ const spreadsheetIdRiomioLuong = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_LUONG 
 // Interface cho dữ liệu Bảng kê tiền lương từ Google Sheet
 export interface BangKeTienLuongItem {
   id: number;
-  maPhieu: string; // A: Mã phiếu
-  ngayBatDau: string; // B: Ngày bắt đầu
-  ngayKetThuc: string; // C: Ngày kết thúc
+  ngayBatDau: string; // A: Ngày bắt đầu
+  ngayKetThuc: string; // B: Ngày kết thúc
+  maPhieu: string; // C: Mã phiếu
   hoVaTen: string; // D: Họ và tên
   chucVu: string; // E: Chức vụ
   boPhan: string; // F: Bộ phận
@@ -5004,9 +5004,9 @@ export async function getBangKeTienLuongFromSheet(): Promise<BangKeTienLuongItem
     const bangKeTienLuongItems: BangKeTienLuongItem[] = rows
       .map((row, index) => ({
         id: index + 1,
-        maPhieu: row[0] || "", // A: Mã phiếu
-        ngayBatDau: row[1] || "", // B: Ngày bắt đầu
-        ngayKetThuc: row[2] || "", // C: Ngày kết thúc
+        ngayBatDau: row[0] || "", // A: Ngày bắt đầu
+        ngayKetThuc: row[1] || "", // B: Ngày kết thúc
+        maPhieu: row[2] || "", // C: Mã phiếu
         hoVaTen: row[3] || "", // D: Họ và tên
         chucVu: row[4] || "", // E: Chức vụ
         boPhan: row[5] || "", // F: Bộ phận
