@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getBangKeGiaCongFromSheet,
+  getDonGiaGiaCongFromSheet,
   getDinhMucSXFromSheet,
 } from "@/lib/googleSheets";
 
@@ -24,13 +24,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Lấy dữ liệu từ các bảng
-    const [bangKeGiaCongList, dinhMucList] = await Promise.all([
-      getBangKeGiaCongFromSheet(),
+    const [donGiaGiaCongList, dinhMucList] = await Promise.all([
+      getDonGiaGiaCongFromSheet(),
       getDinhMucSXFromSheet(),
     ]);
 
-    // Tìm thông tin trong Bảng kê gia công để lấy Xưởng SX
-    const giaCongInfo = bangKeGiaCongList.find((item) => item.maSP === code);
+    // Tìm thông tin trong Đơn giá gia công để lấy Xưởng SX
+    const giaCongInfo = donGiaGiaCongList.find((item) => item.maSP === code);
 
     // Tìm thông tin trong Định mức sản xuất
     const dinhMucInfo = dinhMucList.find((item) => item.maSP === code);
