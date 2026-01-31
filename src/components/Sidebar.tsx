@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Building2,
   Factory,
@@ -26,6 +26,8 @@ import {
   PackageSearch,
   Receipt,
   BookOpen,
+  DollarSign,
+  TrendingUp,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -192,6 +194,38 @@ const menuItems: MenuItem[] = [
     href: "/bao-cao",
     icon: FileBarChart,
     roles: FINANCIAL_ROLES,
+    subItems: [
+      {
+        name: "Báo cáo tài chính",
+        href: "/bao-cao?tab=tai-chinh",
+        icon: DollarSign,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Báo cáo bán hàng",
+        href: "/bao-cao?tab=ban-hang",
+        icon: TrendingUp,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Báo cáo kho",
+        href: "/bao-cao?tab=kho",
+        icon: Package,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Báo cáo dòng tiền",
+        href: "/bao-cao?tab=dong-tien",
+        icon: Wallet,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Báo cáo chi phí",
+        href: "/bao-cao?tab=chi-phi",
+        icon: Receipt,
+        roles: FINANCIAL_ROLES,
+      },
+    ],
   },
   {
     name: "Cấu hình",
@@ -231,10 +265,32 @@ const roleColors: Record<UserRole, string> = {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { profile, session, signOut, initialized } = useAuth();
+
+  // Helper function to check if a link is active (including query params)
+  const isLinkActive = (href: string) => {
+    const [hrefPath, hrefQuery] = href.split('?');
+
+    // Check pathname
+    if (pathname !== hrefPath) return false;
+
+    // If no query params in href, just check pathname
+    if (!hrefQuery) return true;
+
+    // Parse query params from href
+    const hrefParams = new URLSearchParams(hrefQuery);
+
+    // Check all query params match
+    for (const [key, value] of hrefParams.entries()) {
+      if (searchParams.get(key) !== value) return false;
+    }
+
+    return true;
+  };
 
   // Filter menu items based on user role
   const filteredMenuItems = menuItems
@@ -262,7 +318,7 @@ export default function Sidebar() {
     filteredMenuItems.forEach((item) => {
       if (item.subItems) {
         const hasActiveSubItem = item.subItems.some(
-          (sub) => pathname === sub.href
+          (sub) => isLinkActive(sub.href)
         );
         if (hasActiveSubItem) {
           setExpandedMenus((prev) =>
@@ -271,7 +327,7 @@ export default function Sidebar() {
         }
       }
     });
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   const toggleMenu = (href: string) => {
     setExpandedMenus((prev) =>
@@ -323,10 +379,10 @@ export default function Sidebar() {
               const Icon = item.icon;
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const isExpanded = expandedMenus.includes(item.href);
-              const isActive = pathname === item.href;
+              const isActive = isLinkActive(item.href);
               const hasActiveSubItem =
                 hasSubItems &&
-                item.subItems?.some((sub) => pathname === sub.href);
+                item.subItems?.some((sub) => isLinkActive(sub.href));
 
               return (
                 <li key={item.href}>
@@ -363,7 +419,7 @@ export default function Sidebar() {
                           <ul className="ml-4 pl-4 border-l border-blue-600 space-y-1">
                             {item.subItems?.map((subItem) => {
                               const SubIcon = subItem.icon;
-                              const isSubActive = pathname === subItem.href;
+                              const isSubActive = isLinkActive(subItem.href);
 
                               return (
                                 <li key={subItem.href}>

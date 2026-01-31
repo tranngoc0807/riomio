@@ -9936,3 +9936,552 @@ export async function getDashboardLoanData(): Promise<DashboardLoanData> {
     throw error;
   }
 }
+
+// ============================================
+// BÁO CÁO LÃI/LỖ & CÔNG NỢ
+// ============================================
+
+// Constants cho báo cáo
+const spreadsheetIdBaoCao = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAO_CAO || "";
+const sheetNameBCLaiLo = process.env.GOOGLE_SHEET_NAME_BC_LAI_LO || "BC Lãi/lỗ";
+const sheetNameBCCongNoKH = process.env.GOOGLE_SHEET_NAME_BC_CONG_NO_KH || "BC công nợ khách hàng";
+const sheetNameBCCongNoNCC = process.env.GOOGLE_SHEET_NAME_BC_CONG_NO_NCC_NPL || "BC công nợ phải trả NCC NPL";
+const sheetNameBCCongNoXuong = process.env.GOOGLE_SHEET_NAME_BC_CONG_NO_XUONG_SX || "BC công nợ phải trả xưởng SX";
+const sheetNameBCBanHangTheoThang = process.env.GOOGLE_SHEET_NAME_BC_BAN_HANG_THEO_THANG || "BC bán hàng theo tháng";
+const sheetNameBCSanPham = process.env.GOOGLE_SHEET_NAME_BC_SAN_PHAM || "BC Sản phẩm";
+const sheetNameBCNhanVien = process.env.GOOGLE_SHEET_NAME_BC_BAN_HANG_NHAN_VIEN || "BC BH Nhân viên";
+const sheetNameBCKhachHang = process.env.GOOGLE_SHEET_NAME_BC_KHACH_HANG || "BC Khách hàng";
+
+// Interface cho báo cáo lãi/lỗ
+export interface BaoCaoLaiLoRow {
+  stt: string;
+  chiTieu: string;
+  thangTruoc: number;
+  thangNay: number;
+  chenhLech: string;
+  tyTrong: string;
+}
+
+export interface BaoCaoLaiLoData {
+  year: number;
+  month: number;
+  rows: BaoCaoLaiLoRow[];
+}
+
+// Cập nhật tháng và năm vào sheet
+export async function updateBaoCaoLaiLoMonthYear(year: number, month: number) {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: spreadsheetIdBaoCao,
+      requestBody: {
+        data: [
+          {
+            range: `${sheetNameBCLaiLo}!E3`,
+            values: [[year]],
+          },
+          {
+            range: `${sheetNameBCLaiLo}!E4`,
+            values: [[month]],
+          },
+        ],
+        valueInputOption: "USER_ENTERED",
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating month/year:", error);
+    throw error;
+  }
+}
+
+// Lấy dữ liệu báo cáo lãi/lỗ
+export async function getBaoCaoLaiLo() {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format: 26.977.000,0)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      // Remove dots (thousands separator) and replace comma with dot (decimal separator)
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy năm và tháng từ E3 và E4
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCLaiLo}!E3:E4`,
+    });
+
+    const headerRows = headerResponse.data.values || [];
+    const year = parseInt(headerRows[0]?.[0] || "2026");
+    const month = parseInt(headerRows[1]?.[0] || "1");
+
+    // Lấy dữ liệu từ row 7 trở đi (STT, Chi tiêu, Tháng trước, Tháng nay, Chênh lệch, Tỷ trọng)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCLaiLo}!A7:F`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const parsedRows: BaoCaoLaiLoRow[] = rows
+      .filter((row) => row[0] || row[1]) // Có STT hoặc Chi tiêu
+      .map((row) => ({
+        stt: row[0] || "",
+        chiTieu: row[1] || "",
+        thangTruoc: parseNumber(row[2]),
+        thangNay: parseNumber(row[3]),
+        chenhLech: row[4] || "",
+        tyTrong: row[5] || "",
+      }));
+
+    return {
+      year,
+      month,
+      rows: parsedRows,
+    };
+  } catch (error) {
+    console.error("Error fetching Bao Cao Lai Lo:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BÁO CÁO CÔNG NỢ KHÁCH HÀNG
+// ============================================
+
+// Interface cho công nợ khách hàng
+export interface BaoCaoCongNoKHRow {
+  stt: number;
+  khachHang: string;
+  duDauKi: number;
+  phatSinh: number;
+  thanhToan: number;
+  duCuoiKi: number;
+}
+
+export interface BaoCaoCongNoKHData {
+  year: number;
+  month: number;
+  rows: BaoCaoCongNoKHRow[];
+}
+
+// Lấy dữ liệu báo cáo công nợ khách hàng
+export async function getBaoCaoCongNoKH() {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format: 26.977.000,0)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      // Remove dots (thousands separator) and replace comma with dot (decimal separator)
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy tháng/năm từ D3 (format: "1/2026")
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCCongNoKH}!D3`,
+    });
+
+    const monthYearStr = headerResponse.data.values?.[0]?.[0] || "1/2026";
+    const [monthStr, yearStr] = monthYearStr.split("/");
+    const month = parseInt(monthStr) || 1;
+    const year = parseInt(yearStr) || 2026;
+
+    // Lấy dữ liệu từ row 6 trở đi (STT, Khách hàng, Dư đầu kì, Phát sinh, Thanh toán, Dư cuối kì)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCCongNoKH}!A6:F`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const parsedRows: BaoCaoCongNoKHRow[] = rows
+      .filter((row) => row[0] && row[1]) // Có STT và Khách hàng
+      .map((row) => ({
+        stt: parseInt(row[0]) || 0,
+        khachHang: row[1] || "",
+        duDauKi: parseNumber(row[2]),
+        phatSinh: parseNumber(row[3]),
+        thanhToan: parseNumber(row[4]),
+        duCuoiKi: parseNumber(row[5]),
+      }));
+
+    return {
+      year,
+      month,
+      rows: parsedRows,
+    };
+  } catch (error) {
+    console.error("Error fetching Bao Cao Cong No KH:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BÁO CÁO CÔNG NỢ PHẢI TRẢ NCC NPL
+// ============================================
+
+// Interface cho công nợ NCC NPL
+export interface BaoCaoCongNoNCCRow {
+  stt: number;
+  nccNPL: string;
+  duDauKi: number;
+  phatSinh: number;
+  thanhToan: number;
+  duCuoiKi: number;
+}
+
+export interface BaoCaoCongNoNCCData {
+  year: number;
+  month: number;
+  rows: BaoCaoCongNoNCCRow[];
+}
+
+// Lấy dữ liệu báo cáo công nợ phải trả NCC NPL
+export async function getBaoCaoCongNoNCC() {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format: 26.977.000,0)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      // Remove dots (thousands separator) and replace comma with dot (decimal separator)
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy tháng/năm từ C3 (format: "1/2026")
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCCongNoNCC}!C3`,
+    });
+
+    const monthYearStr = headerResponse.data.values?.[0]?.[0] || "1/2026";
+    const [monthStr, yearStr] = monthYearStr.split("/");
+    const month = parseInt(monthStr) || 1;
+    const year = parseInt(yearStr) || 2026;
+
+    // Lấy dữ liệu từ row 6 trở đi (STT, NCC NPL, Dư đầu kì, Phát sinh, Thanh toán, Dư cuối kì)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCCongNoNCC}!A6:F`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const parsedRows: BaoCaoCongNoNCCRow[] = rows
+      .filter((row) => row[0] && row[1]) // Có STT và NCC NPL
+      .map((row) => ({
+        stt: parseInt(row[0]) || 0,
+        nccNPL: row[1] || "",
+        duDauKi: parseNumber(row[2]),
+        phatSinh: parseNumber(row[3]),
+        thanhToan: parseNumber(row[4]),
+        duCuoiKi: parseNumber(row[5]),
+      }));
+
+    return {
+      year,
+      month,
+      rows: parsedRows,
+    };
+  } catch (error) {
+    console.error("Error fetching Bao Cao Cong No NCC:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BÁO CÁO CÔNG NỢ PHẢI TRẢ XƯỞNG SX
+// ============================================
+
+// Interface cho công nợ xưởng SX
+export interface BaoCaoCongNoXuongRow {
+  stt: number;
+  xuongSX: string;
+  duDau: number;
+  tienGiaCong: number;
+  thanhToan: number;
+  duCuoi: number;
+}
+
+export interface BaoCaoCongNoXuongData {
+  year: number;
+  month: number;
+  rows: BaoCaoCongNoXuongRow[];
+}
+
+// Lấy dữ liệu báo cáo công nợ phải trả xưởng SX
+export async function getBaoCaoCongNoXuong() {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format: 26.977.000,0)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      // Remove dots (thousands separator) and replace comma with dot (decimal separator)
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy tháng/năm từ C3 (format: "01/2026")
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCCongNoXuong}!C3`,
+    });
+
+    const monthYearStr = headerResponse.data.values?.[0]?.[0] || "01/2026";
+    const [monthStr, yearStr] = monthYearStr.split("/");
+    const month = parseInt(monthStr) || 1;
+    const year = parseInt(yearStr) || 2026;
+
+    // Lấy dữ liệu từ row 6 trở đi (STT, Xưởng SX, Dư đầu, Tiền gia công, Thanh toán, Dư cuối)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCCongNoXuong}!A6:F`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const parsedRows: BaoCaoCongNoXuongRow[] = rows
+      .filter((row) => row[0] && row[1]) // Có STT và Xưởng SX
+      .map((row) => ({
+        stt: parseInt(row[0]) || 0,
+        xuongSX: row[1] || "",
+        duDau: parseNumber(row[2]),
+        tienGiaCong: parseNumber(row[3]),
+        thanhToan: parseNumber(row[4]),
+        duCuoi: parseNumber(row[5]),
+      }));
+
+    return {
+      year,
+      month,
+      rows: parsedRows,
+    };
+  } catch (error) {
+    console.error("Error fetching Bao Cao Cong No Xuong:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BÁO CÁO BÁN HÀNG THEO THÁNG
+// ============================================
+
+// Interface cho báo cáo bán hàng theo tháng
+export interface BaoCaoBanHangTheoThangRow {
+  thang: number;
+  nam: number;
+  doanhThu: number;
+  tienVon: number;
+  loiNhuan: number;
+}
+
+export interface BaoCaoBanHangTheoThangData {
+  rows: BaoCaoBanHangTheoThangRow[];
+}
+
+// Lấy dữ liệu báo cáo bán hàng theo tháng
+export async function getBaoCaoBanHangTheoThang() {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format: 404.757.660)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      // Remove dots (thousands separator) and replace comma with dot (decimal separator)
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy dữ liệu từ row 6 trở đi (Tháng, Năm, Doanh thu, Tiền vốn, Lợi nhuận)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCBanHangTheoThang}!A6:E`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const parsedRows: BaoCaoBanHangTheoThangRow[] = rows
+      .filter((row) => row[0] && row[1]) // Có tháng và năm
+      .map((row) => ({
+        thang: parseInt(row[0]) || 0,
+        nam: parseInt(row[1]) || 0,
+        doanhThu: parseNumber(row[2]),
+        tienVon: parseNumber(row[3]),
+        loiNhuan: parseNumber(row[4]),
+      }));
+
+    return {
+      rows: parsedRows,
+    };
+  } catch (error) {
+    console.error("Error fetching Bao Cao Ban Hang Theo Thang:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BÁO CÁO DOANH THU THEO SẢN PHẨM
+// ============================================
+
+// Interface cho báo cáo doanh thu theo sản phẩm
+export interface BaoCaoSanPhamRow {
+  tenSanPham: string;
+  soLuongBan: number;
+  doanhThu: number;
+  loiNhuanGop: number;
+}
+
+export interface BaoCaoSanPhamData {
+  rows: BaoCaoSanPhamRow[];
+}
+
+// Lấy dữ liệu báo cáo doanh thu theo sản phẩm
+export async function getBaoCaoSanPham() {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format: 102.826.712)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      // Remove dots (thousands separator) and replace comma with dot (decimal separator)
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy dữ liệu từ row 6 trở đi (Tên Sản phẩm, Số lượng bán, Doanh thu, Lợi nhuận góp)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCSanPham}!A6:D`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const parsedRows: BaoCaoSanPhamRow[] = rows
+      .filter((row) => row[0]) // Có tên sản phẩm
+      .map((row) => ({
+        tenSanPham: row[0] || "",
+        soLuongBan: parseInt(row[1]) || 0,
+        doanhThu: parseNumber(row[2]),
+        loiNhuanGop: parseNumber(row[3]),
+      }));
+
+    return {
+      rows: parsedRows,
+    };
+  } catch (error) {
+    console.error("Error fetching Bao Cao San Pham:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BÁO CÁO BÁN HÀNG THEO NHÂN VIÊN
+// ============================================
+
+// Interface cho báo cáo bán hàng theo nhân viên
+export interface BaoCaoNhanVienRow {
+  thang: number;
+  nhanVien: string;
+  doanhThu: number;
+  loiNhuanGop: number;
+}
+
+export interface BaoCaoNhanVienData {
+  rows: BaoCaoNhanVienRow[];
+}
+
+// Lấy dữ liệu báo cáo bán hàng theo nhân viên
+export async function getBaoCaoNhanVien() {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format: 142.832.873)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      // Remove dots (thousands separator) and replace comma with dot (decimal separator)
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy dữ liệu từ row 6 trở đi (Tháng, Nhân viên, Doanh thu, Lợi nhuận góp)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCNhanVien}!A6:D`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const parsedRows: BaoCaoNhanVienRow[] = rows
+      .filter((row) => row[0] && row[1]) // Có tháng và nhân viên
+      .map((row) => ({
+        thang: parseInt(row[0]) || 0,
+        nhanVien: row[1] || "",
+        doanhThu: parseNumber(row[2]),
+        loiNhuanGop: parseNumber(row[3]),
+      }));
+
+    return {
+      rows: parsedRows,
+    };
+  } catch (error) {
+    console.error("Error fetching Bao Cao Nhan Vien:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BÁO CÁO MUA HÀNG CỦA KHÁCH HÀNG
+// ============================================
+
+// Interface cho báo cáo mua hàng của khách hàng
+export interface BaoCaoKhachHangRow {
+  thang: number;
+  khachHang: string;
+  doanhThu: number;
+  loiNhuanGop: number;
+}
+
+export interface BaoCaoKhachHangData {
+  rows: BaoCaoKhachHangRow[];
+}
+
+// Lấy dữ liệu báo cáo mua hàng của khách hàng
+export async function getBaoCaoKhachHang() {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format: 98.229.600)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      // Remove dots (thousands separator) and replace comma with dot (decimal separator)
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy dữ liệu từ row 7 trở đi (Tháng, Khách hàng, Doanh thu, Lợi nhuận góp)
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCKhachHang}!A7:D`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const parsedRows: BaoCaoKhachHangRow[] = rows
+      .filter((row) => row[0] && row[1]) // Có tháng và khách hàng
+      .map((row) => ({
+        thang: parseInt(row[0]) || 0,
+        khachHang: row[1] || "",
+        doanhThu: parseNumber(row[2]),
+        loiNhuanGop: parseNumber(row[3]),
+      }));
+
+    return {
+      rows: parsedRows,
+    };
+  } catch (error) {
+    console.error("Error fetching Bao Cao Khach Hang:", error);
+    throw error;
+  }
+}
