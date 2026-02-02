@@ -175,12 +175,6 @@ const menuItems: MenuItem[] = [
     roles: FINANCIAL_ROLES,
     subItems: [
       {
-        name: "Lương & Bảo hiểm",
-        href: "/luong-bao-hiem",
-        icon: Users,
-        roles: FINANCIAL_ROLES,
-      },
-      {
         name: "Quản lý tiền vay",
         href: "/quan-ly-tien-vay",
         icon: HandCoins,

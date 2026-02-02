@@ -32,6 +32,9 @@ export async function getGoogleSheetsClient() {
 const spreadsheetIdNhanVienLuong = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_LUONG || "";
 const sheetNameNhanVienLuong = process.env.GOOGLE_SHEET_NAME_NHAN_VIEN_LUONG || "Nhân viên";
 const sheetNameBangChamCong = process.env.GOOGLE_SHEET_NAME_BANG_CHAM_CONG || "Bảng chấm công";
+const sheetNameBangChamCongDiMuon = process.env.GOOGLE_SHEET_NAME_BANG_CHAM_CONG_DI_MUON || "Bảng chấm đi muộn";
+const sheetNameBangChamCongThemGio = process.env.GOOGLE_SHEET_NAME_BANG_CHAM_CONG_THEM_GIO || "Bảng chấm thêm giờ";
+const sheetNameBangNghiPhep = process.env.GOOGLE_SHEET_NAME_BANG_CHAM_CONG_NGHI_PHEP || "Ngày phép";
 
 // Interface cho dữ liệu nhân viên
 export interface Employee {
@@ -5086,6 +5089,97 @@ export async function getBangKeTienLuongFromSheet(): Promise<BangKeTienLuongItem
   }
 }
 
+// ==================== PHIẾU TÍNH LƯƠNG HÀNG THÁNG (MONTHLY SALARY SLIP) ====================
+
+const sheetNamePhieuTinhLuongHangThang = process.env.GOOGLE_SHEET_NAME_PHIEU_TINH_LUONG_HANG_THANG || "Phiếu tính lương hàng tháng";
+
+/**
+ * Đọc dữ liệu Phiếu tính lương hàng tháng từ Google Sheets
+ * Sheet: "Phiếu tính lương hàng tháng" trong spreadsheet GOOGLE_SPREADSHEET_ID_RIOMIO_LUONG
+ * Mã phiếu ở cell B5, data từ row 9
+ * Columns: A(STT), B(Họ và tên), C(Chức vụ), D(Bộ phận), E(Mức lương cơ bản), ... AG(Ghi chú)
+ */
+export async function getPhieuTinhLuongHangThangFromSheet(): Promise<BangKeTienLuongItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc mã phiếu từ cell B5
+    const maPhieuResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdRiomioLuong,
+      range: `'${sheetNamePhieuTinhLuongHangThang}'!B5`,
+    });
+    const maPhieu = maPhieuResponse.data.values?.[0]?.[0] || "";
+
+    // Đọc data từ row 9
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdRiomioLuong,
+      range: `'${sheetNamePhieuTinhLuongHangThang}'!A9:AG`, // Data từ dòng 9, A(STT) đến AG(Ghi chú)
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No data found in Phiếu tính lương hàng tháng sheet.");
+      return [];
+    }
+
+    // Helper function để parse số từ string có format VN (dấu . ngăn cách hàng nghìn)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(/,/g, "");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Chuyển đổi dữ liệu từ sheet thành BangKeTienLuongItem objects
+    // Mapping: A(0)=STT(skip), B(1)=Họ và tên, C(2)=Chức vụ, D(3)=Bộ phận, E(4)=Mức lương cơ bản, ...
+    const phieuTinhLuongItems: BangKeTienLuongItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngayBatDau: "", // Không có trong sheet này
+        ngayKetThuc: "", // Không có trong sheet này
+        maPhieu: maPhieu, // Lấy từ cell B5
+        hoVaTen: row[1] || "", // B: Họ và tên
+        chucVu: row[2] || "", // C: Chức vụ
+        boPhan: row[3] || "", // D: Bộ phận
+        mucLuongCoBan: parseNumber(row[4]), // E: Mức lương cơ bản
+        thuongChuyenCan: parseNumber(row[5]), // F: Thưởng chuyên cần
+        quyLuong: parseNumber(row[6]), // G: Quỹ lương
+        phuCapAnTruaNgay: parseNumber(row[7]), // H: Phụ cấp ăn trưa/ngày
+        congThucTe: parseNumber(row[8]), // I: Công thực tế
+        diMuon: parseNumber(row[9]), // J: Đi muộn
+        lamThemGio: parseNumber(row[10]), // K: Làm thêm giờ
+        luongThucTe: parseNumber(row[11]), // L: Lương thực tế
+        truDiMuon: parseNumber(row[12]), // M: Trừ đi muộn
+        luongThemGio: parseNumber(row[13]), // N: Lương thêm giờ
+        phuCapAnTruaThang: parseNumber(row[14]), // O: Phụ cấp ăn trưa/tháng
+        phuCapXangXeThang: parseNumber(row[15]), // P: Phụ cấp xăng xe/tháng
+        phuCapDienThoaiThang: parseNumber(row[16]), // Q: Phụ cấp điện thoại/tháng
+        phuCapDocHaiNangNhocThang: parseNumber(row[17]), // R: Phụ cấp độc hại, nặng nhọc/tháng
+        phuCapTrangPhucThang: parseNumber(row[18]), // S: Phụ cấp trang phục/tháng
+        phuCapNhaOThang: parseNumber(row[19]), // T: Phụ cấp nhà ở/tháng
+        giuTreVaNuoiCon: parseNumber(row[20]), // U: Giữ trẻ và nuôi con
+        phuCapKhac: parseNumber(row[21]), // V: Phụ cấp khác
+        tongPhuCap: parseNumber(row[22]), // W: Tổng phụ cấp
+        kpiSXVP: parseNumber(row[23]), // X: KPI SX, VP
+        kpiSale: parseNumber(row[24]), // Y: KPI Sale
+        thuongSangKien: parseNumber(row[25]), // Z: Thưởng sáng kiến
+        congKhac: parseNumber(row[26]), // AA: Cộng khác
+        truBHYTBHXHBHTN: parseNumber(row[27]), // AB: Trừ BHYT, BHXH, BHTN
+        truTNCN: parseNumber(row[28]), // AC: Trừ TNCN
+        truCongDoan: parseNumber(row[29]), // AD: Trừ công đoàn
+        truKhac: parseNumber(row[30]), // AE: Trừ khác
+        thucLinh: parseNumber(row[31]), // AF: Thực lĩnh
+        ghiChu: row[32] || "", // AG: Ghi chú
+      }))
+      .filter((item) => item.hoVaTen.trim() !== ""); // Lọc bỏ các dòng trống
+
+    return phieuTinhLuongItems;
+  } catch (error) {
+    console.error("Error reading Phiếu tính lương hàng tháng from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ==================== CHẤM CÔNG (ATTENDANCE) ====================
 
 // Interface cho dữ liệu chấm công - theo cấu trúc sheet "Bảng chấm công"
@@ -5311,6 +5405,986 @@ export async function saveChamCongToSheet(
     };
   } catch (error) {
     console.error("Error saving attendance to Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// CHẤM CÔNG ĐI MUỘN (Late Attendance)
+// ============================================
+
+export interface DiMuonItem {
+  id: number;
+  ngayBatDau: string;    // A: Ngày bắt đầu (DD/MM/YYYY)
+  ngayKetThuc: string;   // B: Ngày kết thúc
+  maPhieu: string;       // C: Mã phiếu
+  nhanVien: string;      // D: Nhân viên
+  days: (number | string)[]; // E-AI: Array 31 phần tử cho 31 ngày, giá trị: số phút đi muộn
+  diMuonPhut: number;    // AJ: Đi muộn (phút)
+  diMuonNgay: number;    // AK: Đi muộn (ngày)
+  thang: number;
+  nam: number;
+}
+
+/**
+ * Lấy dữ liệu chấm công đi muộn theo tháng/năm
+ */
+export async function getDiMuonFromSheet(thang: number, nam: number): Promise<DiMuonItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangChamCongDiMuon}'!A6:AK500`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No late attendance data found in sheet.");
+      return [];
+    }
+
+    const diMuonData: DiMuonItem[] = [];
+
+    rows.forEach((row, index) => {
+      const ngayBatDau = row[0] || "";
+
+      if (!ngayBatDau) return;
+
+      // Parse date to get month/year
+      const dateParts = ngayBatDau.split("/");
+      if (dateParts.length >= 3) {
+        const rowThang = parseInt(dateParts[1]);
+        const rowNam = parseInt(dateParts[2]);
+
+        if (rowThang === thang && rowNam === nam) {
+          // Days are in columns E-AI (index 4-34)
+          const days: (number | string)[] = [];
+          for (let i = 0; i < 31; i++) {
+            const cellValue = row[4 + i];
+            if (cellValue === undefined || cellValue === "") {
+              days.push("");
+            } else {
+              const numValue = parseFloat(String(cellValue).replace(",", "."));
+              days.push(isNaN(numValue) ? cellValue : numValue);
+            }
+          }
+
+          // Summary columns: AJ (35), AK (36)
+          const parseNumber = (val: string | undefined): number => {
+            if (!val) return 0;
+            const num = parseFloat(String(val).replace(",", "."));
+            return isNaN(num) ? 0 : num;
+          };
+
+          diMuonData.push({
+            id: index + 6,
+            ngayBatDau,
+            ngayKetThuc: row[1] || "",
+            maPhieu: row[2] || "",
+            nhanVien: row[3] || "",
+            days,
+            diMuonPhut: parseNumber(row[35]),
+            diMuonNgay: parseNumber(row[36]),
+            thang,
+            nam,
+          });
+        }
+      }
+    });
+
+    return diMuonData;
+  } catch (error) {
+    console.error("Error reading late attendance from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật một ô chấm công đi muộn
+ */
+export async function updateDiMuonCell(
+  rowNumber: number,
+  dayIndex: number,
+  value: number | string
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Days start at column E (index 4)
+    const columnIndex = 4 + dayIndex;
+    const columnLetter = String.fromCharCode(65 + Math.floor(columnIndex / 26) - (columnIndex >= 26 ? 1 : 0)) +
+      (columnIndex >= 26 ? String.fromCharCode(65 + (columnIndex % 26)) : String.fromCharCode(65 + columnIndex));
+
+    const range = `'${sheetNameBangChamCongDiMuon}'!${columnLetter}${rowNumber}`;
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[value === "" ? "" : value]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating late attendance cell:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lưu dữ liệu chấm công đi muộn
+ */
+export async function saveDiMuonToSheet(
+  data: DiMuonItem[]
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const thang = data[0]?.thang;
+    const nam = data[0]?.nam;
+
+    // Columns: A-D (dates, code, employee), E-AI (31 days), AJ-AK (summary)
+    const newRows = data.map((item) => [
+      item.ngayBatDau,
+      item.ngayKetThuc,
+      item.maPhieu,
+      item.nhanVien,
+      ...item.days,
+      item.diMuonPhut || 0,
+      item.diMuonNgay || 0,
+    ]);
+
+    // Find the last row with data
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangChamCongDiMuon}'!A6:A500`,
+    });
+
+    const existingRows = existingResponse.data.values || [];
+    const nextRow = 6 + existingRows.length;
+
+    if (newRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdNhanVienLuong,
+        range: `'${sheetNameBangChamCongDiMuon}'!A${nextRow}:AK`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: newRows,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Đã lưu chấm công đi muộn tháng ${thang}/${nam} thành công!`,
+    };
+  } catch (error) {
+    console.error("Error saving late attendance to Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// CHẤM CÔNG THÊM GIỜ (Overtime Attendance)
+// ============================================
+
+export interface ThemGioItem {
+  id: number;
+  ngayBatDau: string;    // A: Ngày bắt đầu (DD/MM/YYYY)
+  ngayKetThuc: string;   // B: Ngày kết thúc
+  maPhieu: string;       // C: Mã phiếu
+  nhanVien: string;      // D: Nhân viên
+  days: (number | string)[]; // E-AI: Array 31 phần tử cho 31 ngày, giá trị: số phút thêm giờ
+  themGioPhut: number;   // AJ: Thêm giờ (phút)
+  themGioNgay: number;   // AK: Thêm giờ (ngày)
+  thang: number;
+  nam: number;
+}
+
+/**
+ * Lấy dữ liệu chấm công thêm giờ theo tháng/năm
+ */
+export async function getThemGioFromSheet(thang: number, nam: number): Promise<ThemGioItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangChamCongThemGio}'!A6:AK500`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No overtime attendance data found in sheet.");
+      return [];
+    }
+
+    const themGioData: ThemGioItem[] = [];
+
+    rows.forEach((row, index) => {
+      const ngayBatDau = row[0] || "";
+
+      if (!ngayBatDau) return;
+
+      // Parse date to get month/year
+      const dateParts = ngayBatDau.split("/");
+      if (dateParts.length >= 3) {
+        const rowThang = parseInt(dateParts[1]);
+        const rowNam = parseInt(dateParts[2]);
+
+        if (rowThang === thang && rowNam === nam) {
+          // Days are in columns E-AI (index 4-34)
+          const days: (number | string)[] = [];
+          for (let i = 0; i < 31; i++) {
+            const cellValue = row[4 + i];
+            if (cellValue === undefined || cellValue === "") {
+              days.push("");
+            } else {
+              const numValue = parseFloat(String(cellValue).replace(",", "."));
+              days.push(isNaN(numValue) ? cellValue : numValue);
+            }
+          }
+
+          // Summary columns: AJ (35), AK (36)
+          const parseNumber = (val: string | undefined): number => {
+            if (!val) return 0;
+            const num = parseFloat(String(val).replace(",", "."));
+            return isNaN(num) ? 0 : num;
+          };
+
+          themGioData.push({
+            id: index + 6,
+            ngayBatDau,
+            ngayKetThuc: row[1] || "",
+            maPhieu: row[2] || "",
+            nhanVien: row[3] || "",
+            days,
+            themGioPhut: parseNumber(row[35]),
+            themGioNgay: parseNumber(row[36]),
+            thang,
+            nam,
+          });
+        }
+      }
+    });
+
+    return themGioData;
+  } catch (error) {
+    console.error("Error reading overtime attendance from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật một ô chấm công thêm giờ
+ */
+export async function updateThemGioCell(
+  rowNumber: number,
+  dayIndex: number,
+  value: number | string
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Days start at column E (index 4)
+    const columnIndex = 4 + dayIndex;
+    const columnLetter = String.fromCharCode(65 + Math.floor(columnIndex / 26) - (columnIndex >= 26 ? 1 : 0)) +
+      (columnIndex >= 26 ? String.fromCharCode(65 + (columnIndex % 26)) : String.fromCharCode(65 + columnIndex));
+
+    const range = `'${sheetNameBangChamCongThemGio}'!${columnLetter}${rowNumber}`;
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[value === "" ? "" : value]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating overtime attendance cell:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lưu dữ liệu chấm công thêm giờ
+ */
+export async function saveThemGioToSheet(
+  data: ThemGioItem[]
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const thang = data[0]?.thang;
+    const nam = data[0]?.nam;
+
+    // Columns: A-D (dates, code, employee), E-AI (31 days), AJ-AK (summary)
+    const newRows = data.map((item) => [
+      item.ngayBatDau,
+      item.ngayKetThuc,
+      item.maPhieu,
+      item.nhanVien,
+      ...item.days,
+      item.themGioPhut || 0,
+      item.themGioNgay || 0,
+    ]);
+
+    // Find the last row with data
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangChamCongThemGio}'!A6:A500`,
+    });
+
+    const existingRows = existingResponse.data.values || [];
+    const nextRow = 6 + existingRows.length;
+
+    if (newRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdNhanVienLuong,
+        range: `'${sheetNameBangChamCongThemGio}'!A${nextRow}:AK`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: newRows,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Đã lưu chấm công thêm giờ tháng ${thang}/${nam} thành công!`,
+    };
+  } catch (error) {
+    console.error("Error saving overtime attendance to Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// NGHỈ PHÉP (Leave Management)
+// ============================================
+
+export interface NghiPhepItem {
+  id: number;
+  ngayBatDau: string;    // A: Ngày bắt đầu (DD/MM/YYYY)
+  ngayKetThuc: string;   // B: Ngày kết thúc
+  maPhieu: string;       // C: Mã phiếu
+  nhanVien: string;      // D: Nhân viên
+  phepThang: number;     // E: Phép tháng
+  suDung: number;        // F: Sử dụng
+  tonPhep: number;       // G: Tồn phép
+  thang: number;
+  nam: number;
+}
+
+/**
+ * Lấy dữ liệu nghỉ phép theo tháng/năm
+ */
+export async function getNghiPhepFromSheet(thang: number, nam: number): Promise<NghiPhepItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangNghiPhep}'!A6:G500`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No leave data found in sheet.");
+      return [];
+    }
+
+    const nghiPhepData: NghiPhepItem[] = [];
+
+    rows.forEach((row, index) => {
+      const ngayBatDau = row[0] || "";
+
+      if (!ngayBatDau) return;
+
+      // Parse date to get month/year
+      const dateParts = ngayBatDau.split("/");
+      if (dateParts.length >= 3) {
+        const rowThang = parseInt(dateParts[1]);
+        const rowNam = parseInt(dateParts[2]);
+
+        if (rowThang === thang && rowNam === nam) {
+          const parseNumber = (val: string | undefined): number => {
+            if (!val) return 0;
+            const num = parseFloat(String(val).replace(",", "."));
+            return isNaN(num) ? 0 : num;
+          };
+
+          nghiPhepData.push({
+            id: index + 6,
+            ngayBatDau,
+            ngayKetThuc: row[1] || "",
+            maPhieu: row[2] || "",
+            nhanVien: row[3] || "",
+            phepThang: parseNumber(row[4]),
+            suDung: parseNumber(row[5]),
+            tonPhep: parseNumber(row[6]),
+            thang,
+            nam,
+          });
+        }
+      }
+    });
+
+    return nghiPhepData;
+  } catch (error) {
+    console.error("Error reading leave data from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lưu dữ liệu nghỉ phép
+ */
+export async function saveNghiPhepToSheet(
+  data: NghiPhepItem[]
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const thang = data[0]?.thang;
+    const nam = data[0]?.nam;
+
+    // Columns: A-D (dates, code, employee), E-G (summary)
+    const newRows = data.map((item) => [
+      item.ngayBatDau,
+      item.ngayKetThuc,
+      item.maPhieu,
+      item.nhanVien,
+      item.phepThang || 0,
+      item.suDung || 0,
+      item.tonPhep || 0,
+    ]);
+
+    // Find the last row with data
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangNghiPhep}'!A6:A500`,
+    });
+
+    const existingRows = existingResponse.data.values || [];
+    const nextRow = 6 + existingRows.length;
+
+    if (newRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdNhanVienLuong,
+        range: `'${sheetNameBangNghiPhep}'!A${nextRow}:G`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: newRows,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Đã lưu nghỉ phép tháng ${thang}/${nam} thành công!`,
+    };
+  } catch (error) {
+    console.error("Error saving leave data to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật một dòng nghỉ phép
+ * rowNumber: số dòng trong sheet (id)
+ * phepThang: số phép tháng mới
+ * suDung: số phép sử dụng mới
+ */
+export async function updateNghiPhepRow(
+  rowNumber: number,
+  phepThang: number,
+  suDung: number
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const tonPhep = phepThang - suDung;
+
+    // Update columns E, F, G (phepThang, suDung, tonPhep)
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangNghiPhep}'!E${rowNumber}:G${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[phepThang, suDung, tonPhep]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating leave row:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// BẢO HIỂM (Insurance)
+// ============================================
+
+const sheetNameBaoHiemTyLe = process.env.GOOGLE_SHEET_NAME_BAO_HIEM_TY_LE || "Tỷ lệ % đóng BH";
+const sheetNameBaoHiem = process.env.GOOGLE_SHEET_NAME_BAO_HIEM || "Bảo hiểm";
+
+// Interface cho tỷ lệ bảo hiểm
+export interface BaoHiemTyLe {
+  id: number;
+  batDau: string;
+  ketThuc: string;
+  loaiBH: string;
+  bhxhDN: number;
+  bhxhNV: number;
+  bhytDN: number;
+  bhytNV: number;
+  bhtnDN: number;
+  bhtnNV: number;
+}
+
+// Interface cho bảo hiểm nhân viên
+export interface BaoHiemNhanVien {
+  id: number;
+  maPhieu: string;
+  ngayBatDau: string;
+  ngayKetThuc: string;
+  hoTen: string;
+  chucVu: string;
+  boPhan: string;
+  mucLuongCoBan: number;
+  bhxhDN: number;
+  bhxhNV: number;
+  bhytDN: number;
+  bhytNV: number;
+  bhtnDN: number;
+  bhtnNV: number;
+  tongDN: number;
+  tongNV: number;
+  ghiChu: string;
+  // Tỷ lệ % áp dụng (cột Q-Y)
+  loaiBH: string;
+  tyLeBhxhDN: number;
+  tyLeBhxhNV: number;
+  tyLeBhytDN: number;
+  tyLeBhytNV: number;
+  tyLeBhtnDN: number;
+  tyLeBhtnNV: number;
+  tyLeTongDN: number;
+  tyLeTongNV: number;
+  thang: number;
+  nam: number;
+}
+
+/**
+ * Lấy dữ liệu tỷ lệ bảo hiểm
+ */
+export async function getBaoHiemTyLeFromSheet(): Promise<BaoHiemTyLe[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBaoHiemTyLe}'!A6:I100`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No insurance rate data found.");
+      return [];
+    }
+
+    const parsePercent = (val: string | undefined): number => {
+      if (!val) return 0;
+      const str = String(val).replace(",", ".").replace("%", "");
+      const num = parseFloat(str);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const result: BaoHiemTyLe[] = [];
+
+    rows.forEach((row, index) => {
+      if (!row[0]) return;
+
+      result.push({
+        id: index + 6,
+        batDau: row[0] || "",
+        ketThuc: row[1] || "",
+        loaiBH: row[2] || "",
+        bhxhDN: parsePercent(row[3]),
+        bhxhNV: parsePercent(row[4]),
+        bhytDN: parsePercent(row[5]),
+        bhytNV: parsePercent(row[6]),
+        bhtnDN: parsePercent(row[7]),
+        bhtnNV: parsePercent(row[8]),
+      });
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error reading insurance rate data:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lưu tỷ lệ bảo hiểm mới
+ */
+export async function saveBaoHiemTyLeToSheet(
+  data: Omit<BaoHiemTyLe, "id">
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Find next empty row
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBaoHiemTyLe}'!A6:A100`,
+    });
+
+    const existingRows = existingResponse.data.values || [];
+    const nextRow = 6 + existingRows.length;
+
+    const newRow = [
+      data.batDau,
+      data.ketThuc,
+      data.loaiBH,
+      `${data.bhxhDN}%`,
+      `${data.bhxhNV}%`,
+      `${data.bhytDN}%`,
+      `${data.bhytNV}%`,
+      `${data.bhtnDN}%`,
+      `${data.bhtnNV}%`,
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBaoHiemTyLe}'!A${nextRow}:I${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [newRow],
+      },
+    });
+
+    return {
+      success: true,
+      message: "Đã lưu tỷ lệ bảo hiểm thành công!",
+    };
+  } catch (error) {
+    console.error("Error saving insurance rate:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy dữ liệu bảo hiểm nhân viên theo tháng/năm
+ */
+export async function getBaoHiemFromSheet(thang: number, nam: number): Promise<BaoHiemNhanVien[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Read columns A-Y (including percentage rates)
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBaoHiem}'!A6:Y500`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No insurance data found.");
+      return [];
+    }
+
+    const parseNumber = (val: string | undefined): number => {
+      if (!val) return 0;
+      const str = String(val).replace(/,/g, "").replace(/\./g, "");
+      const num = parseFloat(str);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const parsePercent = (val: string | undefined): number => {
+      if (!val) return 0;
+      const str = String(val).replace(",", ".").replace("%", "");
+      const num = parseFloat(str);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const result: BaoHiemNhanVien[] = [];
+
+    rows.forEach((row, index) => {
+      const ngayBatDau = row[1] || "";
+      if (!ngayBatDau) return;
+
+      // Parse date to get month/year
+      const dateParts = ngayBatDau.split("/");
+      if (dateParts.length >= 3) {
+        const rowThang = parseInt(dateParts[1]);
+        const rowNam = parseInt(dateParts[2]);
+
+        if (rowThang === thang && rowNam === nam) {
+          result.push({
+            id: index + 6,
+            maPhieu: row[0] || "",
+            ngayBatDau,
+            ngayKetThuc: row[2] || "",
+            hoTen: row[3] || "",
+            chucVu: row[4] || "",
+            boPhan: row[5] || "",
+            mucLuongCoBan: parseNumber(row[6]),
+            bhxhDN: parseNumber(row[7]),
+            bhxhNV: parseNumber(row[8]),
+            bhytDN: parseNumber(row[9]),
+            bhytNV: parseNumber(row[10]),
+            bhtnDN: parseNumber(row[11]),
+            bhtnNV: parseNumber(row[12]),
+            tongDN: parseNumber(row[13]),
+            tongNV: parseNumber(row[14]),
+            ghiChu: row[15] || "",
+            // Tỷ lệ % (cột Q-Y, index 16-24)
+            loaiBH: row[16] || "",
+            tyLeBhxhDN: parsePercent(row[17]),
+            tyLeBhxhNV: parsePercent(row[18]),
+            tyLeBhytDN: parsePercent(row[19]),
+            tyLeBhytNV: parsePercent(row[20]),
+            tyLeBhtnDN: parsePercent(row[21]),
+            tyLeBhtnNV: parsePercent(row[22]),
+            tyLeTongDN: parsePercent(row[23]),
+            tyLeTongNV: parsePercent(row[24]),
+            thang,
+            nam,
+          });
+        }
+      }
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error reading insurance data:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lưu dữ liệu bảo hiểm nhân viên
+ */
+export async function saveBaoHiemToSheet(
+  data: BaoHiemNhanVien[]
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Find next empty row
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBaoHiem}'!A6:A500`,
+    });
+
+    const existingRows = existingResponse.data.values || [];
+    const nextRow = 6 + existingRows.length;
+
+    const newRows = data.map((item) => [
+      item.maPhieu,
+      item.ngayBatDau,
+      item.ngayKetThuc,
+      item.hoTen,
+      item.chucVu,
+      item.boPhan,
+      item.mucLuongCoBan,
+      item.bhxhDN,
+      item.bhxhNV,
+      item.bhytDN,
+      item.bhytNV,
+      item.bhtnDN,
+      item.bhtnNV,
+      item.tongDN,
+      item.tongNV,
+      item.ghiChu,
+    ]);
+
+    if (newRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdNhanVienLuong,
+        range: `'${sheetNameBaoHiem}'!A${nextRow}:P${nextRow + newRows.length - 1}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: newRows,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Đã lưu bảo hiểm cho ${data.length} nhân viên!`,
+    };
+  } catch (error) {
+    console.error("Error saving insurance data:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// CƠ CHẾ LƯƠNG (Salary Structure)
+// ============================================
+
+const sheetNameCoCheLuong = process.env.GOOGLE_SHEET_NAME_CO_CHE_LUONG || "Cơ chế lương";
+
+// Interface cho cơ chế lương
+export interface CoCheLuong {
+  id: number;
+  ngayBatDau: string;
+  ngayKetThuc: string;
+  maPhieu: string; // Mã phiếu như PTL01/26
+  nhanVien: string;
+  boPhan: string;
+  mucLuongCoBan: number;
+  thuongChuyenCan: number;
+  phuCapAnTrua: number;
+  phuCapXangXe: number;
+  phuCapDienThoai: number;
+  phuCapKhac1: number;
+  phuCapTrangPhuc: number;
+  phuCapNhaO: number;
+  giuTreNuoiCon: number;
+  phuCapKhac: number;
+  thuongSangKien: number;
+  luongPartime: number;
+  ghiChu: string;
+  thang: number;
+  nam: number;
+}
+
+/**
+ * Lấy dữ liệu cơ chế lương theo tháng/năm
+ */
+export async function getCoCheLuongFromSheet(thang: number, nam: number): Promise<CoCheLuong[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameCoCheLuong}'!A6:R500`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No salary structure data found.");
+      return [];
+    }
+
+    const parseNumber = (val: string | undefined): number => {
+      if (!val) return 0;
+      if (String(val).startsWith('#')) return 0;
+      const str = String(val).replace(/,/g, "").replace(/\./g, "");
+      const num = parseFloat(str);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const result: CoCheLuong[] = [];
+
+    rows.forEach((row, index) => {
+      const ngayBatDau = row[0] || "";
+      if (!ngayBatDau) return;
+
+      // Parse date to get month/year
+      const dateParts = ngayBatDau.split("/");
+      if (dateParts.length >= 3) {
+        const rowThang = parseInt(dateParts[1]);
+        const rowNam = parseInt(dateParts[2]);
+
+        if (rowThang === thang && rowNam === nam) {
+          result.push({
+            id: index + 6,
+            ngayBatDau,
+            ngayKetThuc: row[1] || "",
+            maPhieu: row[2] || "",
+            nhanVien: row[3] || "",
+            boPhan: row[4] || "",
+            mucLuongCoBan: parseNumber(row[5]),
+            thuongChuyenCan: parseNumber(row[6]),
+            phuCapAnTrua: parseNumber(row[7]),
+            phuCapXangXe: parseNumber(row[8]),
+            phuCapDienThoai: parseNumber(row[9]),
+            phuCapKhac1: parseNumber(row[10]),
+            phuCapTrangPhuc: parseNumber(row[11]),
+            phuCapNhaO: parseNumber(row[12]),
+            giuTreNuoiCon: parseNumber(row[13]),
+            phuCapKhac: parseNumber(row[14]),
+            thuongSangKien: parseNumber(row[15]),
+            luongPartime: parseNumber(row[16]),
+            ghiChu: row[17] || "",
+            thang,
+            nam,
+          });
+        }
+      }
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error reading salary structure data:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lưu dữ liệu cơ chế lương
+ */
+export async function saveCoCheLuongToSheet(
+  data: CoCheLuong[]
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Find next empty row
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameCoCheLuong}'!A6:A500`,
+    });
+
+    const existingRows = existingResponse.data.values || [];
+    const nextRow = 6 + existingRows.length;
+
+    const newRows = data.map((item) => [
+      item.ngayBatDau,
+      item.ngayKetThuc,
+      item.maPhieu,
+      item.nhanVien,
+      item.boPhan,
+      item.mucLuongCoBan,
+      item.thuongChuyenCan,
+      item.phuCapAnTrua,
+      item.phuCapXangXe,
+      item.phuCapDienThoai,
+      item.phuCapKhac1,
+      item.phuCapTrangPhuc,
+      item.phuCapNhaO,
+      item.giuTreNuoiCon,
+      item.phuCapKhac,
+      item.thuongSangKien,
+      item.luongPartime,
+      item.ghiChu,
+    ]);
+
+    if (newRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdNhanVienLuong,
+        range: `'${sheetNameCoCheLuong}'!A${nextRow}:R${nextRow + newRows.length - 1}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: newRows,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Đã lưu cơ chế lương cho ${data.length} nhân viên!`,
+    };
+  } catch (error) {
+    console.error("Error saving salary structure data:", error);
     throw error;
   }
 }
