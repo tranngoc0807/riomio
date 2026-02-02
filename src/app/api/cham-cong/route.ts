@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getChamCongFromSheet, saveChamCongToSheet, ChamCongItem } from "@/lib/googleSheets";
+import { getChamCongFromSheet, saveChamCongToSheet, updateChamCongCell, ChamCongItem } from "@/lib/googleSheets";
 
 /**
  * GET /api/cham-cong?thang=1&nam=2025
@@ -76,6 +76,55 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: error.message || "Failed to save attendance to Google Sheets",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/cham-cong
+ * Cập nhật một ô chấm công
+ * Body: { rowNumber: number, dayIndex: number, value: number | string }
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { rowNumber, dayIndex, value } = body;
+
+    if (!rowNumber || dayIndex === undefined) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu rowNumber hoặc dayIndex",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (dayIndex < 0 || dayIndex > 30) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "dayIndex phải từ 0-30 (ngày 1-31)",
+        },
+        { status: 400 }
+      );
+    }
+
+    await updateChamCongCell(rowNumber, dayIndex, value);
+
+    return NextResponse.json({
+      success: true,
+      message: `Đã cập nhật chấm công ngày ${dayIndex + 1}`,
+    });
+  } catch (error: any) {
+    console.error("Error updating attendance cell:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Failed to update attendance cell",
       },
       { status: 500 }
     );

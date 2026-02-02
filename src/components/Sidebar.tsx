@@ -28,6 +28,11 @@ import {
   BookOpen,
   DollarSign,
   TrendingUp,
+  UserCog,
+  FileText,
+  Clock,
+  Banknote,
+  Shield,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -223,6 +228,44 @@ const menuItems: MenuItem[] = [
         name: "Báo cáo chi phí",
         href: "/bao-cao?tab=chi-phi",
         icon: Receipt,
+        roles: FINANCIAL_ROLES,
+      },
+    ],
+  },
+  {
+    name: "Nhân sự",
+    href: "/nhan-su",
+    icon: UserCog,
+    roles: FINANCIAL_ROLES,
+    subItems: [
+      {
+        name: "Danh sách nhân viên",
+        href: "/nhan-su?tab=danh-sach",
+        icon: Users,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Quy chế & Hợp đồng",
+        href: "/nhan-su?tab=quy-che-hop-dong",
+        icon: FileText,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Chấm công nhân viên",
+        href: "/nhan-su?tab=cham-cong",
+        icon: Clock,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Bảng lương",
+        href: "/nhan-su?tab=bang-luong",
+        icon: Banknote,
+        roles: FINANCIAL_ROLES,
+      },
+      {
+        name: "Bảo hiểm",
+        href: "/nhan-su?tab=bao-hiem",
+        icon: Shield,
         roles: FINANCIAL_ROLES,
       },
     ],

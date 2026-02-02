@@ -31,6 +31,7 @@ export async function getGoogleSheetsClient() {
 // Constants cho nhân viên lương
 const spreadsheetIdNhanVienLuong = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_LUONG || "";
 const sheetNameNhanVienLuong = process.env.GOOGLE_SHEET_NAME_NHAN_VIEN_LUONG || "Nhân viên";
+const sheetNameBangChamCong = process.env.GOOGLE_SHEET_NAME_BANG_CHAM_CONG || "Bảng chấm công";
 
 // Interface cho dữ liệu nhân viên
 export interface Employee {
@@ -169,57 +170,61 @@ export async function addEmployeeToSheet(employee: Employee): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data (từ dòng 6 trở đi)
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${sheetName}!A:G`, // Đọc toàn bộ từ A đến G
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `${sheetNameNhanVienLuong}!B6:N`, // Đọc từ B6 đến N
     });
 
     const allRows = response.data.values || [];
 
-    // Bỏ qua header (dòng 1), tìm dòng cuối cùng có dữ liệu
-    let lastDataRow = 1; // Dòng 1 là header
-    for (let i = allRows.length - 1; i >= 1; i--) {
+    // Tìm dòng cuối cùng có dữ liệu
+    let lastDataRowIndex = -1;
+    for (let i = allRows.length - 1; i >= 0; i--) {
       // Kiểm tra xem dòng có dữ liệu không (kiểm tra cột B - name)
-      if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
-        lastDataRow = i + 1; // +1 vì index 0-based -> row number 1-based
+      if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
+        lastDataRowIndex = i;
         break;
       }
     }
 
     // Dòng mới sẽ là dòng ngay sau dòng cuối cùng có dữ liệu
-    const nextRow = lastDataRow + 1;
+    // Data bắt đầu từ dòng 6, nên dòng mới = 6 + lastDataRowIndex + 1
+    const nextRow = lastDataRowIndex >= 0 ? 6 + lastDataRowIndex + 1 : 6;
 
-    // Đếm số nhân viên thực tế để đánh STT (không tính dòng 1 - header)
-    const employeeRows = allRows.slice(1).filter(
-      (row) => row && row[1] && row[1].toString().trim() !== ""
-    );
-    const sttNumber = employeeRows.length + 1;
-
-    // Ghi cả STT (cột A) và dữ liệu nhân viên (cột B-G)
+    // Ghi dữ liệu nhân viên (cột B-N, 13 cột)
+    // B: Họ và tên, C: Vị trí, D: Bộ phận, E: Giới tính, F: Tình trạng lao động,
+    // G: Ngày sinh, H: CCCD, I: Ngày cấp, J: Nơi Cấp, K: Quê Quán,
+    // L: Địa chỉ hiện tại, M: Loại hợp đồng, N: Tài khoản
     const values = [
       [
-        sttNumber, // Cột A: STT
-        employee.name, // Cột B
-        employee.position, // Cột C
-        employee.phone, // Cột D
-        employee.birthday, // Cột E
-        employee.cccd, // Cột F
-        employee.address, // Cột G
+        employee.name,             // B: Họ và tên
+        employee.position,         // C: Vị trí
+        employee.department,       // D: Bộ phận
+        employee.gender,           // E: Giới tính
+        employee.employmentStatus, // F: Tình trạng lao động
+        employee.birthday,         // G: Ngày sinh
+        employee.cccd,             // H: CCCD
+        employee.cccdDate,         // I: Ngày cấp
+        employee.cccdPlace,        // J: Nơi Cấp
+        employee.hometown,         // K: Quê Quán
+        employee.address,          // L: Địa chỉ hiện tại
+        employee.contractType,     // M: Loại hợp đồng
+        employee.bankAccount,      // N: Tài khoản
       ],
     ];
 
     // Ghi dữ liệu vào dòng mới
     await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `${sheetName}!A${nextRow}:G${nextRow}`, // Ghi từ cột A đến G
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `${sheetNameNhanVienLuong}!B${nextRow}:N${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
       },
     });
 
-    console.log(`Successfully added employee: ${employee.name} with STT: ${sttNumber} at row: ${nextRow}`);
+    console.log(`Successfully added employee: ${employee.name} at row: ${nextRow}`);
   } catch (error) {
     console.error("Error adding employee to Google Sheets:", error);
     throw error;
@@ -228,9 +233,9 @@ export async function addEmployeeToSheet(employee: Employee): Promise<void> {
 
 /**
  * Cập nhật thông tin một nhân viên trong Google Sheets
- * ID được dùng để xác định vị trí dòng (ID = row index + 1)
- * Ghi vào cột B-G, bỏ qua cột A (STT)
- * Header ở dòng 1, dữ liệu từ dòng 2: ID 1 = dòng 2, ID 2 = dòng 3, etc.
+ * ID được dùng để xác định vị trí dòng
+ * Header ở dòng 5, dữ liệu từ dòng 6: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+ * Ghi vào cột B-N
  */
 export async function updateEmployeeInSheet(
   employee: Employee
@@ -238,23 +243,30 @@ export async function updateEmployeeInSheet(
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
-    const rowNumber = employee.id + 1;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+    const rowNumber = employee.id + 5;
 
     const values = [
       [
-        employee.name,
-        employee.position,
-        employee.phone,
-        employee.birthday,
-        employee.cccd,
-        employee.address,
+        employee.name,             // B: Họ và tên
+        employee.position,         // C: Vị trí
+        employee.department,       // D: Bộ phận
+        employee.gender,           // E: Giới tính
+        employee.employmentStatus, // F: Tình trạng lao động
+        employee.birthday,         // G: Ngày sinh
+        employee.cccd,             // H: CCCD
+        employee.cccdDate,         // I: Ngày cấp
+        employee.cccdPlace,        // J: Nơi Cấp
+        employee.hometown,         // K: Quê Quán
+        employee.address,          // L: Địa chỉ hiện tại
+        employee.contractType,     // M: Loại hợp đồng
+        employee.bankAccount,      // N: Tài khoản
       ],
     ];
 
     await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `${sheetName}!B${rowNumber}:G${rowNumber}`,
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `${sheetNameNhanVienLuong}!B${rowNumber}:N${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -270,8 +282,8 @@ export async function updateEmployeeInSheet(
 
 /**
  * Xóa một nhân viên khỏi Google Sheets
- * ID được dùng để xác định vị trí dòng (ID = row index + 1)
- * Header ở dòng 1, dữ liệu từ dòng 2: ID 1 = dòng 2, ID 2 = dòng 3, etc.
+ * ID được dùng để xác định vị trí dòng
+ * Header ở dòng 5, dữ liệu từ dòng 6: ID 1 = dòng 6, ID 2 = dòng 7, etc.
  */
 export async function deleteEmployeeFromSheet(
   employeeId: number
@@ -279,29 +291,29 @@ export async function deleteEmployeeFromSheet(
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
-    const rowNumber = employeeId + 1;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+    const rowNumber = employeeId + 5;
 
     // Lấy sheetId để xóa dòng - tìm sheet theo tên
     const sheetMetadata = await sheets.spreadsheets.get({
-      spreadsheetId,
+      spreadsheetId: spreadsheetIdNhanVienLuong,
     });
 
-    // Tìm sheet có tên khớp với sheetName
+    // Tìm sheet có tên khớp với sheetNameNhanVienLuong
     const targetSheet = sheetMetadata.data.sheets?.find(
-      (sheet) => sheet.properties?.title === sheetName
+      (sheet) => sheet.properties?.title === sheetNameNhanVienLuong
     );
 
     if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
       console.error("Available sheets:", sheetMetadata.data.sheets?.map(s => s.properties?.title));
-      throw new Error(`Cannot find sheet named "${sheetName}" to delete row`);
+      throw new Error(`Cannot find sheet named "${sheetNameNhanVienLuong}" to delete row`);
     }
 
     const sheetId = targetSheet.properties.sheetId;
 
     // Xóa dòng
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
+      spreadsheetId: spreadsheetIdNhanVienLuong,
       requestBody: {
         requests: [
           {
@@ -5076,26 +5088,40 @@ export async function getBangKeTienLuongFromSheet(): Promise<BangKeTienLuongItem
 
 // ==================== CHẤM CÔNG (ATTENDANCE) ====================
 
-const sheetNameChamCong = process.env.GOOGLE_SHEET_NAME_CHAM_CONG || "ChấmCông";
-
-// Interface cho dữ liệu chấm công
+// Interface cho dữ liệu chấm công - theo cấu trúc sheet "Bảng chấm công"
+// Header ở dòng 5, data từ dòng 6
+// A: Ngày bắt đầu, B: Ngày kết thúc, C: Mã phiếu, D: Nhân viên
+// E-AI: Ngày 1-31 (index 4-34), AJ: Công tháng (35), AK: Phép tháng (36)
+// AL: Phép sử dụng (37), AM: Phép tồn (38), AN: Nghỉ lễ tính công (39), AO: Tổng công (40)
 export interface ChamCongItem {
-  stt: number;
-  hoTen: string;
-  chucVu: string;
-  thang: number;
-  nam: number;
-  days: string[]; // Array 31 phần tử cho 31 ngày, giá trị: P, L, A, O, hoặc ""
-  tongCong: number;
+  id: number;
+  ngayBatDau: string;    // A: Ngày bắt đầu (DD/MM/YYYY)
+  ngayKetThuc: string;   // B: Ngày kết thúc
+  maPhieu: string;       // C: Mã phiếu
+  nhanVien: string;      // D: Nhân viên
+  days: (number | string)[]; // E-AI: Array 31 phần tử cho 31 ngày, giá trị: 1, 0.5, NP, NL, "", etc.
+  congThang: number;     // AJ: Công tháng (index 35)
+  phepThang: number;     // AK: Phép tháng (index 36)
+  phepSuDung: number;    // AL: Phép sử dụng (index 37)
+  phepTon: number;       // AM: Phép tồn (index 38)
+  nghiLeTinhCong: number; // AN: Nghỉ lễ tính công (index 39)
+  tongCong: number;      // AO: Tổng công (index 40)
+  thang: number;         // Computed from ngayBatDau
+  nam: number;           // Computed from ngayBatDau
 }
 
 // Trạng thái chấm công
-export type AttendanceStatus = "P" | "L" | "A" | "O" | "";
+export type AttendanceStatus = "1" | "0.5" | "NP" | "NL" | "";
 
 /**
  * Đọc dữ liệu chấm công từ Google Sheets theo tháng/năm
- * Data được lưu từ row 51 trở đi (row 50 là header)
- * Cấu trúc: STT, HoTen, ChucVu, Thang, Nam, Ngay1-31, TongCong
+ * Sheet: "Bảng chấm công" trong spreadsheet RIOMIO_LUONG
+ * Header ở dòng 5, data từ dòng 6
+ * Cấu trúc cột:
+ * A: Ngày bắt đầu (0), B: Ngày kết thúc (1), C: Mã phiếu (2), D: Nhân viên (3)
+ * E-AI: Ngày 1-31 (index 4-34)
+ * AJ: Công tháng (35), AK: Phép tháng (36), AL: Phép sử dụng (37)
+ * AM: Phép tồn (38), AN: Nghỉ lễ tính công (39), AO: Tổng công (40)
  */
 export async function getChamCongFromSheet(
   thang: number,
@@ -5104,10 +5130,10 @@ export async function getChamCongFromSheet(
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Đọc data từ row 51 (A51:AK) - bỏ qua row 50 là header
+    // Đọc data từ row 6 (A6:AP) - bỏ qua row 5 là header
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: `'${sheetNameChamCong}'!A51:AK200`,
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangChamCong}'!A6:AP500`,
     });
 
     const rows = response.data.values;
@@ -5117,22 +5143,62 @@ export async function getChamCongFromSheet(
       return [];
     }
 
-    // Lọc theo tháng và năm (D=Thang index 3, E=Nam index 4)
+    // Parse date from DD/MM/YYYY format
+    const parseDate = (dateStr: string): { month: number; year: number } => {
+      if (!dateStr) return { month: 0, year: 0 };
+      const parts = dateStr.split("/");
+      if (parts.length === 3) {
+        return { month: parseInt(parts[1]) || 0, year: parseInt(parts[2]) || 0 };
+      }
+      return { month: 0, year: 0 };
+    };
+
+    // Parse number với định dạng châu Âu (dấu phẩy thay dấu chấm)
+    const parseNumber = (val: string | undefined): number => {
+      if (!val) return 0;
+      // Thay dấu phẩy bằng dấu chấm để parse được số thập phân
+      const normalized = val.toString().replace(",", ".");
+      return parseFloat(normalized) || 0;
+    };
+
+    // Lọc theo tháng và năm (dựa vào cột A - Ngày bắt đầu)
     const chamCongItems: ChamCongItem[] = rows
-      .filter((row) => {
-        const rowThang = parseInt(row[3]) || 0;
-        const rowNam = parseInt(row[4]) || 0;
-        return rowThang === thang && rowNam === nam;
+      .map((row, index) => {
+        const ngayBatDau = row[0] || "";
+        const { month, year } = parseDate(ngayBatDau);
+
+        return {
+          id: index + 6, // Row number in sheet (starting from row 6)
+          ngayBatDau: ngayBatDau,
+          ngayKetThuc: row[1] || "",
+          maPhieu: row[2] || "",
+          nhanVien: row[3] || "",
+          // Cột E-AI (index 4-34) = Ngày 1-31
+          days: Array.from({ length: 31 }, (_, i) => {
+            const val = row[4 + i]; // Bắt đầu từ index 4 (cột E = ngày 1)
+            if (val === undefined || val === "") return "";
+            // Handle NP, NL or numeric values
+            if (typeof val === "string" && (val === "NP" || val === "NL" || val.match(/^[A-Za-z]+$/))) {
+              return val;
+            }
+            const normalized = val.toString().replace(",", ".");
+            const num = parseFloat(normalized);
+            return isNaN(num) ? val : num;
+          }),
+          congThang: parseNumber(row[35]),   // AJ: Công tháng (index 35)
+          phepThang: parseNumber(row[36]),   // AK: Phép tháng (index 36)
+          phepSuDung: parseNumber(row[37]),  // AL: Phép sử dụng (index 37)
+          phepTon: parseNumber(row[38]),     // AM: Phép tồn (index 38)
+          nghiLeTinhCong: parseNumber(row[39]), // AN: Nghỉ lễ tính công (index 39)
+          tongCong: parseNumber(row[40]),    // AO: Tổng công (index 40)
+          thang: month,
+          nam: year,
+        };
       })
-      .map((row) => ({
-        stt: parseInt(row[0]) || 0,
-        hoTen: row[1] || "",
-        chucVu: row[2] || "",
-        thang: parseInt(row[3]) || 0,
-        nam: parseInt(row[4]) || 0,
-        days: Array.from({ length: 31 }, (_, i) => row[5 + i] || ""),
-        tongCong: parseInt(row[36]) || 0,
-      }));
+      .filter((item) => {
+        // Lọc những dòng có tên nhân viên và khớp tháng/năm
+        return item.nhanVien.trim() !== "" && item.thang === thang && item.nam === nam;
+      });
 
     return chamCongItems;
   } catch (error) {
@@ -5142,62 +5208,99 @@ export async function getChamCongFromSheet(
 }
 
 /**
+ * Cập nhật một ô chấm công trong Google Sheets
+ * @param rowNumber Số dòng trong sheet (row 6 = nhân viên đầu tiên)
+ * @param dayIndex Ngày trong tháng (0-30 cho ngày 1-31)
+ * @param value Giá trị mới (1, 0.5, NP, "")
+ */
+export async function updateChamCongCell(
+  rowNumber: number,
+  dayIndex: number,
+  value: number | string
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Ngày 1-31 ở cột E-AI (index 4-34)
+    // Ngày 1 = cột E (index 4), ngày 2 = cột F (index 5), ...
+    const columnIndex = 4 + dayIndex; // 0-based, E=4
+
+    // Tính column letter (A=0 -> 'A', Z=25 -> 'Z', AA=26, etc.)
+    let columnLetter: string;
+    if (columnIndex < 26) {
+      columnLetter = String.fromCharCode(65 + columnIndex); // A-Z
+    } else {
+      // AA, AB, AC... (index 26 = AA)
+      columnLetter = 'A' + String.fromCharCode(65 + (columnIndex - 26));
+    }
+
+    const range = `'${sheetNameBangChamCong}'!${columnLetter}${rowNumber}`;
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[value === "" ? "" : value]],
+      },
+    });
+
+    console.log(`Updated attendance at ${range} to ${value}`);
+  } catch (error) {
+    console.error("Error updating attendance cell:", error);
+    throw error;
+  }
+}
+
+/**
  * Lưu dữ liệu chấm công vào Google Sheets
- * Data được lưu từ row 51 trở đi
+ * Sheet: "Bảng chấm công" trong spreadsheet RIOMIO_LUONG
+ * Chức năng này hiện tại chưa được sử dụng - chỉ đọc dữ liệu từ sheet
  */
 export async function saveChamCongToSheet(
   data: ChamCongItem[]
 ): Promise<{ success: boolean; message: string }> {
   try {
     const sheets = await getGoogleSheetsClient();
-
-    // Đọc toàn bộ data hiện có từ row 51
-    const existingResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: `'${sheetNameChamCong}'!A51:AK200`,
-    });
-
-    const existingRows = existingResponse.data.values || [];
     const thang = data[0]?.thang;
     const nam = data[0]?.nam;
 
-    // Tìm các dòng của tháng khác để giữ lại
-    const otherMonthRows = existingRows.filter((row) => {
-      const rowThang = parseInt(row[3]) || 0;
-      const rowNam = parseInt(row[4]) || 0;
-      return !(rowThang === thang && rowNam === nam);
+    // Chuyển data thành rows để ghi vào sheet
+    // Cột A-D: Ngày bắt đầu, Ngày kết thúc, Mã phiếu, Nhân viên
+    // Cột E-AI: Ngày 1-31
+    // Cột AJ-AO: Công tháng, Phép tháng, Phép sử dụng, Phép tồn, Nghỉ lễ tính công, Tổng công
+    const newRows = data.map((item) => [
+      item.ngayBatDau,
+      item.ngayKetThuc,
+      item.maPhieu,
+      item.nhanVien,
+      ...item.days,
+      // Summary columns
+      item.congThang || 0,
+      item.phepThang || 0,
+      item.phepSuDung || 0,
+      item.phepTon || 0,
+      item.nghiLeTinhCong || 0,
+      item.tongCong || 0,
+    ]);
+
+    // Tìm dòng cuối cùng có dữ liệu
+    const existingResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangChamCong}'!A6:A500`,
     });
 
-    // Chuyển data mới thành rows
-    const newRows = data.map((item) => {
-      const tongCong = item.days.filter((d) => d === "P" || d === "L").length;
-      return [
-        item.stt.toString(),
-        item.hoTen,
-        item.chucVu,
-        item.thang.toString(),
-        item.nam.toString(),
-        ...item.days,
-        tongCong.toString(),
-      ];
-    });
+    const existingRows = existingResponse.data.values || [];
+    const nextRow = 6 + existingRows.length;
 
-    // Gộp data cũ (các tháng khác) với data mới
-    const allRows = [...otherMonthRows, ...newRows];
-
-    // Clear data area và ghi lại toàn bộ
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: spreadsheetId,
-      range: `'${sheetNameChamCong}'!A51:AK200`,
-    });
-
-    if (allRows.length > 0) {
+    // Ghi dữ liệu mới vào dòng tiếp theo
+    if (newRows.length > 0) {
       await sheets.spreadsheets.values.update({
-        spreadsheetId: spreadsheetId,
-        range: `'${sheetNameChamCong}'!A51:AK`,
-        valueInputOption: "RAW",
+        spreadsheetId: spreadsheetIdNhanVienLuong,
+        range: `'${sheetNameBangChamCong}'!A${nextRow}:AP`,
+        valueInputOption: "USER_ENTERED",
         requestBody: {
-          values: allRows,
+          values: newRows,
         },
       });
     }
