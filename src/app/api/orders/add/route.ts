@@ -36,8 +36,6 @@ export async function POST(request: NextRequest) {
       date: body.date || new Date().toISOString().split("T")[0],
       customer: body.customer,
       productCode: body.productCode || "",
-      color: body.color || "",
-      size: body.size || "",
       image: body.image || "",
       items: body.items || 0,
       productPrice: body.productPrice || 0,
@@ -49,7 +47,6 @@ export async function POST(request: NextRequest) {
       paymentDiscount: body.paymentDiscount || "",
       total: body.total || 0,
       salesUser: body.salesUser || "",
-      status: body.status || "pending",
       notes: body.notes || "",
     };
 

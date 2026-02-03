@@ -35,8 +35,9 @@ interface Order {
   paymentDiscount: string;
   total: number;
   salesUser: string;
-  status: "completed" | "processing" | "pending" | "shipping";
   notes: string;
+  // Optional for backward compatibility
+  status?: "completed" | "processing" | "pending" | "shipping";
 }
 
 // Interface for selected product in the form (multi-product)
@@ -63,11 +64,12 @@ interface GroupedOrder {
   paymentDiscount: string;
   total: number;
   salesUser: string;
-  status: "completed" | "processing" | "pending" | "shipping";
   notes: string;
   products: Order[];
   productCount: number;
   totalItems: number;
+  // Optional for backward compatibility
+  status?: "completed" | "processing" | "pending" | "shipping";
 }
 
 interface Customer {
@@ -115,7 +117,6 @@ const INITIAL_ORDER = {
   paymentDiscount: "",
   total: 0,
   salesUser: "",
-  status: "pending" as "completed" | "processing" | "pending" | "shipping",
   notes: "",
 };
 
@@ -215,7 +216,6 @@ export default function OrdersTab() {
           paymentDiscount: order.paymentDiscount,
           total: 0,
           salesUser: order.salesUser,
-          status: order.status,
           notes: order.notes,
           products: [],
           productCount: 0,
@@ -569,6 +569,9 @@ export default function OrdersTab() {
       );
 
       // Create orders sequentially to avoid race condition
+      let hasError = false;
+      let errorMessage = "";
+
       for (const product of selectedProducts) {
         const orderData = {
           code: formOrderCode,
@@ -586,7 +589,6 @@ export default function OrdersTab() {
           paymentDiscount: formPaymentDiscount,
           total: product.subtotalAfterDiscount + paymentDiscountPerProduct,
           salesUser: profile?.full_name || profile?.email || getCachedProfileName(),
-          status: "pending",
           notes: formNotes,
         };
 
@@ -598,8 +600,15 @@ export default function OrdersTab() {
 
         const result = await response.json();
         if (!result.success) {
-          toast.error(`Lỗi khi thêm sản phẩm ${product.productCode}`);
+          hasError = true;
+          errorMessage = result.error || `Lỗi khi thêm sản phẩm ${product.productCode}`;
+          toast.error(errorMessage);
+          break; // Dừng lại khi có lỗi
         }
+      }
+
+      if (hasError) {
+        return; // Không đóng modal, không báo thành công
       }
 
       await fetchOrders();
@@ -720,6 +729,8 @@ export default function OrdersTab() {
 
       // Find all orders with this code
       const ordersToDelete = orders.filter((o) => o.code === orderToDelete);
+      let hasError = false;
+      let errorMessage = "";
 
       // Delete all sequentially
       for (const order of ordersToDelete) {
@@ -728,8 +739,15 @@ export default function OrdersTab() {
         });
         const result = await response.json();
         if (!result.success) {
-          toast.error(`Lỗi khi xóa đơn hàng ${order.id}`);
+          hasError = true;
+          errorMessage = result.error || `Lỗi khi xóa đơn hàng ${order.id}`;
+          toast.error(errorMessage);
+          break; // Dừng lại khi có lỗi
         }
+      }
+
+      if (hasError) {
+        return; // Không đóng modal, không báo thành công
       }
 
       await fetchOrders();
@@ -738,9 +756,9 @@ export default function OrdersTab() {
       toast.success(
         `Xóa đơn hàng ${orderToDelete} thành công (${ordersToDelete.length} sản phẩm)`
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting order:", error);
-      toast.error("Lỗi khi xóa đơn hàng");
+      toast.error(error.message || "Lỗi khi xóa đơn hàng");
     } finally {
       setIsDeleting(false);
     }
@@ -969,8 +987,9 @@ export default function OrdersTab() {
                       <tr className="bg-gray-50">
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã SP</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-14">Hình ảnh</th>
                         <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">SL</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Giá SP</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Giá sỉ</th>
                         <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Tiền hàng</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">CT BH</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">CK</th>
@@ -983,6 +1002,20 @@ export default function OrdersTab() {
                         <tr key={product.id} className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
                           <td className="px-3 py-2 text-sm font-medium text-blue-600">{product.productCode}</td>
+                          <td className="px-3 py-2 text-center">
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.productCode}
+                                className="w-10 h-10 object-cover rounded mx-auto"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-sm text-center">{product.items}</td>
                           <td className="px-3 py-2 text-sm text-right">{product.productPrice.toLocaleString("vi-VN")}</td>
                           <td className="px-3 py-2 text-sm text-right">{product.subtotal.toLocaleString("vi-VN")}</td>
@@ -995,21 +1028,21 @@ export default function OrdersTab() {
                     </tbody>
                     <tfoot className="bg-gray-100">
                       <tr>
-                        <td colSpan={4} className="px-3 py-2 text-sm font-medium text-right">Tổng tiền hàng sau CK:</td>
+                        <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">Tổng tiền hàng sau CK:</td>
                         <td colSpan={4} className="px-3 py-2 text-sm text-right"></td>
                         <td className="px-3 py-2 text-sm text-right font-semibold text-blue-600">
                           {viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}đ
                         </td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="px-3 py-2 text-sm font-medium text-right">CK thanh toán:</td>
+                        <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">CK thanh toán:</td>
                         <td colSpan={4} className="px-3 py-2 text-sm text-right"></td>
                         <td className="px-3 py-2 text-sm text-right font-medium text-orange-600">
                           {viewGroupedOrder.paymentDiscount || "-"}
                         </td>
                       </tr>
                       <tr className="bg-green-50">
-                        <td colSpan={4} className="px-3 py-2 text-sm font-bold text-right">Khách phải trả:</td>
+                        <td colSpan={5} className="px-3 py-2 text-sm font-bold text-right">Khách phải trả:</td>
                         <td colSpan={4} className="px-3 py-2 text-sm text-right"></td>
                         <td className="px-3 py-2 text-sm text-right font-bold text-green-600 text-lg">
                           {viewGroupedOrder.total.toLocaleString("vi-VN")}đ
@@ -1035,58 +1068,116 @@ export default function OrdersTab() {
                 ref={printRef}
                 style={{
                   width: "210mm",
-                  minHeight: "148mm",
-                  padding: "10mm",
+                  minHeight: "180mm",
+                  padding: "8mm",
                   backgroundColor: "#fff",
                   fontFamily: "Arial, sans-serif",
                 }}
               >
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "15px", borderBottom: "2px solid #2563eb", paddingBottom: "10px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {/* Header with logo and date */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "5px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <div
                       style={{
-                        width: "40px",
-                        height: "40px",
+                        width: "45px",
+                        height: "45px",
                         borderRadius: "50%",
-                        background: "linear-gradient(135deg, #ef4444 50%, #000 50%)",
+                        background: "linear-gradient(135deg, #22c55e 50%, #ef4444 50%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        fontWeight: "bold",
+                        fontSize: "10px",
                       }}
-                    />
+                    >
+                      <span style={{ transform: "rotate(-10deg)" }}>R</span>
+                    </div>
                     <div>
-                      <div style={{ fontWeight: "bold", fontSize: "18px" }}>RIOMIO</div>
-                      <div style={{ fontSize: "10px", color: "#666" }}>Thời trang trẻ em</div>
+                      <div style={{ fontWeight: "bold", fontSize: "14px", color: "#16a34a" }}>RIOMIO OFFICIAL</div>
+                      <div style={{ fontSize: "9px", color: "#666" }}>ADD: B12 TT7 Nguyễn Sơn Hà, KĐT Văn Quán, Phúc La, Hà Đông, Hà Nội</div>
+                      <div style={{ fontSize: "9px", color: "#666" }}>Hotline: 0944168822</div>
                     </div>
                   </div>
-                  <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                    <div style={{ fontWeight: "bold", fontSize: "16px", color: "#2563eb" }}>ĐƠN HÀNG</div>
-                    <div style={{ fontSize: "14px", fontWeight: "bold" }}>{viewGroupedOrder.orderCode}</div>
-                    <div style={{ fontSize: "11px", color: "#666" }}>Ngày: {viewGroupedOrder.date}</div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "12px", color: "#666" }}>Ngày đặt:</div>
+                    <div style={{ fontSize: "16px", fontWeight: "bold", color: "#dc2626" }}>{viewGroupedOrder.date}</div>
                   </div>
                 </div>
 
-                {/* Customer Info */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "15px", padding: "10px", backgroundColor: "#f9fafb", borderRadius: "6px" }}>
-                  <div>
-                    <span style={{ fontSize: "11px", color: "#666" }}>Khách hàng:</span>
-                    <p style={{ fontWeight: "600", fontSize: "13px" }}>{viewGroupedOrder.customer}</p>
+                {/* Title */}
+                <div style={{ textAlign: "center", margin: "10px 0 15px" }}>
+                  <h1 style={{ fontSize: "22px", fontWeight: "bold", margin: 0 }}>ĐƠN ĐẶT HÀNG</h1>
+                </div>
+
+                {/* Order Info - 2 columns */}
+                <div style={{ display: "flex", gap: "20px", marginBottom: "15px" }}>
+                  {/* Left column - Customer info */}
+                  <div style={{ flex: "1" }}>
+                    <div style={{ marginBottom: "6px" }}>
+                      <span style={{ fontWeight: "bold", fontSize: "11px" }}>Mã ĐH: </span>
+                      <span style={{ fontSize: "12px", fontWeight: "bold", color: "#2563eb" }}>{viewGroupedOrder.orderCode}</span>
+                    </div>
+                    <div style={{ marginBottom: "6px" }}>
+                      <span style={{ fontWeight: "bold", fontSize: "11px" }}>KH: </span>
+                      <span style={{ fontSize: "12px" }}>{viewGroupedOrder.customer}</span>
+                    </div>
+                    <div style={{ marginBottom: "6px" }}>
+                      <span style={{ fontWeight: "bold", fontSize: "11px" }}>User BH: </span>
+                      <span style={{ fontSize: "12px" }}>{viewGroupedOrder.salesUser || "-"}</span>
+                    </div>
+                    {viewGroupedOrder.notes && (
+                      <div style={{ marginBottom: "6px" }}>
+                        <span style={{ fontWeight: "bold", fontSize: "11px" }}>Ghi chú: </span>
+                        <span style={{ fontSize: "11px", color: "#666" }}>{viewGroupedOrder.notes}</span>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <span style={{ fontSize: "11px", color: "#666" }}>Nhân viên bán hàng:</span>
-                    <p style={{ fontWeight: "600", fontSize: "13px" }}>{viewGroupedOrder.salesUser || "-"}</p>
+
+                  {/* Right column - Summary */}
+                  <div style={{ flex: "1", backgroundColor: "#f9fafb", padding: "10px", borderRadius: "6px", fontSize: "11px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                      <span>Tổng số lượng:</span>
+                      <span style={{ fontWeight: "bold" }}>{viewGroupedOrder.totalItems}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                      <span>Tiền hàng trước CK:</span>
+                      <span>{viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotal, 0).toLocaleString("vi-VN")}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                      <span>CK SP:</span>
+                      <span style={{ color: "#ea580c" }}>-{(viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotal, 0) - viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0)).toLocaleString("vi-VN")}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                      <span>Tiền hàng sau CK:</span>
+                      <span>{viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}</span>
+                    </div>
+                    {viewGroupedOrder.paymentDiscount && (
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                        <span>CK thanh toán:</span>
+                        <span style={{ color: "#ea580c" }}>{viewGroupedOrder.paymentDiscount}</span>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid #d1d5db" }}>
+                      <span style={{ fontWeight: "bold" }}>Khách phải trả:</span>
+                      <span style={{ fontWeight: "bold", color: "#16a34a", fontSize: "13px" }}>{viewGroupedOrder.total.toLocaleString("vi-VN")}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Products Table */}
-                <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "15px", fontSize: "11px" }}>
+                {/* Products Table with Image */}
+                <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "15px", fontSize: "10px" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#f3f4f6" }}>
-                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "center", width: "30px" }}>STT</th>
-                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "left" }}>Mã SP</th>
-                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "center", width: "40px" }}>SL</th>
-                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right" }}>Đơn giá</th>
-                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right" }}>Thành tiền</th>
-                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "center" }}>CK</th>
-                      <th style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", backgroundColor: "#fef3c7" }}>Sau CK</th>
+                    <tr style={{ backgroundColor: "#dcfce7" }}>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "center", width: "30px" }}>STT</th>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "left" }}>Mã SP</th>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "center", width: "50px" }}>Hình ảnh</th>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "center", width: "45px" }}>Số lượng</th>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "right" }}>Đơn giá</th>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "center" }}>CK SP</th>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "right" }}>Đơn giá sau CK</th>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "right", backgroundColor: "#bbf7d0" }}>Thành tiền</th>
+                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "left" }}>Ghi chú</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1094,46 +1185,42 @@ export default function OrdersTab() {
                       <tr key={product.id}>
                         <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{index + 1}</td>
                         <td style={{ border: "1px solid #d1d5db", padding: "5px", fontWeight: "500", color: "#2563eb" }}>{product.productCode}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "3px", textAlign: "center" }}>
+                          {product.image ? (
+                            <img src={product.image} alt={product.productCode} style={{ width: "40px", height: "40px", objectFit: "cover", borderRadius: "4px" }} />
+                          ) : (
+                            <span style={{ color: "#999" }}>-</span>
+                          )}
+                        </td>
                         <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{product.items}</td>
                         <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right" }}>{product.productPrice.toLocaleString("vi-VN")}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right" }}>{product.subtotal.toLocaleString("vi-VN")}</td>
                         <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{product.discount || "-"}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right", backgroundColor: "#fffbeb", fontWeight: "500" }}>{product.subtotalAfterDiscount.toLocaleString("vi-VN")}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right" }}>{product.priceAfterDiscount.toLocaleString("vi-VN")}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right", fontWeight: "600", backgroundColor: "#f0fdf4" }}>{product.subtotalAfterDiscount.toLocaleString("vi-VN")}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "5px", fontSize: "9px", color: "#666" }}></td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr style={{ backgroundColor: "#f3f4f6" }}>
-                      <td colSpan={6} style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "600" }}>Tổng tiền hàng sau CK:</td>
-                      <td style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "600", color: "#2563eb" }}>
-                        {viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}đ
+                    <tr style={{ backgroundColor: "#f0fdf4" }}>
+                      <td colSpan={7} style={{ border: "1px solid #d1d5db", padding: "8px", textAlign: "right", fontWeight: "bold", fontSize: "11px" }}>Tổng tiền hàng sau CK:</td>
+                      <td style={{ border: "1px solid #d1d5db", padding: "8px", textAlign: "right", fontWeight: "bold", fontSize: "12px", color: "#16a34a" }}>
+                        {viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}
                       </td>
+                      <td style={{ border: "1px solid #d1d5db" }}></td>
                     </tr>
-                    {viewGroupedOrder.paymentDiscount && (
-                      <tr>
-                        <td colSpan={6} style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "500" }}>CK thanh toán:</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", color: "#ea580c" }}>{viewGroupedOrder.paymentDiscount}</td>
-                      </tr>
-                    )}
                     <tr style={{ backgroundColor: "#dcfce7" }}>
-                      <td colSpan={6} style={{ border: "1px solid #d1d5db", padding: "8px", textAlign: "right", fontWeight: "bold", fontSize: "13px" }}>KHÁCH PHẢI TRẢ:</td>
-                      <td style={{ border: "1px solid #d1d5db", padding: "8px", textAlign: "right", fontWeight: "bold", fontSize: "14px", color: "#16a34a" }}>
+                      <td colSpan={7} style={{ border: "1px solid #d1d5db", padding: "10px", textAlign: "right", fontWeight: "bold", fontSize: "13px" }}>KHÁCH PHẢI TRẢ:</td>
+                      <td style={{ border: "1px solid #d1d5db", padding: "10px", textAlign: "right", fontWeight: "bold", fontSize: "15px", color: "#16a34a" }}>
                         {viewGroupedOrder.total.toLocaleString("vi-VN")}đ
                       </td>
+                      <td style={{ border: "1px solid #d1d5db" }}></td>
                     </tr>
                   </tfoot>
                 </table>
 
-                {/* Notes */}
-                {viewGroupedOrder.notes && (
-                  <div style={{ marginTop: "10px", padding: "8px", backgroundColor: "#f9fafb", borderRadius: "4px", fontSize: "11px" }}>
-                    <span style={{ color: "#666" }}>Ghi chú: </span>
-                    <span>{viewGroupedOrder.notes}</span>
-                  </div>
-                )}
-
                 {/* Footer */}
-                <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#666" }}>
+                <div style={{ marginTop: "15px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#666", borderTop: "1px solid #e5e7eb", paddingTop: "10px" }}>
                   <div>In ngày: {new Date().toLocaleDateString("vi-VN")}</div>
                   <div>RIOMIO - Thời trang trẻ em</div>
                 </div>
@@ -1825,6 +1912,9 @@ export default function OrdersTab() {
                 onClick={async () => {
                   try {
                     setIsUpdating(true);
+                    let hasError = false;
+                    let errorMessage = "";
+
                     // Update all products sequentially
                     for (const product of editProducts) {
                       const updateData = {
@@ -1840,16 +1930,24 @@ export default function OrdersTab() {
                       });
                       const result = await response.json();
                       if (!result.success) {
-                        toast.error(`Lỗi khi cập nhật sản phẩm ${product.productCode}`);
+                        hasError = true;
+                        errorMessage = result.error || `Lỗi khi cập nhật sản phẩm ${product.productCode}`;
+                        toast.error(errorMessage);
+                        break; // Dừng lại khi có lỗi
                       }
                     }
+
+                    if (hasError) {
+                      return; // Không đóng modal, không báo thành công
+                    }
+
                     await fetchOrders();
                     setShowEditModal(false);
                     setEditGroupedOrder(null);
                     toast.success(`Cập nhật đơn hàng ${editGroupedOrder.orderCode} thành công`);
-                  } catch (error) {
+                  } catch (error: any) {
                     console.error("Error updating order:", error);
-                    toast.error("Lỗi khi cập nhật đơn hàng");
+                    toast.error(error.message || "Lỗi khi cập nhật đơn hàng");
                   } finally {
                     setIsUpdating(false);
                   }

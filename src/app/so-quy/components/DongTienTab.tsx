@@ -239,15 +239,9 @@ export default function DongTienTab() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validate required dropdown fields
-    if (
-      !formData.tenTK ||
-      !formData.nccNPL ||
-      !formData.chiVanChuyen ||
-      !formData.thuTienHang ||
-      !formData.phanLoaiThuChi
-    ) {
-      toast.error("Vui lòng điền đầy đủ các trường bắt buộc");
+    // Validate required dropdown fields (only Tên TK and Phân loại thu chi are required)
+    if (!formData.tenTK || !formData.phanLoaiThuChi) {
+      toast.error("Vui lòng điền đầy đủ các trường bắt buộc (Tên TK và Phân loại thu chi)");
       setIsLoading(false);
       return;
     }
@@ -717,28 +711,7 @@ export default function DongTienTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    NCC NPL <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    required
-                    value={formData.nccNPL}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nccNPL: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Chọn NCC NPL</option>
-                    {nccNPLOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Xưởng SX
@@ -803,10 +776,9 @@ export default function DongTienTab() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chi vận chuyển <span className="text-red-500">*</span>
+                    Chi vận chuyển
                   </label>
                   <select
-                    required
                     value={formData.chiVanChuyen}
                     onChange={(e) =>
                       setFormData({ ...formData, chiVanChuyen: e.target.value })
@@ -824,10 +796,9 @@ export default function DongTienTab() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thu tiền hàng <span className="text-red-500">*</span>
+                    Thu tiền hàng
                   </label>
                   <select
-                    required
                     value={formData.thuTienHang}
                     onChange={(e) =>
                       setFormData({ ...formData, thuTienHang: e.target.value })
@@ -1047,10 +1018,9 @@ export default function DongTienTab() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    NCC NPL <span className="text-red-500">*</span>
+                    NCC NPL
                   </label>
                   <select
-                    required
                     value={formData.nccNPL}
                     onChange={(e) =>
                       setFormData({ ...formData, nccNPL: e.target.value })
@@ -1128,10 +1098,9 @@ export default function DongTienTab() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chi vận chuyển <span className="text-red-500">*</span>
+                    Chi vận chuyển
                   </label>
                   <select
-                    required
                     value={formData.chiVanChuyen}
                     onChange={(e) =>
                       setFormData({ ...formData, chiVanChuyen: e.target.value })
@@ -1149,10 +1118,9 @@ export default function DongTienTab() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thu tiền hàng <span className="text-red-500">*</span>
+                    Thu tiền hàng
                   </label>
                   <select
-                    required
                     value={formData.thuTienHang}
                     onChange={(e) =>
                       setFormData({ ...formData, thuTienHang: e.target.value })

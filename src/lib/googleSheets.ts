@@ -1624,50 +1624,50 @@ export async function deleteSalesProgramFromSheet(programId: number): Promise<vo
 }
 
 // ============================================
-// ORDER MANAGEMENT (Quản lý đơn hàng)
+// ORDER MANAGEMENT (Quản lý đơn hàng - Sheet "Bán hàng")
 // ============================================
 
-const spreadsheetIdDonHang = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
-const sheetNameDonHang = process.env.GOOGLE_SHEET_NAME_DON_HANG || "DonHang";
+const spreadsheetIdBanHang = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG || spreadsheetId;
+const sheetNameBanHang = process.env.GOOGLE_SHEET_NAME_BAN_HANG || "Bán hàng";
 
-// Interface cho đơn hàng
+// Interface cho đơn hàng (16 cột A-P)
 export interface Order {
   id: number;
-  code: string;           // Mã Đơn hàng (A)
-  date: string;           // Ngày Đặt (B)
+  code: string;           // Mã đơn hàng (A)
+  date: string;           // Ngày đặt (B)
   customer: string;       // Khách hàng (C)
   productCode: string;    // Mã SP (D)
-  color: string;          // Màu sắc (E)
-  size: string;           // Size (F)
-  image: string;          // Hình ảnh (G)
-  items: number;          // SL (H)
-  productPrice: number;   // Giá Sỉ (I)
-  subtotal: number;       // Tiền Hàng (J)
-  salesProgram: string;   // Chương trình BH (K)
-  discount: string;       // Chiết Khấu (L)
-  priceAfterDiscount: number; // Đơn giá sau chiết khấu (M)
-  subtotalAfterDiscount: number; // Tiền hàng sau chiết khấu (N)
-  paymentDiscount: string; // CK thanh toán (O)
-  total: number;          // Khách phải trả (P)
-  salesUser: string;      // User bán hàng (Q)
-  status: "completed" | "processing" | "pending" | "shipping"; // Tình trạng đơn hàng (R)
-  notes: string;          // Ghi chú (S)
+  image: string;          // Hình ảnh (E)
+  items: number;          // SL (F)
+  productPrice: number;   // Giá sỉ (G)
+  subtotal: number;       // Tiền hàng (H)
+  salesProgram: string;   // Chương trình BH (I)
+  discount: string;       // Chiết khấu (J)
+  priceAfterDiscount: number; // Đơn giá sau CK (K)
+  subtotalAfterDiscount: number; // Tiền hàng sau chiết khấu (L)
+  paymentDiscount: string; // CK thanh toán (M)
+  total: number;          // Khách phải trả (N)
+  salesUser: string;      // User bán hàng (O)
+  notes: string;          // Ghi chú (P)
   // Deprecated fields for backward compatibility
+  color?: string;
+  size?: string;
+  status?: "completed" | "processing" | "pending" | "shipping";
   freeItems?: string;
   paymentStatus?: "paid" | "partial" | "unpaid";
 }
 
 /**
  * Đọc danh sách đơn hàng từ Google Sheets
- * Sheet: DonHang
+ * Sheet: Bán hàng (16 cột A-P), dữ liệu bắt đầu từ dòng 6
  */
 export async function getOrdersFromSheet(): Promise<Order[]> {
   try {
     const sheets = await getGoogleSheetsClient();
 
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetIdDonHang,
-      range: `${sheetNameDonHang}!A2:Q`, // Đọc từ dòng 2, các cột A-Q (không có Màu sắc, Size)
+      spreadsheetId: spreadsheetIdBanHang,
+      range: `'${sheetNameBanHang}'!A6:P`, // Đọc từ dòng 6, các cột A-P (16 cột)
     });
 
     const rows = response.data.values;
@@ -1678,34 +1678,24 @@ export async function getOrdersFromSheet(): Promise<Order[]> {
     }
 
     const orders: Order[] = rows.map((row, index) => {
-      // Map status (P - column 15)
-      const statusText = (row[15] || "").toLowerCase();
-      let status: Order["status"] = "pending";
-      if (statusText.includes("hoàn thành")) status = "completed";
-      else if (statusText.includes("đang xử lý")) status = "processing";
-      else if (statusText.includes("đang giao")) status = "shipping";
-
       return {
-        id: index + 1,
-        code: row[0] || "",                    // A - Mã Đơn hàng
-        date: row[1] || "",                    // B - Ngày Đặt
+        id: index + 1, // ID 1 = row 6, ID 2 = row 7, etc.
+        code: row[0] || "",                    // A - Mã đơn hàng
+        date: row[1] || "",                    // B - Ngày đặt
         customer: row[2] || "",                // C - Khách hàng
         productCode: row[3] || "",             // D - Mã SP
-        color: "",                             // Không có trong sheet
-        size: "",                              // Không có trong sheet
         image: row[4] || "",                   // E - Hình ảnh
         items: parseInt(row[5]) || 0,          // F - SL
-        productPrice: parseFloat((row[6] || "0").toString().replace(/\./g, "")) || 0, // G - Giá Sỉ
-        subtotal: parseFloat((row[7] || "0").toString().replace(/\./g, "")) || 0, // H - Tiền Hàng
+        productPrice: parseFloat((row[6] || "0").toString().replace(/\./g, "").replace(/,/g, ".")) || 0, // G - Giá sỉ
+        subtotal: parseFloat((row[7] || "0").toString().replace(/\./g, "").replace(/,/g, ".")) || 0, // H - Tiền hàng
         salesProgram: row[8] || "",            // I - Chương trình BH
-        discount: row[9] || "",                // J - Chiết Khấu
-        priceAfterDiscount: parseFloat((row[10] || "0").toString().replace(/\./g, "")) || 0, // K - Đơn giá sau chiết khấu
-        subtotalAfterDiscount: parseFloat((row[11] || "0").toString().replace(/\./g, "")) || 0, // L - Tiền hàng sau chiết khấu
+        discount: row[9] || "",                // J - Chiết khấu
+        priceAfterDiscount: parseFloat((row[10] || "0").toString().replace(/\./g, "").replace(/,/g, ".")) || 0, // K - Đơn giá sau CK
+        subtotalAfterDiscount: parseFloat((row[11] || "0").toString().replace(/\./g, "").replace(/,/g, ".")) || 0, // L - Tiền hàng sau chiết khấu
         paymentDiscount: row[12] || "",        // M - CK thanh toán
-        total: parseFloat((row[13] || "0").toString().replace(/\./g, "")) || 0, // N - Khách phải trả
+        total: parseFloat((row[13] || "0").toString().replace(/\./g, "").replace(/,/g, ".")) || 0, // N - Khách phải trả
         salesUser: row[14] || "",              // O - User bán hàng
-        status,                                // P - Tình trạng đơn hàng
-        notes: row[16] || "",                  // Q - Ghi chú
+        notes: row[15] || "",                  // P - Ghi chú
       };
     }).filter((order) => order.code.trim() !== "");
 
@@ -1718,45 +1708,68 @@ export async function getOrdersFromSheet(): Promise<Order[]> {
 
 /**
  * Thêm đơn hàng mới vào Google Sheets
+ * Sheet: Bán hàng (16 cột A-P), dữ liệu bắt đầu từ dòng 6
+ * Tìm dòng cuối cùng có data thật (cột A có mã đơn hàng) rồi thêm vào sau đó
  */
 export async function addOrderToSheet(order: Order): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // Ghi data vào sheet (sử dụng append để thêm vào cuối)
-    // Không ghi Màu sắc và Size vì sheet không có 2 cột này
+    // Đọc cột A để tìm dòng cuối cùng có data thật (không phải công thức #N/A)
+    const colAResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBanHang,
+      range: `'${sheetNameBanHang}'!A6:A`,
+    });
+
+    const colAData = colAResponse.data.values || [];
+
+    // Tìm dòng cuối cùng có mã đơn hàng thật (bắt đầu bằng MIO hoặc có nội dung)
+    let lastDataRowIndex = -1;
+    for (let i = colAData.length - 1; i >= 0; i--) {
+      const cellValue = (colAData[i]?.[0] || "").toString().trim();
+      // Kiểm tra nếu ô có giá trị thật (không rỗng, không phải #N/A, #REF!, etc.)
+      if (cellValue && !cellValue.startsWith("#") && cellValue.length > 0) {
+        lastDataRowIndex = i;
+        break;
+      }
+    }
+
+    // Tính toán row number để insert (row 6 + lastDataRowIndex + 1)
+    // Nếu không có data nào, insert vào row 6
+    const nextRowNumber = lastDataRowIndex >= 0 ? (6 + lastDataRowIndex + 1) : 6;
+
     const values = [
       [
-        order.code,                                      // A - Mã Đơn hàng
-        order.date,                                      // B - Ngày Đặt
+        order.code,                                      // A - Mã đơn hàng
+        order.date,                                      // B - Ngày đặt
         order.customer,                                  // C - Khách hàng
         order.productCode || "",                         // D - Mã SP
         order.image || "",                               // E - Hình ảnh
         order.items,                                     // F - SL
-        order.productPrice ? formatNumberVN(order.productPrice) : "", // G - Giá Sỉ
-        order.subtotal ? formatNumberVN(order.subtotal) : "", // H - Tiền Hàng
+        order.productPrice ? formatNumberVN(order.productPrice) : "", // G - Giá sỉ
+        order.subtotal ? formatNumberVN(order.subtotal) : "", // H - Tiền hàng
         order.salesProgram || "",                        // I - Chương trình BH
-        order.discount || "",                            // J - Chiết Khấu
-        order.priceAfterDiscount ? formatNumberVN(order.priceAfterDiscount) : "", // K - Đơn giá sau chiết khấu
+        order.discount || "",                            // J - Chiết khấu
+        order.priceAfterDiscount ? formatNumberVN(order.priceAfterDiscount) : "", // K - Đơn giá sau CK
         order.subtotalAfterDiscount ? formatNumberVN(order.subtotalAfterDiscount) : "", // L - Tiền hàng sau chiết khấu
         order.paymentDiscount || "",                     // M - CK thanh toán
         formatNumberVN(order.total),                     // N - Khách phải trả
         order.salesUser || "",                           // O - User bán hàng
-        "",                                              // P - Tình trạng đơn hàng (để trống)
-        order.notes || "",                               // Q - Ghi chú
+        order.notes || "",                               // P - Ghi chú
       ],
     ];
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: spreadsheetIdDonHang,
-      range: `${sheetNameDonHang}!A:Q`,
+    // Sử dụng update thay vì append để ghi vào đúng vị trí
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdBanHang,
+      range: `'${sheetNameBanHang}'!A${nextRowNumber}:P${nextRowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
       },
     });
 
-    console.log(`Successfully added order: ${order.code}`);
+    console.log(`Successfully added order: ${order.code} at row ${nextRowNumber}`);
   } catch (error) {
     console.error("Error adding order to Google Sheets:", error);
     throw error;
@@ -1765,40 +1778,39 @@ export async function addOrderToSheet(order: Order): Promise<void> {
 
 /**
  * Cập nhật đơn hàng trong Google Sheets
+ * Sheet: Bán hàng (16 cột A-P), dữ liệu bắt đầu từ dòng 6
  */
 export async function updateOrderInSheet(order: Order): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
-    const rowNumber = order.id + 1;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+    const rowNumber = order.id + 5;
 
-    // Không ghi Màu sắc và Size vì sheet không có 2 cột này
     const values = [
       [
-        order.code,                                      // A - Mã Đơn hàng
-        order.date,                                      // B - Ngày Đặt
+        order.code,                                      // A - Mã đơn hàng
+        order.date,                                      // B - Ngày đặt
         order.customer,                                  // C - Khách hàng
         order.productCode || "",                         // D - Mã SP
         order.image || "",                               // E - Hình ảnh
         order.items,                                     // F - SL
-        order.productPrice ? formatNumberVN(order.productPrice) : "", // G - Giá Sỉ
-        order.subtotal ? formatNumberVN(order.subtotal) : "", // H - Tiền Hàng
+        order.productPrice ? formatNumberVN(order.productPrice) : "", // G - Giá sỉ
+        order.subtotal ? formatNumberVN(order.subtotal) : "", // H - Tiền hàng
         order.salesProgram || "",                        // I - Chương trình BH
-        order.discount || "",                            // J - Chiết Khấu
-        order.priceAfterDiscount ? formatNumberVN(order.priceAfterDiscount) : "", // K - Đơn giá sau chiết khấu
+        order.discount || "",                            // J - Chiết khấu
+        order.priceAfterDiscount ? formatNumberVN(order.priceAfterDiscount) : "", // K - Đơn giá sau CK
         order.subtotalAfterDiscount ? formatNumberVN(order.subtotalAfterDiscount) : "", // L - Tiền hàng sau chiết khấu
         order.paymentDiscount || "",                     // M - CK thanh toán
         formatNumberVN(order.total),                     // N - Khách phải trả
         order.salesUser || "",                           // O - User bán hàng
-        "",                                              // P - Tình trạng đơn hàng (để trống)
-        order.notes || "",                               // Q - Ghi chú
+        order.notes || "",                               // P - Ghi chú
       ],
     ];
 
     await sheets.spreadsheets.values.update({
-      spreadsheetId: spreadsheetIdDonHang,
-      range: `${sheetNameDonHang}!A${rowNumber}:Q${rowNumber}`,
+      spreadsheetId: spreadsheetIdBanHang,
+      range: `'${sheetNameBanHang}'!A${rowNumber}:P${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -1814,33 +1826,34 @@ export async function updateOrderInSheet(order: Order): Promise<void> {
 
 /**
  * Xóa đơn hàng khỏi Google Sheets
+ * Sheet: Bán hàng, dữ liệu bắt đầu từ dòng 6
  */
 export async function deleteOrderFromSheet(orderId: number): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 2, ID 2 = dòng 3, etc.
-    const rowNumber = orderId + 1;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc.
+    const rowNumber = orderId + 5;
 
     // Lấy sheetId để xóa dòng - tìm sheet theo tên
     const sheetMetadata = await sheets.spreadsheets.get({
-      spreadsheetId: spreadsheetIdDonHang,
+      spreadsheetId: spreadsheetIdBanHang,
     });
 
     const targetSheet = sheetMetadata.data.sheets?.find(
-      (sheet) => sheet.properties?.title === sheetNameDonHang
+      (sheet) => sheet.properties?.title === sheetNameBanHang
     );
 
     if (!targetSheet || targetSheet.properties?.sheetId === undefined) {
       console.error("Available sheets:", sheetMetadata.data.sheets?.map(s => s.properties?.title));
-      throw new Error(`Cannot find sheet named "${sheetNameDonHang}" to delete row`);
+      throw new Error(`Cannot find sheet named "${sheetNameBanHang}" to delete row`);
     }
 
     const sheetId = targetSheet.properties.sheetId;
 
     // Xóa dòng
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: spreadsheetIdDonHang,
+      spreadsheetId: spreadsheetIdBanHang,
       requestBody: {
         requests: [
           {
@@ -11659,6 +11672,197 @@ export async function getBaoCaoKhachHang() {
     };
   } catch (error) {
     console.error("Error fetching Bao Cao Khach Hang:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// CÔNG NỢ PHẢI THU KHÁCH HÀNG (CNPT KH)
+// ============================================
+
+const spreadsheetIdCnptKh = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG || "1bIXymFQLB6BJgYDS5qJYQl0SRUu7TtL_4XzzO0LPSis";
+const sheetNameCnptKh = process.env.GOOGLE_SHEET_NAME_CNPT_KH_RIOMIO || "CNPT KH";
+
+// Interface cho Bảng 1: Công nợ phải thu theo tháng
+export interface CnptKhTheoThangItem {
+  id: number;
+  stt: number;
+  khachHang: string;
+  duDauKy: number;
+  phatSinh: number;
+  thanhToan: number;
+  duCuoiKy: number;
+}
+
+// Interface cho Bảng 2: Công nợ khách hàng đến ngày
+export interface CnptKhDenNgayItem {
+  id: number;
+  stt: number;
+  khachHang: string;
+  soTien: number;
+}
+
+// Interface cho dữ liệu Bảng 1
+export interface CnptKhTheoThangData {
+  data: CnptKhTheoThangItem[];
+  tieuDe: string;
+  currentDate: string; // Format: "M/YYYY" e.g., "1/2026"
+}
+
+// Interface cho dữ liệu Bảng 2
+export interface CnptKhDenNgayData {
+  data: CnptKhDenNgayItem[];
+  tieuDe: string;
+  currentDate: string; // Format: "DD/MM/YYYY" e.g., "31/12/2025"
+}
+
+/**
+ * Lấy dữ liệu Bảng 1: Công nợ phải thu theo tháng
+ * Sheet CNPT KH, cột A-F, header dòng 4, data từ dòng 5
+ * Ngày tháng ở ô C3 (format: M/YYYY)
+ */
+export async function getCnptKhTheoThangFromSheet(): Promise<CnptKhTheoThangData> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      const str = String(value).trim();
+      if (str === "" || str === "#N/A") return 0;
+      const cleaned = str.replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy tiêu đề (dòng 2) và ngày hiện tại (ô C3)
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdCnptKh,
+      range: `${sheetNameCnptKh}!A2:C3`,
+    });
+    const headerRows = headerResponse.data.values || [];
+    const tieuDe = headerRows[0]?.[0] || "BẢNG KÊ CÔNG NỢ PHẢI THU KHÁCH HÀNG";
+    const currentDate = headerRows[1]?.[2] || ""; // C3
+
+    // Lấy dữ liệu từ dòng 5
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdCnptKh,
+      range: `${sheetNameCnptKh}!A5:F`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const data: CnptKhTheoThangItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseInt(row[0]) || index + 1,
+        khachHang: row[1] || "",
+        duDauKy: parseNumber(row[2]),
+        phatSinh: parseNumber(row[3]),
+        thanhToan: parseNumber(row[4]),
+        duCuoiKy: parseNumber(row[5]),
+      }))
+      .filter((item) => item.khachHang.trim() !== "" && !item.khachHang.includes("#N/A"));
+
+    return { data, tieuDe, currentDate };
+  } catch (error) {
+    console.error("Error fetching CNPT KH theo thang from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ngày tháng cho Bảng 1 (ô C3)
+ * @param date - Format: "M/YYYY" e.g., "1/2026"
+ */
+export async function updateCnptKhTheoThangDate(date: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdCnptKh,
+      range: `${sheetNameCnptKh}!C3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[date]],
+      },
+    });
+
+    console.log(`Successfully updated CNPT KH theo thang date to: ${date}`);
+  } catch (error) {
+    console.error("Error updating CNPT KH theo thang date:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy dữ liệu Bảng 2: Công nợ khách hàng đến ngày
+ * Sheet CNPT KH, cột H-J, header dòng 4, data từ dòng 5
+ * Ngày ở ô J3 (format: DD/MM/YYYY)
+ */
+export async function getCnptKhDenNgayFromSheet(): Promise<CnptKhDenNgayData> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Helper function to parse number (Vietnamese format)
+    const parseNumber = (value: any): number => {
+      if (!value) return 0;
+      const str = String(value).trim();
+      if (str === "" || str === "#N/A") return 0;
+      const cleaned = str.replace(/\./g, "").replace(/,/g, ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    // Lấy tiêu đề (dòng 2) và ngày hiện tại (ô J3)
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdCnptKh,
+      range: `${sheetNameCnptKh}!H2:J3`,
+    });
+    const headerRows = headerResponse.data.values || [];
+    const tieuDe = headerRows[0]?.[0] || "BẢNG KÊ CÔNG NỢ KHÁCH HÀNG";
+    const currentDate = headerRows[1]?.[2] || ""; // J3
+
+    // Lấy dữ liệu từ dòng 5
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdCnptKh,
+      range: `${sheetNameCnptKh}!H5:J`,
+    });
+
+    const rows = dataResponse.data.values || [];
+    const data: CnptKhDenNgayItem[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: parseInt(row[0]) || index + 1,
+        khachHang: row[1] || "",
+        soTien: parseNumber(row[2]),
+      }))
+      .filter((item) => item.khachHang.trim() !== "" && !item.khachHang.includes("#N/A"));
+
+    return { data, tieuDe, currentDate };
+  } catch (error) {
+    console.error("Error fetching CNPT KH den ngay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ngày cho Bảng 2 (ô J3)
+ * @param date - Format: "DD/MM/YYYY" e.g., "31/12/2025"
+ */
+export async function updateCnptKhDenNgayDate(date: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdCnptKh,
+      range: `${sheetNameCnptKh}!J3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[date]],
+      },
+    });
+
+    console.log(`Successfully updated CNPT KH den ngay date to: ${date}`);
+  } catch (error) {
+    console.error("Error updating CNPT KH den ngay date:", error);
     throw error;
   }
 }

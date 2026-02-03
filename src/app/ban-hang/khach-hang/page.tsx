@@ -1,12 +1,14 @@
 "use client";
 
-import { Users, UserCheck } from "lucide-react";
+import { Users, UserCheck, DollarSign, Calendar } from "lucide-react";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import CustomersTab from "../components/CustomersTab";
 import CongNoTab from "../components/CongNoTab";
+import CnptKhTheoThangTab from "../components/CnptKhTheoThangTab";
+import CnptKhDenNgayTab from "../components/CnptKhDenNgayTab";
 
-type TabType = "danh-sach" | "theo-doi-cong-no";
+type TabType = "danh-sach" | "theo-doi-cong-no" | "cnpt-theo-thang" | "cnpt-den-ngay";
 
 export default function KhachHangPage() {
   const router = useRouter();
@@ -14,7 +16,7 @@ export default function KhachHangPage() {
   const tabParam = searchParams.get("tab") as TabType | null;
 
   const [activeTab, setActiveTab] = useState<TabType>(
-    tabParam && ["danh-sach", "theo-doi-cong-no"].includes(tabParam)
+    tabParam && ["danh-sach", "theo-doi-cong-no", "cnpt-theo-thang", "cnpt-den-ngay"].includes(tabParam)
       ? tabParam
       : "danh-sach"
   );
@@ -43,7 +45,7 @@ export default function KhachHangPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         {/* Tab Navigation */}
         <div className="border-b border-gray-200">
-          <div className="flex">
+          <div className="flex flex-wrap">
             <button
               onClick={() => handleTabChange("danh-sach")}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
@@ -66,6 +68,28 @@ export default function KhachHangPage() {
               <UserCheck size={20} />
               Theo dõi công nợ từng KH
             </button>
+            <button
+              onClick={() => handleTabChange("cnpt-theo-thang")}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "cnpt-theo-thang"
+                  ? "text-blue-600 border-blue-600 bg-blue-50/50"
+                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <DollarSign size={20} />
+              CNPT KH theo tháng
+            </button>
+            <button
+              onClick={() => handleTabChange("cnpt-den-ngay")}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "cnpt-den-ngay"
+                  ? "text-purple-600 border-purple-600 bg-purple-50/50"
+                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <Calendar size={20} />
+              CNPT KH đến ngày
+            </button>
           </div>
         </div>
 
@@ -73,6 +97,8 @@ export default function KhachHangPage() {
         <div className="p-6">
           {activeTab === "danh-sach" && <CustomersTab />}
           {activeTab === "theo-doi-cong-no" && <CongNoTab />}
+          {activeTab === "cnpt-theo-thang" && <CnptKhTheoThangTab />}
+          {activeTab === "cnpt-den-ngay" && <CnptKhDenNgayTab />}
         </div>
       </div>
     </div>
