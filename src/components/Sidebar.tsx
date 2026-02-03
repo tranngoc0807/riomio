@@ -33,9 +33,15 @@ import {
   Clock,
   Banknote,
   Shield,
+  Key,
+  Eye,
+  EyeOff,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
 import { useAuth, UserRole } from "@/context/AuthContext";
+import { useRolePermissions } from "@/context/RolePermissionsContext";
 
 interface MenuItem {
   name: string;
@@ -68,12 +74,6 @@ const ALL_ROLES: UserRole[] = [
 const FINANCIAL_ROLES: UserRole[] = ["admin", "ke_toan", "quan_ly_don_hang"];
 
 const menuItems: MenuItem[] = [
-  {
-    name: "Thông tin công ty",
-    href: "/thong-tin-cong-ty",
-    icon: Building2,
-    roles: ALL_ROLES,
-  },
   {
     name: "Sản xuất",
     href: "/san-xuat",
@@ -306,7 +306,67 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const { profile, session, signOut, initialized } = useAuth();
+  const { hasAccess, loading: permissionsLoading } = useRolePermissions();
+
+  // Reset password form when modal closes
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      const response = await fetch("/api/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Đổi mật khẩu thành công!");
+        setShowProfileModal(false);
+        resetPasswordForm();
+      } else {
+        toast.error(result.error || "Không thể đổi mật khẩu");
+      }
+    } catch (error) {
+      console.error("Error changing password:", error);
+      toast.error("Lỗi khi đổi mật khẩu");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   // Helper function to check if a link is active (including query params)
   const isLinkActive = (href: string) => {
@@ -329,21 +389,27 @@ export default function Sidebar() {
     return true;
   };
 
-  // Filter menu items based on user role
+  // Convert href to menu ID for permission check
+  const getMenuIdFromHref = (href: string): string => {
+    // Remove leading slash and query params
+    const [path] = href.split('?');
+    return path.startsWith('/') ? path.slice(1) : path;
+  };
+
+  // Filter menu items based on dynamic permissions from Supabase
   const filteredMenuItems = menuItems
     .filter((item) => {
-      if (!profile) return true; // Show all menus as fallback if profile not loaded
-      if (!item.roles) return true;
-      return item.roles.includes(profile.role);
+      // Use dynamic permissions
+      const menuId = getMenuIdFromHref(item.href);
+      return hasAccess(menuId);
     })
     .map((item) => {
       if (item.subItems) {
         return {
           ...item,
           subItems: item.subItems.filter((sub) => {
-            if (!profile) return true; // Show all sub-items as fallback
-            if (!sub.roles) return true;
-            return sub.roles.includes(profile.role);
+            const subMenuId = getMenuIdFromHref(sub.href);
+            return hasAccess(subMenuId);
           }),
         };
       }
@@ -547,6 +613,16 @@ export default function Sidebar() {
             {showUserMenu && (
               <div className="mt-2 bg-blue-800 rounded-lg shadow-lg border border-blue-700 overflow-hidden">
                 <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setShowProfileModal(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-blue-100 hover:bg-blue-700/50 transition-colors border-b border-blue-700"
+                >
+                  <Key size={18} />
+                  <span className="font-medium">Đổi mật khẩu</span>
+                </button>
+                <button
                   onClick={async () => {
                     setShowUserMenu(false);
                     await signOut();
@@ -567,6 +643,135 @@ export default function Sidebar() {
           </div> */}
         </div>
       </aside>
+
+      {/* Profile Modal - Change Password */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                  <User size={32} className="text-white" />
+                </div>
+                <div className="text-white">
+                  <h2 className="text-xl font-bold">
+                    {profile?.full_name || "Người dùng"}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        profile ? roleColors[profile.role] : "bg-gray-400"
+                      }`}
+                    ></span>
+                    <span className="text-blue-100 text-sm">
+                      {profile ? roleLabels[profile.role] : ""}
+                    </span>
+                  </div>
+                  <p className="text-blue-200 text-sm mt-1">
+                    {session?.user?.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content - Change Password Form */}
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Key size={20} className="text-blue-600" />
+                Đổi mật khẩu
+              </h3>
+
+              <div className="space-y-4">
+                {/* New Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mật khẩu mới
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu mới"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Xác nhận mật khẩu mới
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập lại mật khẩu mới"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                  <p className="text-red-500 text-sm">Mật khẩu xác nhận không khớp</p>
+                )}
+
+                {newPassword && newPassword.length < 6 && (
+                  <p className="text-orange-500 text-sm">Mật khẩu phải có ít nhất 6 ký tự</p>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowProfileModal(false);
+                  resetPasswordForm();
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                disabled={changingPassword}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleChangePassword}
+                disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {changingPassword ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <Key size={18} />
+                    Đổi mật khẩu
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

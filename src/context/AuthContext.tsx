@@ -38,6 +38,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   initialized: boolean;
+  signingOut: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
     email: string,
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -285,6 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    setSigningOut(true); // Show loading overlay immediately
     clearProfileCache(); // Clear cached profile on logout
     await supabase.auth.signOut();
     setUser(null);
@@ -301,6 +304,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const hasAdmin = adminData && adminData.length > 0;
     router.push(hasAdmin ? "/login" : "/register");
     router.refresh();
+
+    // Reset signingOut after a short delay to allow page transition
+    setTimeout(() => {
+      setSigningOut(false);
+    }, 500);
   };
 
   const hasPermission = (requiredRoles: UserRole[]) => {
@@ -316,6 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading,
         initialized,
+        signingOut,
         signIn,
         signUp,
         signOut,

@@ -1,15 +1,33 @@
 "use client";
 
 import { CompanyConfigProvider } from "@/context/CompanyConfigContext";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { RolePermissionsProvider } from "@/context/RolePermissionsContext";
 import { ReactNode } from "react";
 import { Toaster } from "react-hot-toast";
+import { Loader2 } from "lucide-react";
+
+// Component to show signing out overlay - must be inside AuthProvider
+function SigningOutOverlay() {
+  const { signingOut } = useAuth();
+
+  if (!signingOut) return null;
+
+  return (
+    <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center">
+      <Loader2 size={48} className="animate-spin text-blue-600 mb-4" />
+      <p className="text-gray-600 font-medium">Đang đăng xuất...</p>
+    </div>
+  );
+}
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
-      <CompanyConfigProvider>
-        {children}
+      <SigningOutOverlay />
+      <RolePermissionsProvider>
+        <CompanyConfigProvider>
+          {children}
         <Toaster
           position="top-right"
           containerStyle={{ zIndex: 99999 }}
@@ -42,7 +60,8 @@ export default function Providers({ children }: { children: ReactNode }) {
             },
           }}
         />
-      </CompanyConfigProvider>
+        </CompanyConfigProvider>
+      </RolePermissionsProvider>
     </AuthProvider>
   );
 }

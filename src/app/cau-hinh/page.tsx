@@ -28,6 +28,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   useCompanyConfig,
@@ -37,6 +38,7 @@ import {
   Announcement,
 } from "@/context/CompanyConfigContext";
 import UserManagement from "@/components/UserManagement";
+import RolePermissionsConfig from "@/components/RolePermissionsConfig";
 
 const iconOptions = [
   { value: "Factory", label: "Sản xuất", icon: Factory },
@@ -162,7 +164,20 @@ export default function CauHinh() {
   const { config, updateConfig } = useCompanyConfig();
   const [editConfig, setEditConfig] = useState<CompanyConfig>(config);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState<"users" | "config">("users");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Get tab from URL or default to "users"
+  const tabParam = searchParams.get("tab");
+  const validTabs = ["users", "permissions", "config"] as const;
+  const activeTab = validTabs.includes(tabParam as typeof validTabs[number])
+    ? (tabParam as "users" | "permissions" | "config")
+    : "users";
+
+  // Function to change tab and update URL
+  const setActiveTab = (tab: "users" | "permissions" | "config") => {
+    router.push(`/cau-hinh?tab=${tab}`, { scroll: false });
+  };
 
   // Modal states
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -345,6 +360,8 @@ export default function CauHinh() {
             <p className="text-gray-500 text-sm mt-1">
               {activeTab === "users"
                 ? "Thêm, sửa, xóa tài khoản nhân viên"
+                : activeTab === "permissions"
+                ? "Cấu hình quyền truy cập các trang cho từng vai trò"
                 : "Di chuột vào từng phần để chỉnh sửa. Thay đổi sẽ được áp dụng ngay lên trang thông tin công ty."}
             </p>
           </div>
@@ -364,6 +381,19 @@ export default function CauHinh() {
               <div className="flex items-center gap-2">
                 <Users size={20} />
                 Quản lý tài khoản
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("permissions")}
+              className={`px-6 py-3 font-medium transition-colors relative ${
+                activeTab === "permissions"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Settings size={20} />
+                Phân quyền
               </div>
             </button>
             <button
@@ -399,6 +429,13 @@ export default function CauHinh() {
       {activeTab === "users" && (
         <div className="py-6 px-4 lg:px-6">
           <UserManagement />
+        </div>
+      )}
+
+      {/* Tab: Role Permissions */}
+      {activeTab === "permissions" && (
+        <div className="py-6 px-4 lg:px-6">
+          <RolePermissionsConfig />
         </div>
       )}
 
