@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, Receipt, Calendar } from "lucide-react";
+import { Loader2, Search, Receipt, Calendar, Filter } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import type { CNPTNCCNPLThang, CNPTNCCNPLNgay } from "@/lib/googleSheets";
@@ -12,15 +12,29 @@ export default function CNPTNCCNPLTab() {
   const [searchTermNgay, setSearchTermNgay] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeTable, setActiveTable] = useState<"thang" | "ngay">("thang");
+  const [showOnlyWithDataThang, setShowOnlyWithDataThang] = useState(false);
+  const [showOnlyWithDataNgay, setShowOnlyWithDataNgay] = useState(false);
 
   // Filtered data
-  const filteredThang = cnptThang.filter((item) =>
-    item.nccNPL.toLowerCase().includes(searchTermThang.toLowerCase())
-  );
+  const filteredThang = cnptThang.filter((item) => {
+    const matchesSearch = item.nccNPL.toLowerCase().includes(searchTermThang.toLowerCase());
+    if (!matchesSearch) return false;
+    if (showOnlyWithDataThang) {
+      // Show only items that have at least one non-zero value
+      return item.duDauKi !== 0 || item.phatSinh !== 0 || item.thanhToan !== 0 || item.duCuoiKi !== 0;
+    }
+    return true;
+  });
 
-  const filteredNgay = cnptNgay.filter((item) =>
-    item.nccNPL.toLowerCase().includes(searchTermNgay.toLowerCase())
-  );
+  const filteredNgay = cnptNgay.filter((item) => {
+    const matchesSearch = item.nccNPL.toLowerCase().includes(searchTermNgay.toLowerCase());
+    if (!matchesSearch) return false;
+    if (showOnlyWithDataNgay) {
+      // Show only items that have non-zero soTien
+      return item.soTien !== 0;
+    }
+    return true;
+  });
 
   // Fetch data on mount
   useEffect(() => {
@@ -99,15 +113,28 @@ export default function CNPTNCCNPLTab() {
             <h3 className="text-lg font-semibold text-purple-700">
               Công nợ phải trả NCC NPL - Theo tháng ({filteredThang.length})
             </h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Tìm NCC NPL..."
-                value={searchTermThang}
-                onChange={(e) => setSearchTermThang(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 w-64"
-              />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowOnlyWithDataThang(!showOnlyWithDataThang)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  showOnlyWithDataThang
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <Filter size={16} />
+                {showOnlyWithDataThang ? "Đang lọc có số liệu" : "Lọc có số liệu"}
+              </button>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Tìm NCC NPL..."
+                  value={searchTermThang}
+                  onChange={(e) => setSearchTermThang(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 w-64"
+                />
+              </div>
             </div>
           </div>
 
@@ -178,15 +205,28 @@ export default function CNPTNCCNPLTab() {
             <h3 className="text-lg font-semibold text-orange-700">
               Bảng kê số dư đầu kì công nợ phải trả đến ngày ({filteredNgay.length})
             </h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Tìm NCC NPL..."
-                value={searchTermNgay}
-                onChange={(e) => setSearchTermNgay(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 w-64"
-              />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowOnlyWithDataNgay(!showOnlyWithDataNgay)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  showOnlyWithDataNgay
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <Filter size={16} />
+                {showOnlyWithDataNgay ? "Đang lọc có số liệu" : "Lọc có số liệu"}
+              </button>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Tìm NCC NPL..."
+                  value={searchTermNgay}
+                  onChange={(e) => setSearchTermNgay(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 w-64"
+                />
+              </div>
             </div>
           </div>
 

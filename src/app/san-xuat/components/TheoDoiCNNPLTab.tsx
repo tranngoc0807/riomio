@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, ChevronDown, Search } from "lucide-react";
+import { Loader2, ChevronDown, Search, Filter } from "lucide-react";
 
 interface CongNoNCCRow {
   id: number;
@@ -25,6 +25,7 @@ export default function TheoDoiCNNPLTab() {
   const [isChangingNCC, setIsChangingNCC] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlyWithData, setShowOnlyWithData] = useState(false);
 
   useEffect(() => {
     fetchSuppliers();
@@ -96,10 +97,15 @@ export default function TheoDoiCNNPLTab() {
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) && s.name !== "NCC"
   );
 
+  // Filter data by showOnlyWithData
+  const filteredCongNoData = showOnlyWithData
+    ? congNoData.filter((row) => row.tienNhap !== 0 || row.thanhToan !== 0)
+    : congNoData;
+
   // Tính tổng
-  const totalTienNhap = congNoData.reduce((sum, row) => sum + row.tienNhap, 0);
-  const totalThanhToan = congNoData.reduce((sum, row) => sum + row.thanhToan, 0);
-  const lastBalance = congNoData.length > 0 ? congNoData[congNoData.length - 1].duCuoi : 0;
+  const totalTienNhap = filteredCongNoData.reduce((sum, row) => sum + row.tienNhap, 0);
+  const totalThanhToan = filteredCongNoData.reduce((sum, row) => sum + row.thanhToan, 0);
+  const lastBalance = filteredCongNoData.length > 0 ? filteredCongNoData[filteredCongNoData.length - 1].duCuoi : 0;
 
   return (
     <div>
@@ -107,6 +113,17 @@ export default function TheoDoiCNNPLTab() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
           <h3 className="text-lg font-semibold text-gray-900">Theo dõi CN từng NCC NPL</h3>
+          <button
+            onClick={() => setShowOnlyWithData(!showOnlyWithData)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+              showOnlyWithData
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <Filter size={16} />
+            {showOnlyWithData ? "Đang lọc có số liệu" : "Lọc có số liệu"}
+          </button>
 
           {/* NCC NPL Dropdown */}
           <div className="relative">
@@ -226,7 +243,7 @@ export default function TheoDoiCNNPLTab() {
               </p>
             </div>
           </div>
-        ) : congNoData.length === 0 ? (
+        ) : filteredCongNoData.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <p className="text-gray-500">Không có dữ liệu công nợ</p>
@@ -258,7 +275,7 @@ export default function TheoDoiCNNPLTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {congNoData.map((row, index) => (
+                {filteredCongNoData.map((row, index) => (
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {index + 1}

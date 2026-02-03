@@ -9669,6 +9669,56 @@ export async function getGiaThanhGiaBanFromSheet(): Promise<GiaThanhGiaBan[]> {
   }
 }
 
+// ==================== ĐIỀU CHỈNH GIÁ VỐN ====================
+const sheetNameDieuChinhGiaVon = process.env.GOOGLE_SHEET_NAME_DIEU_CHINH_GIA_VON || "Điều chỉnh giá vốn";
+
+export interface DieuChinhGiaVon {
+  id: number;
+  maSP: string;
+  dieuChinhGiaVon: number;
+}
+
+/**
+ * Lấy dữ liệu điều chỉnh giá vốn từ Google Sheets
+ * Header row 5, data từ row 6
+ */
+export async function getDieuChinhGiaVonFromSheet(): Promise<DieuChinhGiaVon[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      const strValue = String(value).replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDieuChinhGiaVon}'!A6:B`,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    const data: DieuChinhGiaVon[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        maSP: row[0] || "",
+        dieuChinhGiaVon: parseNumberVN(row[1]),
+      }))
+      .filter((item) => item.maSP.trim() !== "");
+
+    return data;
+  } catch (error) {
+    console.error("Error reading Dieu Chinh Gia Von from Google Sheets:", error);
+    throw error;
+  }
+}
+
 // ==================== BẢNG KÊ CHI PHÍ KHÁC ====================
 const sheetNameBangKeCPKhac = process.env.GOOGLE_SHEET_NAME_BANG_KE_CP_KHAC || "Bảng kê CP khác";
 

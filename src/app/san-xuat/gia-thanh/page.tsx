@@ -3,17 +3,20 @@
 import {
   Calculator,
   DollarSign,
+  TrendingUp,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
 import GiaThanhGiaBanTab from "../components/GiaThanhGiaBanTab";
+import DieuChinhGiaVonTab from "../components/DieuChinhGiaVonTab";
 
-type TabType = "gia-thanh-gia-ban";
+type TabType = "gia-thanh-gia-ban" | "dieu-chinh-gia-von";
 
 const TABS = [
   { id: "gia-thanh-gia-ban" as TabType, label: "Giá thành & giá bán", icon: DollarSign },
+  { id: "dieu-chinh-gia-von" as TabType, label: "Điều chỉnh giá vốn", icon: TrendingUp },
 ];
 
 export default function GiaThanh() {
@@ -76,6 +79,7 @@ export default function GiaThanh() {
 
         <div className="p-6">
           {activeTab === "gia-thanh-gia-ban" && <GiaThanhGiaBanTab />}
+          {activeTab === "dieu-chinh-gia-von" && <DieuChinhGiaVonTab />}
         </div>
       </div>
     </div>
