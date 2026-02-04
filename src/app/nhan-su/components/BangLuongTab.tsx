@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, FileText, Calculator, History, Send, Loader2, RefreshCw, Plus, X, Check, User, Briefcase, DollarSign, Clock, Gift, AlertCircle, CheckCircle } from "lucide-react";
+import { Banknote, FileText, Calculator, History, Send, Loader2, RefreshCw, Plus, X, Check, User, Briefcase, DollarSign, Clock, Gift, AlertCircle, CheckCircle, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { BangKeTienLuongItem } from "@/lib/googleSheets";
@@ -95,6 +95,8 @@ export default function BangLuongTab() {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
 
   // State for Cơ chế lương
   const [coCheLuongData, setCoCheLuongData] = useState<CoCheLuong[]>([]);
@@ -457,30 +459,66 @@ export default function BangLuongTab() {
       {/* Month/Year selector for relevant tabs */}
       {["co-che-luong", "bang-luong", "phieu-luong-thang", "phieu-luong-nv", "lich-su"].includes(activeSubTab) && (
         <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Năm:</label>
-            <input
-              type="number"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              min="2020"
-              max="2030"
-              className="px-3 py-2 border border-gray-300 rounded-lg w-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Tháng:</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          <div className="relative">
+            <button
+              onClick={() => {
+                setPickerYear(selectedYear);
+                setShowMonthPicker(!showMonthPicker);
+              }}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                <option key={month} value={month}>
-                  Tháng {month}
-                </option>
-              ))}
-            </select>
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="font-medium">Tháng {selectedMonth}/{selectedYear}</span>
+            </button>
+
+            {showMonthPicker && (
+              <>
+                {/* Backdrop to close on click outside */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowMonthPicker(false)}
+                />
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50 w-72">
+                  {/* Year selector */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => setPickerYear(pickerYear - 1)}
+                      className="p-1 hover:bg-gray-100 rounded-full"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <span className="font-semibold text-lg">{pickerYear}</span>
+                    <button
+                      onClick={() => setPickerYear(pickerYear + 1)}
+                      className="p-1 hover:bg-gray-100 rounded-full"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Month grid */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                      <button
+                        key={month}
+                        onClick={() => {
+                          setSelectedMonth(month);
+                          setSelectedYear(pickerYear);
+                          setShowMonthPicker(false);
+                        }}
+                        className={`py-2 px-3 text-sm rounded-lg transition-colors ${
+                          month === selectedMonth && pickerYear === selectedYear
+                            ? "bg-blue-600 text-white"
+                            : "hover:bg-gray-100"
+                        }`}
+                      >
+                        Th {month}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <button
             onClick={() => {
@@ -1461,10 +1499,24 @@ export default function BangLuongTab() {
                     <h4 className="font-bold text-lg text-gray-800">Thông tin cơ bản</h4>
                   </div>
                 </div>
-                <div className="p-6">
+                <div className="p-6 grid grid-cols-3 gap-6">
                   <div className="space-y-1">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Mã phiếu</p>
                     <p className="font-semibold text-gray-900 text-lg">{selectedSalaryEmployee.maPhieu || "N/A"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="text-gray-500" />
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Ngày bắt đầu</p>
+                    </div>
+                    <p className="font-semibold text-gray-900">{selectedSalaryEmployee.ngayBatDau || "N/A"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="text-gray-500" />
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Ngày kết thúc</p>
+                    </div>
+                    <p className="font-semibold text-gray-900">{selectedSalaryEmployee.ngayKetThuc || "N/A"}</p>
                   </div>
                 </div>
               </div>
@@ -1617,8 +1669,12 @@ export default function BangLuongTab() {
                       <p className="font-bold text-xl text-red-600">-{selectedSalaryEmployee.truTNCN.toLocaleString("vi-VN")} đ</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Công đoàn & Khác</p>
-                      <p className="font-bold text-xl text-gray-600">-{(selectedSalaryEmployee.truCongDoan + selectedSalaryEmployee.truKhac).toLocaleString("vi-VN")} đ</p>
+                      <p className="text-xs text-gray-600 mb-1">Trừ công đoàn</p>
+                      <p className="font-bold text-xl text-gray-600">-{selectedSalaryEmployee.truCongDoan.toLocaleString("vi-VN")} đ</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Trừ khác</p>
+                      <p className="font-bold text-xl text-gray-600">-{selectedSalaryEmployee.truKhac.toLocaleString("vi-VN")} đ</p>
                     </div>
                   </div>
                 </div>

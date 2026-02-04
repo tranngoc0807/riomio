@@ -93,16 +93,16 @@ const getInitialContent = (employee?: Employee | null) => {
     <p>Hợp đồng này được lập thành 02 bản có giá trị pháp lý như nhau, mỗi bên giữ 01 bản.</p>
     <p>Hợp đồng có hiệu lực kể từ ngày ký.</p>
 
-    <table style="width: 100%; border: none; margin-top: 48px;">
+    <table style="width: 100%; margin-top: 48px;" data-signature="true">
       <tr>
-        <td style="text-align: center; width: 50%; border: none; vertical-align: top;">
+        <td style="text-align: center; width: 50%; vertical-align: top; padding: 8px;">
           <p><strong>ĐẠI DIỆN BÊN A (CÔNG TY)</strong></p>
           <p>Giám đốc</p>
           <p style="font-size: 11pt; color: #666;">(Ký, đóng dấu)</p>
           <br/><br/><br/><br/>
           <p><strong>HOÀNG VĂN VIỆT</strong></p>
         </td>
-        <td style="text-align: center; width: 50%; border: none; vertical-align: top;">
+        <td style="text-align: center; width: 50%; vertical-align: top; padding: 8px;">
           <p><strong>ĐẠI DIỆN BÊN B (NLĐ)</strong></p>
           <p style="font-size: 11pt; color: #666;">(Ký, ghi rõ họ tên)</p>
           <br/><br/><br/><br/>

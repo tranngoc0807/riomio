@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBaoHiemFromSheet, saveBaoHiemToSheet, BaoHiemNhanVien } from "@/lib/googleSheets";
+import { getBaoHiemFromSheet, saveBaoHiemToSheet, updateBaoHiemRow, deleteBaoHiemRow, BaoHiemNhanVien } from "@/lib/googleSheets";
 
 /**
  * GET /api/bao-hiem?thang=1&nam=2025
@@ -75,6 +75,94 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: error.message || "Failed to save insurance data",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/bao-hiem
+ * Cập nhật một dòng bảo hiểm
+ * Body: { rowNumber: number, data: Partial<BaoHiemNhanVien> }
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { rowNumber, data } = body;
+
+    if (!rowNumber) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu rowNumber",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu dữ liệu cập nhật",
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await updateBaoHiemRow(rowNumber, data);
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    console.error("Error updating insurance data:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Failed to update insurance data",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/bao-hiem
+ * Xoá một dòng bảo hiểm
+ * Body: { rowNumber: number }
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { rowNumber } = body;
+
+    if (!rowNumber) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu rowNumber",
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await deleteBaoHiemRow(rowNumber);
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    console.error("Error deleting insurance data:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Failed to delete insurance data",
       },
       { status: 500 }
     );

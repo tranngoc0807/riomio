@@ -6432,6 +6432,195 @@ export async function saveBaoHiemToSheet(
   }
 }
 
+/**
+ * Cập nhật một dòng bảo hiểm nhân viên
+ */
+export async function updateBaoHiemRow(
+  rowNumber: number,
+  data: Partial<BaoHiemNhanVien>
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowData = [
+      data.maPhieu || "",
+      data.ngayBatDau || "",
+      data.ngayKetThuc || "",
+      data.hoTen || "",
+      data.chucVu || "",
+      data.boPhan || "",
+      data.mucLuongCoBan || 0,
+      data.bhxhDN || 0,
+      data.bhxhNV || 0,
+      data.bhytDN || 0,
+      data.bhytNV || 0,
+      data.bhtnDN || 0,
+      data.bhtnNV || 0,
+      data.tongDN || 0,
+      data.tongNV || 0,
+      data.ghiChu || "",
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBaoHiem}'!A${rowNumber}:P${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [rowData],
+      },
+    });
+
+    return {
+      success: true,
+      message: "Đã cập nhật bảo hiểm thành công!",
+    };
+  } catch (error) {
+    console.error("Error updating insurance row:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xoá một dòng bảo hiểm nhân viên
+ */
+export async function deleteBaoHiemRow(
+  rowNumber: number
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get sheet ID first
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameBaoHiem
+    );
+
+    if (!sheet?.properties?.sheetId) {
+      throw new Error(`Sheet "${sheetNameBaoHiem}" not found`);
+    }
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    return {
+      success: true,
+      message: "Đã xoá bảo hiểm thành công!",
+    };
+  } catch (error) {
+    console.error("Error deleting insurance row:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật tỷ lệ bảo hiểm
+ */
+export async function updateBaoHiemTyLeRow(
+  rowNumber: number,
+  data: Partial<BaoHiemTyLe>
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowData = [
+      data.batDau || "",
+      data.ketThuc || "",
+      data.loaiBH || "Tỷ lệ",
+      `${data.bhxhDN || 0}%`,
+      `${data.bhxhNV || 0}%`,
+      `${data.bhytDN || 0}%`,
+      `${data.bhytNV || 0}%`,
+      `${data.bhtnDN || 0}%`,
+      `${data.bhtnNV || 0}%`,
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBaoHiemTyLe}'!A${rowNumber}:I${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [rowData],
+      },
+    });
+
+    return {
+      success: true,
+      message: "Đã cập nhật tỷ lệ bảo hiểm thành công!",
+    };
+  } catch (error) {
+    console.error("Error updating insurance rate row:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xoá tỷ lệ bảo hiểm
+ */
+export async function deleteBaoHiemTyLeRow(
+  rowNumber: number
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get sheet ID first
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameBaoHiemTyLe
+    );
+
+    if (!sheet?.properties?.sheetId) {
+      throw new Error(`Sheet "${sheetNameBaoHiemTyLe}" not found`);
+    }
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    return {
+      success: true,
+      message: "Đã xoá tỷ lệ bảo hiểm thành công!",
+    };
+  } catch (error) {
+    console.error("Error deleting insurance rate row:", error);
+    throw error;
+  }
+}
+
 // ============================================
 // CƠ CHẾ LƯƠNG (Salary Structure)
 // ============================================

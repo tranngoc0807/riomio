@@ -186,6 +186,12 @@ export default function SalaryTab() {
               >
                 Chức vụ
               </th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
+                Ngày bắt đầu
+              </th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">
+                Ngày kết thúc
+              </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                 Lương cơ bản
               </th>
@@ -234,6 +240,12 @@ export default function SalaryTab() {
                     </span>
                   )}
                 </td>
+                <td className="px-4 py-4 text-sm text-center text-gray-600 group-hover:bg-blue-50 transition-colors">
+                  {row.ngayBatDau || "-"}
+                </td>
+                <td className="px-4 py-4 text-sm text-center text-gray-600 group-hover:bg-blue-50 transition-colors">
+                  {row.ngayKetThuc || "-"}
+                </td>
                 <td className="px-4 py-4 text-sm text-right text-gray-900 group-hover:bg-blue-50 transition-colors">
                   {formatMoney(row.mucLuongCoBan)}
                 </td>
@@ -263,7 +275,7 @@ export default function SalaryTab() {
           </tbody>
           <tfoot>
             <tr className="bg-gray-100 font-semibold">
-              <td colSpan={3} className="px-4 py-3 text-right">
+              <td colSpan={5} className="px-4 py-3 text-right">
                 Tổng cộng:
               </td>
               <td className="px-4 py-3 text-right">
@@ -618,15 +630,18 @@ export default function SalaryTab() {
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <p className="text-xs text-gray-600 mb-1">
-                        Công đoàn & Khác
+                        Trừ công đoàn
                       </p>
                       <p className="font-bold text-xl text-gray-600">
-                        -
-                        {(
-                          selectedEmployee.truCongDoan +
-                          selectedEmployee.truKhac
-                        ).toLocaleString("vi-VN")}{" "}
-                        đ
+                        -{selectedEmployee.truCongDoan.toLocaleString("vi-VN")} đ
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">
+                        Trừ khác
+                      </p>
+                      <p className="font-bold text-xl text-gray-600">
+                        -{selectedEmployee.truKhac.toLocaleString("vi-VN")} đ
                       </p>
                     </div>
                   </div>

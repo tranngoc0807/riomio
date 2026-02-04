@@ -98,6 +98,7 @@ export default function DocumentEditor({
           table { width: 100%; border-collapse: collapse; margin: 1em 0; }
           th, td { border: 1px solid #000; padding: 8px; }
           th { background: #f0f0f0; font-weight: bold; }
+          table:last-of-type, table:last-of-type tr, table:last-of-type th, table:last-of-type td { border: none !important; background: transparent !important; }
           ul, ol { margin: 0.5em 0; padding-left: 2em; }
           .ProseMirror { outline: none; }
         </style>
@@ -316,6 +317,13 @@ export default function DocumentEditor({
         .ProseMirror th {
           background: #f5f5f5;
           font-weight: bold;
+        }
+        .ProseMirror table:last-of-type,
+        .ProseMirror table:last-of-type tr,
+        .ProseMirror table:last-of-type th,
+        .ProseMirror table:last-of-type td {
+          border: none !important;
+          background: transparent !important;
         }
         .ProseMirror .tableWrapper {
           overflow-x: auto;

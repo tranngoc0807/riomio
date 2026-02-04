@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield, FileText, Percent, RefreshCw, Loader2, X, Plus, Save, Users, ChevronDown, Check } from "lucide-react";
+import { Shield, FileText, Percent, RefreshCw, Loader2, X, Plus, Save, Users, ChevronDown, Check, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -63,6 +63,7 @@ interface EmployeeBaoHiem {
   chucVu: string;
   boPhan: string;
   mucLuongCoBan: number;
+  ghiChu?: string;
 }
 
 interface NewBaoHiemForm {
@@ -114,6 +115,8 @@ export default function BaoHiemTab() {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
 
   // Ty Le state
   const [tyLeData, setTyLeData] = useState<BaoHiemTyLe[]>([]);
@@ -144,6 +147,14 @@ export default function BaoHiemTab() {
 
   // Current rates
   const [currentRates, setCurrentRates] = useState<BaoHiemTyLe | null>(null);
+
+  // Edit/Delete state for BaoHiem
+  const [editBaoHiem, setEditBaoHiem] = useState<BaoHiemNhanVien | null>(null);
+  const [deleteBaoHiem, setDeleteBaoHiem] = useState<BaoHiemNhanVien | null>(null);
+
+  // Edit/Delete state for TyLe
+  const [editTyLe, setEditTyLe] = useState<BaoHiemTyLe | null>(null);
+  const [deleteTyLe, setDeleteTyLe] = useState<BaoHiemTyLe | null>(null);
 
   const [newBaoHiemForm, setNewBaoHiemForm] = useState<NewBaoHiemForm>({
     ngayBatDau: "",
@@ -263,6 +274,16 @@ export default function BaoHiemTab() {
     }));
   };
 
+  // Update employee ghiChu
+  const updateEmployeeGhiChu = (employeeId: number, ghiChu: string) => {
+    setNewBaoHiemForm((prev) => ({
+      ...prev,
+      employees: prev.employees.map((e) =>
+        e.employeeId === employeeId ? { ...e, ghiChu } : e
+      ),
+    }));
+  };
+
   // Calculate insurance amounts
   const calculateInsurance = (salary: number) => {
     if (!currentRates) {
@@ -355,7 +376,7 @@ export default function BaoHiemTab() {
           boPhan: emp.boPhan,
           mucLuongCoBan: emp.mucLuongCoBan,
           ...insurance,
-          ghiChu: "",
+          ghiChu: emp.ghiChu || "",
           thang: selectedMonth,
           nam: selectedYear,
         };
@@ -379,6 +400,128 @@ export default function BaoHiemTab() {
     } catch (error) {
       console.error("Error saving insurance data:", error);
       toast.error("Lỗi khi tạo bảo hiểm");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle update BaoHiem
+  const handleUpdateBaoHiem = async () => {
+    if (!editBaoHiem) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/bao-hiem", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowNumber: editBaoHiem.id,
+          data: editBaoHiem,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Đã cập nhật bảo hiểm!");
+        setEditBaoHiem(null);
+        fetchBaoHiem();
+      } else {
+        toast.error(data.error || "Không thể cập nhật");
+      }
+    } catch (error) {
+      console.error("Error updating insurance:", error);
+      toast.error("Lỗi khi cập nhật bảo hiểm");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle delete BaoHiem
+  const handleDeleteBaoHiem = async () => {
+    if (!deleteBaoHiem) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/bao-hiem", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rowNumber: deleteBaoHiem.id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Đã xoá bảo hiểm!");
+        setDeleteBaoHiem(null);
+        fetchBaoHiem();
+      } else {
+        toast.error(data.error || "Không thể xoá");
+      }
+    } catch (error) {
+      console.error("Error deleting insurance:", error);
+      toast.error("Lỗi khi xoá bảo hiểm");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle update TyLe
+  const handleUpdateTyLe = async () => {
+    if (!editTyLe) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/bao-hiem-ty-le", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowNumber: editTyLe.id,
+          data: editTyLe,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Đã cập nhật tỷ lệ bảo hiểm!");
+        setEditTyLe(null);
+        fetchTyLe();
+      } else {
+        toast.error(data.error || "Không thể cập nhật");
+      }
+    } catch (error) {
+      console.error("Error updating insurance rate:", error);
+      toast.error("Lỗi khi cập nhật tỷ lệ bảo hiểm");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle delete TyLe
+  const handleDeleteTyLe = async () => {
+    if (!deleteTyLe) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/bao-hiem-ty-le", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rowNumber: deleteTyLe.id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Đã xoá tỷ lệ bảo hiểm!");
+        setDeleteTyLe(null);
+        fetchTyLe();
+      } else {
+        toast.error(data.error || "Không thể xoá");
+      }
+    } catch (error) {
+      console.error("Error deleting insurance rate:", error);
+      toast.error("Lỗi khi xoá tỷ lệ bảo hiểm");
     } finally {
       setIsSaving(false);
     }
@@ -429,33 +572,121 @@ export default function BaoHiemTab() {
       <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-50 p-4 rounded-lg">
         <div className="flex items-center gap-4">
           {activeSubTab === "bang-ke" && (
-            <>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Năm:</label>
-                <input
-                  type="number"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  min="2020"
-                  max="2030"
-                  className="px-3 py-2 border border-gray-300 rounded-lg w-24 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Tháng:</label>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            <div className="relative">
+              <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg p-1">
+                <button
+                  onClick={() => {
+                    if (selectedMonth === 1) {
+                      setSelectedMonth(12);
+                      setSelectedYear(selectedYear - 1);
+                    } else {
+                      setSelectedMonth(selectedMonth - 1);
+                    }
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Tháng trước"
                 >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                    <option key={month} value={month}>
-                      Tháng {month}
-                    </option>
-                  ))}
-                </select>
+                  <ChevronLeft size={20} className="text-gray-600" />
+                </button>
+                <button
+                  onClick={() => {
+                    setPickerYear(selectedYear);
+                    setShowMonthPicker(!showMonthPicker);
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 min-w-[140px] justify-center hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Calendar size={18} className="text-blue-600" />
+                  <span className="font-semibold text-gray-800">
+                    Tháng {selectedMonth}/{selectedYear}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedMonth === 12) {
+                      setSelectedMonth(1);
+                      setSelectedYear(selectedYear + 1);
+                    } else {
+                      setSelectedMonth(selectedMonth + 1);
+                    }
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Tháng sau"
+                >
+                  <ChevronRight size={20} className="text-gray-600" />
+                </button>
               </div>
-            </>
+
+              {/* Month Picker Popup */}
+              {showMonthPicker && (
+                <>
+                  {/* Backdrop to close on click outside */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowMonthPicker(false)}
+                  />
+                  <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4 min-w-[280px]">
+                    {/* Year Selector */}
+                    <div className="flex items-center justify-between mb-4">
+                      <button
+                        onClick={() => setPickerYear(pickerYear - 1)}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <ChevronLeft size={18} className="text-gray-600" />
+                      </button>
+                      <span className="font-bold text-gray-800 text-lg">{pickerYear}</span>
+                      <button
+                        onClick={() => setPickerYear(pickerYear + 1)}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <ChevronRight size={18} className="text-gray-600" />
+                      </button>
+                    </div>
+
+                    {/* Month Grid */}
+                    <div className="grid grid-cols-4 gap-2">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                        <button
+                          key={month}
+                          onClick={() => {
+                            setSelectedMonth(month);
+                            setSelectedYear(pickerYear);
+                            setShowMonthPicker(false);
+                          }}
+                          className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                            month === selectedMonth && pickerYear === selectedYear
+                              ? "bg-blue-600 text-white"
+                              : "hover:bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          Th {month}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="mt-4 pt-3 border-t border-gray-200 flex justify-between">
+                      <button
+                        onClick={() => {
+                          const now = new Date();
+                          setSelectedMonth(now.getMonth() + 1);
+                          setSelectedYear(now.getFullYear());
+                          setShowMonthPicker(false);
+                        }}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        Tháng hiện tại
+                      </button>
+                      <button
+                        onClick={() => setShowMonthPicker(false)}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        Đóng
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -561,6 +792,7 @@ export default function BaoHiemTab() {
                           <th className="px-3 py-3 text-right font-semibold">BHTN NV</th>
                           <th className="px-3 py-3 text-right font-semibold bg-green-600">Tổng DN</th>
                           <th className="px-3 py-3 text-right font-semibold bg-orange-600">Tổng NV</th>
+                          <th className="px-3 py-3 text-center font-semibold">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -584,6 +816,24 @@ export default function BaoHiemTab() {
                             <td className="px-3 py-2 text-right text-orange-600">{formatCurrency(item.bhtnNV)}</td>
                             <td className="px-3 py-2 text-right font-bold text-green-700 bg-green-50">{formatCurrency(item.tongDN)}</td>
                             <td className="px-3 py-2 text-right font-bold text-orange-700 bg-orange-50">{formatCurrency(item.tongNV)}</td>
+                            <td className="px-3 py-2 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => setEditBaoHiem(item)}
+                                  className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                  title="Sửa"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteBaoHiem(item)}
+                                  className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                  title="Xoá"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                         {/* Total row */}
@@ -598,6 +848,7 @@ export default function BaoHiemTab() {
                           <td className="px-3 py-3 text-right text-orange-600">{formatCurrency(baoHiemData.reduce((sum, i) => sum + i.bhtnNV, 0))}</td>
                           <td className="px-3 py-3 text-right text-green-700 bg-green-100">{formatCurrency(baoHiemData.reduce((sum, i) => sum + i.tongDN, 0))}</td>
                           <td className="px-3 py-3 text-right text-orange-700 bg-orange-100">{formatCurrency(baoHiemData.reduce((sum, i) => sum + i.tongNV, 0))}</td>
+                          <td className="px-3 py-3"></td>
                         </tr>
                       </tbody>
                     </table>
@@ -713,6 +964,7 @@ export default function BaoHiemTab() {
                         <th className="px-4 py-3 text-center font-semibold text-green-600">BHYT NV</th>
                         <th className="px-4 py-3 text-center font-semibold text-orange-600">BHTN DN</th>
                         <th className="px-4 py-3 text-center font-semibold text-orange-600">BHTN NV</th>
+                        <th className="px-4 py-3 text-center font-semibold">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -727,6 +979,24 @@ export default function BaoHiemTab() {
                           <td className="px-4 py-3 text-center text-green-600 font-medium">{item.bhytNV}%</td>
                           <td className="px-4 py-3 text-center text-orange-600 font-medium">{item.bhtnDN}%</td>
                           <td className="px-4 py-3 text-center text-orange-600 font-medium">{item.bhtnNV}%</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => setEditTyLe(item)}
+                                className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                title="Sửa"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTyLe(item)}
+                                className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                title="Xoá"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1055,6 +1325,18 @@ export default function BaoHiemTab() {
                               </div>
                             </div>
                           )}
+
+                          {/* Ghi chú */}
+                          <div className="mt-3">
+                            <label className="block text-xs text-gray-500 mb-1">Ghi chú</label>
+                            <textarea
+                              value={emp.ghiChu || ""}
+                              onChange={(e) => updateEmployeeGhiChu(emp.employeeId, e.target.value)}
+                              placeholder="Nhập ghi chú..."
+                              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
+                              rows={2}
+                            />
+                          </div>
                         </div>
                       );
                     })}
@@ -1106,6 +1388,368 @@ export default function BaoHiemTab() {
                     Lưu bảo hiểm ({newBaoHiemForm.employees.length} NV)
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit BaoHiem Modal */}
+      {editBaoHiem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-blue-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <Pencil size={20} className="text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-white">Sửa bảo hiểm - {editBaoHiem.hoTen}</h3>
+              </div>
+              <button onClick={() => setEditBaoHiem(null)} className="p-2 hover:bg-white/20 rounded-lg">
+                <X size={24} className="text-white" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu</label>
+                  <input
+                    type="text"
+                    value={editBaoHiem.maPhieu}
+                    onChange={(e) => setEditBaoHiem({ ...editBaoHiem, maPhieu: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương CB</label>
+                  <input
+                    type="number"
+                    value={editBaoHiem.mucLuongCoBan}
+                    onChange={(e) => setEditBaoHiem({ ...editBaoHiem, mucLuongCoBan: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <h4 className="font-semibold text-blue-700 text-sm mb-2">BHXH</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600">DN</label>
+                      <input
+                        type="number"
+                        value={editBaoHiem.bhxhDN}
+                        onChange={(e) => setEditBaoHiem({ ...editBaoHiem, bhxhDN: parseInt(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600">NV</label>
+                      <input
+                        type="number"
+                        value={editBaoHiem.bhxhNV}
+                        onChange={(e) => setEditBaoHiem({ ...editBaoHiem, bhxhNV: parseInt(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <h4 className="font-semibold text-green-700 text-sm mb-2">BHYT</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600">DN</label>
+                      <input
+                        type="number"
+                        value={editBaoHiem.bhytDN}
+                        onChange={(e) => setEditBaoHiem({ ...editBaoHiem, bhytDN: parseInt(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600">NV</label>
+                      <input
+                        type="number"
+                        value={editBaoHiem.bhytNV}
+                        onChange={(e) => setEditBaoHiem({ ...editBaoHiem, bhytNV: parseInt(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-orange-50 p-3 rounded-lg">
+                  <h4 className="font-semibold text-orange-700 text-sm mb-2">BHTN</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600">DN</label>
+                      <input
+                        type="number"
+                        value={editBaoHiem.bhtnDN}
+                        onChange={(e) => setEditBaoHiem({ ...editBaoHiem, bhtnDN: parseInt(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600">NV</label>
+                      <input
+                        type="number"
+                        value={editBaoHiem.bhtnNV}
+                        onChange={(e) => setEditBaoHiem({ ...editBaoHiem, bhtnNV: parseInt(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-green-100 p-3 rounded-lg">
+                  <label className="block text-xs text-gray-600">Tổng DN</label>
+                  <input
+                    type="number"
+                    value={editBaoHiem.tongDN}
+                    onChange={(e) => setEditBaoHiem({ ...editBaoHiem, tongDN: parseInt(e.target.value) || 0 })}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                </div>
+                <div className="bg-orange-100 p-3 rounded-lg">
+                  <label className="block text-xs text-gray-600">Tổng NV</label>
+                  <input
+                    type="number"
+                    value={editBaoHiem.tongNV}
+                    onChange={(e) => setEditBaoHiem({ ...editBaoHiem, tongNV: parseInt(e.target.value) || 0 })}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                <textarea
+                  value={editBaoHiem.ghiChu || ""}
+                  onChange={(e) => setEditBaoHiem({ ...editBaoHiem, ghiChu: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Nhập ghi chú..."
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+              <button onClick={() => setEditBaoHiem(null)} className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg">
+                Hủy
+              </button>
+              <button
+                onClick={handleUpdateBaoHiem}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                Lưu thay đổi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete BaoHiem Confirmation */}
+      {deleteBaoHiem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} className="text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Xác nhận xoá</h3>
+              <p className="text-gray-600 mb-6">
+                Bạn có chắc chắn muốn xoá bảo hiểm của <strong>{deleteBaoHiem.hoTen}</strong>?
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => setDeleteBaoHiem(null)}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleDeleteBaoHiem}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                  Xoá
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit TyLe Modal */}
+      {editTyLe && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
+            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-purple-600 to-purple-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <Pencil size={20} className="text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-white">Sửa tỷ lệ bảo hiểm</h3>
+              </div>
+              <button onClick={() => setEditTyLe(null)} className="p-2 hover:bg-white/20 rounded-lg">
+                <X size={24} className="text-white" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+                  <input
+                    type="text"
+                    value={editTyLe.batDau}
+                    onChange={(e) => setEditTyLe({ ...editTyLe, batDau: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+                  <input
+                    type="text"
+                    value={editTyLe.ketThuc}
+                    onChange={(e) => setEditTyLe({ ...editTyLe, ketThuc: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-700 mb-3">BHXH</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600">Doanh nghiệp (%)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editTyLe.bhxhDN}
+                        onChange={(e) => setEditTyLe({ ...editTyLe, bhxhDN: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600">Nhân viên (%)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editTyLe.bhxhNV}
+                        onChange={(e) => setEditTyLe({ ...editTyLe, bhxhNV: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-green-700 mb-3">BHYT</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600">Doanh nghiệp (%)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editTyLe.bhytDN}
+                        onChange={(e) => setEditTyLe({ ...editTyLe, bhytDN: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600">Nhân viên (%)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editTyLe.bhytNV}
+                        onChange={(e) => setEditTyLe({ ...editTyLe, bhytNV: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-orange-700 mb-3">BHTN</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600">Doanh nghiệp (%)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editTyLe.bhtnDN}
+                        onChange={(e) => setEditTyLe({ ...editTyLe, bhtnDN: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600">Nhân viên (%)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editTyLe.bhtnNV}
+                        onChange={(e) => setEditTyLe({ ...editTyLe, bhtnNV: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-2 py-1 border rounded"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+              <button onClick={() => setEditTyLe(null)} className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg">
+                Hủy
+              </button>
+              <button
+                onClick={handleUpdateTyLe}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                Lưu thay đổi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete TyLe Confirmation */}
+      {deleteTyLe && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} className="text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Xác nhận xoá</h3>
+              <p className="text-gray-600 mb-6">
+                Bạn có chắc chắn muốn xoá tỷ lệ bảo hiểm từ <strong>{deleteTyLe.batDau}</strong> đến <strong>{deleteTyLe.ketThuc}</strong>?
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => setDeleteTyLe(null)}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleDeleteTyLe}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                  Xoá
+                </button>
               </div>
             </div>
           </div>

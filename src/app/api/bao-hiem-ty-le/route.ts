@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBaoHiemTyLeFromSheet, saveBaoHiemTyLeToSheet } from "@/lib/googleSheets";
+import { getBaoHiemTyLeFromSheet, saveBaoHiemTyLeToSheet, updateBaoHiemTyLeRow, deleteBaoHiemTyLeRow } from "@/lib/googleSheets";
 
 /**
  * GET /api/bao-hiem-ty-le
@@ -69,6 +69,94 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: error.message || "Failed to save insurance rate",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/bao-hiem-ty-le
+ * Cập nhật tỷ lệ bảo hiểm
+ * Body: { rowNumber: number, data: Partial<BaoHiemTyLe> }
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { rowNumber, data } = body;
+
+    if (!rowNumber) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu rowNumber",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu dữ liệu cập nhật",
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await updateBaoHiemTyLeRow(rowNumber, data);
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    console.error("Error updating insurance rate:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Failed to update insurance rate",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/bao-hiem-ty-le
+ * Xoá tỷ lệ bảo hiểm
+ * Body: { rowNumber: number }
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { rowNumber } = body;
+
+    if (!rowNumber) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu rowNumber",
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await deleteBaoHiemTyLeRow(rowNumber);
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    console.error("Error deleting insurance rate:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Failed to delete insurance rate",
       },
       { status: 500 }
     );
