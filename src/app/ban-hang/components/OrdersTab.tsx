@@ -860,10 +860,10 @@ export default function OrdersTab() {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-sm text-center font-medium text-gray-900">
-                    {group.totalItems > 0 ? group.totalItems.toLocaleString("vi-VN") : "-"}
+                    {group.totalItems != null ? group.totalItems.toLocaleString("vi-VN") : "-"}
                   </td>
-                  <td className="px-3 py-3 text-sm text-right font-semibold text-green-600">
-                    {group.total > 0 ? group.total.toLocaleString("vi-VN") + "đ" : "-"}
+                  <td className={`px-3 py-3 text-sm text-right font-semibold ${group.total < 0 ? "text-red-600" : "text-green-600"}`}>
+                    {group.total != null ? group.total.toLocaleString("vi-VN") + "đ" : "-"}
                   </td>
                   <td className="px-3 py-3 text-sm text-gray-600">{group.salesUser || "-"}</td>
                   <td className="px-3 py-3 text-sm text-gray-600 max-w-[200px] truncate">

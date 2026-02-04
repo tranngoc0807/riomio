@@ -72,6 +72,30 @@ const emptyFormData = {
   xuongSX: "",
 };
 
+// Interface for multi-item in add modal
+interface NPLItem {
+  id: string;
+  maNPL: string;
+  dvt: string;
+  dinhMuc: number;
+  slKHSX: number;
+  tongNPLSX: number;
+  maSPSuDung: string;
+  mauSac: string;
+  xuongSX: string;
+}
+
+const emptyNPLItem: Omit<NPLItem, "id"> = {
+  maNPL: "",
+  dvt: "",
+  dinhMuc: 0,
+  slKHSX: 0,
+  tongNPLSX: 0,
+  maSPSuDung: "",
+  mauSac: "",
+  xuongSX: "",
+};
+
 export default function BangKeYCXKTab() {
   const [data, setData] = useState<YeuCauXuatKhoNPL[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -101,15 +125,22 @@ export default function BangKeYCXKTab() {
   const nplDropdownRef = useRef<HTMLDivElement>(null);
   const spDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filtered data
-  const filteredList = data.filter(
-    (item) =>
-      item.maPhieuYC.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.maNPL.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.maSPSuDung.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.xuongSX.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.ngayThang.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Multi-item state for add modal
+  const [addHeaderData, setAddHeaderData] = useState({ ngayThang: "", maPhieuYC: "" });
+  const [nplItems, setNplItems] = useState<NPLItem[]>([]);
+  const [currentNPLItem, setCurrentNPLItem] = useState<Omit<NPLItem, "id">>(emptyNPLItem);
+
+  // Filtered data - sorted by ID descending (newest first)
+  const filteredList = data
+    .filter(
+      (item) =>
+        item.maPhieuYC.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.maNPL.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.maSPSuDung.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.xuongSX.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.ngayThang.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => b.id - a.id); // Sort by ID descending (newest first)
 
   // Pagination
   const totalPages = Math.ceil(filteredList.length / ITEMS_PER_PAGE);
@@ -196,26 +227,66 @@ export default function BangKeYCXKTab() {
   };
 
   // Handle NPL selection - auto fill DVT (save full name instead of code)
-  const handleNPLSelect = (material: Material) => {
+  const handleNPLSelect = (material: Material, isAddModal: boolean = false) => {
     const fullName = `${material.code} ${material.name}`.trim();
-    setFormData((prev) => ({
-      ...prev,
-      maNPL: fullName,
-      dvt: material.unit,
-    }));
+    if (isAddModal) {
+      setCurrentNPLItem((prev) => ({
+        ...prev,
+        maNPL: fullName,
+        dvt: material.unit,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        maNPL: fullName,
+        dvt: material.unit,
+      }));
+    }
     setNplSearch(fullName);
     setShowNplDropdown(false);
   };
 
   // Handle Ma SP selection - auto fill Xuong SX
-  const handleMaSPSelect = (sp: MaSP) => {
-    setFormData((prev) => ({
-      ...prev,
-      maSPSuDung: sp.maSP,
-      xuongSX: sp.xuongSX,
-    }));
+  const handleMaSPSelect = (sp: MaSP, isAddModal: boolean = false) => {
+    if (isAddModal) {
+      setCurrentNPLItem((prev) => ({
+        ...prev,
+        maSPSuDung: sp.maSP,
+        xuongSX: sp.xuongSX,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        maSPSuDung: sp.maSP,
+        xuongSX: sp.xuongSX,
+      }));
+    }
     setSpSearch(sp.maSP);
     setShowSpDropdown(false);
+  };
+
+  // Generate next maPhieuYC
+  const generateNextMaPhieuYC = (): string => {
+    // Get all unique maPhieuYC from data
+    const existingCodes = data
+      .map((item) => item.maPhieuYC)
+      .filter((code) => code && code.startsWith("YC"));
+
+    if (existingCodes.length === 0) {
+      return "YC01";
+    }
+
+    // Extract numbers and find max
+    const numbers = existingCodes.map((code) => {
+      const match = code.match(/YC(\d+)/i);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+
+    const maxNumber = Math.max(...numbers);
+    const nextNumber = maxNumber + 1;
+
+    // Pad with leading zeros (2 digits minimum)
+    return `YC${nextNumber.toString().padStart(2, "0")}`;
   };
 
   // Filter materials based on search
@@ -235,9 +306,36 @@ export default function BangKeYCXKTab() {
   // Open add modal
   const openAddModal = () => {
     setFormData(emptyFormData);
+    // Auto generate next maPhieuYC
+    const nextMaPhieu = generateNextMaPhieuYC();
+    setAddHeaderData({ ngayThang: "", maPhieuYC: nextMaPhieu });
+    setNplItems([]);
+    setCurrentNPLItem(emptyNPLItem);
     setNplSearch("");
     setSpSearch("");
     setShowAddModal(true);
+  };
+
+  // Add item to list
+  const addItemToList = () => {
+    if (!currentNPLItem.maNPL) {
+      toast.error("Vui lòng chọn Mã NPL");
+      return;
+    }
+    const newItem: NPLItem = {
+      ...currentNPLItem,
+      id: Date.now().toString(),
+    };
+    setNplItems((prev) => [...prev, newItem]);
+    setCurrentNPLItem(emptyNPLItem);
+    setNplSearch("");
+    setSpSearch("");
+    toast.success("Đã thêm vào danh sách");
+  };
+
+  // Remove item from list
+  const removeItemFromList = (id: string) => {
+    setNplItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   // Open edit modal
@@ -266,28 +364,45 @@ export default function BangKeYCXKTab() {
     setShowDeleteModal(true);
   };
 
-  // Handle add
+  // Handle add (multi-item)
   const handleAdd = async () => {
-    if (!formData.maNPL) {
-      toast.error("Vui lòng chọn Mã NPL");
+    if (nplItems.length === 0) {
+      toast.error("Vui lòng thêm ít nhất 1 mã NPL vào danh sách");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const response = await fetch("/api/yeu-cau-xuat-kho-npl/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
 
-      const result = await response.json();
-      if (result.success) {
-        toast.success("Thêm yêu cầu xuất kho NPL thành công");
+      // Submit all items with same header data
+      const promises = nplItems.map((item) =>
+        fetch("/api/yeu-cau-xuat-kho-npl/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ngayThang: addHeaderData.ngayThang,
+            maPhieuYC: addHeaderData.maPhieuYC,
+            maNPL: item.maNPL,
+            dvt: item.dvt,
+            dinhMuc: item.dinhMuc,
+            slKHSX: item.slKHSX,
+            tongNPLSX: item.tongNPLSX,
+            maSPSuDung: item.maSPSuDung,
+            mauSac: item.mauSac,
+            xuongSX: item.xuongSX,
+          }),
+        })
+      );
+
+      const results = await Promise.all(promises);
+      const allSuccess = results.every((r) => r.ok);
+
+      if (allSuccess) {
+        toast.success(`Thêm ${nplItems.length} mã NPL thành công`);
         setShowAddModal(false);
         fetchData();
       } else {
-        toast.error(result.error || "Không thể thêm yêu cầu xuất kho NPL");
+        toast.error("Có lỗi khi thêm một số mã NPL");
       }
     } catch (error) {
       console.error("Error adding:", error);
@@ -755,18 +870,265 @@ export default function BangKeYCXKTab() {
         )}
       </div>
 
-      {/* Add Modal */}
+      {/* Add Modal - Multi-item */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <h3 className="text-lg font-semibold">Thêm yêu cầu xuất kho NPL</h3>
               <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X size={20} />
               </button>
             </div>
-            <div className="px-6 py-4">
-              {renderForm()}
+            <div className="px-6 py-4 space-y-4">
+              {/* Header: Ngày tháng & Mã phiếu YC */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày tháng</label>
+                  <input
+                    type="date"
+                    value={convertToInputDate(addHeaderData.ngayThang)}
+                    onChange={(e) => setAddHeaderData({ ...addHeaderData, ngayThang: convertToSheetDate(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu YC</label>
+                  <input
+                    type="text"
+                    value={addHeaderData.maPhieuYC}
+                    onChange={(e) => setAddHeaderData({ ...addHeaderData, maPhieuYC: e.target.value })}
+                    placeholder="VD: YC03"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Form thêm mã NPL */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h4 className="font-medium text-gray-700 mb-3">Thêm mã NPL vào phiếu</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Mã NPL */}
+                  <div className="relative" ref={nplDropdownRef}>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Mã NPL <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={nplSearch}
+                      onChange={(e) => {
+                        setNplSearch(e.target.value);
+                        setCurrentNPLItem({ ...currentNPLItem, maNPL: e.target.value });
+                        setShowNplDropdown(true);
+                      }}
+                      onFocus={() => setShowNplDropdown(true)}
+                      placeholder="Tìm mã NPL..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    {showNplDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {isLoadingMaterials ? (
+                          <div className="px-3 py-2 text-gray-500 flex items-center gap-2 text-sm">
+                            <Loader2 size={14} className="animate-spin" /> Đang tải...
+                          </div>
+                        ) : filteredMaterials.length === 0 ? (
+                          <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy</div>
+                        ) : (
+                          filteredMaterials.slice(0, 50).map((m) => (
+                            <div
+                              key={m.id}
+                              onClick={() => handleNPLSelect(m, true)}
+                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+                            >
+                              <div className="font-medium text-blue-600 text-sm">{m.code}</div>
+                              <div className="text-xs text-gray-500 truncate">{m.name}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ĐVT */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">ĐVT</label>
+                    <input
+                      type="text"
+                      value={currentNPLItem.dvt}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  {/* Định mức */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Định mức</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={currentNPLItem.dinhMuc || ""}
+                      onChange={(e) => {
+                        const dinhMuc = parseFloat(e.target.value) || 0;
+                        setCurrentNPLItem({
+                          ...currentNPLItem,
+                          dinhMuc,
+                          tongNPLSX: dinhMuc * currentNPLItem.slKHSX
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  {/* SL KH SX */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">SL KH SX</label>
+                    <input
+                      type="number"
+                      value={currentNPLItem.slKHSX || ""}
+                      onChange={(e) => {
+                        const slKHSX = parseFloat(e.target.value) || 0;
+                        setCurrentNPLItem({
+                          ...currentNPLItem,
+                          slKHSX,
+                          tongNPLSX: currentNPLItem.dinhMuc * slKHSX
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Tổng NPL SX */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tổng NPL SX</label>
+                    <input
+                      type="text"
+                      value={currentNPLItem.tongNPLSX ? currentNPLItem.tongNPLSX.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "0"}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  {/* Mã SP sử dụng */}
+                  <div className="relative" ref={spDropdownRef}>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Mã SP sử dụng</label>
+                    <input
+                      type="text"
+                      value={spSearch}
+                      onChange={(e) => {
+                        setSpSearch(e.target.value);
+                        setCurrentNPLItem({ ...currentNPLItem, maSPSuDung: e.target.value });
+                        setShowSpDropdown(true);
+                      }}
+                      onFocus={() => setShowSpDropdown(true)}
+                      placeholder="Tìm mã SP..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    {showSpDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {isLoadingMaSP ? (
+                          <div className="px-3 py-2 text-gray-500 flex items-center gap-2 text-sm">
+                            <Loader2 size={14} className="animate-spin" /> Đang tải...
+                          </div>
+                        ) : filteredMaSP.length === 0 ? (
+                          <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy</div>
+                        ) : (
+                          filteredMaSP.slice(0, 50).map((sp) => (
+                            <div
+                              key={sp.id}
+                              onClick={() => handleMaSPSelect(sp, true)}
+                              className="px-3 py-2 hover:bg-green-50 cursor-pointer border-b border-gray-100 last:border-0"
+                            >
+                              <div className="font-medium text-green-600 text-sm">{sp.maSP}</div>
+                              <div className="text-xs text-gray-500 truncate">{sp.tenSP}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Màu sắc */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Màu sắc</label>
+                    <input
+                      type="text"
+                      value={currentNPLItem.mauSac}
+                      onChange={(e) => setCurrentNPLItem({ ...currentNPLItem, mauSac: e.target.value })}
+                      placeholder="Nhập màu sắc..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Xưởng SX */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Xưởng SX</label>
+                    <input
+                      type="text"
+                      value={currentNPLItem.xuongSX}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={addItemToList}
+                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                >
+                  <Plus size={16} />
+                  Thêm vào danh sách
+                </button>
+              </div>
+
+              {/* Danh sách mã NPL đã thêm */}
+              {nplItems.length > 0 && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-4 py-2 bg-blue-600 text-white font-medium text-sm">
+                    Danh sách mã NPL ({nplItems.length})
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-gray-600">Mã NPL</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-600">ĐVT</th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600">Định mức</th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600">SL KH SX</th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600">Tổng NPL</th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-600">Mã SP</th>
+                        <th className="px-3 py-2 text-center font-medium text-gray-600 w-16"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {nplItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-blue-600 font-medium max-w-[150px] truncate" title={item.maNPL}>
+                            {item.maNPL}
+                          </td>
+                          <td className="px-3 py-2 text-gray-600">{item.dvt}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">
+                            {item.dinhMuc.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-3 py-2 text-right text-green-600 font-medium">
+                            {item.slKHSX.toLocaleString("vi-VN")}
+                          </td>
+                          <td className="px-3 py-2 text-right text-orange-600 font-medium">
+                            {item.tongNPLSX.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-3 py-2 text-gray-600">{item.maSPSuDung || "-"}</td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              onClick={() => removeItemFromList(item.id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                              title="Xóa"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
               <button
@@ -777,11 +1139,11 @@ export default function BangKeYCXKTab() {
               </button>
               <button
                 onClick={handleAdd}
-                disabled={isSubmitting}
+                disabled={isSubmitting || nplItems.length === 0}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                Thêm
+                Tạo phiếu ({nplItems.length} mã)
               </button>
             </div>
           </div>
