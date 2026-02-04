@@ -53,6 +53,9 @@ interface SelectedProduct {
   discount: string;
   priceAfterDiscount: number;
   subtotalAfterDiscount: number;
+  paymentDiscount: string; // CK thanh toán (per product)
+  total: number; // Khách phải trả (per product)
+  notes: string; // Ghi chú (per product)
 }
 
 // Interface for grouped orders (one order with multiple products)
@@ -159,8 +162,6 @@ export default function OrdersTab() {
   // Multi-product form states
   const [formOrderCode, setFormOrderCode] = useState("");
   const [formDate, setFormDate] = useState(new Date().toISOString().split("T")[0]);
-  const [formPaymentDiscount, setFormPaymentDiscount] = useState("");
-  const [formNotes, setFormNotes] = useState("");
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
 
   // Edit grouped order states
@@ -405,8 +406,6 @@ export default function OrdersTab() {
   const handleOpenAddModal = async () => {
     // Reset form first
     setFormDate(new Date().toISOString().split("T")[0]);
-    setFormPaymentDiscount("");
-    setFormNotes("");
     setSelectedProducts([]);
     setSelectedCustomer(null);
     setCustomerSearchTerm("");
@@ -453,6 +452,9 @@ export default function OrdersTab() {
       discount: "",
       priceAfterDiscount: productPrice,
       subtotalAfterDiscount: productPrice,
+      paymentDiscount: "",
+      total: productPrice,
+      notes: "",
     };
 
     setSelectedProducts([...selectedProducts, newProduct]);
@@ -517,32 +519,25 @@ export default function OrdersTab() {
           }
         }
 
+        // Recalculate total (khách phải trả) if paymentDiscount changed or subtotalAfterDiscount recalculated
+        if (field === "paymentDiscount" || field === "items" || field === "discount" || field === "salesProgram") {
+          const paymentDiscount = field === "paymentDiscount" ? value : updated.paymentDiscount;
+          let total = updated.subtotalAfterDiscount;
+          if (paymentDiscount) {
+            if (paymentDiscount.includes("%")) {
+              const discountValue = parseFloat(paymentDiscount.replace("%", "")) / 100;
+              total = Math.round(updated.subtotalAfterDiscount * (1 - discountValue));
+            } else {
+              const fixedDiscount = parseFloat(paymentDiscount.replace(/[,.\s]/g, "")) || 0;
+              total = Math.round(updated.subtotalAfterDiscount - fixedDiscount);
+            }
+          }
+          updated.total = total;
+        }
+
         return updated;
       })
     );
-  };
-
-  // Calculate total for all selected products
-  const calculateTotalAllProducts = () => {
-    let total = selectedProducts.reduce(
-      (sum, p) => sum + p.subtotalAfterDiscount,
-      0
-    );
-
-    // Apply payment discount
-    if (formPaymentDiscount) {
-      if (formPaymentDiscount.includes("%")) {
-        const discountValue =
-          parseFloat(formPaymentDiscount.replace("%", "")) / 100;
-        total = total * (1 - discountValue);
-      } else {
-        const fixedDiscount =
-          parseFloat(formPaymentDiscount.replace(/[,.\s]/g, "")) || 0;
-        total = total - fixedDiscount;
-      }
-    }
-
-    return Math.round(total);
   };
 
   // Handle Add multi-product order
@@ -560,19 +555,23 @@ export default function OrdersTab() {
     try {
       setIsAdding(true);
 
-      // Calculate total with payment discount
-      const totalOrder = calculateTotalAllProducts();
-      const paymentDiscountPerProduct = Math.round(
-        (totalOrder -
-          selectedProducts.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0)) /
-          selectedProducts.length
-      );
-
       // Create orders sequentially to avoid race condition
       let hasError = false;
       let errorMessage = "";
 
       for (const product of selectedProducts) {
+        // Calculate total for this product
+        let productTotal = product.subtotalAfterDiscount;
+        if (product.paymentDiscount) {
+          if (product.paymentDiscount.includes("%")) {
+            const discountValue = parseFloat(product.paymentDiscount.replace("%", "")) / 100;
+            productTotal = Math.round(product.subtotalAfterDiscount * (1 - discountValue));
+          } else {
+            const fixedDiscount = parseFloat(product.paymentDiscount.replace(/[,.\s]/g, "")) || 0;
+            productTotal = Math.round(product.subtotalAfterDiscount - fixedDiscount);
+          }
+        }
+
         const orderData = {
           code: formOrderCode,
           date: formDate,
@@ -586,10 +585,10 @@ export default function OrdersTab() {
           discount: product.discount,
           priceAfterDiscount: product.priceAfterDiscount,
           subtotalAfterDiscount: product.subtotalAfterDiscount,
-          paymentDiscount: formPaymentDiscount,
-          total: product.subtotalAfterDiscount + paymentDiscountPerProduct,
+          paymentDiscount: product.paymentDiscount || "",
+          total: productTotal,
           salesUser: profile?.full_name || profile?.email || getCachedProfileName(),
-          notes: formNotes,
+          notes: product.notes || "",
         };
 
         const response = await fetch("/api/orders/add", {
@@ -772,8 +771,6 @@ export default function OrdersTab() {
     setProductSearchTerm("");
     setFormOrderCode("");
     setFormDate(new Date().toISOString().split("T")[0]);
-    setFormPaymentDiscount("");
-    setFormNotes("");
     setSelectedProducts([]);
   };
 
@@ -1433,76 +1430,48 @@ export default function OrdersTab() {
                     </div>
                   </div>
 
-                  {/* Add Product Section + Payment & Notes in same row */}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    {/* Add Product */}
-                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="relative" ref={productDropdownRef}>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Thêm sản phẩm</label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={productSearchTerm}
-                            onChange={(e) => {
-                              setProductSearchTerm(e.target.value);
-                              setShowProductDropdown(true);
-                            }}
-                            onFocus={() => setShowProductDropdown(true)}
-                            placeholder="Tìm theo mã SP hoặc tên..."
-                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                          <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        </div>
-                        {showProductDropdown && (
-                          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            {filteredProducts.length === 0 ? (
-                              <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy sản phẩm</div>
-                            ) : (
-                              filteredProducts.map((product) => (
-                                <div
-                                  key={product.id}
-                                  onClick={() => handleAddProductToList(product)}
-                                  className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
-                                >
-                                  <div className="font-medium text-sm">
-                                    {product.code && <span className="text-blue-600">{product.code}</span>}
-                                    {product.code && product.name && " - "}
-                                    {product.name}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    Sỉ: {product.wholesalePrice.toLocaleString("vi-VN")}đ | Lẻ: {product.retailPrice.toLocaleString("vi-VN")}đ
-                                  </div>
+                  {/* Add Product Section */}
+                  <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="relative" ref={productDropdownRef}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Thêm sản phẩm</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={productSearchTerm}
+                          onChange={(e) => {
+                            setProductSearchTerm(e.target.value);
+                            setShowProductDropdown(true);
+                          }}
+                          onFocus={() => setShowProductDropdown(true)}
+                          placeholder="Tìm theo mã SP hoặc tên..."
+                          className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                        <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                      </div>
+                      {showProductDropdown && (
+                        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {filteredProducts.length === 0 ? (
+                            <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy sản phẩm</div>
+                          ) : (
+                            filteredProducts.map((product) => (
+                              <div
+                                key={product.id}
+                                onClick={() => handleAddProductToList(product)}
+                                className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
+                              >
+                                <div className="font-medium text-sm">
+                                  {product.code && <span className="text-blue-600">{product.code}</span>}
+                                  {product.code && product.name && " - "}
+                                  {product.name}
                                 </div>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Payment */}
-                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">CK thanh toán</label>
-                          <input
-                            type="text"
-                            value={formPaymentDiscount}
-                            onChange={(e) => setFormPaymentDiscount(e.target.value)}
-                            placeholder="VD: 5% hoặc 20000"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
+                                <div className="text-xs text-gray-500">
+                                  Sỉ: {product.wholesalePrice.toLocaleString("vi-VN")}đ | Lẻ: {product.retailPrice.toLocaleString("vi-VN")}đ
+                                </div>
+                              </div>
+                            ))
+                          )}
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Khách phải trả</label>
-                          <input
-                            type="text"
-                            value={calculateTotalAllProducts().toLocaleString("vi-VN") + "đ"}
-                            readOnly
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-green-50 text-green-700 font-bold text-sm"
-                          />
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 
@@ -1533,6 +1502,9 @@ export default function OrdersTab() {
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-24">CK</th>
                               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Giá sau CK</th>
                               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-yellow-100">Tiền sau CK</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-24">CK TT</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-green-100 w-28">Khách trả</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-32">Ghi chú</th>
                               <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-12"></th>
                             </tr>
                           </thead>
@@ -1595,6 +1567,39 @@ export default function OrdersTab() {
                                 </td>
                                 <td className="px-3 py-2 text-sm text-right">{product.priceAfterDiscount.toLocaleString("vi-VN")}</td>
                                 <td className="px-3 py-2 text-sm text-right font-medium bg-yellow-50">{product.subtotalAfterDiscount.toLocaleString("vi-VN")}</td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="text"
+                                    value={product.paymentDiscount || ""}
+                                    onChange={(e) => handleUpdateProductInList(product.id, "paymentDiscount", e.target.value)}
+                                    placeholder="5%"
+                                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                </td>
+                                <td className="px-3 py-2 text-sm text-right font-semibold text-green-600 bg-green-50">
+                                  {(() => {
+                                    let total = product.subtotalAfterDiscount;
+                                    if (product.paymentDiscount) {
+                                      if (product.paymentDiscount.includes("%")) {
+                                        const discountValue = parseFloat(product.paymentDiscount.replace("%", "")) / 100;
+                                        total = Math.round(product.subtotalAfterDiscount * (1 - discountValue));
+                                      } else {
+                                        const fixedDiscount = parseFloat(product.paymentDiscount.replace(/[,.\s]/g, "")) || 0;
+                                        total = Math.round(product.subtotalAfterDiscount - fixedDiscount);
+                                      }
+                                    }
+                                    return total.toLocaleString("vi-VN");
+                                  })()}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="text"
+                                    value={product.notes || ""}
+                                    onChange={(e) => handleUpdateProductInList(product.id, "notes", e.target.value)}
+                                    placeholder="Ghi chú..."
+                                    className="w-28 px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                </td>
                                 <td className="px-3 py-2 text-center">
                                   <button
                                     onClick={() => handleRemoveProductFromList(product.id)}
@@ -1609,11 +1614,23 @@ export default function OrdersTab() {
                           <tfoot className="bg-gray-100">
                             <tr>
                               <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">Tổng tiền hàng sau CK:</td>
-                              <td colSpan={4} className="px-3 py-2"></td>
-                              <td className="px-3 py-2 text-sm text-right font-semibold text-blue-600">
-                                {selectedProducts.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}đ
+                              <td colSpan={5} className="px-3 py-2"></td>
+                              <td colSpan={2} className="px-3 py-2 text-sm text-right font-semibold text-green-600">
+                                {selectedProducts.reduce((sum, p) => {
+                                  let total = p.subtotalAfterDiscount;
+                                  if (p.paymentDiscount) {
+                                    if (p.paymentDiscount.includes("%")) {
+                                      const discountValue = parseFloat(p.paymentDiscount.replace("%", "")) / 100;
+                                      total = Math.round(p.subtotalAfterDiscount * (1 - discountValue));
+                                    } else {
+                                      const fixedDiscount = parseFloat(p.paymentDiscount.replace(/[,.\s]/g, "")) || 0;
+                                      total = Math.round(p.subtotalAfterDiscount - fixedDiscount);
+                                    }
+                                  }
+                                  return sum + total;
+                                }, 0).toLocaleString("vi-VN")}đ
                               </td>
-                              <td></td>
+                              <td colSpan={2}></td>
                             </tr>
                           </tfoot>
                         </table>
@@ -1739,6 +1756,9 @@ export default function OrdersTab() {
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-24">CK</th>
                         <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Giá sau CK</th>
                         <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-yellow-100">Tiền sau CK</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-24">CK TT</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-green-100 w-28">Khách trả</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-32">Ghi chú</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -1837,66 +1857,89 @@ export default function OrdersTab() {
                           </td>
                           <td className="px-3 py-2 text-sm text-right">{product.priceAfterDiscount.toLocaleString("vi-VN")}</td>
                           <td className="px-3 py-2 text-sm text-right font-medium bg-yellow-50">{product.subtotalAfterDiscount.toLocaleString("vi-VN")}</td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={product.paymentDiscount || ""}
+                              onChange={(e) => {
+                                const paymentDiscount = e.target.value;
+                                setEditProducts(prev => prev.map(p => {
+                                  if (p.id !== product.id) return p;
+                                  let total = p.subtotalAfterDiscount;
+                                  if (paymentDiscount) {
+                                    if (paymentDiscount.includes("%")) {
+                                      const discountValue = parseFloat(paymentDiscount.replace("%", "")) / 100;
+                                      total = Math.round(p.subtotalAfterDiscount * (1 - discountValue));
+                                    } else {
+                                      const fixedDiscount = parseFloat(paymentDiscount.replace(/[,.\s]/g, "")) || 0;
+                                      total = Math.round(p.subtotalAfterDiscount - fixedDiscount);
+                                    }
+                                  }
+                                  return { ...p, paymentDiscount, total };
+                                }));
+                              }}
+                              placeholder="5%"
+                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-right font-semibold text-green-600 bg-green-50">
+                            {(() => {
+                              let total = product.subtotalAfterDiscount;
+                              if (product.paymentDiscount) {
+                                if (product.paymentDiscount.includes("%")) {
+                                  const discountValue = parseFloat(product.paymentDiscount.replace("%", "")) / 100;
+                                  total = Math.round(product.subtotalAfterDiscount * (1 - discountValue));
+                                } else {
+                                  const fixedDiscount = parseFloat(product.paymentDiscount.replace(/[,.\s]/g, "")) || 0;
+                                  total = Math.round(product.subtotalAfterDiscount - fixedDiscount);
+                                }
+                              }
+                              return total.toLocaleString("vi-VN");
+                            })()}
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={product.notes || ""}
+                              onChange={(e) => {
+                                const notes = e.target.value;
+                                setEditProducts(prev => prev.map(p =>
+                                  p.id === product.id ? { ...p, notes } : p
+                                ));
+                              }}
+                              placeholder="Ghi chú..."
+                              className="w-28 px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="bg-gray-100">
                       <tr>
                         <td colSpan={4} className="px-3 py-2 text-sm font-medium text-right">Tổng tiền hàng sau CK:</td>
-                        <td colSpan={4} className="px-3 py-2"></td>
-                        <td className="px-3 py-2 text-sm text-right font-semibold text-blue-600">
-                          {editProducts.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}đ
+                        <td colSpan={5} className="px-3 py-2"></td>
+                        <td colSpan={2} className="px-3 py-2 text-sm text-right font-semibold text-green-600">
+                          {editProducts.reduce((sum, p) => {
+                            let total = p.subtotalAfterDiscount;
+                            if (p.paymentDiscount) {
+                              if (p.paymentDiscount.includes("%")) {
+                                const discountValue = parseFloat(p.paymentDiscount.replace("%", "")) / 100;
+                                total = Math.round(p.subtotalAfterDiscount * (1 - discountValue));
+                              } else {
+                                const fixedDiscount = parseFloat(p.paymentDiscount.replace(/[,.\s]/g, "")) || 0;
+                                total = Math.round(p.subtotalAfterDiscount - fixedDiscount);
+                              }
+                            }
+                            return sum + total;
+                          }, 0).toLocaleString("vi-VN")}đ
                         </td>
+                        <td className="px-3 py-2"></td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </div>
 
-              {/* Payment & Notes */}
-              <div className="grid grid-cols-3 gap-4 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CK thanh toán</label>
-                  <input
-                    type="text"
-                    value={editGroupedOrder.paymentDiscount}
-                    onChange={(e) => setEditGroupedOrder({ ...editGroupedOrder, paymentDiscount: e.target.value })}
-                    placeholder="VD: 5% hoặc 20000"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Khách phải trả</label>
-                  <input
-                    type="text"
-                    value={(() => {
-                      let total = editProducts.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0);
-                      if (editGroupedOrder.paymentDiscount) {
-                        if (editGroupedOrder.paymentDiscount.includes("%")) {
-                          const discountValue = parseFloat(editGroupedOrder.paymentDiscount.replace("%", "")) / 100;
-                          total = total * (1 - discountValue);
-                        } else {
-                          const fixedDiscount = parseFloat(editGroupedOrder.paymentDiscount.replace(/[,.\s]/g, "")) || 0;
-                          total = total - fixedDiscount;
-                        }
-                      }
-                      return Math.round(total).toLocaleString("vi-VN") + "đ";
-                    })()}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-green-50 text-green-700 font-bold text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <input
-                    type="text"
-                    value={editGroupedOrder.notes}
-                    onChange={(e) => setEditGroupedOrder({ ...editGroupedOrder, notes: e.target.value })}
-                    placeholder="Ghi chú..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Footer */}
@@ -1917,11 +1960,23 @@ export default function OrdersTab() {
 
                     // Update all products sequentially
                     for (const product of editProducts) {
+                      // Calculate total for this product
+                      let productTotal = product.subtotalAfterDiscount;
+                      if (product.paymentDiscount) {
+                        if (product.paymentDiscount.includes("%")) {
+                          const discountValue = parseFloat(product.paymentDiscount.replace("%", "")) / 100;
+                          productTotal = Math.round(product.subtotalAfterDiscount * (1 - discountValue));
+                        } else {
+                          const fixedDiscount = parseFloat(product.paymentDiscount.replace(/[,.\s]/g, "")) || 0;
+                          productTotal = Math.round(product.subtotalAfterDiscount - fixedDiscount);
+                        }
+                      }
                       const updateData = {
                         ...product,
                         date: editGroupedOrder.date,
-                        paymentDiscount: editGroupedOrder.paymentDiscount,
-                        notes: editGroupedOrder.notes,
+                        paymentDiscount: product.paymentDiscount || "",
+                        total: productTotal,
+                        notes: product.notes || "",
                       };
                       const response = await fetch("/api/orders/update", {
                         method: "PUT",

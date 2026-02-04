@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getThemGioFromSheet, saveThemGioToSheet, updateThemGioCell, ThemGioItem } from "@/lib/googleSheets";
+import { getThemGioFromSheet, saveThemGioToSheet, updateThemGioCell, deleteThemGioRow, updateThemGioRow, ThemGioItem } from "@/lib/googleSheets";
 
 /**
  * GET /api/them-gio?thang=1&nam=2025
@@ -84,19 +84,39 @@ export async function POST(request: NextRequest) {
 
 /**
  * PUT /api/them-gio
- * Cập nhật một ô chấm công thêm giờ
- * Body: { rowNumber: number, dayIndex: number, value: number | string }
+ * Cập nhật một ô hoặc toàn bộ row chấm công thêm giờ
+ * Body: { rowNumber: number, dayIndex?: number, value?: number | string, data?: ThemGioItem }
  */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { rowNumber, dayIndex, value } = body;
+    const { rowNumber, dayIndex, value, data } = body;
 
-    if (!rowNumber || dayIndex === undefined) {
+    if (!rowNumber) {
       return NextResponse.json(
         {
           success: false,
-          error: "Thiếu rowNumber hoặc dayIndex",
+          error: "Thiếu rowNumber",
+        },
+        { status: 400 }
+      );
+    }
+
+    // If data is provided, update the whole row
+    if (data) {
+      const result = await updateThemGioRow(rowNumber, data);
+      return NextResponse.json({
+        success: true,
+        message: result.message,
+      });
+    }
+
+    // Otherwise, update a single cell
+    if (dayIndex === undefined) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu dayIndex hoặc data",
         },
         { status: 400 }
       );
@@ -119,12 +139,51 @@ export async function PUT(request: NextRequest) {
       message: `Đã cập nhật chấm công thêm giờ ngày ${dayIndex + 1}`,
     });
   } catch (error: any) {
-    console.error("Error updating overtime attendance cell:", error);
+    console.error("Error updating overtime attendance:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to update overtime attendance cell",
+        error: error.message || "Failed to update overtime attendance",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/them-gio
+ * Xoá một row chấm công thêm giờ
+ * Body: { rowNumber: number }
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { rowNumber } = body;
+
+    if (!rowNumber) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu rowNumber",
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await deleteThemGioRow(rowNumber);
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    console.error("Error deleting overtime attendance:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Failed to delete overtime attendance",
       },
       { status: 500 }
     );

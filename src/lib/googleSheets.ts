@@ -36,6 +36,39 @@ const sheetNameBangChamCongDiMuon = process.env.GOOGLE_SHEET_NAME_BANG_CHAM_CONG
 const sheetNameBangChamCongThemGio = process.env.GOOGLE_SHEET_NAME_BANG_CHAM_CONG_THEM_GIO || "Bảng chấm thêm giờ";
 const sheetNameBangNghiPhep = process.env.GOOGLE_SHEET_NAME_BANG_CHAM_CONG_NGHI_PHEP || "Ngày phép";
 
+/**
+ * Parse số theo format Việt Nam
+ * VD: "1.620" hoặc "1620" -> 1620 (dấu chấm là phân cách hàng nghìn)
+ * VD: "1,5" -> 1.5 (dấu phẩy là decimal)
+ */
+function parseVietnameseNumber(val: string | number | undefined): number {
+  if (val === undefined || val === null || val === "") return 0;
+  if (typeof val === "number") return val;
+
+  let str = String(val).trim();
+
+  // Nếu có cả dấu chấm và dấu phẩy, xử lý theo format Việt Nam
+  // VD: "1.234,56" -> 1234.56
+  if (str.includes(".") && str.includes(",")) {
+    str = str.replace(/\./g, ""); // Bỏ dấu chấm (hàng nghìn)
+    str = str.replace(",", "."); // Thay phẩy thành chấm (decimal)
+  }
+  // Nếu chỉ có dấu chấm và theo sau là đúng 3 chữ số -> đó là hàng nghìn
+  // VD: "1.620" -> 1620
+  else if (/^\d+\.\d{3}$/.test(str) || /^\d+\.\d{3}\.\d{3}$/.test(str)) {
+    str = str.replace(/\./g, "");
+  }
+  // Nếu chỉ có dấu phẩy -> thay thành chấm
+  // VD: "1,5" -> 1.5
+  else if (str.includes(",") && !str.includes(".")) {
+    str = str.replace(",", ".");
+  }
+  // Còn lại giữ nguyên (đã là format chuẩn)
+
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
+
 // Interface cho dữ liệu nhân viên
 export interface Employee {
   id: number;
@@ -5479,17 +5512,10 @@ export async function getDiMuonFromSheet(thang: number, nam: number): Promise<Di
             if (cellValue === undefined || cellValue === "") {
               days.push("");
             } else {
-              const numValue = parseFloat(String(cellValue).replace(",", "."));
-              days.push(isNaN(numValue) ? cellValue : numValue);
+              const numValue = parseVietnameseNumber(cellValue);
+              days.push(numValue === 0 && String(cellValue).trim() !== "0" ? cellValue : numValue);
             }
           }
-
-          // Summary columns: AJ (35), AK (36)
-          const parseNumber = (val: string | undefined): number => {
-            if (!val) return 0;
-            const num = parseFloat(String(val).replace(",", "."));
-            return isNaN(num) ? 0 : num;
-          };
 
           diMuonData.push({
             id: index + 6,
@@ -5498,8 +5524,8 @@ export async function getDiMuonFromSheet(thang: number, nam: number): Promise<Di
             maPhieu: row[2] || "",
             nhanVien: row[3] || "",
             days,
-            diMuonPhut: parseNumber(row[35]),
-            diMuonNgay: parseNumber(row[36]),
+            diMuonPhut: parseVietnameseNumber(row[35]),
+            diMuonNgay: parseVietnameseNumber(row[36]),
             thang,
             nam,
           });
@@ -5655,17 +5681,10 @@ export async function getThemGioFromSheet(thang: number, nam: number): Promise<T
             if (cellValue === undefined || cellValue === "") {
               days.push("");
             } else {
-              const numValue = parseFloat(String(cellValue).replace(",", "."));
-              days.push(isNaN(numValue) ? cellValue : numValue);
+              const numValue = parseVietnameseNumber(cellValue);
+              days.push(numValue === 0 && String(cellValue).trim() !== "0" ? cellValue : numValue);
             }
           }
-
-          // Summary columns: AJ (35), AK (36)
-          const parseNumber = (val: string | undefined): number => {
-            if (!val) return 0;
-            const num = parseFloat(String(val).replace(",", "."));
-            return isNaN(num) ? 0 : num;
-          };
 
           themGioData.push({
             id: index + 6,
@@ -5674,8 +5693,8 @@ export async function getThemGioFromSheet(thang: number, nam: number): Promise<T
             maPhieu: row[2] || "",
             nhanVien: row[3] || "",
             days,
-            themGioPhut: parseNumber(row[35]),
-            themGioNgay: parseNumber(row[36]),
+            themGioPhut: parseVietnameseNumber(row[35]),
+            themGioNgay: parseVietnameseNumber(row[36]),
             thang,
             nam,
           });
@@ -5770,6 +5789,182 @@ export async function saveThemGioToSheet(
     };
   } catch (error) {
     console.error("Error saving overtime attendance to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xoá phiếu đi muộn theo rowNumber
+ */
+export async function deleteDiMuonRow(rowNumber: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get spreadsheet info to find the sheetId
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameBangChamCongDiMuon
+    );
+
+    if (!sheet || !sheet.properties?.sheetId) {
+      throw new Error("Không tìm thấy sheet Bảng chấm đi muộn");
+    }
+
+    // Delete the row
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1, // 0-indexed
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    return {
+      success: true,
+      message: `Đã xoá phiếu đi muộn thành công!`,
+    };
+  } catch (error) {
+    console.error("Error deleting late attendance row:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật toàn bộ row phiếu đi muộn
+ */
+export async function updateDiMuonRow(
+  rowNumber: number,
+  data: DiMuonItem
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowValues = [
+      data.ngayBatDau,
+      data.ngayKetThuc,
+      data.maPhieu,
+      data.nhanVien,
+      ...data.days,
+      data.diMuonPhut || 0,
+      data.diMuonNgay || 0,
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangChamCongDiMuon}'!A${rowNumber}:AK${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [rowValues],
+      },
+    });
+
+    return {
+      success: true,
+      message: `Đã cập nhật phiếu đi muộn thành công!`,
+    };
+  } catch (error) {
+    console.error("Error updating late attendance row:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xoá phiếu thêm giờ theo rowNumber
+ */
+export async function deleteThemGioRow(rowNumber: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get spreadsheet info to find the sheetId
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameBangChamCongThemGio
+    );
+
+    if (!sheet || !sheet.properties?.sheetId) {
+      throw new Error("Không tìm thấy sheet Bảng chấm thêm giờ");
+    }
+
+    // Delete the row
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1, // 0-indexed
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    return {
+      success: true,
+      message: `Đã xoá phiếu thêm giờ thành công!`,
+    };
+  } catch (error) {
+    console.error("Error deleting overtime attendance row:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật toàn bộ row phiếu thêm giờ
+ */
+export async function updateThemGioRow(
+  rowNumber: number,
+  data: ThemGioItem
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const rowValues = [
+      data.ngayBatDau,
+      data.ngayKetThuc,
+      data.maPhieu,
+      data.nhanVien,
+      ...data.days,
+      data.themGioPhut || 0,
+      data.themGioNgay || 0,
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdNhanVienLuong,
+      range: `'${sheetNameBangChamCongThemGio}'!A${rowNumber}:AK${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [rowValues],
+      },
+    });
+
+    return {
+      success: true,
+      message: `Đã cập nhật phiếu thêm giờ thành công!`,
+    };
+  } catch (error) {
+    console.error("Error updating overtime attendance row:", error);
     throw error;
   }
 }

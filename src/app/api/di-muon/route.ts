@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDiMuonFromSheet, saveDiMuonToSheet, updateDiMuonCell, DiMuonItem } from "@/lib/googleSheets";
+import { getDiMuonFromSheet, saveDiMuonToSheet, updateDiMuonCell, deleteDiMuonRow, updateDiMuonRow, DiMuonItem } from "@/lib/googleSheets";
 
 /**
  * GET /api/di-muon?thang=1&nam=2025
@@ -84,19 +84,39 @@ export async function POST(request: NextRequest) {
 
 /**
  * PUT /api/di-muon
- * Cập nhật một ô chấm công đi muộn
- * Body: { rowNumber: number, dayIndex: number, value: number | string }
+ * Cập nhật một ô hoặc toàn bộ row chấm công đi muộn
+ * Body: { rowNumber: number, dayIndex?: number, value?: number | string, data?: DiMuonItem }
  */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { rowNumber, dayIndex, value } = body;
+    const { rowNumber, dayIndex, value, data } = body;
 
-    if (!rowNumber || dayIndex === undefined) {
+    if (!rowNumber) {
       return NextResponse.json(
         {
           success: false,
-          error: "Thiếu rowNumber hoặc dayIndex",
+          error: "Thiếu rowNumber",
+        },
+        { status: 400 }
+      );
+    }
+
+    // If data is provided, update the whole row
+    if (data) {
+      const result = await updateDiMuonRow(rowNumber, data);
+      return NextResponse.json({
+        success: true,
+        message: result.message,
+      });
+    }
+
+    // Otherwise, update a single cell
+    if (dayIndex === undefined) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu dayIndex hoặc data",
         },
         { status: 400 }
       );
@@ -119,12 +139,51 @@ export async function PUT(request: NextRequest) {
       message: `Đã cập nhật chấm công đi muộn ngày ${dayIndex + 1}`,
     });
   } catch (error: any) {
-    console.error("Error updating late attendance cell:", error);
+    console.error("Error updating late attendance:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to update late attendance cell",
+        error: error.message || "Failed to update late attendance",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/di-muon
+ * Xoá một row chấm công đi muộn
+ * Body: { rowNumber: number }
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { rowNumber } = body;
+
+    if (!rowNumber) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Thiếu rowNumber",
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await deleteDiMuonRow(rowNumber);
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    console.error("Error deleting late attendance:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Failed to delete late attendance",
       },
       { status: 500 }
     );

@@ -74,8 +74,13 @@ export function RolePermissionsProvider({ children }: { children: ReactNode }) {
 
   // Check if user has access to a specific menu
   const hasAccess = useCallback((menuId: string): boolean => {
+    // If no profile (not logged in or profile failed to load), deny access
+    if (!profile) {
+      return false;
+    }
+
     // Admin always has access
-    if (profile?.role === "admin") {
+    if (profile.role === "admin") {
       return true;
     }
 
@@ -84,9 +89,9 @@ export function RolePermissionsProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    // If no permissions configured, allow access (fallback)
+    // If no permissions configured for this role, deny access (safer default)
     if (permissions.length === 0) {
-      return true;
+      return false;
     }
 
     // Convert href to menu ID format
@@ -94,7 +99,7 @@ export function RolePermissionsProvider({ children }: { children: ReactNode }) {
     const normalizedMenuId = menuId.startsWith("/") ? menuId.slice(1) : menuId;
 
     return permissions.includes(normalizedMenuId);
-  }, [permissions, loading, profile?.role]);
+  }, [permissions, loading, profile]);
 
   // Refetch permissions (useful after admin updates)
   const refetchPermissions = useCallback(async () => {

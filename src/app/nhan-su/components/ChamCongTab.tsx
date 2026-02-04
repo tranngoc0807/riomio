@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Calendar, FileText, AlertCircle, RefreshCw, Loader2, X, Edit3, Plus, Save, Users, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { Clock, Calendar, FileText, AlertCircle, RefreshCw, Loader2, X, Edit3, Plus, Save, Users, ChevronDown, ChevronUp, Check, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -290,6 +290,17 @@ export default function ChamCongTab() {
     maPhieu: "",
     employees: [],
   });
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "di-muon" | "them-gio"; item: DiMuonItem | ThemGioItem } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Edit modal state
+  const [showEditDiMuon, setShowEditDiMuon] = useState(false);
+  const [editingDiMuon, setEditingDiMuon] = useState<DiMuonItem | null>(null);
+  const [showEditThemGio, setShowEditThemGio] = useState(false);
+  const [editingThemGio, setEditingThemGio] = useState<ThemGioItem | null>(null);
 
   const daysInMonth = getDaysInMonth(selectedMonth, selectedYear);
 
@@ -622,9 +633,9 @@ export default function ChamCongTab() {
     }, 0);
   };
 
-  // Calculate late days (every 60 minutes = 0.5 day)
+  // Calculate late days (1 day = 8 hours = 480 minutes)
   const calculateDiMuonNgay = (phut: number): number => {
-    return Math.round((phut / 60) * 2) / 2; // Round to nearest 0.5
+    return Math.round((phut / 480) * 100) / 100; // Round to 2 decimal places
   };
 
   // Save DiMuon records
@@ -806,9 +817,9 @@ export default function ChamCongTab() {
     }, 0);
   };
 
-  // Calculate overtime days (every 60 minutes = 0.5 day)
+  // Calculate overtime days (1 day = 8 hours = 480 minutes)
   const calculateThemGioNgay = (phut: number): number => {
-    return Math.round((phut / 60) * 2) / 2; // Round to nearest 0.5
+    return Math.round((phut / 480) * 100) / 100; // Round to 2 decimal places
   };
 
   // Save ThemGio records
@@ -895,6 +906,161 @@ export default function ChamCongTab() {
     } finally {
       setIsUpdating(false);
       setEditingCell(null);
+    }
+  };
+
+  // =====================
+  // DELETE & EDIT HANDLERS
+  // =====================
+
+  // Delete handler
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    try {
+      const endpoint = deleteTarget.type === "di-muon" ? "/api/di-muon" : "/api/them-gio";
+      const response = await fetch(endpoint, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rowNumber: deleteTarget.item.id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(data.message || "Đã xoá thành công!");
+        // Refresh data
+        if (deleteTarget.type === "di-muon") {
+          fetchDiMuon();
+        } else {
+          fetchThemGio();
+        }
+      } else {
+        toast.error(data.error || "Không thể xoá");
+      }
+    } catch (error) {
+      console.error("Error deleting:", error);
+      toast.error("Lỗi khi xoá");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  // Open delete confirmation
+  const openDeleteConfirm = (type: "di-muon" | "them-gio", item: DiMuonItem | ThemGioItem) => {
+    setDeleteTarget({ type, item });
+    setShowDeleteConfirm(true);
+  };
+
+  // Open edit DiMuon modal
+  const openEditDiMuon = (item: DiMuonItem) => {
+    setEditingDiMuon({ ...item });
+    setShowEditDiMuon(true);
+  };
+
+  // Open edit ThemGio modal
+  const openEditThemGio = (item: ThemGioItem) => {
+    setEditingThemGio({ ...item });
+    setShowEditThemGio(true);
+  };
+
+  // Calculate total minutes for days (helper)
+  const calculateTotalMinutes = (days: (number | string)[]): number => {
+    return days.reduce((sum: number, val) => {
+      const num = typeof val === "number" ? val : parseFloat(String(val));
+      return sum + (isNaN(num) ? 0 : num);
+    }, 0);
+  };
+
+  // Calculate days from minutes (1 day = 480 minutes)
+  const calculateDays = (minutes: number): number => {
+    return Math.round((minutes / 480) * 100) / 100;
+  };
+
+  // Save edited DiMuon
+  const handleSaveEditDiMuon = async () => {
+    if (!editingDiMuon) return;
+
+    setIsUpdating(true);
+    try {
+      // Recalculate totals
+      const totalMinutes = calculateTotalMinutes(editingDiMuon.days);
+      const totalDays = calculateDays(totalMinutes);
+      const updatedData = {
+        ...editingDiMuon,
+        diMuonPhut: totalMinutes,
+        diMuonNgay: totalDays,
+      };
+
+      const response = await fetch("/api/di-muon", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowNumber: editingDiMuon.id,
+          data: updatedData,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Đã cập nhật thành công!");
+        fetchDiMuon();
+        setShowEditDiMuon(false);
+        setEditingDiMuon(null);
+      } else {
+        toast.error(data.error || "Không thể cập nhật");
+      }
+    } catch (error) {
+      console.error("Error updating:", error);
+      toast.error("Lỗi khi cập nhật");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Save edited ThemGio
+  const handleSaveEditThemGio = async () => {
+    if (!editingThemGio) return;
+
+    setIsUpdating(true);
+    try {
+      // Recalculate totals
+      const totalMinutes = calculateTotalMinutes(editingThemGio.days);
+      const totalDays = calculateDays(totalMinutes);
+      const updatedData = {
+        ...editingThemGio,
+        themGioPhut: totalMinutes,
+        themGioNgay: totalDays,
+      };
+
+      const response = await fetch("/api/them-gio", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowNumber: editingThemGio.id,
+          data: updatedData,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Đã cập nhật thành công!");
+        fetchThemGio();
+        setShowEditThemGio(false);
+        setEditingThemGio(null);
+      } else {
+        toast.error(data.error || "Không thể cập nhật");
+      }
+    } catch (error) {
+      console.error("Error updating:", error);
+      toast.error("Lỗi khi cập nhật");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -1461,8 +1627,8 @@ export default function ChamCongTab() {
                             </td>
                           );
                         })}
-                        <td className="px-2 py-2 text-center font-bold text-white bg-orange-600 border-l">{item.diMuonPhut}</td>
-                        <td className="px-2 py-2 text-center font-bold text-white bg-red-600">{item.diMuonNgay}</td>
+                        <td className="px-2 py-2 text-center font-bold text-white bg-orange-600 border-l">{calculateDiMuonPhut(item.days)}</td>
+                        <td className="px-2 py-2 text-center font-bold text-white bg-red-600">{calculateDiMuonNgay(calculateDiMuonPhut(item.days))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1579,8 +1745,8 @@ export default function ChamCongTab() {
                             </td>
                           );
                         })}
-                        <td className="px-2 py-2 text-center font-bold text-white bg-purple-600 border-l">{item.themGioPhut}</td>
-                        <td className="px-2 py-2 text-center font-bold text-white bg-green-600">{item.themGioNgay}</td>
+                        <td className="px-2 py-2 text-center font-bold text-white bg-purple-600 border-l">{calculateThemGioPhut(item.days)}</td>
+                        <td className="px-2 py-2 text-center font-bold text-white bg-green-600">{calculateThemGioNgay(calculateThemGioPhut(item.days))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2134,11 +2300,11 @@ export default function ChamCongTab() {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-orange-50 rounded-lg p-4 text-center">
                   <p className="text-orange-600 text-sm">Tổng đi muộn (phút)</p>
-                  <p className="text-3xl font-bold text-orange-700">{selectedDiMuonEmployee.diMuonPhut}</p>
+                  <p className="text-3xl font-bold text-orange-700">{calculateDiMuonPhut(selectedDiMuonEmployee.days)}</p>
                 </div>
                 <div className="bg-red-50 rounded-lg p-4 text-center">
                   <p className="text-red-600 text-sm">Quy đổi (ngày)</p>
-                  <p className="text-3xl font-bold text-red-700">{selectedDiMuonEmployee.diMuonNgay}</p>
+                  <p className="text-3xl font-bold text-red-700">{calculateDiMuonNgay(calculateDiMuonPhut(selectedDiMuonEmployee.days))}</p>
                 </div>
               </div>
 
@@ -2158,6 +2324,30 @@ export default function ChamCongTab() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    openEditDiMuon(selectedDiMuonEmployee);
+                    setSelectedDiMuonEmployee(null);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Edit3 size={18} />
+                  Sửa
+                </button>
+                <button
+                  onClick={() => {
+                    openDeleteConfirm("di-muon", selectedDiMuonEmployee);
+                    setSelectedDiMuonEmployee(null);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 size={18} />
+                  Xoá
+                </button>
               </div>
             </div>
           </div>
@@ -2401,11 +2591,11 @@ export default function ChamCongTab() {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-purple-50 rounded-lg p-4 text-center">
                   <p className="text-purple-600 text-sm">Tổng thêm giờ (phút)</p>
-                  <p className="text-3xl font-bold text-purple-700">{selectedThemGioEmployee.themGioPhut}</p>
+                  <p className="text-3xl font-bold text-purple-700">{calculateThemGioPhut(selectedThemGioEmployee.days)}</p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4 text-center">
                   <p className="text-green-600 text-sm">Quy đổi (ngày)</p>
-                  <p className="text-3xl font-bold text-green-700">{selectedThemGioEmployee.themGioNgay}</p>
+                  <p className="text-3xl font-bold text-green-700">{calculateThemGioNgay(calculateThemGioPhut(selectedThemGioEmployee.days))}</p>
                 </div>
               </div>
 
@@ -2425,6 +2615,30 @@ export default function ChamCongTab() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    openEditThemGio(selectedThemGioEmployee);
+                    setSelectedThemGioEmployee(null);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Edit3 size={18} />
+                  Sửa
+                </button>
+                <button
+                  onClick={() => {
+                    openDeleteConfirm("them-gio", selectedThemGioEmployee);
+                    setSelectedThemGioEmployee(null);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 size={18} />
+                  Xoá
+                </button>
               </div>
             </div>
           </div>
@@ -2819,6 +3033,325 @@ export default function ChamCongTab() {
                   Lưu phiếu ({newNghiPhepForm.employees.length} NV)
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="text-red-600" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Xác nhận xoá</h3>
+                  <p className="text-sm text-gray-500">
+                    Bạn có chắc chắn muốn xoá phiếu {deleteTarget.type === "di-muon" ? "đi muộn" : "thêm giờ"} của nhân viên{" "}
+                    <span className="font-semibold">{deleteTarget.item.nhanVien}</span>?
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-4">
+                Hành động này không thể hoàn tác. Dữ liệu sẽ bị xoá vĩnh viễn.
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteTarget(null);
+                  }}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                  Xoá
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit DiMuon Modal */}
+      {showEditDiMuon && editingDiMuon && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-orange-600 to-orange-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <Edit3 size={20} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Sửa phiếu đi muộn</h3>
+                  <p className="text-orange-100 text-sm">
+                    {editingDiMuon.nhanVien} - Tháng {editingDiMuon.thang}/{editingDiMuon.nam}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditDiMuon(false);
+                  setEditingDiMuon(null);
+                }}
+                className="p-2 hover:bg-white/20 rounded-lg"
+              >
+                <X size={24} className="text-white" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-auto max-h-[calc(95vh-180px)]">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+                  <input
+                    type="text"
+                    value={editingDiMuon.ngayBatDau}
+                    onChange={(e) => setEditingDiMuon({ ...editingDiMuon, ngayBatDau: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+                  <input
+                    type="text"
+                    value={editingDiMuon.ngayKetThuc}
+                    onChange={(e) => setEditingDiMuon({ ...editingDiMuon, ngayKetThuc: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu</label>
+                  <input
+                    type="text"
+                    value={editingDiMuon.maPhieu}
+                    readOnly
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nhân viên</label>
+                  <input
+                    type="text"
+                    value={editingDiMuon.nhanVien}
+                    readOnly
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600"
+                  />
+                </div>
+              </div>
+
+              {/* Days Input */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-700 mb-3">Số phút đi muộn theo ngày</h4>
+                <div className="grid grid-cols-8 md:grid-cols-11 lg:grid-cols-16 gap-2">
+                  {Array.from({ length: daysInMonth }, (_, i) => (
+                    <div key={i} className="text-center">
+                      <p className="text-xs text-gray-500 mb-1">{i + 1}</p>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="-"
+                        value={editingDiMuon.days[i] === "" ? "" : editingDiMuon.days[i]}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? "" : parseInt(e.target.value) || 0;
+                          const newDays = [...editingDiMuon.days];
+                          newDays[i] = val;
+                          setEditingDiMuon({ ...editingDiMuon, days: newDays });
+                        }}
+                        className={`w-full px-1 py-2 text-center text-xs font-semibold rounded border ${getDiMuonCellStyle(editingDiMuon.days[i])} focus:ring-1 focus:ring-orange-500`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="flex items-center gap-6 p-4 bg-orange-50 rounded-lg">
+                <div>
+                  <span className="text-sm text-gray-600">Tổng phút đi muộn:</span>
+                  <span className="ml-2 text-lg font-bold text-orange-600">
+                    {calculateTotalMinutes(editingDiMuon.days)} phút
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">Quy đổi:</span>
+                  <span className="ml-2 text-lg font-bold text-red-600">
+                    {calculateDays(calculateTotalMinutes(editingDiMuon.days))} ngày
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+              <button
+                onClick={() => {
+                  setShowEditDiMuon(false);
+                  setEditingDiMuon(null);
+                }}
+                disabled={isUpdating}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveEditDiMuon}
+                disabled={isUpdating}
+                className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+              >
+                {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                Lưu thay đổi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit ThemGio Modal */}
+      {showEditThemGio && editingThemGio && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-purple-600 to-purple-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <Edit3 size={20} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Sửa phiếu thêm giờ</h3>
+                  <p className="text-purple-100 text-sm">
+                    {editingThemGio.nhanVien} - Tháng {editingThemGio.thang}/{editingThemGio.nam}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditThemGio(false);
+                  setEditingThemGio(null);
+                }}
+                className="p-2 hover:bg-white/20 rounded-lg"
+              >
+                <X size={24} className="text-white" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-auto max-h-[calc(95vh-180px)]">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+                  <input
+                    type="text"
+                    value={editingThemGio.ngayBatDau}
+                    onChange={(e) => setEditingThemGio({ ...editingThemGio, ngayBatDau: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+                  <input
+                    type="text"
+                    value={editingThemGio.ngayKetThuc}
+                    onChange={(e) => setEditingThemGio({ ...editingThemGio, ngayKetThuc: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu</label>
+                  <input
+                    type="text"
+                    value={editingThemGio.maPhieu}
+                    readOnly
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nhân viên</label>
+                  <input
+                    type="text"
+                    value={editingThemGio.nhanVien}
+                    readOnly
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600"
+                  />
+                </div>
+              </div>
+
+              {/* Days Input */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-700 mb-3">Số phút thêm giờ theo ngày</h4>
+                <div className="grid grid-cols-8 md:grid-cols-11 lg:grid-cols-16 gap-2">
+                  {Array.from({ length: daysInMonth }, (_, i) => (
+                    <div key={i} className="text-center">
+                      <p className="text-xs text-gray-500 mb-1">{i + 1}</p>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="-"
+                        value={editingThemGio.days[i] === "" ? "" : editingThemGio.days[i]}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? "" : parseInt(e.target.value) || 0;
+                          const newDays = [...editingThemGio.days];
+                          newDays[i] = val;
+                          setEditingThemGio({ ...editingThemGio, days: newDays });
+                        }}
+                        className={`w-full px-1 py-2 text-center text-xs font-semibold rounded border ${getThemGioCellStyle(editingThemGio.days[i])} focus:ring-1 focus:ring-purple-500`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="flex items-center gap-6 p-4 bg-purple-50 rounded-lg">
+                <div>
+                  <span className="text-sm text-gray-600">Tổng phút thêm giờ:</span>
+                  <span className="ml-2 text-lg font-bold text-purple-600">
+                    {calculateTotalMinutes(editingThemGio.days)} phút
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">Quy đổi:</span>
+                  <span className="ml-2 text-lg font-bold text-green-600">
+                    {calculateDays(calculateTotalMinutes(editingThemGio.days))} ngày
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+              <button
+                onClick={() => {
+                  setShowEditThemGio(false);
+                  setEditingThemGio(null);
+                }}
+                disabled={isUpdating}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveEditThemGio}
+                disabled={isUpdating}
+                className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                Lưu thay đổi
+              </button>
             </div>
           </div>
         </div>

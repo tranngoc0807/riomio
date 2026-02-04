@@ -64,17 +64,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = createClient();
 
   const PROFILE_CACHE_KEY = "riomio_profile_cache";
-  const PROFILE_CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+  const PROFILE_CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours - longer cache to avoid issues
 
   // Get cached profile from localStorage
-  const getCachedProfile = (userId: string): Profile | null => {
+  const getCachedProfile = (userId: string, ignoreExpiry: boolean = false): Profile | null => {
     try {
       const cached = localStorage.getItem(PROFILE_CACHE_KEY);
       if (cached) {
         const { profile: cachedProfile, timestamp, cachedUserId } = JSON.parse(cached);
-        if (cachedUserId === userId && Date.now() - timestamp < PROFILE_CACHE_EXPIRY) {
-          console.log("📋 fetchProfile: Using cached profile");
-          return cachedProfile;
+        if (cachedUserId === userId) {
+          const isExpired = Date.now() - timestamp >= PROFILE_CACHE_EXPIRY;
+          if (!isExpired || ignoreExpiry) {
+            console.log(`📋 fetchProfile: Using cached profile (expired: ${isExpired})`);
+            return cachedProfile;
+          }
         }
       }
     } catch (e) {
@@ -106,12 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchProfile = async (userId: string, useCache = true): Promise<Profile | null> => {
-    // Try to get from cache first
-    if (useCache) {
-      const cached = getCachedProfile(userId);
-      if (cached) {
-        return cached;
-      }
+    // Try to get from valid cache first (not expired)
+    const validCached = getCachedProfile(userId, false);
+    if (useCache && validCached) {
+      return validCached;
     }
 
     try {
@@ -146,9 +147,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return result;
       }
 
+      // If fetch failed, return cached profile as fallback (even if expired)
+      const expiredCached = getCachedProfile(userId, true); // ignoreExpiry = true
+      if (expiredCached) {
+        console.log("📋 fetchProfile: Fetch failed, using expired cached profile as fallback");
+        return expiredCached;
+      }
+
       return null;
     } catch (err) {
       console.error("📋 fetchProfile: Exception:", err);
+      // Return cached profile as fallback on error (even if expired)
+      const expiredCached = getCachedProfile(userId, true);
+      if (expiredCached) {
+        console.log("📋 fetchProfile: Exception, using expired cached profile as fallback");
+        return expiredCached;
+      }
       return null;
     }
   };
@@ -231,6 +245,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-logout if session exists but profile is null (profile fetch failed completely)
+  useEffect(() => {
+    if (initialized && session && !profile && !signingOut) {
+      console.warn("⚠️ AuthProvider: Session exists but no profile found. Forcing re-login...");
+      // Clear everything and force re-login
+      clearProfileCache();
+      supabase.auth.signOut().then(() => {
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        router.push("/login");
+        router.refresh();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized, session, profile, signingOut]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
