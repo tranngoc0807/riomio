@@ -22,6 +22,7 @@ import BangKeYCXKTab from "../components/BangKeYCXKTab";
 import PhieuYCXKNPLTab from "../components/PhieuYCXKNPLTab";
 import SoLuongCatTab from "../components/SoLuongCatTab";
 import PhieuBaoSLCatTab from "../components/PhieuBaoSLCatTab";
+import PhieuDinhMucSXTab from "../components/PhieuDinhMucSXTab";
 
 type TabType =
   | "bang-ke-lsx"
@@ -118,7 +119,7 @@ export default function KeHoachSanXuat() {
           {activeTab === "bang-ke-lsx" && <KeHoachSXTab />}
           {activeTab === "lsx" && <LSXTab />}
           {activeTab === "dinh-muc" && <DinhMucSXTab />}
-          {activeTab === "phieu-dinh-muc" && <PlaceholderTab title="Phiếu định mức sản xuất" icon={FileText} />}
+          {activeTab === "phieu-dinh-muc" && <PhieuDinhMucSXTab />}
           {activeTab === "bang-ke-yc-xk" && <BangKeYCXKTab />}
           {activeTab === "phieu-yc-xk" && <PhieuYCXKNPLTab />}
           {activeTab === "so-luong-cat" && <SoLuongCatTab />}

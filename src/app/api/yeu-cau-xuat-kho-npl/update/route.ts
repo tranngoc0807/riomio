@@ -20,14 +20,20 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const dinhMuc = parseFloat(body.dinhMuc) || 0;
+    const slKHSX = parseFloat(body.slKHSX) || 0;
+    const tyLeHaoHut = 0.03; // Always 3%
+    const slCanDung = dinhMuc * slKHSX * (1 + tyLeHaoHut);
+
     await updateYeuCauXuatKhoNPLInSheet(parseInt(body.id), {
       ngayThang: body.ngayThang,
       maPhieuYC: body.maPhieuYC,
       maNPL: body.maNPL,
       dvt: body.dvt,
-      dinhMuc: parseFloat(body.dinhMuc) || 0,
-      slKHSX: parseFloat(body.slKHSX) || 0,
-      tongNPLSX: parseFloat(body.tongNPLSX) || 0,
+      dinhMuc,
+      tyLeHaoHut,
+      slKHSX,
+      slCanDung,
       maSPSuDung: body.maSPSuDung,
       mauSac: body.mauSac,
       xuongSX: body.xuongSX,

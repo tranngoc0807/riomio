@@ -815,54 +815,28 @@ export default function DongTienTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thu khác
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.thuKhac}
-                    onChange={(e) =>
-                      setFormData({ ...formData, thuKhac: e.target.value })
-                    }
-                    disabled={!formData.phanLoaiThuChi.toLowerCase().includes('thu khác')}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
-                      formData.phanLoaiThuChi.toLowerCase().includes('thu khác')
-                        ? 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                        : 'bg-gray-100 cursor-not-allowed'
-                    }`}
-                    placeholder={
-                      formData.phanLoaiThuChi.toLowerCase().includes('thu khác')
-                        ? "Nhập số tiền hoặc ghi chú"
-                        : ""
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chi khác
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.chiKhac}
-                    onChange={(e) =>
-                      setFormData({ ...formData, chiKhac: e.target.value })
-                    }
-                    disabled={!formData.phanLoaiThuChi.toLowerCase().includes('chi khác')}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
-                      formData.phanLoaiThuChi.toLowerCase().includes('chi khác')
-                        ? 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                        : 'bg-gray-100 cursor-not-allowed'
-                    }`}
-                    placeholder={
-                      formData.phanLoaiThuChi.toLowerCase().includes('chi khác')
-                        ? "Nhập số tiền hoặc ghi chú"
-                        : ""
-                    }
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Thu khác
+                </label>
+                <input
+                  type="text"
+                  value={formData.thuKhac}
+                  onChange={(e) =>
+                    setFormData({ ...formData, thuKhac: e.target.value })
+                  }
+                  disabled={!formData.phanLoaiThuChi.toLowerCase().includes('thu khác')}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
+                    formData.phanLoaiThuChi.toLowerCase().includes('thu khác')
+                      ? 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      : 'bg-gray-100 cursor-not-allowed'
+                  }`}
+                  placeholder={
+                    formData.phanLoaiThuChi.toLowerCase().includes('thu khác')
+                      ? "Nhập số tiền hoặc ghi chú"
+                      : ""
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1137,54 +1111,28 @@ export default function DongTienTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thu khác
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.thuKhac}
-                    onChange={(e) =>
-                      setFormData({ ...formData, thuKhac: e.target.value })
-                    }
-                    disabled={!formData.phanLoaiThuChi.toLowerCase().includes('thu khác')}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
-                      formData.phanLoaiThuChi.toLowerCase().includes('thu khác')
-                        ? 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                        : 'bg-gray-100 cursor-not-allowed'
-                    }`}
-                    placeholder={
-                      formData.phanLoaiThuChi.toLowerCase().includes('thu khác')
-                        ? "Nhập số tiền hoặc ghi chú"
-                        : "Chỉ khi chọn 'Thu khác'"
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chi khác
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.chiKhac}
-                    onChange={(e) =>
-                      setFormData({ ...formData, chiKhac: e.target.value })
-                    }
-                    disabled={!formData.phanLoaiThuChi.toLowerCase().includes('chi khác')}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
-                      formData.phanLoaiThuChi.toLowerCase().includes('chi khác')
-                        ? 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                        : 'bg-gray-100 cursor-not-allowed'
-                    }`}
-                    placeholder={
-                      formData.phanLoaiThuChi.toLowerCase().includes('chi khác')
-                        ? "Nhập số tiền hoặc ghi chú"
-                        : "Chỉ khi chọn 'Chi khác'"
-                    }
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Chi khác
+                </label>
+                <input
+                  type="text"
+                  value={formData.chiKhac}
+                  onChange={(e) =>
+                    setFormData({ ...formData, chiKhac: e.target.value })
+                  }
+                  disabled={!formData.phanLoaiThuChi.toLowerCase().includes('chi khác')}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
+                    formData.phanLoaiThuChi.toLowerCase().includes('chi khác')
+                      ? 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      : 'bg-gray-100 cursor-not-allowed'
+                  }`}
+                  placeholder={
+                    formData.phanLoaiThuChi.toLowerCase().includes('chi khác')
+                      ? "Nhập số tiền hoặc ghi chú"
+                      : "Chỉ khi chọn 'Chi khác'"
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, Receipt, Calendar, Filter } from "lucide-react";
+import { Loader2, Search, Receipt, Calendar, Filter, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import type { CNPTNCCNPLThang, CNPTNCCNPLNgay } from "@/lib/googleSheets";
@@ -14,6 +14,11 @@ export default function CNPTNCCNPLTab() {
   const [activeTable, setActiveTable] = useState<"thang" | "ngay">("thang");
   const [showOnlyWithDataThang, setShowOnlyWithDataThang] = useState(false);
   const [showOnlyWithDataNgay, setShowOnlyWithDataNgay] = useState(false);
+
+  // Date filter states - will be loaded from sheet
+  const [selectedThangNam, setSelectedThangNam] = useState("");
+  const [selectedDenNgay, setSelectedDenNgay] = useState("");
+  const [isUpdatingFilters, setIsUpdatingFilters] = useState(false);
 
   // Filtered data
   const filteredThang = cnptThang.filter((item) => {
@@ -49,6 +54,11 @@ export default function CNPTNCCNPLTab() {
       if (result.success) {
         setCnptThang(result.data.cnptThang);
         setCnptNgay(result.data.cnptNgay);
+        // Set date values from sheet
+        if (result.dateCells) {
+          setSelectedThangNam(result.dateCells.thangNam);
+          setSelectedDenNgay(result.dateCells.denNgay);
+        }
       } else {
         toast.error("Không thể tải danh sách CNPT NCC NPL");
       }
@@ -57,6 +67,40 @@ export default function CNPTNCCNPLTab() {
       toast.error("Lỗi khi tải danh sách CNPT NCC NPL");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle date filter update - only send relevant date based on active table
+  const handleUpdateFilters = async () => {
+    try {
+      setIsUpdatingFilters(true);
+
+      // Only send the date that corresponds to the active table
+      const body: { thangNam?: string; denNgay?: string } = {};
+      if (activeTable === "thang") {
+        body.thangNam = selectedThangNam;
+      } else {
+        body.denNgay = selectedDenNgay;
+      }
+
+      const response = await fetch("/api/cnpt-ncc-npl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setCnptThang(result.data.cnptThang);
+        setCnptNgay(result.data.cnptNgay);
+        toast.success("Đã cập nhật bộ lọc thành công");
+      } else {
+        toast.error("Không thể cập nhật bộ lọc");
+      }
+    } catch (error) {
+      console.error("Error updating filters:", error);
+      toast.error("Lỗi khi cập nhật bộ lọc");
+    } finally {
+      setIsUpdatingFilters(false);
     }
   };
 
@@ -114,6 +158,27 @@ export default function CNPTNCCNPLTab() {
               Công nợ phải trả NCC NPL - Theo tháng ({filteredThang.length})
             </h3>
             <div className="flex items-center gap-3">
+              {/* Month picker for Table 1 */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="month"
+                  value={selectedThangNam}
+                  onChange={(e) => setSelectedThangNam(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+                />
+                <button
+                  onClick={() => handleUpdateFilters()}
+                  disabled={isUpdatingFilters}
+                  className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  {isUpdatingFilters ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw size={16} />
+                  )}
+                  Cập nhật
+                </button>
+              </div>
               <button
                 onClick={() => setShowOnlyWithDataThang(!showOnlyWithDataThang)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
@@ -206,6 +271,27 @@ export default function CNPTNCCNPLTab() {
               Bảng kê số dư đầu kì công nợ phải trả đến ngày ({filteredNgay.length})
             </h3>
             <div className="flex items-center gap-3">
+              {/* Date picker for Table 2 */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={selectedDenNgay}
+                  onChange={(e) => setSelectedDenNgay(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                />
+                <button
+                  onClick={() => handleUpdateFilters()}
+                  disabled={isUpdatingFilters}
+                  className="flex items-center gap-2 px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  {isUpdatingFilters ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw size={16} />
+                  )}
+                  Cập nhật
+                </button>
+              </div>
               <button
                 onClick={() => setShowOnlyWithDataNgay(!showOnlyWithDataNgay)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${

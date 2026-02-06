@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pencil, Trash2, X, Check } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pencil, Trash2, X, Check, Eye } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
+import Portal from "@/components/Portal";
 
 interface YeuCauXuatKhoNPL {
   id: number;
@@ -11,8 +12,9 @@ interface YeuCauXuatKhoNPL {
   maNPL: string;
   dvt: string;
   dinhMuc: number;
+  tyLeHaoHut: number; // Always 3% (0.03)
   slKHSX: number;
-  tongNPLSX: number;
+  slCanDung: number; // = dinhMuc * slKHSX * (1 + tyLeHaoHut)
   maSPSuDung: string;
   mauSac: string;
   xuongSX: string;
@@ -30,6 +32,17 @@ interface MaSP {
   maSP: string;
   tenSP: string;
   xuongSX: string;
+}
+
+// Interface for grouped phieu yeu cau
+interface GroupedPhieuYC {
+  maPhieuYC: string;
+  ngayThang: string;
+  xuongSX: string;
+  items: YeuCauXuatKhoNPL[];
+  itemCount: number;
+  totalSLKHSX: number;
+  totalSlCanDung: number;
 }
 
 const ITEMS_PER_PAGE = 50;
@@ -65,8 +78,9 @@ const emptyFormData = {
   maNPL: "",
   dvt: "",
   dinhMuc: 0,
+  tyLeHaoHut: 0.03, // Always 3%
   slKHSX: 0,
-  tongNPLSX: 0,
+  slCanDung: 0,
   maSPSuDung: "",
   mauSac: "",
   xuongSX: "",
@@ -78,8 +92,9 @@ interface NPLItem {
   maNPL: string;
   dvt: string;
   dinhMuc: number;
+  tyLeHaoHut: number; // Always 3%
   slKHSX: number;
-  tongNPLSX: number;
+  slCanDung: number;
   maSPSuDung: string;
   mauSac: string;
   xuongSX: string;
@@ -89,8 +104,9 @@ const emptyNPLItem: Omit<NPLItem, "id"> = {
   maNPL: "",
   dvt: "",
   dinhMuc: 0,
+  tyLeHaoHut: 0.03, // Always 3%
   slKHSX: 0,
-  tongNPLSX: 0,
+  slCanDung: 0,
   maSPSuDung: "",
   mauSac: "",
   xuongSX: "",
@@ -106,9 +122,12 @@ export default function BangKeYCXKTab() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewGroupedPhieu, setViewGroupedPhieu] = useState<GroupedPhieuYC | null>(null);
   const [formData, setFormData] = useState<Omit<YeuCauXuatKhoNPL, "id">>(emptyFormData);
   const [editingItem, setEditingItem] = useState<YeuCauXuatKhoNPL | null>(null);
   const [deletingItem, setDeletingItem] = useState<YeuCauXuatKhoNPL | null>(null);
+  const [phieuToDelete, setPhieuToDelete] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dropdown data
@@ -142,14 +161,94 @@ export default function BangKeYCXKTab() {
     )
     .sort((a, b) => b.id - a.id); // Sort by ID descending (newest first)
 
-  // Pagination
-  const totalPages = Math.ceil(filteredList.length / ITEMS_PER_PAGE);
+  // Group by maPhieuYC
+  const groupedPhieuYC: GroupedPhieuYC[] = useMemo(() => {
+    const groups: Record<string, GroupedPhieuYC> = {};
+
+    filteredList.forEach((item) => {
+      const key = item.maPhieuYC || "Không có mã";
+      if (!groups[key]) {
+        groups[key] = {
+          maPhieuYC: item.maPhieuYC,
+          ngayThang: item.ngayThang,
+          xuongSX: item.xuongSX,
+          items: [],
+          itemCount: 0,
+          totalSLKHSX: 0,
+          totalSlCanDung: 0,
+        };
+      }
+      groups[key].items.push(item);
+      groups[key].itemCount++;
+      groups[key].totalSLKHSX += item.slKHSX || 0;
+      groups[key].totalSlCanDung += item.slCanDung || 0;
+    });
+
+    // Sort by date descending then by maPhieuYC descending
+    return Object.values(groups).sort((a, b) => {
+      // Parse dates (format: dd/mm/yyyy)
+      const parseDate = (dateStr: string) => {
+        if (!dateStr) return new Date(0);
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        }
+        return new Date(0);
+      };
+      const dateA = parseDate(a.ngayThang);
+      const dateB = parseDate(b.ngayThang);
+      if (dateB.getTime() !== dateA.getTime()) {
+        return dateB.getTime() - dateA.getTime();
+      }
+      return b.maPhieuYC.localeCompare(a.maPhieuYC);
+    });
+  }, [filteredList]);
+
+  // Pagination for grouped data
+  const totalPages = Math.ceil(groupedPhieuYC.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedList = filteredList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedGroups = groupedPhieuYC.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   // Summary calculations
   const totalSLKHSX = filteredList.reduce((sum, item) => sum + item.slKHSX, 0);
-  const totalTongNPLSX = filteredList.reduce((sum, item) => sum + item.tongNPLSX, 0);
+  const totalSlCanDung = filteredList.reduce((sum, item) => sum + item.slCanDung, 0);
+
+  // View grouped phieu
+  const handleViewGrouped = (group: GroupedPhieuYC) => {
+    setViewGroupedPhieu(group);
+    setShowViewModal(true);
+  };
+
+  // Delete all items in a phieu
+  const handleDeleteGrouped = (maPhieuYC: string) => {
+    setPhieuToDelete(maPhieuYC);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteGrouped = async () => {
+    if (!phieuToDelete) return;
+
+    try {
+      setIsSubmitting(true);
+      const itemsToDelete = data.filter(item => item.maPhieuYC === phieuToDelete);
+
+      for (const item of itemsToDelete) {
+        await fetch(`/api/yeu-cau-xuat-kho-npl/delete?id=${item.id}`, {
+          method: "DELETE",
+        });
+      }
+
+      toast.success(`Đã xóa phiếu ${phieuToDelete} (${itemsToDelete.length} mục)`);
+      fetchData();
+      setShowDeleteModal(false);
+      setPhieuToDelete(null);
+    } catch (error) {
+      console.error("Error deleting phieu:", error);
+      toast.error("Lỗi khi xóa phiếu");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -226,23 +325,23 @@ export default function BangKeYCXKTab() {
     }
   };
 
-  // Handle NPL selection - auto fill DVT (save full name instead of code)
+  // Handle NPL selection - auto fill DVT (save only name, not code)
   const handleNPLSelect = (material: Material, isAddModal: boolean = false) => {
-    const fullName = `${material.code} ${material.name}`.trim();
+    const nameOnly = material.name.trim();
     if (isAddModal) {
       setCurrentNPLItem((prev) => ({
         ...prev,
-        maNPL: fullName,
+        maNPL: nameOnly,
         dvt: material.unit,
       }));
     } else {
       setFormData((prev) => ({
         ...prev,
-        maNPL: fullName,
+        maNPL: nameOnly,
         dvt: material.unit,
       }));
     }
-    setNplSearch(fullName);
+    setNplSearch(nameOnly);
     setShowNplDropdown(false);
   };
 
@@ -347,8 +446,9 @@ export default function BangKeYCXKTab() {
       maNPL: item.maNPL,
       dvt: item.dvt,
       dinhMuc: item.dinhMuc,
+      tyLeHaoHut: item.tyLeHaoHut || 0.03,
       slKHSX: item.slKHSX,
-      tongNPLSX: item.tongNPLSX,
+      slCanDung: item.slCanDung,
       maSPSuDung: item.maSPSuDung,
       mauSac: item.mauSac,
       xuongSX: item.xuongSX,
@@ -386,7 +486,6 @@ export default function BangKeYCXKTab() {
             dvt: item.dvt,
             dinhMuc: item.dinhMuc,
             slKHSX: item.slKHSX,
-            tongNPLSX: item.tongNPLSX,
             maSPSuDung: item.maSPSuDung,
             mauSac: item.mauSac,
             xuongSX: item.xuongSX,
@@ -557,14 +656,26 @@ export default function BangKeYCXKTab() {
           value={formData.dinhMuc || ""}
           onChange={(e) => {
             const dinhMuc = parseFloat(e.target.value) || 0;
+            const tyLeHaoHut = 0.03; // Always 3%
             setFormData({
               ...formData,
               dinhMuc,
-              tongNPLSX: dinhMuc * formData.slKHSX
+              slCanDung: dinhMuc * formData.slKHSX * (1 + tyLeHaoHut)
             });
           }}
           placeholder="0"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      {/* Tỷ lệ hao hụt - Always 3% */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Tỷ lệ hao hụt</label>
+        <input
+          type="text"
+          value="3%"
+          readOnly
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
         />
       </div>
 
@@ -576,10 +687,11 @@ export default function BangKeYCXKTab() {
           value={formData.slKHSX || ""}
           onChange={(e) => {
             const slKHSX = parseFloat(e.target.value) || 0;
+            const tyLeHaoHut = 0.03; // Always 3%
             setFormData({
               ...formData,
               slKHSX,
-              tongNPLSX: formData.dinhMuc * slKHSX
+              slCanDung: formData.dinhMuc * slKHSX * (1 + tyLeHaoHut)
             });
           }}
           placeholder="0"
@@ -587,16 +699,16 @@ export default function BangKeYCXKTab() {
         />
       </div>
 
-      {/* Tổng NPL SX - Auto calculated */}
+      {/* SL cần dùng - Auto calculated */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tổng NPL SX (tự động)</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">SL cần dùng (tự động)</label>
         <input
           type="text"
-          value={formData.tongNPLSX ? formData.tongNPLSX.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "0"}
+          value={formData.slCanDung ? formData.slCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "0"}
           readOnly
           className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
         />
-        <p className="text-xs text-gray-400 mt-1">= Định mức × SL KH SX</p>
+        <p className="text-xs text-gray-400 mt-1">= Định mức × SL KH SX × (1 + 3%)</p>
       </div>
 
       {/* Mã SP sử dụng - Dropdown with search */}
@@ -702,10 +814,17 @@ export default function BangKeYCXKTab() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+          <div className="flex items-center gap-2 mb-1">
+            <Package size={16} className="text-purple-600" />
+            <p className="text-sm text-purple-600">Số phiếu YC</p>
+          </div>
+          <p className="text-2xl font-bold text-purple-700">{groupedPhieuYC.length}</p>
+        </div>
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
           <div className="flex items-center gap-2 mb-1">
             <Calendar size={16} className="text-blue-600" />
-            <p className="text-sm text-blue-600">Tổng số dòng</p>
+            <p className="text-sm text-blue-600">Tổng số NPL</p>
           </div>
           <p className="text-2xl font-bold text-blue-700">{filteredList.length}</p>
         </div>
@@ -719,77 +838,62 @@ export default function BangKeYCXKTab() {
         <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
           <div className="flex items-center gap-2 mb-1">
             <Package size={16} className="text-orange-600" />
-            <p className="text-sm text-orange-600">Tổng NPL SX</p>
+            <p className="text-sm text-orange-600">Tổng SL cần dùng</p>
           </div>
-          <p className="text-2xl font-bold text-orange-700">{totalTongNPLSX.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}</p>
-        </div>
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-          <div className="flex items-center gap-2 mb-1">
-            <Package size={16} className="text-purple-600" />
-            <p className="text-sm text-purple-600">Số mã phiếu YC</p>
-          </div>
-          <p className="text-2xl font-bold text-purple-700">
-            {new Set(filteredList.map((item) => item.maPhieuYC).filter(Boolean)).size}
-          </p>
+          <p className="text-2xl font-bold text-orange-700">{totalSlCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}</p>
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table - Grouped by Mã phiếu YC */}
       <div className="overflow-x-auto border border-gray-200 rounded-xl">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-green-50 border-b border-gray-200">
-              <th className="px-3 py-3 text-left font-medium text-gray-600 w-12 sticky left-0 bg-green-50">STT</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-600">Ngày tháng</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-600">Mã phiếu YC</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-600 min-w-[250px]">Mã NPL</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-600">ĐVT</th>
-              <th className="px-3 py-3 text-right font-medium text-gray-600">Định mức</th>
-              <th className="px-3 py-3 text-right font-medium text-gray-600">SL KH SX</th>
-              <th className="px-3 py-3 text-right font-medium text-gray-600">Tổng NPL SX</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-600">Mã SP sử dụng</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-600">Màu sắc</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-600">Xưởng SX</th>
-              <th className="px-3 py-3 text-center font-medium text-gray-600 w-24">Thao tác</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Mã phiếu YC</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Ngày tháng</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600">Số NPL</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600">Tổng SL KH SX</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600">Tổng SL cần dùng</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Xưởng SX</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600 w-28">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {paginatedList.map((item, index) => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-3 py-2.5 text-gray-600 sticky left-0 bg-white">{startIndex + index + 1}</td>
-                <td className="px-3 py-2.5 text-gray-900">{item.ngayThang || "-"}</td>
-                <td className="px-3 py-2.5 font-medium text-blue-600">{item.maPhieuYC || "-"}</td>
-                <td className="px-3 py-2.5 text-gray-900 max-w-[300px]">
-                  <div className="truncate" title={item.maNPL}>{item.maNPL || "-"}</div>
+            {paginatedGroups.map((group) => (
+              <tr
+                key={group.maPhieuYC}
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => handleViewGrouped(group)}
+              >
+                <td className="px-4 py-3 font-semibold text-blue-600">{group.maPhieuYC || "-"}</td>
+                <td className="px-4 py-3 text-gray-600">{group.ngayThang || "-"}</td>
+                <td className="px-4 py-3 text-center">
+                  <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-xs">
+                    {group.itemCount} NPL
+                  </span>
                 </td>
-                <td className="px-3 py-2.5 text-gray-600">{item.dvt || "-"}</td>
-                <td className="px-3 py-2.5 text-right text-gray-600">
-                  {item.dinhMuc > 0 ? item.dinhMuc.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "-"}
+                <td className="px-4 py-3 text-right font-medium text-green-600">
+                  {group.totalSLKHSX.toLocaleString("vi-VN")}
                 </td>
-                <td className="px-3 py-2.5 text-right font-medium text-green-600">
-                  {item.slKHSX > 0 ? item.slKHSX.toLocaleString("vi-VN") : "-"}
+                <td className="px-4 py-3 text-right font-medium text-orange-600">
+                  {group.totalSlCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
                 </td>
-                <td className="px-3 py-2.5 text-right font-medium text-orange-600">
-                  {item.tongNPLSX > 0 ? item.tongNPLSX.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "-"}
+                <td className="px-4 py-3 text-gray-600 max-w-[150px]">
+                  <div className="truncate" title={group.xuongSX}>{group.xuongSX || "-"}</div>
                 </td>
-                <td className="px-3 py-2.5 text-gray-600">{item.maSPSuDung || "-"}</td>
-                <td className="px-3 py-2.5 text-gray-600">{item.mauSac || "-"}</td>
-                <td className="px-3 py-2.5 text-gray-600 max-w-[150px]">
-                  <div className="truncate" title={item.xuongSX}>{item.xuongSX || "-"}</div>
-                </td>
-                <td className="px-3 py-2.5">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-center gap-1">
                     <button
-                      onClick={() => openEditModal(item)}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Sửa"
+                      onClick={() => handleViewGrouped(group)}
+                      className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Xem chi tiết"
                     >
-                      <Pencil size={16} />
+                      <Eye size={16} />
                     </button>
                     <button
-                      onClick={() => openDeleteModal(item)}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Xóa"
+                      onClick={() => handleDeleteGrouped(group.maPhieuYC)}
+                      className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Xóa phiếu"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -798,21 +902,9 @@ export default function BangKeYCXKTab() {
               </tr>
             ))}
           </tbody>
-          <tfoot>
-            <tr className="bg-gray-100 font-semibold">
-              <td colSpan={6} className="px-3 py-3 text-right">Tổng cộng:</td>
-              <td className="px-3 py-3 text-right text-green-600">
-                {totalSLKHSX.toLocaleString("vi-VN")}
-              </td>
-              <td className="px-3 py-3 text-right text-orange-600">
-                {totalTongNPLSX.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
-              </td>
-              <td colSpan={4}></td>
-            </tr>
-          </tfoot>
         </table>
 
-        {filteredList.length === 0 && !isLoading && (
+        {groupedPhieuYC.length === 0 && !isLoading && (
           <div className="text-center py-8 text-gray-500">
             Không có dữ liệu yêu cầu xuất kho NPL
           </div>
@@ -822,7 +914,7 @@ export default function BangKeYCXKTab() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
             <div className="text-sm text-gray-500">
-              Hiển thị {startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, filteredList.length)} / {filteredList.length} mục
+              Hiển thị {startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, groupedPhieuYC.length)} / {groupedPhieuYC.length} phiếu
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -873,7 +965,7 @@ export default function BangKeYCXKTab() {
       {/* Add Modal - Multi-item */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <h3 className="text-lg font-semibold">Thêm yêu cầu xuất kho NPL</h3>
               <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -967,14 +1059,26 @@ export default function BangKeYCXKTab() {
                       value={currentNPLItem.dinhMuc || ""}
                       onChange={(e) => {
                         const dinhMuc = parseFloat(e.target.value) || 0;
+                        const tyLeHaoHut = 0.03; // Always 3%
                         setCurrentNPLItem({
                           ...currentNPLItem,
                           dinhMuc,
-                          tongNPLSX: dinhMuc * currentNPLItem.slKHSX
+                          slCanDung: dinhMuc * currentNPLItem.slKHSX * (1 + tyLeHaoHut)
                         });
                       }}
                       placeholder="0"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Tỷ lệ hao hụt - Always 3% */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tỷ lệ hao hụt</label>
+                    <input
+                      type="text"
+                      value="3%"
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
                     />
                   </div>
 
@@ -986,10 +1090,11 @@ export default function BangKeYCXKTab() {
                       value={currentNPLItem.slKHSX || ""}
                       onChange={(e) => {
                         const slKHSX = parseFloat(e.target.value) || 0;
+                        const tyLeHaoHut = 0.03; // Always 3%
                         setCurrentNPLItem({
                           ...currentNPLItem,
                           slKHSX,
-                          tongNPLSX: currentNPLItem.dinhMuc * slKHSX
+                          slCanDung: currentNPLItem.dinhMuc * slKHSX * (1 + tyLeHaoHut)
                         });
                       }}
                       placeholder="0"
@@ -997,12 +1102,12 @@ export default function BangKeYCXKTab() {
                     />
                   </div>
 
-                  {/* Tổng NPL SX */}
+                  {/* SL cần dùng */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Tổng NPL SX</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">SL cần dùng</label>
                     <input
                       type="text"
-                      value={currentNPLItem.tongNPLSX ? currentNPLItem.tongNPLSX.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "0"}
+                      value={currentNPLItem.slCanDung ? currentNPLItem.slCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "0"}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
                     />
@@ -1091,8 +1196,9 @@ export default function BangKeYCXKTab() {
                         <th className="px-3 py-2 text-left font-medium text-gray-600">Mã NPL</th>
                         <th className="px-3 py-2 text-left font-medium text-gray-600">ĐVT</th>
                         <th className="px-3 py-2 text-right font-medium text-gray-600">Định mức</th>
+                        <th className="px-3 py-2 text-center font-medium text-gray-600">Hao hụt</th>
                         <th className="px-3 py-2 text-right font-medium text-gray-600">SL KH SX</th>
-                        <th className="px-3 py-2 text-right font-medium text-gray-600">Tổng NPL</th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600">SL cần dùng</th>
                         <th className="px-3 py-2 text-left font-medium text-gray-600">Mã SP</th>
                         <th className="px-3 py-2 text-center font-medium text-gray-600 w-16"></th>
                       </tr>
@@ -1107,11 +1213,12 @@ export default function BangKeYCXKTab() {
                           <td className="px-3 py-2 text-right text-gray-600">
                             {item.dinhMuc.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
                           </td>
+                          <td className="px-3 py-2 text-center text-gray-600">3%</td>
                           <td className="px-3 py-2 text-right text-green-600 font-medium">
                             {item.slKHSX.toLocaleString("vi-VN")}
                           </td>
                           <td className="px-3 py-2 text-right text-orange-600 font-medium">
-                            {item.tongNPLSX.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
+                            {item.slCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-3 py-2 text-gray-600">{item.maSPSuDung || "-"}</td>
                           <td className="px-3 py-2 text-center">
@@ -1153,7 +1260,7 @@ export default function BangKeYCXKTab() {
       {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <h3 className="text-lg font-semibold">Sửa yêu cầu xuất kho NPL</h3>
               <button onClick={() => { setShowEditModal(false); setEditingItem(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -1221,6 +1328,175 @@ export default function BangKeYCXKTab() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delete Grouped Phieu Modal */}
+      {showDeleteModal && phieuToDelete && !deletingItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-red-600">Xác nhận xóa phiếu</h3>
+              <button onClick={() => { setShowDeleteModal(false); setPhieuToDelete(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-gray-600">
+                Bạn có chắc chắn muốn xóa <strong>tất cả</strong> yêu cầu xuất kho trong phiếu này?
+              </p>
+              <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm font-medium text-red-700">Mã phiếu: {phieuToDelete}</p>
+                <p className="text-sm text-red-600 mt-1">
+                  Số NPL sẽ bị xóa: {data.filter(item => item.maPhieuYC === phieuToDelete).length}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+              <button
+                onClick={() => { setShowDeleteModal(false); setPhieuToDelete(null); }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDeleteGrouped}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                Xóa tất cả
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
+      {showViewModal && viewGroupedPhieu && (
+        <Portal>
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => { setShowViewModal(false); setViewGroupedPhieu(null); }} />
+          <div className="fixed inset-4 lg:inset-8 z-50 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-green-50">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Chi tiết phiếu yêu cầu xuất kho NPL</h3>
+                <p className="text-sm text-gray-500">Mã phiếu: <strong className="text-blue-600">{viewGroupedPhieu.maPhieuYC}</strong> | Ngày: {viewGroupedPhieu.ngayThang} | Xưởng: {viewGroupedPhieu.xuongSX || "-"}</p>
+              </div>
+              <button
+                onClick={() => { setShowViewModal(false); setViewGroupedPhieu(null); }}
+                className="p-2 hover:bg-gray-200 rounded-lg"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Summary */}
+            <div className="px-6 py-4 bg-gray-50 border-b flex gap-6">
+              <div>
+                <p className="text-sm text-gray-500">Số NPL</p>
+                <p className="text-xl font-bold text-blue-600">{viewGroupedPhieu.itemCount}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tổng SL KH SX</p>
+                <p className="text-xl font-bold text-green-600">{viewGroupedPhieu.totalSLKHSX.toLocaleString("vi-VN")}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tổng SL cần dùng</p>
+                <p className="text-xl font-bold text-orange-600">{viewGroupedPhieu.totalSlCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="flex-1 overflow-auto p-6">
+              <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                <thead>
+                  <tr className="bg-green-50">
+                    <th className="px-3 py-3 text-left font-medium text-gray-600 w-12">STT</th>
+                    <th className="px-3 py-3 text-left font-medium text-gray-600 min-w-[250px]">Mã NPL</th>
+                    <th className="px-3 py-3 text-left font-medium text-gray-600">ĐVT</th>
+                    <th className="px-3 py-3 text-right font-medium text-gray-600">Định mức</th>
+                    <th className="px-3 py-3 text-center font-medium text-gray-600">Hao hụt</th>
+                    <th className="px-3 py-3 text-right font-medium text-gray-600">SL KH SX</th>
+                    <th className="px-3 py-3 text-right font-medium text-gray-600">SL cần dùng</th>
+                    <th className="px-3 py-3 text-left font-medium text-gray-600">Mã SP sử dụng</th>
+                    <th className="px-3 py-3 text-left font-medium text-gray-600">Màu sắc</th>
+                    <th className="px-3 py-3 text-center font-medium text-gray-600 w-24">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {viewGroupedPhieu.items.map((item, index) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2.5 text-gray-600">{index + 1}</td>
+                      <td className="px-3 py-2.5 text-gray-900">
+                        <div className="truncate max-w-[300px]" title={item.maNPL}>{item.maNPL || "-"}</div>
+                      </td>
+                      <td className="px-3 py-2.5 text-gray-600">{item.dvt || "-"}</td>
+                      <td className="px-3 py-2.5 text-right text-gray-600">
+                        {item.dinhMuc > 0 ? item.dinhMuc.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "-"}
+                      </td>
+                      <td className="px-3 py-2.5 text-center text-gray-600">3%</td>
+                      <td className="px-3 py-2.5 text-right font-medium text-green-600">
+                        {item.slKHSX > 0 ? item.slKHSX.toLocaleString("vi-VN") : "-"}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-medium text-orange-600">
+                        {item.slCanDung > 0 ? item.slCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "-"}
+                      </td>
+                      <td className="px-3 py-2.5 text-gray-600">{item.maSPSuDung || "-"}</td>
+                      <td className="px-3 py-2.5 text-gray-600">{item.mauSac || "-"}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setShowViewModal(false);
+                              setViewGroupedPhieu(null);
+                              openEditModal(item);
+                            }}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Sửa"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowViewModal(false);
+                              setViewGroupedPhieu(null);
+                              openDeleteModal(item);
+                            }}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Xóa"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-100 font-semibold">
+                    <td colSpan={5} className="px-3 py-3 text-right">Tổng cộng:</td>
+                    <td className="px-3 py-3 text-right text-green-600">
+                      {viewGroupedPhieu.totalSLKHSX.toLocaleString("vi-VN")}
+                    </td>
+                    <td className="px-3 py-3 text-right text-orange-600">
+                      {viewGroupedPhieu.totalSlCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
+                    </td>
+                    <td colSpan={3}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end">
+              <button
+                onClick={() => { setShowViewModal(false); setViewGroupedPhieu(null); }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </Portal>
       )}
     </div>
   );

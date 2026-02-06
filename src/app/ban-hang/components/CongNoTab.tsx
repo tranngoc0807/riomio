@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, AlertCircle, UserCheck, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, AlertCircle, UserCheck, RefreshCw, Search, ChevronDown } from "lucide-react";
 import { CongNoTransaction } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -24,11 +24,35 @@ export default function CongNoTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [isChangingCustomer, setIsChangingCustomer] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchCongNoData();
     fetchCustomers();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+        setSearchTerm("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredCustomers = customers.filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelectCustomer = (customerName: string) => {
+    setIsDropdownOpen(false);
+    setSearchTerm("");
+    handleCustomerChange(customerName);
+  };
 
   const fetchCongNoData = async () => {
     setIsLoading(true);
@@ -125,25 +149,61 @@ export default function CongNoTab() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Chọn khách hàng
             </label>
-            <select
-              value={congNoData.selectedCustomer}
-              onChange={(e) => handleCustomerChange(e.target.value)}
-              disabled={isChangingCustomer}
-              className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {congNoData.selectedCustomer && (
-                <option value={congNoData.selectedCustomer}>
-                  {congNoData.selectedCustomer}
-                </option>
+            <div className="relative w-full max-w-md" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => !isChangingCustomer && setIsDropdownOpen(!isDropdownOpen)}
+                disabled={isChangingCustomer}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-left flex items-center justify-between focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className={congNoData.selectedCustomer ? "text-gray-900" : "text-gray-500"}>
+                  {congNoData.selectedCustomer || "Chọn khách hàng..."}
+                </span>
+                <ChevronDown size={20} className={`text-gray-400 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+                  <div className="p-2 border-b border-gray-200">
+                    <div className="relative">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Tìm khách hàng..."
+                        className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <ul className="max-h-60 overflow-y-auto">
+                    {filteredCustomers.length === 0 ? (
+                      <li className="px-4 py-3 text-sm text-gray-500 text-center">
+                        Không tìm thấy khách hàng
+                      </li>
+                    ) : (
+                      filteredCustomers.map((customer) => (
+                        <li
+                          key={customer.name}
+                          onClick={() => handleSelectCustomer(customer.name)}
+                          className={`px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 ${
+                            congNoData.selectedCustomer === customer.name
+                              ? "bg-blue-100 text-blue-700 font-medium"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {customer.name}
+                          {customer.category && (
+                            <span className="ml-2 text-gray-400">({customer.category})</span>
+                          )}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
               )}
-              {customers
-                .filter(c => c.name !== congNoData.selectedCustomer)
-                .map((customer) => (
-                  <option key={customer.name} value={customer.name}>
-                    {customer.name} {customer.category && `(${customer.category})`}
-                  </option>
-                ))}
-            </select>
+            </div>
           </div>
           <button
             onClick={fetchCongNoData}

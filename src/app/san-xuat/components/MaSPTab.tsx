@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, Package, Image as ImageIcon, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Package, Plus, Pencil, Trash2, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
@@ -12,10 +12,8 @@ interface MaSP {
   vaiChinh: string;
   vaiPhoi: string;
   phuLieuKhac: string;
-  tinhTrangSX: string;
   lenhSX: string;
   xuongSX: string;
-  hinhAnh: string;
 }
 
 type ModalMode = "view" | "add" | "edit" | null;
@@ -29,10 +27,8 @@ const emptyFormData: Omit<MaSP, "id"> = {
   vaiChinh: "",
   vaiPhoi: "",
   phuLieuKhac: "",
-  tinhTrangSX: "",
   lenhSX: "",
   xuongSX: "",
-  hinhAnh: "",
 };
 
 export default function MaSPTab() {
@@ -40,7 +36,6 @@ export default function MaSPTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [filterTinhTrang, setFilterTinhTrang] = useState<string>("all");
   const [filterXuong, setFilterXuong] = useState<string>("all");
 
   // Modal states
@@ -56,7 +51,7 @@ export default function MaSPTab() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterTinhTrang, filterXuong]);
+  }, [searchTerm, filterXuong]);
 
   const fetchData = async () => {
     try {
@@ -96,10 +91,8 @@ export default function MaSPTab() {
       vaiChinh: item.vaiChinh,
       vaiPhoi: item.vaiPhoi,
       phuLieuKhac: item.phuLieuKhac,
-      tinhTrangSX: item.tinhTrangSX,
       lenhSX: item.lenhSX,
       xuongSX: item.xuongSX,
-      hinhAnh: item.hinhAnh,
     });
     setModalMode("edit");
   };
@@ -187,7 +180,6 @@ export default function MaSPTab() {
   };
 
   // Get unique options for filters
-  const tinhTrangOptions = Array.from(new Set(data.map((item) => item.tinhTrangSX).filter(Boolean)));
   const xuongOptions = Array.from(new Set(data.map((item) => item.xuongSX).filter(Boolean)));
 
   const filtered = data.filter((item) => {
@@ -197,20 +189,19 @@ export default function MaSPTab() {
       item.lenhSX.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.size.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesTinhTrang = filterTinhTrang === "all" || item.tinhTrangSX === filterTinhTrang;
     const matchesXuong = filterXuong === "all" || item.xuongSX === filterXuong;
 
-    return matchesSearch && matchesTinhTrang && matchesXuong;
+    return matchesSearch && matchesXuong;
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginated = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  // Count by status
-  const statusCounts = data.reduce((acc, item) => {
-    const status = item.tinhTrangSX || "Chưa xác định";
-    acc[status] = (acc[status] || 0) + 1;
+  // Count by xưởng
+  const xuongCounts = data.reduce((acc, item) => {
+    const xuong = item.xuongSX || "Chưa xác định";
+    acc[xuong] = (acc[xuong] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
@@ -239,17 +230,6 @@ export default function MaSPTab() {
             <Plus size={18} />
             Thêm mới
           </button>
-          {/* Filter by Tình trạng SX */}
-          <select
-            value={filterTinhTrang}
-            onChange={(e) => setFilterTinhTrang(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-          >
-            <option value="all">Tất cả tình trạng</option>
-            {tinhTrangOptions.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
           {/* Filter by Xưởng */}
           <select
             value={filterXuong}
@@ -277,17 +257,17 @@ export default function MaSPTab() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {Object.entries(statusCounts).slice(0, 4).map(([status, count]) => (
+        {Object.entries(xuongCounts).slice(0, 4).map(([xuong, count]) => (
           <div
-            key={status}
+            key={xuong}
             className={`rounded-xl p-3 border cursor-pointer transition-colors ${
-              filterTinhTrang === status
+              filterXuong === xuong
                 ? "bg-blue-100 border-blue-300"
                 : "bg-gray-50 border-gray-200 hover:bg-gray-100"
             }`}
-            onClick={() => setFilterTinhTrang(filterTinhTrang === status ? "all" : status)}
+            onClick={() => setFilterXuong(filterXuong === xuong ? "all" : xuong)}
           >
-            <p className="text-xs text-gray-600 truncate">{status}</p>
+            <p className="text-xs text-gray-600 truncate">{xuong}</p>
             <p className="text-xl font-bold text-gray-900">{count}</p>
           </div>
         ))}
@@ -306,10 +286,8 @@ export default function MaSPTab() {
                 <th className="px-3 py-3 text-left font-medium text-gray-600">Vải chính</th>
                 <th className="px-3 py-3 text-left font-medium text-gray-600">Vải phối</th>
                 <th className="px-3 py-3 text-left font-medium text-gray-600">Phụ liệu khác</th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600">Tình trạng SX</th>
                 <th className="px-3 py-3 text-left font-medium text-gray-600">Lệnh SX</th>
                 <th className="px-3 py-3 text-left font-medium text-gray-600">Xưởng SX</th>
-                <th className="px-3 py-3 text-center font-medium text-gray-600 w-16">Ảnh</th>
                 <th className="px-3 py-3 text-center font-medium text-gray-600 w-32">Thao tác</th>
               </tr>
             </thead>
@@ -325,36 +303,9 @@ export default function MaSPTab() {
                   <td className="px-3 py-2.5 text-gray-600">{item.vaiChinh || "-"}</td>
                   <td className="px-3 py-2.5 text-gray-600">{item.vaiPhoi || "-"}</td>
                   <td className="px-3 py-2.5 text-gray-600">{item.phuLieuKhac || "-"}</td>
-                  <td className="px-3 py-2.5">
-                    {item.tinhTrangSX ? (
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        item.tinhTrangSX.includes("Đang") ? "bg-yellow-100 text-yellow-700" :
-                        item.tinhTrangSX.includes("Nhập kho") ? "bg-green-100 text-green-700" :
-                        item.tinhTrangSX.includes("Lệnh") ? "bg-blue-100 text-blue-700" :
-                        "bg-gray-100 text-gray-700"
-                      }`}>
-                        {item.tinhTrangSX}
-                      </span>
-                    ) : "-"}
-                  </td>
                   <td className="px-3 py-2.5 text-gray-600 font-mono text-xs">{item.lenhSX || "-"}</td>
                   <td className="px-3 py-2.5 text-gray-600 max-w-[150px]">
                     <div className="truncate" title={item.xuongSX}>{item.xuongSX || "-"}</div>
-                  </td>
-                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                    {item.hinhAnh && item.hinhAnh !== "#N/A" ? (
-                      <a
-                        href={item.hinhAnh}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                        title="Xem hình ảnh"
-                      >
-                        <ImageIcon size={16} />
-                      </a>
-                    ) : (
-                      <span className="text-gray-300">-</span>
-                    )}
                   </td>
                   <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1">
@@ -506,26 +457,12 @@ export default function MaSPTab() {
                     <p className="font-medium">{selectedItem.phuLieuKhac || "-"}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Tình trạng SX</p>
-                    <p className="font-medium">{selectedItem.tinhTrangSX || "-"}</p>
-                  </div>
-                  <div className="space-y-1">
                     <p className="text-sm text-gray-500">Lệnh SX</p>
                     <p className="font-medium">{selectedItem.lenhSX || "-"}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-gray-500">Xưởng SX</p>
                     <p className="font-medium">{selectedItem.xuongSX || "-"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Hình ảnh</p>
-                    {selectedItem.hinhAnh && selectedItem.hinhAnh !== "#N/A" ? (
-                      <a href={selectedItem.hinhAnh} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        Xem hình ảnh
-                      </a>
-                    ) : (
-                      <p className="font-medium">-</p>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -591,16 +528,6 @@ export default function MaSPTab() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm text-gray-600">Tình trạng SX</label>
-                    <input
-                      type="text"
-                      value={formData.tinhTrangSX}
-                      onChange={(e) => handleFormChange("tinhTrangSX", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Nhập tình trạng SX"
-                    />
-                  </div>
-                  <div className="space-y-1">
                     <label className="text-sm text-gray-600">Lệnh SX</label>
                     <input
                       type="text"
@@ -618,16 +545,6 @@ export default function MaSPTab() {
                       onChange={(e) => handleFormChange("xuongSX", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Nhập xưởng SX"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm text-gray-600">Link hình ảnh</label>
-                    <input
-                      type="text"
-                      value={formData.hinhAnh}
-                      onChange={(e) => handleFormChange("hinhAnh", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Nhập link hình ảnh"
                     />
                   </div>
                 </div>

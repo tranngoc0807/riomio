@@ -472,16 +472,6 @@ export default function ChiTietMaSPTab() {
       {/* Data Table */}
       {!isLoading && data && (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="p-4 bg-blue-50 border-b border-gray-200 flex items-center justify-between">
-            <h4 className="font-semibold text-gray-900">Mã SP: {data.maSP}</h4>
-            {/* <button
-              onClick={openEditModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Pencil size={16} />
-              Sửa
-            </button> */}
-          </div>
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">

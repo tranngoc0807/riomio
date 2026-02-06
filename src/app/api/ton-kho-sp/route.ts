@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTonKhoSPFromSheet, getTonDauSPFromSheet, updateCellInSheet } from "@/lib/googleSheets";
+import { getTonKhoSPFromSheet, getTonDauSPFromSheet, getXuatKhoSPFromSheet, updateCellInSheet } from "@/lib/googleSheets";
 
 /**
  * GET /api/ton-kho-sp
@@ -7,19 +7,22 @@ import { getTonKhoSPFromSheet, getTonDauSPFromSheet, updateCellInSheet } from "@
  */
 export async function GET() {
   try {
-    const [tonKhoList, tonDauList] = await Promise.all([
+    const [tonKhoList, tonDauList, xuatKhoList] = await Promise.all([
       getTonKhoSPFromSheet(),
       getTonDauSPFromSheet(),
+      getXuatKhoSPFromSheet(),
     ]);
 
     console.log("API GET - tonKhoList count:", tonKhoList.length);
     console.log("API GET - tonDauList count:", tonDauList.length);
+    console.log("API GET - xuatKhoList count:", xuatKhoList.length);
 
     return NextResponse.json({
       success: true,
       data: {
         tonKho: tonKhoList,
         tonDau: tonDauList,
+        xuatKho: xuatKhoList,
       },
     });
   } catch (error: any) {
@@ -73,19 +76,22 @@ export async function POST(request: Request) {
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     // Fetch updated data
-    const [tonKhoList, tonDauList] = await Promise.all([
+    const [tonKhoList, tonDauList, xuatKhoList] = await Promise.all([
       getTonKhoSPFromSheet(),
       getTonDauSPFromSheet(),
+      getXuatKhoSPFromSheet(),
     ]);
 
     console.log("API POST - tonKhoList count:", tonKhoList.length);
     console.log("API POST - tonDauList count:", tonDauList.length);
+    console.log("API POST - xuatKhoList count:", xuatKhoList.length);
 
     return NextResponse.json({
       success: true,
       data: {
         tonKho: tonKhoList,
         tonDau: tonDauList,
+        xuatKho: xuatKhoList,
       },
     });
   } catch (error: any) {

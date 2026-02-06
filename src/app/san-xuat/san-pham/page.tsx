@@ -1,17 +1,20 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { PackageSearch, Tag, FileText } from "lucide-react";
+import { PackageSearch, Tag, FileText, List } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
 import MaSPTab from "../components/MaSPTab";
 import ChiTietMaSPTab from "../components/ChiTietMaSPTab";
+import PhatTrienSanPhamTab from "../components/PhatTrienSanPhamTab";
 
-type TabType = "ma-san-pham" | "chi-tiet-ma-sp";
+type TabType = "phat-trien" | "ma-san-pham" | "chi-tiet-ma-sp";
 
 const TABS = [
-  { id: "ma-san-pham" as TabType, label: "Mã sản phẩm", icon: Tag },
+  { id: "phat-trien" as TabType, label: "Phát triển sản phẩm", icon: List },
+  // { id: "ma-san-pham" as TabType, label: "Mã sản phẩm", icon: Tag },
   {
     id: "chi-tiet-ma-sp" as TabType,
     label: "Chi tiết mã sản phẩm",
@@ -19,18 +22,16 @@ const TABS = [
   },
 ];
 
-
 export default function SanPhamSX() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<TabType>("ma-san-pham");
+  const [activeTab, setActiveTab] = useState<TabType>("phat-trien");
 
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
     const validTabs = TABS.map((t) => t.id);
     if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
     }
   }, [searchParams]);
@@ -80,7 +81,8 @@ export default function SanPhamSX() {
         </div>
 
         <div className="p-6">
-          {activeTab === "ma-san-pham" && <MaSPTab />}
+          {activeTab === "phat-trien" && <PhatTrienSanPhamTab />}
+          {/* {activeTab === "ma-san-pham" && <MaSPTab />} */}
           {activeTab === "chi-tiet-ma-sp" && <ChiTietMaSPTab />}
         </div>
       </div>

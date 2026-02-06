@@ -8,7 +8,7 @@ import { addMaSPToSheet } from "@/lib/googleSheets";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { maSP, tenSP, size, vaiChinh, vaiPhoi, phuLieuKhac, tinhTrangSX, lenhSX, xuongSX, hinhAnh } = body;
+    const { maSP, tenSP, size, vaiChinh, vaiPhoi, phuLieuKhac, lenhSX, xuongSX } = body;
 
     if (!maSP) {
       return NextResponse.json(
@@ -27,10 +27,8 @@ export async function POST(request: Request) {
       vaiChinh: vaiChinh || "",
       vaiPhoi: vaiPhoi || "",
       phuLieuKhac: phuLieuKhac || "",
-      tinhTrangSX: tinhTrangSX || "",
       lenhSX: lenhSX || "",
       xuongSX: xuongSX || "",
-      hinhAnh: hinhAnh || "",
     });
 
     return NextResponse.json({

@@ -24,7 +24,7 @@ interface SelectedProduct {
   mainFabric: string;
   color: string;
   image: string;
-  // Sizes
+  // Sizes cho trẻ em
   size0_1: number;
   size1_2: number;
   size2_3: number;
@@ -33,6 +33,19 @@ interface SelectedProduct {
   size5_6: number;
   size6_7: number;
   size7_8: number;
+  size8_9: number;
+  size9_10: number;
+  size10_11: number;
+  size11_12: number;
+  size12_13: number;
+  size13_14: number;
+  size14_15: number;
+  // Sizes cho người lớn
+  sizeXS: number;
+  sizeS: number;
+  sizeM: number;
+  sizeL: number;
+  sizeXL: number;
   totalQuantity: number;
 }
 
@@ -59,7 +72,7 @@ const INITIAL_KE_HOACH: Omit<KeHoachSX, "id"> = {
   mainFabric: "",
   color: "",
   image: "",
-  size6m: 0, size9m: 0, size0_1: 0, size1_2: 0, size2_3: 0, size3_4: 0,
+  size0_1: 0, size1_2: 0, size2_3: 0, size3_4: 0,
   size4_5: 0, size5_6: 0, size6_7: 0, size7_8: 0, size8_9: 0, size9_10: 0,
   size10_11: 0, size11_12: 0, size12_13: 0, size13_14: 0, size14_15: 0,
   sizeXS: 0, sizeS: 0, sizeM: 0, sizeL: 0, sizeXL: 0,
@@ -69,8 +82,6 @@ const INITIAL_KE_HOACH: Omit<KeHoachSX, "id"> = {
 
 // All sizes for the table view
 const TABLE_SIZES = [
-  { key: "size6m", label: "6m" },
-  { key: "size9m", label: "9m" },
   { key: "size0_1", label: "0/1" },
   { key: "size1_2", label: "1/2" },
   { key: "size2_3", label: "2/3" },
@@ -94,7 +105,7 @@ const TABLE_SIZES = [
 ];
 
 const SIZE_KEYS = [
-  "size6m", "size9m", "size0_1", "size1_2", "size2_3", "size3_4",
+  "size0_1", "size1_2", "size2_3", "size3_4",
   "size4_5", "size5_6", "size6_7", "size7_8", "size8_9", "size9_10",
   "size10_11", "size11_12", "size12_13", "size13_14", "size14_15",
   "sizeXS", "sizeS", "sizeM", "sizeL", "sizeXL",
@@ -401,12 +412,6 @@ export default function KeHoachSXTab() {
 
   // Add product to selected list
   const handleAddProductToList = (product: SanPham) => {
-    // Check if already added
-    if (selectedProducts.some(p => p.productCode === product.code)) {
-      toast.error("Sản phẩm đã được thêm vào danh sách");
-      return;
-    }
-
     const newProduct: SelectedProduct = {
       id: `${product.code}-${Date.now()}`,
       productCode: product.code,
@@ -415,14 +420,11 @@ export default function KeHoachSXTab() {
       mainFabric: product.mainFabric || "",
       color: "",
       image: productImages[product.code] || "",
-      size0_1: 0,
-      size1_2: 0,
-      size2_3: 0,
-      size3_4: 0,
-      size4_5: 0,
-      size5_6: 0,
-      size6_7: 0,
-      size7_8: 0,
+      size0_1: 0, size1_2: 0, size2_3: 0, size3_4: 0,
+      size4_5: 0, size5_6: 0, size6_7: 0, size7_8: 0,
+      size8_9: 0, size9_10: 0, size10_11: 0, size11_12: 0,
+      size12_13: 0, size13_14: 0, size14_15: 0,
+      sizeXS: 0, sizeS: 0, sizeM: 0, sizeL: 0, sizeXL: 0,
       totalQuantity: 0,
     };
 
@@ -442,10 +444,8 @@ export default function KeHoachSXTab() {
       if (p.id !== id) return p;
 
       const updated = { ...p, [sizeKey]: Math.max(0, value) };
-      // Recalculate total
-      updated.totalQuantity =
-        updated.size0_1 + updated.size1_2 + updated.size2_3 + updated.size3_4 +
-        updated.size4_5 + updated.size5_6 + updated.size6_7 + updated.size7_8;
+      // Recalculate total using all sizes
+      updated.totalQuantity = SIZE_KEYS.reduce((sum, key) => sum + ((updated as any)[key] || 0), 0);
       return updated;
     }));
   };
@@ -540,8 +540,6 @@ export default function KeHoachSXTab() {
           mainFabric: product.mainFabric,
           color: product.color,
           image: product.image,
-          size6m: 0,
-          size9m: 0,
           size0_1: product.size0_1,
           size1_2: product.size1_2,
           size2_3: product.size2_3,
@@ -550,18 +548,18 @@ export default function KeHoachSXTab() {
           size5_6: product.size5_6,
           size6_7: product.size6_7,
           size7_8: product.size7_8,
-          size8_9: 0,
-          size9_10: 0,
-          size10_11: 0,
-          size11_12: 0,
-          size12_13: 0,
-          size13_14: 0,
-          size14_15: 0,
-          sizeXS: 0,
-          sizeS: 0,
-          sizeM: 0,
-          sizeL: 0,
-          sizeXL: 0,
+          size8_9: product.size8_9,
+          size9_10: product.size9_10,
+          size10_11: product.size10_11,
+          size11_12: product.size11_12,
+          size12_13: product.size12_13,
+          size13_14: product.size13_14,
+          size14_15: product.size14_15,
+          sizeXS: product.sizeXS,
+          sizeS: product.sizeS,
+          sizeM: product.sizeM,
+          sizeL: product.sizeL,
+          sizeXL: product.sizeXL,
           totalQuantity: product.totalQuantity,
           note: formNote,
         };

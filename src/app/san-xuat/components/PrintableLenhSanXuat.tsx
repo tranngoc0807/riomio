@@ -21,8 +21,6 @@ interface PrintableLenhSanXuatProps {
 }
 
 const ALL_SIZES = [
-  { key: "size6m", label: "6m" },
-  { key: "size9m", label: "9m" },
   { key: "size0_1", label: "0/1" },
   { key: "size1_2", label: "1/2" },
   { key: "size2_3", label: "2/3" },

@@ -8,7 +8,7 @@ import { updateMaSPInSheet } from "@/lib/googleSheets";
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { rowIndex, maSP, tenSP, size, vaiChinh, vaiPhoi, phuLieuKhac, tinhTrangSX, lenhSX, xuongSX, hinhAnh } = body;
+    const { rowIndex, maSP, tenSP, size, vaiChinh, vaiPhoi, phuLieuKhac, lenhSX, xuongSX } = body;
 
     if (rowIndex === undefined || rowIndex < 0) {
       return NextResponse.json(
@@ -37,10 +37,8 @@ export async function PUT(request: Request) {
       vaiChinh: vaiChinh || "",
       vaiPhoi: vaiPhoi || "",
       phuLieuKhac: phuLieuKhac || "",
-      tinhTrangSX: tinhTrangSX || "",
       lenhSX: lenhSX || "",
       xuongSX: xuongSX || "",
-      hinhAnh: hinhAnh || "",
     });
 
     return NextResponse.json({

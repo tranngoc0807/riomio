@@ -201,6 +201,10 @@ export default function OrdersTab() {
   // Search term for orders table
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
+
   // Group orders by order code
   const groupedOrders: GroupedOrder[] = useMemo(() => {
     const groups: Record<string, GroupedOrder> = {};
@@ -229,7 +233,17 @@ export default function OrdersTab() {
       groups[order.code].totalItems += order.items || 0;
     });
 
-    return Object.values(groups);
+    // Sort by date descending (newest first), then by order code descending
+    return Object.values(groups).sort((a, b) => {
+      // First compare by date (newest first)
+      const dateA = new Date(a.date.split('/').reverse().join('-'));
+      const dateB = new Date(b.date.split('/').reverse().join('-'));
+      if (dateB.getTime() !== dateA.getTime()) {
+        return dateB.getTime() - dateA.getTime();
+      }
+      // If same date, sort by order code descending
+      return b.orderCode.localeCompare(a.orderCode);
+    });
   }, [orders, customersList]);
 
   // Filtered grouped orders
@@ -241,6 +255,18 @@ export default function OrdersTab() {
         p.productCode.toLowerCase().includes(searchTerm.toLowerCase())
       )
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredGroupedOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = filteredGroupedOrders.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchOrders();
@@ -846,7 +872,7 @@ export default function OrdersTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredGroupedOrders.map((group) => (
+              {paginatedOrders.map((group) => (
                 <tr key={group.orderCode} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewGrouped(group)}>
                   <td className="px-3 py-3 text-sm font-medium text-blue-600">{group.orderCode}</td>
                   <td className="px-3 py-3 text-sm text-gray-600">{group.date}</td>
@@ -888,6 +914,69 @@ export default function OrdersTab() {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center mt-4 px-2">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="w-8 h-8 flex items-center justify-center text-sm text-gray-500 hover:bg-gray-100 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  &lt;
+                </button>
+                {(() => {
+                  const pages: (number | string)[] = [];
+                  if (totalPages <= 7) {
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    if (currentPage <= 4) {
+                      for (let i = 1; i <= 5; i++) pages.push(i);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    } else if (currentPage >= totalPages - 3) {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    }
+                  }
+                  return pages.map((page, index) => (
+                    page === '...' ? (
+                      <span key={`ellipsis-${index}`} className="w-8 h-8 flex items-center justify-center text-sm text-gray-500">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page as number)}
+                        className={`w-8 h-8 flex items-center justify-center text-sm rounded-full ${
+                          currentPage === page
+                            ? "bg-gray-200 text-gray-800 font-medium"
+                            : "text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  ));
+                })()}
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="w-8 h-8 flex items-center justify-center text-sm text-gray-500 hover:bg-gray-100 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  &gt;
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -992,6 +1081,9 @@ export default function OrdersTab() {
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">CK</th>
                         <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Giá sau CK</th>
                         <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-yellow-100">Tiền sau CK</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-orange-100">CK thanh toán</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-green-100">Khách phải trả</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Ghi chú</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -1020,43 +1112,28 @@ export default function OrdersTab() {
                           <td className="px-3 py-2 text-sm text-gray-600">{product.discount || "-"}</td>
                           <td className="px-3 py-2 text-sm text-right">{product.priceAfterDiscount.toLocaleString("vi-VN")}</td>
                           <td className="px-3 py-2 text-sm text-right font-medium bg-yellow-50">{product.subtotalAfterDiscount.toLocaleString("vi-VN")}</td>
+                          <td className="px-3 py-2 text-sm text-right text-orange-600 bg-orange-50">{product.paymentDiscount || "-"}</td>
+                          <td className="px-3 py-2 text-sm text-right font-semibold text-green-600 bg-green-50">{product.total ? product.total.toLocaleString("vi-VN") : "-"}</td>
+                          <td className="px-3 py-2 text-sm text-gray-600 max-w-[150px] truncate" title={product.notes || ""}>{product.notes || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="bg-gray-100">
                       <tr>
-                        <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">Tổng tiền hàng sau CK:</td>
-                        <td colSpan={4} className="px-3 py-2 text-sm text-right"></td>
+                        <td colSpan={9} className="px-3 py-2 text-sm font-medium text-right">Tổng tiền hàng sau CK:</td>
                         <td className="px-3 py-2 text-sm text-right font-semibold text-blue-600">
                           {viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}đ
                         </td>
-                      </tr>
-                      <tr>
-                        <td colSpan={5} className="px-3 py-2 text-sm font-medium text-right">CK thanh toán:</td>
-                        <td colSpan={4} className="px-3 py-2 text-sm text-right"></td>
-                        <td className="px-3 py-2 text-sm text-right font-medium text-orange-600">
-                          {viewGroupedOrder.paymentDiscount || "-"}
-                        </td>
-                      </tr>
-                      <tr className="bg-green-50">
-                        <td colSpan={5} className="px-3 py-2 text-sm font-bold text-right">Khách phải trả:</td>
-                        <td colSpan={4} className="px-3 py-2 text-sm text-right"></td>
-                        <td className="px-3 py-2 text-sm text-right font-bold text-green-600 text-lg">
+                        <td className="px-3 py-2"></td>
+                        <td className="px-3 py-2 text-sm text-right font-bold text-green-600">
                           {viewGroupedOrder.total.toLocaleString("vi-VN")}đ
                         </td>
+                        <td className="px-3 py-2"></td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </div>
-
-              {/* Note */}
-              {viewGroupedOrder.notes && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-500">Ghi chú:</span>
-                  <p className="font-medium">{viewGroupedOrder.notes}</p>
-                </div>
-              )}
             </div>
 
             {/* Printable content - Hidden but used for export */}
@@ -1123,12 +1200,6 @@ export default function OrdersTab() {
                       <span style={{ fontWeight: "bold", fontSize: "11px" }}>User BH: </span>
                       <span style={{ fontSize: "12px" }}>{viewGroupedOrder.salesUser || "-"}</span>
                     </div>
-                    {viewGroupedOrder.notes && (
-                      <div style={{ marginBottom: "6px" }}>
-                        <span style={{ fontWeight: "bold", fontSize: "11px" }}>Ghi chú: </span>
-                        <span style={{ fontSize: "11px", color: "#666" }}>{viewGroupedOrder.notes}</span>
-                      </div>
-                    )}
                   </div>
 
                   {/* Right column - Summary */}
@@ -1149,66 +1220,61 @@ export default function OrdersTab() {
                       <span>Tiền hàng sau CK:</span>
                       <span>{viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}</span>
                     </div>
-                    {viewGroupedOrder.paymentDiscount && (
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                        <span>CK thanh toán:</span>
-                        <span style={{ color: "#ea580c" }}>{viewGroupedOrder.paymentDiscount}</span>
-                      </div>
-                    )}
                     <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid #d1d5db" }}>
-                      <span style={{ fontWeight: "bold" }}>Khách phải trả:</span>
+                      <span style={{ fontWeight: "bold" }}>Tổng khách phải trả:</span>
                       <span style={{ fontWeight: "bold", color: "#16a34a", fontSize: "13px" }}>{viewGroupedOrder.total.toLocaleString("vi-VN")}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Products Table with Image */}
-                <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "15px", fontSize: "10px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "15px", fontSize: "9px" }}>
                   <thead>
                     <tr style={{ backgroundColor: "#dcfce7" }}>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "center", width: "30px" }}>STT</th>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "left" }}>Mã SP</th>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "center", width: "50px" }}>Hình ảnh</th>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "center", width: "45px" }}>Số lượng</th>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "right" }}>Đơn giá</th>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "center" }}>CK SP</th>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "right" }}>Đơn giá sau CK</th>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "right", backgroundColor: "#bbf7d0" }}>Thành tiền</th>
-                      <th style={{ border: "1px solid #86efac", padding: "6px", textAlign: "left" }}>Ghi chú</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "center", width: "25px" }}>STT</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "left" }}>Mã SP</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "center", width: "40px" }}>Hình ảnh</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "center", width: "35px" }}>SL</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "right" }}>Giá sỉ</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "center" }}>CK SP</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "right" }}>Giá sau CK</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "right", backgroundColor: "#fef9c3" }}>Tiền sau CK</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "right", backgroundColor: "#fed7aa" }}>CK TT</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "right", backgroundColor: "#bbf7d0" }}>Khách trả</th>
+                      <th style={{ border: "1px solid #86efac", padding: "4px", textAlign: "left" }}>Ghi chú</th>
                     </tr>
                   </thead>
                   <tbody>
                     {viewGroupedOrder.products.map((product, index) => (
                       <tr key={product.id}>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{index + 1}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", fontWeight: "500", color: "#2563eb" }}>{product.productCode}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "3px", textAlign: "center" }}>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", textAlign: "center" }}>{index + 1}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", fontWeight: "500", color: "#2563eb" }}>{product.productCode}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "2px", textAlign: "center" }}>
                           {product.image ? (
-                            <img src={product.image} alt={product.productCode} style={{ width: "40px", height: "40px", objectFit: "cover", borderRadius: "4px" }} />
+                            <img src={product.image} alt={product.productCode} style={{ width: "35px", height: "35px", objectFit: "cover", borderRadius: "4px" }} />
                           ) : (
                             <span style={{ color: "#999" }}>-</span>
                           )}
                         </td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{product.items}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right" }}>{product.productPrice.toLocaleString("vi-VN")}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "center" }}>{product.discount || "-"}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right" }}>{product.priceAfterDiscount.toLocaleString("vi-VN")}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", textAlign: "right", fontWeight: "600", backgroundColor: "#f0fdf4" }}>{product.subtotalAfterDiscount.toLocaleString("vi-VN")}</td>
-                        <td style={{ border: "1px solid #d1d5db", padding: "5px", fontSize: "9px", color: "#666" }}></td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", textAlign: "center" }}>{product.items}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", textAlign: "right" }}>{product.productPrice.toLocaleString("vi-VN")}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", textAlign: "center" }}>{product.discount || "-"}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", textAlign: "right" }}>{product.priceAfterDiscount.toLocaleString("vi-VN")}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", textAlign: "right", fontWeight: "600", backgroundColor: "#fefce8" }}>{product.subtotalAfterDiscount.toLocaleString("vi-VN")}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", textAlign: "right", color: "#ea580c", backgroundColor: "#fff7ed" }}>{product.paymentDiscount || "-"}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", textAlign: "right", fontWeight: "600", color: "#16a34a", backgroundColor: "#f0fdf4" }}>{product.total ? product.total.toLocaleString("vi-VN") : "-"}</td>
+                        <td style={{ border: "1px solid #d1d5db", padding: "4px", fontSize: "8px", color: "#666" }}>{product.notes || "-"}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr style={{ backgroundColor: "#f0fdf4" }}>
-                      <td colSpan={7} style={{ border: "1px solid #d1d5db", padding: "8px", textAlign: "right", fontWeight: "bold", fontSize: "11px" }}>Tổng tiền hàng sau CK:</td>
-                      <td style={{ border: "1px solid #d1d5db", padding: "8px", textAlign: "right", fontWeight: "bold", fontSize: "12px", color: "#16a34a" }}>
+                      <td colSpan={7} style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "bold", fontSize: "10px" }}>Tổng:</td>
+                      <td style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "bold", fontSize: "10px" }}>
                         {viewGroupedOrder.products.reduce((sum, p) => sum + p.subtotalAfterDiscount, 0).toLocaleString("vi-VN")}
                       </td>
-                      <td style={{ border: "1px solid #d1d5db" }}></td>
-                    </tr>
-                    <tr style={{ backgroundColor: "#dcfce7" }}>
-                      <td colSpan={7} style={{ border: "1px solid #d1d5db", padding: "10px", textAlign: "right", fontWeight: "bold", fontSize: "13px" }}>KHÁCH PHẢI TRẢ:</td>
-                      <td style={{ border: "1px solid #d1d5db", padding: "10px", textAlign: "right", fontWeight: "bold", fontSize: "15px", color: "#16a34a" }}>
+                      <td style={{ border: "1px solid #d1d5db", padding: "6px" }}></td>
+                      <td style={{ border: "1px solid #d1d5db", padding: "6px", textAlign: "right", fontWeight: "bold", fontSize: "11px", color: "#16a34a" }}>
                         {viewGroupedOrder.total.toLocaleString("vi-VN")}đ
                       </td>
                       <td style={{ border: "1px solid #d1d5db" }}></td>

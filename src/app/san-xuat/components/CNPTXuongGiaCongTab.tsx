@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, Receipt, Calendar } from "lucide-react";
+import { Loader2, Search, Receipt, Calendar, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
@@ -27,7 +27,12 @@ export default function CNPTXuongGiaCongTab() {
   const [searchTermThang, setSearchTermThang] = useState("");
   const [searchTermNgay, setSearchTermNgay] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [activeTable, setActiveTable] = useState<"thang" | "ngay">("thang");
+
+  // Date filters - default will be loaded from sheet
+  const [filterThangNam, setFilterThangNam] = useState("");
+  const [filterDenNgay, setFilterDenNgay] = useState("");
 
   // Filtered data
   const filteredThang = cnptThang.filter((item) =>
@@ -51,6 +56,11 @@ export default function CNPTXuongGiaCongTab() {
       if (result.success) {
         setCnptThang(result.thangData || []);
         setCnptNgay(result.ngayData || []);
+        // Set date filters from sheet values
+        if (result.dateCells) {
+          setFilterThangNam(result.dateCells.thangNam || "");
+          setFilterDenNgay(result.dateCells.denNgay || "");
+        }
       } else {
         toast.error("Không thể tải danh sách CNPT xưởng gia công");
       }
@@ -59,6 +69,46 @@ export default function CNPTXuongGiaCongTab() {
       toast.error("Lỗi khi tải danh sách CNPT xưởng gia công");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Update filters and refresh data
+  const handleUpdateFilters = async () => {
+    try {
+      setIsUpdating(true);
+
+      // Only send the relevant filter based on active table
+      const body: { thangNam?: string; denNgay?: string } = {};
+      if (activeTable === "thang" && filterThangNam) {
+        body.thangNam = filterThangNam;
+      } else if (activeTable === "ngay" && filterDenNgay) {
+        body.denNgay = filterDenNgay;
+      }
+
+      if (Object.keys(body).length === 0) {
+        toast.error("Vui lòng chọn ngày/tháng");
+        return;
+      }
+
+      const response = await fetch("/api/cnpt-xuong-gia-cong", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setCnptThang(result.thangData || []);
+        setCnptNgay(result.ngayData || []);
+        toast.success("Đã cập nhật dữ liệu");
+      } else {
+        toast.error(result.error || "Không thể cập nhật dữ liệu");
+      }
+    } catch (error) {
+      console.error("Error updating filters:", error);
+      toast.error("Lỗi khi cập nhật dữ liệu");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -115,15 +165,39 @@ export default function CNPTXuongGiaCongTab() {
             <h3 className="text-lg font-semibold text-purple-700">
               Công nợ phải trả xưởng SX - Theo tháng ({filteredThang.length})
             </h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Tìm xưởng SX..."
-                value={searchTermThang}
-                onChange={(e) => setSearchTermThang(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 w-64"
-              />
+            <div className="flex items-center gap-3">
+              {/* Month picker for Table 1 */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Tháng:</label>
+                <input
+                  type="month"
+                  value={filterThangNam}
+                  onChange={(e) => setFilterThangNam(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                />
+                <button
+                  onClick={handleUpdateFilters}
+                  disabled={isUpdating}
+                  className="flex items-center gap-1 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm"
+                >
+                  {isUpdating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw size={16} />
+                  )}
+                  Cập nhật
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Tìm xưởng SX..."
+                  value={searchTermThang}
+                  onChange={(e) => setSearchTermThang(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 w-64"
+                />
+              </div>
             </div>
           </div>
 
@@ -194,15 +268,39 @@ export default function CNPTXuongGiaCongTab() {
             <h3 className="text-lg font-semibold text-orange-700">
               Bảng kê số dư đầu kì công nợ phải trả xưởng SX đến ngày ({filteredNgay.length})
             </h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Tìm xưởng SX..."
-                value={searchTermNgay}
-                onChange={(e) => setSearchTermNgay(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 w-64"
-              />
+            <div className="flex items-center gap-3">
+              {/* Date picker for Table 2 */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Đến ngày:</label>
+                <input
+                  type="date"
+                  value={filterDenNgay}
+                  onChange={(e) => setFilterDenNgay(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-sm"
+                />
+                <button
+                  onClick={handleUpdateFilters}
+                  disabled={isUpdating}
+                  className="flex items-center gap-1 px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm"
+                >
+                  {isUpdating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw size={16} />
+                  )}
+                  Cập nhật
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Tìm xưởng SX..."
+                  value={searchTermNgay}
+                  onChange={(e) => setSearchTermNgay(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 w-64"
+                />
+              </div>
             </div>
           </div>
 

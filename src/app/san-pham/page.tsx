@@ -165,37 +165,44 @@ export default function SanPhamPage() {
 
   // Tab state - read from URL param
   const tabParam = searchParams.get("tab");
+
+  // Sub-tabs của Quản lý kho - khi có các param này thì tự động chuyển sang tab quan-ly-kho
+  const quanLyKhoSubTabs = ["ton-kho", "ton-dau", "xuat-kho", "nhap-kho"];
+  const isQuanLyKhoSubTab = tabParam && quanLyKhoSubTabs.includes(tabParam);
+
+  const getInitialMainTab = (): "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von" => {
+    if (isQuanLyKhoSubTab || tabParam === "quan-ly-kho") return "quan-ly-kho";
+    if (tabParam === "phat-trien") return "phat-trien";
+    if (tabParam === "dieu-chinh-gia-von") return "dieu-chinh-gia-von";
+    return "danh-muc";
+  };
+
   const [activeTab, setActiveTab] = useState<
     "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von"
-  >(
-    tabParam === "danh-muc"
-      ? "danh-muc"
-      : tabParam === "quan-ly-kho"
-        ? "quan-ly-kho"
-        : tabParam === "dieu-chinh-gia-von"
-          ? "dieu-chinh-gia-von"
-          : "phat-trien",
-  );
+  >(getInitialMainTab);
 
   // Handle tab change with URL update
   const handleTabChange = (
     tab: "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von",
   ) => {
     setActiveTab(tab);
+    // Khi chuyển sang quan-ly-kho, giữ nguyên sub-tab nếu đang có
+    if (tab === "quan-ly-kho" && isQuanLyKhoSubTab) {
+      return; // Không thay đổi URL vì đã có sub-tab
+    }
     router.push(`/san-pham?tab=${tab}`, { scroll: false });
   };
 
   // Sync tab state when URL param changes (browser back/forward)
   useEffect(() => {
-    const newTab =
-      tabParam === "danh-muc"
-        ? "danh-muc"
-        : tabParam === "quan-ly-kho"
-          ? "quan-ly-kho"
-          : tabParam === "dieu-chinh-gia-von"
-            ? "dieu-chinh-gia-von"
-            : "phat-trien";
+    const isSubTab = tabParam && quanLyKhoSubTabs.includes(tabParam);
+    let newTab: "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von";
+    if (isSubTab || tabParam === "quan-ly-kho") newTab = "quan-ly-kho";
+    else if (tabParam === "phat-trien") newTab = "phat-trien";
+    else if (tabParam === "dieu-chinh-gia-von") newTab = "dieu-chinh-gia-von";
+    else newTab = "danh-muc";
     setActiveTab(newTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabParam]);
 
   // ======== PHÁT TRIỂN SẢN PHẨM STATE ========
@@ -745,17 +752,6 @@ export default function SanPhamPage() {
       <div className="border-b border-gray-200">
         <nav className="flex gap-4">
           <button
-            onClick={() => handleTabChange("phat-trien")}
-            className={`flex items-center gap-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === "phat-trien"
-                ? "border-purple-600 text-purple-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            <List size={18} />
-            Phát triển sản phẩm
-          </button>
-          <button
             onClick={() => handleTabChange("danh-muc")}
             className={`flex items-center gap-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors ${
               activeTab === "danh-muc"
@@ -776,17 +772,6 @@ export default function SanPhamPage() {
           >
             <Warehouse size={18} />
             Quản lý kho
-          </button>
-          <button
-            onClick={() => handleTabChange("dieu-chinh-gia-von")}
-            className={`flex items-center gap-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === "dieu-chinh-gia-von"
-                ? "border-purple-600 text-purple-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            <DollarSign size={18} />
-            Điều chỉnh giá vốn
           </button>
         </nav>
       </div>

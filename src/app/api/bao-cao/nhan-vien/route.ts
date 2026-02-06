@@ -1,13 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getBaoCaoNhanVien } from "@/lib/googleSheets";
 
 /**
  * GET /api/bao-cao/nhan-vien
  * Lấy dữ liệu báo cáo bán hàng theo nhân viên
+ * Query params:
+ * - thang: tháng báo cáo (format: "M/YYYY" e.g., "1/2026")
+ * - nam: năm báo cáo (format: "YYYY" e.g., "2026")
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const data = await getBaoCaoNhanVien();
+    const { searchParams } = new URL(request.url);
+    const thang = searchParams.get("thang") || undefined;
+    const nam = searchParams.get("nam") || undefined;
+
+    const data = await getBaoCaoNhanVien(thang, nam);
 
     return NextResponse.json({
       success: true,

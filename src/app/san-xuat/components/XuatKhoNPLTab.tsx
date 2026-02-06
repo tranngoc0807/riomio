@@ -143,6 +143,9 @@ export default function XuatKhoNPLTab() {
   // Danh sách xưởng sản xuất - lấy từ API
   const [xuongSXList, setXuongSXList] = useState<any[]>([]);
 
+  // Tồn kho NPL - để lookup tồn cuối khi chọn mã NPL
+  const [tonKhoNPLData, setTonKhoNPLData] = useState<any[]>([]);
+
   // Filter materials
   const filteredMaterials = materialsData.filter((m) =>
     (m.code && m.code.toLowerCase().includes(nplSearchTerm.toLowerCase())) ||
@@ -157,10 +160,10 @@ export default function XuatKhoNPLTab() {
       m.name.toLowerCase().includes(returnNplSearchTerm.toLowerCase()))
   );
 
-  // Filter products
+  // Filter products - từ sheet "Mã SP" (maSP, tenSP)
   const filteredProducts = productsData.filter((p) =>
-    (p.code && p.code.toLowerCase().includes(maSPSearchTerm.toLowerCase())) ||
-    (p.name && p.name.toLowerCase().includes(maSPSearchTerm.toLowerCase()))
+    (p.maSP && p.maSP.toLowerCase().includes(maSPSearchTerm.toLowerCase())) ||
+    (p.tenSP && p.tenSP.toLowerCase().includes(maSPSearchTerm.toLowerCase()))
   );
 
   // Group phieu xuat kho by maPhieu
@@ -225,6 +228,7 @@ export default function XuatKhoNPLTab() {
     fetchMaterials();
     fetchProducts();
     fetchXuongSX();
+    fetchTonKhoNPL();
   }, []);
 
   // Click outside handler
@@ -286,7 +290,8 @@ export default function XuatKhoNPLTab() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("/api/san-pham-ban-hang");
+      // Lấy danh sách Mã SP từ sheet "Mã SP"
+      const response = await fetch("/api/ma-sp");
       const result = await response.json();
       if (result.success) {
         setProductsData(result.data);
@@ -306,6 +311,34 @@ export default function XuatKhoNPLTab() {
     } catch (error) {
       console.error("Error fetching xuong san xuat:", error);
     }
+  };
+
+  // Fetch tồn kho NPL để lookup tồn cuối khi chọn mã NPL
+  const fetchTonKhoNPL = async () => {
+    try {
+      const response = await fetch("/api/ton-kho-npl");
+      const result = await response.json();
+      console.log("fetchTonKhoNPL - result:", result.success, "count:", result.data?.tonKhoThang?.length);
+      if (result.success && result.data?.tonKhoThang) {
+        setTonKhoNPLData(result.data.tonKhoThang);
+        console.log("fetchTonKhoNPL - sample data:", result.data.tonKhoThang.slice(0, 3));
+      }
+    } catch (error) {
+      console.error("Error fetching ton kho NPL:", error);
+    }
+  };
+
+  // Helper function to get tồn cuối by mã NPL đầy đủ
+  // Sheet "Tồn kho NPL kho công ty" có maNPL đầy đủ như "TM22 Túi zip chip, áo lá"
+  // Material từ dropdown: material.name = "TM22 Túi zip chip, áo lá" (dùng để match)
+  const getTonCuoiByMaNPL = (maNPLFull: string): number => {
+    if (!maNPLFull) return 0;
+    const searchKey = maNPLFull.trim().toLowerCase();
+    const item = tonKhoNPLData.find(
+      (t) => t.maNPL && t.maNPL.trim().toLowerCase() === searchKey
+    );
+    console.log("getTonCuoiByMaNPL - searching:", searchKey, "found:", item?.maNPL, "tonCuoi:", item?.tonCuoi);
+    return item ? item.tonCuoi : 0;
   };
 
   const generateNextMaPhieu = (prefix: string = "PXKNPL"): string => {
@@ -357,8 +390,16 @@ export default function XuatKhoNPLTab() {
   };
 
   const handleAddNPLToList = (material: any) => {
+    console.log("handleAddNPLToList - material:", material);
+    console.log("handleAddNPLToList - tonKhoNPLData loaded:", tonKhoNPLData.length, "items");
+
     // Lấy đơn giá có thuế từ material
     const donGia = material.priceWithTax || material.priceBeforeTax || 0;
+
+    // Lấy tồn cuối từ tồn kho NPL - dùng material.name (tên đầy đủ) để match với sheet
+    // material.name = "TM22 Túi zip chip, áo lá" khớp với maNPL trong sheet "Tồn kho NPL kho công ty"
+    const tonCuoi = getTonCuoiByMaNPL(material.name);
+    console.log("handleAddNPLToList - tonCuoi result:", tonCuoi);
 
     const newNPL: SelectedNPL = {
       id: `${material.code}-${Date.now()}`,
@@ -368,7 +409,7 @@ export default function XuatKhoNPLTab() {
       donGia: donGia,
       thanhTien: donGia * 1, // số lượng mặc định = 1
       loaiChiPhi: "",
-      tonThucTe: 0,
+      tonThucTe: tonCuoi,
       ghiChu: "",
     };
 
@@ -382,7 +423,12 @@ export default function XuatKhoNPLTab() {
   };
 
   const handleAddReturnNPLToList = (material: any) => {
+    console.log("handleAddReturnNPLToList - material:", material);
     const donGia = material.priceWithTax || material.priceBeforeTax || 0;
+
+    // Lấy tồn cuối từ tồn kho NPL - dùng material.name (tên đầy đủ) để match
+    const tonCuoi = getTonCuoiByMaNPL(material.name);
+    console.log("handleAddReturnNPLToList - tonCuoi result:", tonCuoi);
 
     const newNPL: SelectedNPL = {
       id: `${material.code}-${Date.now()}`,
@@ -392,7 +438,7 @@ export default function XuatKhoNPLTab() {
       donGia: donGia,
       thanhTien: donGia * 1,
       loaiChiPhi: "",
-      tonThucTe: 0,
+      tonThucTe: tonCuoi,
       ghiChu: "",
     };
 
@@ -981,20 +1027,20 @@ export default function XuatKhoNPLTab() {
                           <div
                             key={product.id}
                             onClick={() => {
-                              setFormMaSP(product.code);
+                              setFormMaSP(product.maSP);
                               // Tự động tạo lệnh SX từ mã SP + ngày tháng
                               const date = new Date(formNgayThang);
                               const day = String(date.getDate()).padStart(2, '0');
                               const month = String(date.getMonth() + 1).padStart(2, '0');
                               const year = String(date.getFullYear()).slice(-2);
-                              const lenhSX = `${product.code} ${day}/${month}/${year}`;
+                              const lenhSX = `${product.maSP} ${day}/${month}/${year}`;
                               setFormLenhSX(lenhSX);
                               setShowMaSPDropdown(false);
                             }}
                             className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-0"
                           >
-                            <div className="font-medium text-blue-600">{product.code}</div>
-                            {product.name && <div className="text-xs text-gray-600">{product.name}</div>}
+                            <div className="font-medium text-blue-600">{product.maSP}</div>
+                            {product.tenSP && <div className="text-xs text-gray-600">{product.tenSP}</div>}
                           </div>
                         ))
                       )}

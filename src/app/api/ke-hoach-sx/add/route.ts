@@ -33,8 +33,6 @@ export async function POST(request: NextRequest) {
       color: body.color || "",
       image: body.image || "",
       // Sizes cho trẻ em
-      size6m: body.size6m || 0,
-      size9m: body.size9m || 0,
       size0_1: body.size0_1 || 0,
       size1_2: body.size1_2 || 0,
       size2_3: body.size2_3 || 0,

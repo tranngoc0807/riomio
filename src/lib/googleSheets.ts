@@ -2898,8 +2898,8 @@ export async function deleteThuChiFromSheet(thuChiId: number): Promise<void> {
 // KE HOACH SAN XUAT MANAGEMENT (Quản lý kế hoạch sản xuất)
 // ============================================
 
-const spreadsheetIdKeHoachSX = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
-const sheetNameKeHoachSX = process.env.GOOGLE_SHEET_NAME_KE_HOACH_SX || "KeHoachSX";
+const spreadsheetIdKeHoachSX = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+const sheetNameKeHoachSX = process.env.GOOGLE_SHEET_NAME_BANG_KE_LSX || "Bảng kê LSX";
 
 // Interface cho kế hoạch sản xuất
 export interface KeHoachSX {
@@ -2914,9 +2914,7 @@ export interface KeHoachSX {
   mainFabric: string;     // Vải chính (Cột H)
   color: string;          // Màu sắc (Cột I)
   image: string;          // Hình ảnh (Cột J)
-  // Sizes cho trẻ em (Cột K-AA)
-  size6m: number;         // 6m
-  size9m: number;         // 9m
+  // Sizes cho trẻ em (Cột K-Y)
   size0_1: number;        // 0/1
   size1_2: number;        // 1/2
   size2_3: number;        // 2/3
@@ -2932,14 +2930,14 @@ export interface KeHoachSX {
   size12_13: number;      // 12/13
   size13_14: number;      // 13/14
   size14_15: number;      // 14/15
-  // Sizes cho người lớn (Cột AB-AF)
+  // Sizes cho người lớn (Cột Z-AD)
   sizeXS: number;
   sizeS: number;
   sizeM: number;
   sizeL: number;
   sizeXL: number;
-  totalQuantity: number;  // Tổng SL (Cột AG)
-  note: string;           // Ghi chú (Cột AH)
+  totalQuantity: number;  // Tổng SL (Cột AE)
+  note: string;           // Ghi chú (Cột AF)
 }
 
 // Helper function to parse quantity values
@@ -2959,8 +2957,8 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `${sheetNameKeHoachSX}!A2:AH`, // Đọc từ dòng 2 đến cột AH
-      valueRenderOption: "FORMULA", // Get formula text instead of evaluated value
+      range: `'${sheetNameKeHoachSX}'!A6:AF`, // Đọc từ dòng 6 đến cột AF (header ở dòng 5)
+      valueRenderOption: "FORMATTED_VALUE", // Get evaluated value instead of formula
     });
 
     const rows = response.data.values;
@@ -2972,51 +2970,47 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
 
     const keHoachList: KeHoachSX[] = rows
       .map((row, index) => {
-        // Parse all sizes first
-        const size6m = parseQuantity(row[10]);
-        const size9m = parseQuantity(row[11]);
-        const size0_1 = parseQuantity(row[12]);
-        const size1_2 = parseQuantity(row[13]);
-        const size2_3 = parseQuantity(row[14]);
-        const size3_4 = parseQuantity(row[15]);
-        const size4_5 = parseQuantity(row[16]);
-        const size5_6 = parseQuantity(row[17]);
-        const size6_7 = parseQuantity(row[18]);
-        const size7_8 = parseQuantity(row[19]);
-        const size8_9 = parseQuantity(row[20]);
-        const size9_10 = parseQuantity(row[21]);
-        const size10_11 = parseQuantity(row[22]);
-        const size11_12 = parseQuantity(row[23]);
-        const size12_13 = parseQuantity(row[24]);
-        const size13_14 = parseQuantity(row[25]);
-        const size14_15 = parseQuantity(row[26]);
-        const sizeXS = parseQuantity(row[27]);
-        const sizeS = parseQuantity(row[28]);
-        const sizeM = parseQuantity(row[29]);
-        const sizeL = parseQuantity(row[30]);
-        const sizeXL = parseQuantity(row[31]);
+        // Parse all sizes - Sheet mới: K=0/1, L=1/2, ..., AD=XL, AE=Tổng SL, AF=Ghi chú
+        const size0_1 = parseQuantity(row[10]);  // K
+        const size1_2 = parseQuantity(row[11]);  // L
+        const size2_3 = parseQuantity(row[12]);  // M
+        const size3_4 = parseQuantity(row[13]);  // N
+        const size4_5 = parseQuantity(row[14]);  // O
+        const size5_6 = parseQuantity(row[15]);  // P
+        const size6_7 = parseQuantity(row[16]);  // Q
+        const size7_8 = parseQuantity(row[17]);  // R
+        const size8_9 = parseQuantity(row[18]);  // S
+        const size9_10 = parseQuantity(row[19]); // T
+        const size10_11 = parseQuantity(row[20]); // U
+        const size11_12 = parseQuantity(row[21]); // V
+        const size12_13 = parseQuantity(row[22]); // W
+        const size13_14 = parseQuantity(row[23]); // X
+        const size14_15 = parseQuantity(row[24]); // Y
+        const sizeXS = parseQuantity(row[25]);   // Z
+        const sizeS = parseQuantity(row[26]);    // AA
+        const sizeM = parseQuantity(row[27]);    // AB
+        const sizeL = parseQuantity(row[28]);    // AC
+        const sizeXL = parseQuantity(row[29]);   // AD
 
         // Calculate total from all sizes
-        const calculatedTotal = size6m + size9m + size0_1 + size1_2 + size2_3 + size3_4 +
+        const calculatedTotal = size0_1 + size1_2 + size2_3 + size3_4 +
           size4_5 + size5_6 + size6_7 + size7_8 + size8_9 + size9_10 +
           size10_11 + size11_12 + size12_13 + size13_14 + size14_15 +
           sizeXS + sizeS + sizeM + sizeL + sizeXL;
 
         return {
           id: index + 1,
-          lsxCode: row[0] || "",
-          workshop: row[1] || "",
-          orderDate: row[2] || "",
-          completionDate: row[3] || "",
-          productCode: row[4] || "",
-          productName: row[5] || "",
-          size: row[6] || "",
-          mainFabric: row[7] || "",
-          color: row[8] || "",
-          image: row[9] || "",
-          // Sizes cho trẻ em
-          size6m,
-          size9m,
+          lsxCode: row[0] || "",        // A: LSX số
+          workshop: row[1] || "",        // B: Xưởng SX
+          orderDate: row[2] || "",       // C: Ngày gửi lệnh
+          completionDate: row[3] || "",  // D: Ngày hoàn thành
+          productCode: row[4] || "",     // E: Mã SP
+          productName: row[5] || "",     // F: Tên SP
+          size: row[6] || "",            // G: Size
+          mainFabric: row[7] || "",      // H: Vải chính
+          color: row[8] || "",           // I: Màu sắc
+          image: row[9] || "",           // J: Hình ảnh
+          // Sizes cho trẻ em (K-Y)
           size0_1,
           size1_2,
           size2_3,
@@ -3032,15 +3026,15 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
           size12_13,
           size13_14,
           size14_15,
-          // Sizes cho người lớn
+          // Sizes cho người lớn (Z-AD)
           sizeXS,
           sizeS,
           sizeM,
           sizeL,
           sizeXL,
-          // Use calculated total instead of reading from sheet
-          totalQuantity: calculatedTotal,
-          note: row[33] || "",
+          // AE: Tổng SL, AF: Ghi chú
+          totalQuantity: parseQuantity(row[30]) || calculatedTotal,
+          note: row[31] || "",
         };
       })
       .filter((item) =>
@@ -3067,66 +3061,64 @@ export async function addKeHoachSXToSheet(keHoach: KeHoachSX): Promise<void> {
     // Đọc toàn bộ dữ liệu để tìm dòng cuối
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `${sheetNameKeHoachSX}!A:AH`,
+      range: `'${sheetNameKeHoachSX}'!A:AF`,
     });
 
     const allRows = response.data.values || [];
 
-    // Tìm dòng cuối có dữ liệu
-    let lastDataRow = 1;
-    for (let i = allRows.length - 1; i >= 1; i--) {
+    // Tìm dòng cuối có dữ liệu (data bắt đầu từ dòng 6, header dòng 5)
+    let lastDataRow = 5;
+    for (let i = allRows.length - 1; i >= 5; i--) {
       if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
         lastDataRow = i + 1;
         break;
       }
     }
 
-    const nextRow = lastDataRow + 1;
+    const nextRow = Math.max(lastDataRow + 1, 6);
 
     const values = [
       [
-        keHoach.lsxCode,
-        keHoach.workshop,
-        keHoach.orderDate,
-        keHoach.completionDate,
-        keHoach.productCode,
-        keHoach.productName,
-        keHoach.size,
-        keHoach.mainFabric,
-        keHoach.color,
-        keHoach.image,
-        // Sizes cho trẻ em
-        keHoach.size6m || "",
-        keHoach.size9m || "",
-        keHoach.size0_1 || "",
-        keHoach.size1_2 || "",
-        keHoach.size2_3 || "",
-        keHoach.size3_4 || "",
-        keHoach.size4_5 || "",
-        keHoach.size5_6 || "",
-        keHoach.size6_7 || "",
-        keHoach.size7_8 || "",
-        keHoach.size8_9 || "",
-        keHoach.size9_10 || "",
-        keHoach.size10_11 || "",
-        keHoach.size11_12 || "",
-        keHoach.size12_13 || "",
-        keHoach.size13_14 || "",
-        keHoach.size14_15 || "",
-        // Sizes cho người lớn
-        keHoach.sizeXS || "",
-        keHoach.sizeS || "",
-        keHoach.sizeM || "",
-        keHoach.sizeL || "",
-        keHoach.sizeXL || "",
-        keHoach.totalQuantity || "",
-        keHoach.note,
+        keHoach.lsxCode,        // A: LSX số
+        keHoach.workshop,        // B: Xưởng SX
+        keHoach.orderDate,       // C: Ngày gửi lệnh
+        keHoach.completionDate,  // D: Ngày hoàn thành
+        keHoach.productCode,     // E: Mã SP
+        keHoach.productName,     // F: Tên SP
+        keHoach.size,            // G: Size
+        keHoach.mainFabric,      // H: Vải chính
+        keHoach.color,           // I: Màu sắc
+        keHoach.image,           // J: Hình ảnh
+        // Sizes cho trẻ em (K-Y)
+        keHoach.size0_1 || "",   // K: 0/1
+        keHoach.size1_2 || "",   // L: 1/2
+        keHoach.size2_3 || "",   // M: 2/3
+        keHoach.size3_4 || "",   // N: 3/4
+        keHoach.size4_5 || "",   // O: 4/5
+        keHoach.size5_6 || "",   // P: 5/6
+        keHoach.size6_7 || "",   // Q: 6/7
+        keHoach.size7_8 || "",   // R: 7/8
+        keHoach.size8_9 || "",   // S: 8/9
+        keHoach.size9_10 || "",  // T: 9/10
+        keHoach.size10_11 || "", // U: 10/11
+        keHoach.size11_12 || "", // V: 11/12
+        keHoach.size12_13 || "", // W: 12/13
+        keHoach.size13_14 || "", // X: 13/14
+        keHoach.size14_15 || "", // Y: 14/15
+        // Sizes cho người lớn (Z-AD)
+        keHoach.sizeXS || "",    // Z: XS
+        keHoach.sizeS || "",     // AA: S
+        keHoach.sizeM || "",     // AB: M
+        keHoach.sizeL || "",     // AC: L
+        keHoach.sizeXL || "",    // AD: XL
+        keHoach.totalQuantity || "", // AE: Tổng SL
+        keHoach.note,            // AF: Ghi chú
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `${sheetNameKeHoachSX}!A${nextRow}:AH${nextRow}`,
+      range: `'${sheetNameKeHoachSX}'!A${nextRow}:AF${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -3151,48 +3143,46 @@ export async function updateKeHoachSXInSheet(keHoach: KeHoachSX): Promise<void> 
 
     const values = [
       [
-        keHoach.lsxCode,
-        keHoach.workshop,
-        keHoach.orderDate,
-        keHoach.completionDate,
-        keHoach.productCode,
-        keHoach.productName,
-        keHoach.size,
-        keHoach.mainFabric,
-        keHoach.color,
-        keHoach.image,
-        // Sizes cho trẻ em
-        keHoach.size6m || "",
-        keHoach.size9m || "",
-        keHoach.size0_1 || "",
-        keHoach.size1_2 || "",
-        keHoach.size2_3 || "",
-        keHoach.size3_4 || "",
-        keHoach.size4_5 || "",
-        keHoach.size5_6 || "",
-        keHoach.size6_7 || "",
-        keHoach.size7_8 || "",
-        keHoach.size8_9 || "",
-        keHoach.size9_10 || "",
-        keHoach.size10_11 || "",
-        keHoach.size11_12 || "",
-        keHoach.size12_13 || "",
-        keHoach.size13_14 || "",
-        keHoach.size14_15 || "",
-        // Sizes cho người lớn
-        keHoach.sizeXS || "",
-        keHoach.sizeS || "",
-        keHoach.sizeM || "",
-        keHoach.sizeL || "",
-        keHoach.sizeXL || "",
-        keHoach.totalQuantity || "",
-        keHoach.note,
+        keHoach.lsxCode,        // A: LSX số
+        keHoach.workshop,        // B: Xưởng SX
+        keHoach.orderDate,       // C: Ngày gửi lệnh
+        keHoach.completionDate,  // D: Ngày hoàn thành
+        keHoach.productCode,     // E: Mã SP
+        keHoach.productName,     // F: Tên SP
+        keHoach.size,            // G: Size
+        keHoach.mainFabric,      // H: Vải chính
+        keHoach.color,           // I: Màu sắc
+        keHoach.image,           // J: Hình ảnh
+        // Sizes cho trẻ em (K-Y)
+        keHoach.size0_1 || "",   // K: 0/1
+        keHoach.size1_2 || "",   // L: 1/2
+        keHoach.size2_3 || "",   // M: 2/3
+        keHoach.size3_4 || "",   // N: 3/4
+        keHoach.size4_5 || "",   // O: 4/5
+        keHoach.size5_6 || "",   // P: 5/6
+        keHoach.size6_7 || "",   // Q: 6/7
+        keHoach.size7_8 || "",   // R: 7/8
+        keHoach.size8_9 || "",   // S: 8/9
+        keHoach.size9_10 || "",  // T: 9/10
+        keHoach.size10_11 || "", // U: 10/11
+        keHoach.size11_12 || "", // V: 11/12
+        keHoach.size12_13 || "", // W: 12/13
+        keHoach.size13_14 || "", // X: 13/14
+        keHoach.size14_15 || "", // Y: 14/15
+        // Sizes cho người lớn (Z-AD)
+        keHoach.sizeXS || "",    // Z: XS
+        keHoach.sizeS || "",     // AA: S
+        keHoach.sizeM || "",     // AB: M
+        keHoach.sizeL || "",     // AC: L
+        keHoach.sizeXL || "",    // AD: XL
+        keHoach.totalQuantity || "", // AE: Tổng SL
+        keHoach.note,            // AF: Ghi chú
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `${sheetNameKeHoachSX}!A${rowNumber}:AH${rowNumber}`,
+      range: `'${sheetNameKeHoachSX}'!A${rowNumber}:AF${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -3979,6 +3969,414 @@ export async function getTonDauSPFromSheet(): Promise<TonDauSP[]> {
 }
 
 // ============================================
+// XUẤT KHO SẢN PHẨM
+// ============================================
+const sheetNameXuatKhoSP = process.env.GOOGLE_SHEET_NAME_XUAT_KHO_SP || "Xuất kho SP";
+
+export interface XuatKhoSP {
+  id: number;
+  maPXK: string;        // Cột A - Mã PXK
+  ngayThang: string;    // Cột B - Ngày tháng
+  maSP: string;         // Cột C - Mã SP
+  soLuong: number;      // Cột D - Số lượng
+  maDonHang: string;    // Cột E - Mã đơn hàng
+  khachHang: string;    // Cột F - Khách hàng
+  userThucHien: string; // Cột G - User thực hiện
+  tonKho: number;       // Cột H - Tồn kho
+}
+
+export async function getXuatKhoSPFromSheet(): Promise<XuatKhoSP[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameXuatKhoSP}'!A6:H`, // Dữ liệu bắt đầu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    // Map với actual row index (dòng 6 = index 0, nên rowNumber = index + 6)
+    const xuatKhoList: XuatKhoSP[] = rows
+      .map((row, index) => ({
+        id: index + 6, // Actual row number in sheet (row 6 = id 6)
+        maPXK: row[0] || "",
+        ngayThang: row[1] || "",
+        maSP: row[2] || "",
+        soLuong: parseInt(row[3]) || 0,
+        maDonHang: row[4] || "",
+        khachHang: row[5] || "",
+        userThucHien: row[6] || "",
+        tonKho: parseInt(row[7]) || 0,
+      }))
+      .filter((item) => item.maPXK || item.maSP); // Lọc dòng có mã PXK hoặc mã SP
+
+    return xuatKhoList;
+  } catch (error) {
+    console.error("Error reading xuat kho SP from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm nhiều dòng xuất kho SP vào Google Sheets
+ */
+export async function addXuatKhoSPToSheet(data: {
+  maPXK: string;
+  ngayThang: string;
+  maDonHang: string;
+  khachHang: string;
+  userThucHien: string;
+  products: { maSP: string; soLuong: number }[];
+}): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Format ngày: "2026-01-15" -> "15/01/2026"
+    const [year, month, day] = data.ngayThang.split('-');
+    const formattedDate = `${day}/${month}/${year}`;
+
+    // Tạo các dòng dữ liệu cho mỗi sản phẩm
+    const rows = data.products.map((product) => [
+      data.maPXK,
+      formattedDate,
+      product.maSP,
+      product.soLuong,
+      data.maDonHang,
+      data.khachHang,
+      data.userThucHien,
+    ]);
+
+    // Find the last row with data to append after it
+    const existingData = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameXuatKhoSP}'!A:A`,
+    });
+
+    const lastRowWithData = existingData.data.values ? existingData.data.values.length : 5;
+    const nextRow = Math.max(lastRowWithData + 1, 6); // At least row 6
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameXuatKhoSP}'!A${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: rows,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding xuat kho SP:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật một dòng xuất kho SP
+ */
+export async function updateXuatKhoSPInSheet(
+  rowNumber: number,
+  data: {
+    maPXK: string;
+    ngayThang: string;
+    maSP: string;
+    soLuong: number;
+    maDonHang: string;
+    khachHang: string;
+    userThucHien: string;
+  }
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // rowNumber là số dòng thực tế trong sheet (1-indexed)
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameXuatKhoSP}'!A${rowNumber}:G${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          data.maPXK,
+          data.ngayThang,
+          data.maSP,
+          data.soLuong,
+          data.maDonHang,
+          data.khachHang,
+          data.userThucHien,
+        ]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating xuat kho SP:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa một dòng xuất kho SP
+ */
+export async function deleteXuatKhoSPFromSheet(rowNumber: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Lấy sheetId
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameXuatKhoSP
+    );
+
+    if (!sheet || !sheet.properties?.sheetId) {
+      throw new Error("Sheet not found");
+    }
+
+    // rowNumber là số dòng thực tế trong sheet (1-indexed)
+    // Google Sheets API dùng 0-indexed, nên startIndex = rowNumber - 1
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1, // 0-indexed
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting xuat kho SP:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// NHẬP KHO SẢN PHẨM (Nhập kho SP)
+// ============================================
+
+const sheetNameNhapKhoSP = process.env.GOOGLE_SHEET_NAME_NHAP_KHO_SP_RIOMIO || "Nhập kho SP";
+
+// Interface cho nhập kho sản phẩm
+export interface NhapKhoSP {
+  id: number;
+  maPNK: string;        // Cột A - Mã phiếu nhập kho
+  ngayNhap: string;     // Cột B - Ngày nhập
+  maSP: string;         // Cột C - Mã sản phẩm
+  soLuong: number;      // Cột D - Số lượng
+  ghiChu: string;       // Cột E - Ghi chú
+  tonCuoi: number;      // Cột F - Tồn cuối
+}
+
+/**
+ * Đọc danh sách nhập kho SP từ Google Sheets
+ * Header ở dòng 5, dữ liệu bắt đầu từ dòng 6
+ */
+export async function getNhapKhoSPFromSheet(): Promise<NhapKhoSP[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameNhapKhoSP}'!A6:F`,
+    });
+
+    const rows = response.data.values;
+
+    console.log("=== getNhapKhoSPFromSheet DEBUG ===");
+    console.log("Total rows returned from sheet:", rows?.length || 0);
+
+    if (!rows || rows.length === 0) {
+      return [];
+    }
+
+    // Map với actual row index (dòng 6 = index 0, nên rowNumber = index + 6)
+    const nhapKhoList: NhapKhoSP[] = rows
+      .map((row, index) => ({
+        id: index + 6, // Actual row number in sheet (row 6 = id 6)
+        maPNK: row[0] || "",
+        ngayNhap: row[1] || "",
+        maSP: row[2] || "",
+        soLuong: parseInt(row[3]) || 0,
+        ghiChu: row[4] || "",
+        tonCuoi: parseInt(row[5]) || 0,
+      }))
+      .filter((item) => item.maPNK || item.maSP); // Lọc dòng có mã PNK hoặc mã SP
+
+    // Log first 5 items for debugging
+    console.log("First 5 items with row IDs:", nhapKhoList.slice(0, 5).map(item => ({
+      id: item.id,
+      maPNK: item.maPNK,
+      maSP: item.maSP
+    })));
+    console.log("Last 5 items with row IDs:", nhapKhoList.slice(-5).map(item => ({
+      id: item.id,
+      maPNK: item.maPNK,
+      maSP: item.maSP
+    })));
+
+    return nhapKhoList;
+  } catch (error) {
+    console.error("Error reading nhap kho SP from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm nhiều dòng nhập kho SP vào Google Sheets
+ */
+export async function addNhapKhoSPToSheet(data: {
+  maPNK: string;
+  ngayNhap: string;
+  products: { maSP: string; soLuong: number; ghiChu?: string }[];
+}): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Format ngày: "2026-01-15" -> "15/01/2026"
+    const [year, month, day] = data.ngayNhap.split('-');
+    const formattedDate = `${day}/${month}/${year}`;
+
+    // Tạo rows cho mỗi sản phẩm
+    const rows = data.products.map(product => [
+      data.maPNK,
+      formattedDate,
+      product.maSP,
+      product.soLuong,
+      product.ghiChu || "",
+      "", // Tồn cuối - để công thức trong sheet tự tính
+    ]);
+
+    // Find the last row with data to append after it
+    const existingData = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameNhapKhoSP}'!A:A`,
+    });
+
+    const lastRowWithData = existingData.data.values ? existingData.data.values.length : 5;
+    const nextRow = Math.max(lastRowWithData + 1, 6); // At least row 6
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameNhapKhoSP}'!A${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: rows,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding nhap kho SP:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật một dòng nhập kho SP
+ */
+export async function updateNhapKhoSPInSheet(
+  rowNumber: number,
+  data: {
+    maPNK: string;
+    ngayNhap: string;
+    maSP: string;
+    soLuong: number;
+    ghiChu: string;
+  }
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // rowNumber là số dòng thực tế trong sheet (1-indexed)
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameNhapKhoSP}'!A${rowNumber}:E${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          data.maPNK,
+          data.ngayNhap,
+          data.maSP,
+          data.soLuong,
+          data.ghiChu,
+        ]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating nhap kho SP:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa một dòng nhập kho SP
+ */
+export async function deleteNhapKhoSPFromSheet(rowNumber: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    console.log("=== deleteNhapKhoSPFromSheet DEBUG ===");
+    console.log("Requested to delete rowNumber:", rowNumber);
+
+    // Đọc dữ liệu tại dòng đó trước khi xóa để verify
+    const rowData = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      range: `'${sheetNameNhapKhoSP}'!A${rowNumber}:F${rowNumber}`,
+    });
+    console.log("Data at row", rowNumber, "before delete:", rowData.data.values);
+
+    // Lấy sheetId
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameNhapKhoSP
+    );
+
+    if (!sheet || !sheet.properties?.sheetId) {
+      throw new Error("Sheet not found");
+    }
+
+    console.log("Sheet found with sheetId:", sheet.properties.sheetId);
+    console.log("Will delete row at 0-indexed position:", rowNumber - 1);
+
+    // rowNumber là số dòng thực tế trong sheet (1-indexed)
+    // Google Sheets API dùng 0-indexed, nên startIndex = rowNumber - 1
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdTonKhoSP,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1, // 0-indexed
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log("Successfully deleted row", rowNumber, "from Nhap Kho SP sheet");
+  } catch (error) {
+    console.error("Error deleting nhap kho SP:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // CHI PHÍ BÁN HÀNG
 // ============================================
 const spreadsheetIdChiPhiBanHang = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG || "1bIXymFQLB6BJgYDS5qJYQl0SRUu7TtL_4XzzO0LPSis";
@@ -4422,8 +4820,8 @@ export async function getSanPhamCatalogFromSheet(): Promise<SanPhamCatalog[]> {
     const products: SanPhamCatalog[] = rows
       .map((row, index) => ({
         id: index + 1,
-        name: row[4] || "",                        // F - Mã SP đầy đủ (RAD1337 Đỏ BB)
-        color: row[1] || "",                       // C - Màu sắc (Đỏ)
+        name: (row[4] || "").toString().trim(),    // F - Mã SP đầy đủ (RAD1337 Đỏ BB)
+        color: (row[1] || "").toString().trim(),   // C - Màu sắc (Đỏ)
         sizeChart: row[8] || "",                   // J - Dòng size (3/4-10/11)
         image: row[5] || "",                       // G - Hình ảnh
         wholesalePrice: parsePriceCatalog(row[6]), // H - Giá sỉ (150,000)
@@ -4445,7 +4843,7 @@ export async function getSanPhamCatalogFromSheet(): Promise<SanPhamCatalog[]> {
         productionStatus: "",
         warehouseEntry: "",
       }))
-      .filter((p) => p.name.trim() !== "");
+      .filter((p) => p.name !== "");
 
     return products;
   } catch (error) {
@@ -4833,34 +5231,41 @@ export async function deleteShippingUnitFromSheet(unitId: number): Promise<void>
 
 // ==================== TỒN KHO (INVENTORY) ====================
 
-const spreadsheetIdTonKho = process.env.GOOGLE_SPREADSHEET_ID_TON_KHO || spreadsheetId;
-const sheetNameTonKho = process.env.GOOGLE_SHEET_NAME_TON_KHO_SP || "Tồn kho SP";
+// Sử dụng env variable đúng: GOOGLE_SHEET_NAME_TON_KHO_SP_RIOMIO_SANPHAM
+const spreadsheetIdTonKhoSanPham = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_KHO_HANG || "1Yqkk8sKkfKANFNwloyZr7lfR2sdLgYA9KAem_r9wII0";
+const sheetNameTonKhoSanPham = process.env.GOOGLE_SHEET_NAME_TON_KHO_SP_RIOMIO_SANPHAM || "Tồn kho SP";
 
 // Interface cho dữ liệu tồn kho
 export interface TonKhoItem {
   id: number;
-  maSp: string; // Mã SP
-  nhap1: number; // Nhập (cột C)
-  nhap2: number; // Nhập (cột D)
-  xuat: number; // Xuất
-  tonCuoi: number; // Tồn cuối
+  maSp: string; // Mã SP (cột B)
+  tonDau: number; // Tồn đầu (cột C)
+  nhap: number; // Nhập (cột D)
+  xuat: number; // Xuất (cột E)
+  tonCuoi: number; // Tồn cuối (cột F)
 }
 
 /**
- * Đọc dữ liệu tồn kho từ Google Sheets
- * Header ở dòng 3, dữ liệu từ dòng 4
- * Cột A: STT, B: Mã SP, C: Nhập, D: Nhập, E: Xuất, F: Tồn cuối
+ * Đọc dữ liệu tồn kho từ Google Sheets "Tồn kho SP"
+ * Cột A: STT, B: Mã SP, C: Tồn đầu, D: Nhập, E: Xuất, F: Tồn cuối
+ * Dữ liệu bắt đầu từ dòng 8 (header ở dòng 5)
  */
 export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
   try {
     const sheets = await getGoogleSheetsClient();
 
+    console.log("getTonKhoFromSheet - spreadsheetId:", spreadsheetIdTonKhoSanPham);
+    console.log("getTonKhoFromSheet - sheetName:", sheetNameTonKhoSanPham);
+
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetIdTonKho,
-      range: `'${sheetNameTonKho}'!A6:F`, // Header dòng 3, dữ liệu từ dòng 4
+      spreadsheetId: spreadsheetIdTonKhoSanPham,
+      range: `'${sheetNameTonKhoSanPham}'!A8:F`, // Dữ liệu bắt đầu từ dòng 8
     });
 
     const rows = response.data.values;
+
+    console.log("getTonKhoFromSheet - rows count:", rows?.length || 0);
+    console.log("getTonKhoFromSheet - first 3 rows:", rows?.slice(0, 3));
 
     if (!rows || rows.length === 0) {
       console.log("No inventory data found in sheet.");
@@ -4871,13 +5276,16 @@ export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
     const tonKhoItems: TonKhoItem[] = rows
       .map((row, index) => ({
         id: index + 1,
-        maSp: row[1] || "", // Cột B: Mã SP
-        nhap1: parseFloat(row[2]) || 0, // Cột C: Nhập
-        nhap2: parseFloat(row[3]) || 0, // Cột D: Nhập
-        xuat: parseFloat(row[4]) || 0, // Cột E: Xuất
-        tonCuoi: parseFloat(row[5]) || 0, // Cột F: Tồn cuối
+        maSp: (row[1] || "").toString().trim(), // Cột B: Mã SP (trim whitespace)
+        tonDau: parseFloat(String(row[2] || "0").replace(/[,.]/g, "")) || 0, // Cột C: Tồn đầu
+        nhap: parseFloat(String(row[3] || "0").replace(/[,.]/g, "")) || 0, // Cột D: Nhập
+        xuat: parseFloat(String(row[4] || "0").replace(/[,.]/g, "")) || 0, // Cột E: Xuất
+        tonCuoi: parseFloat(String(row[5] || "0").replace(/[,.]/g, "")) || 0, // Cột F: Tồn cuối
       }))
-      .filter((item) => item.maSp.trim() !== ""); // Lọc bỏ các dòng trống
+      .filter((item) => item.maSp !== ""); // Lọc bỏ các dòng trống
+
+    console.log("getTonKhoFromSheet - processed items:", tonKhoItems.length);
+    console.log("getTonKhoFromSheet - first 3 items:", tonKhoItems.slice(0, 3));
 
     return tonKhoItems;
   } catch (error) {
@@ -4910,7 +5318,7 @@ export async function getCongNoFromSheet(): Promise<CongNoItem[]> {
     const sheets = await getGoogleSheetsClient();
 
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetIdTonKho, // Same spreadsheet as inventory
+      spreadsheetId: spreadsheetIdTonKhoSP, // Same spreadsheet as inventory
       range: `'${sheetNameCongNo}'!B6:F`, // Cột B-F (Khách hàng đến Dư cuối kì), bỏ qua STT ở cột A
     });
 
@@ -7362,6 +7770,7 @@ export async function getPhieuXuatNPLFromSheet(): Promise<PhieuXuatNPL[]> {
 // ===================== TỒN KHO NPL (Tồn kho NPL kho công ty) =====================
 const spreadsheetIdSanXuat6 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
 const sheetNameTonKhoNPL = process.env.GOOGLE_SHEET_NAME_TON_KHO_NPL || "Tồn kho NPL kho công ty";
+const sheetNameTonKhoNPLXuongSX = process.env.GOOGLE_SHEET_NAME_TON_KHO_NPL_XUONG_SX || "Tồn kho NPL xưởng SX";
 
 // Interface cho tồn kho NPL theo tháng (Bảng 1 - Cột A-H)
 export interface TonKhoNPLThang {
@@ -7382,6 +7791,18 @@ export interface TonKhoNPLNgay {
   stt: number;             // STT (Cột J)
   maSP: string;            // Mã SP (Cột K)
   soLuong: number;         // Số lượng (Cột L)
+}
+
+// Interface cho tồn kho NPL xưởng SX (Bảng 3 - sheet riêng)
+export interface TonKhoNPLXuongSX {
+  id: number;
+  ngayThang: string;       // Ngày tháng (Cột A)
+  xuongSX: string;         // Xưởng SX thừa NPL (Cột B)
+  tenNPL: string;          // Tên NPL (Cột C)
+  dvt: string;             // ĐVT (Cột D)
+  soLuong: number;         // Số lượng (Cột E)
+  donGia: number;          // Đơn giá (Cột F)
+  thanhTien: number;       // Thành tiền (Cột G)
 }
 
 /**
@@ -7475,6 +7896,115 @@ export async function getTonKhoNPLNgayFromSheet(): Promise<TonKhoNPLNgay[]> {
     return tonKhoNgayList;
   } catch (error) {
     console.error("Error reading ton kho NPL ngay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ô ngày/tháng filter trong sheet Tồn kho NPL
+ * C3 = tháng/năm cho bảng 1 (format: M/YY)
+ * L3 = ngày cho bảng 2 (format: D/M/YYYY)
+ */
+export async function updateTonKhoNPLDateCells(params: {
+  thangNam?: string; // Format: "YYYY-MM"
+  denNgay?: string;  // Format: "YYYY-MM-DD"
+}): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const { thangNam, denNgay } = params;
+
+    const updates: { range: string; values: any[][] }[] = [];
+
+    // Convert thangNam (YYYY-MM) to sheet format (M/YY)
+    if (thangNam) {
+      const [year, month] = thangNam.split("-");
+      const shortYear = year.slice(-2); // Get last 2 digits
+      const monthNum = parseInt(month, 10); // Remove leading zero
+      const sheetDateThang = `${monthNum}/${shortYear}`;
+
+      updates.push({
+        range: `'${sheetNameTonKhoNPL}'!C3`,
+        values: [[sheetDateThang]],
+      });
+      console.log("Updating C3 with:", sheetDateThang);
+    }
+
+    // Convert denNgay (YYYY-MM-DD) to sheet format (D/M/YYYY)
+    if (denNgay) {
+      const [year, month, day] = denNgay.split("-");
+      const dayNum = parseInt(day, 10); // Remove leading zero
+      const monthNum = parseInt(month, 10); // Remove leading zero
+      const sheetDateNgay = `${dayNum}/${monthNum}/${year}`;
+
+      updates.push({
+        range: `'${sheetNameTonKhoNPL}'!L3`,
+        values: [[sheetDateNgay]],
+      });
+      console.log("Updating L3 with:", sheetDateNgay);
+    }
+
+    // Batch update all cells
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: spreadsheetIdSanXuat6,
+        requestBody: {
+          valueInputOption: "USER_ENTERED",
+          data: updates,
+        },
+      });
+      console.log("Successfully updated date cells in Tồn kho NPL sheet");
+    }
+  } catch (error) {
+    console.error("Error updating ton kho NPL date cells:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc dữ liệu tồn kho NPL xưởng SX từ Google Sheets
+ * Header ở dòng 5, dữ liệu từ dòng 6, cột A đến G
+ */
+export async function getTonKhoNPLXuongSXFromSheet(): Promise<TonKhoNPLXuongSX[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat6,
+      range: `'${sheetNameTonKhoNPLXuongSX}'!A6:G`, // Header dòng 5, dữ liệu từ dòng 6
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No ton kho NPL xuong SX data found in sheet.");
+      return [];
+    }
+
+    // Helper function to parse Vietnamese number format
+    const parseNumberVN = (value: any): number => {
+      if (!value) return 0;
+      if (String(value).startsWith('#')) return 0;
+      const cleaned = String(value).replace(/\./g, "").replace(",", ".");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const tonKhoList: TonKhoNPLXuongSX[] = rows
+      .map((row, index) => ({
+        id: index + 1,
+        ngayThang: row[0] || "",
+        xuongSX: row[1] || "",
+        tenNPL: row[2] || "",
+        dvt: row[3] || "",
+        soLuong: parseNumberVN(row[4]),
+        donGia: parseNumberVN(row[5]),
+        thanhTien: parseNumberVN(row[6]),
+      }))
+      .filter((item) => item.tenNPL.trim() !== "" && !item.tenNPL.startsWith('#'));
+
+    return tonKhoList;
+  } catch (error) {
+    console.error("Error reading ton kho NPL xuong SX from Google Sheets:", error);
     throw error;
   }
 }
@@ -7592,6 +8122,136 @@ export async function getCNPTNCCNPLNgayFromSheet(): Promise<CNPTNCCNPLNgay[]> {
   } catch (error) {
     console.error("Error reading CNPT NCC NPL ngay from Google Sheets:", error);
     throw error;
+  }
+}
+
+/**
+ * Cập nhật ô ngày/tháng filter trong sheet CNPT NCC NPL
+ * C3 = tháng/năm cho bảng 1 (format: M/YYYY)
+ * J3 = ngày cho bảng 2 (format: D/M/YYYY)
+ */
+export async function updateCNPTNCCNPLDateCells(params: {
+  thangNam?: string; // Format: "YYYY-MM"
+  denNgay?: string;  // Format: "YYYY-MM-DD"
+}): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const { thangNam, denNgay } = params;
+
+    const updates: { range: string; values: any[][] }[] = [];
+
+    // Convert thangNam (YYYY-MM) to sheet format (M/YYYY)
+    if (thangNam) {
+      const [year, month] = thangNam.split("-");
+      const monthNum = parseInt(month, 10); // Remove leading zero
+      const sheetDateThang = `${monthNum}/${year}`;
+
+      updates.push({
+        range: `'${sheetNameCNPTNCCNPL}'!C3`,
+        values: [[sheetDateThang]],
+      });
+      console.log("Updating CNPT NCC NPL C3 with:", sheetDateThang);
+    }
+
+    // Convert denNgay (YYYY-MM-DD) to sheet format (D/M/YYYY)
+    if (denNgay) {
+      const [year, month, day] = denNgay.split("-");
+      const dayNum = parseInt(day, 10); // Remove leading zero
+      const monthNum = parseInt(month, 10); // Remove leading zero
+      const sheetDateNgay = `${dayNum}/${monthNum}/${year}`;
+
+      updates.push({
+        range: `'${sheetNameCNPTNCCNPL}'!J3`,
+        values: [[sheetDateNgay]],
+      });
+      console.log("Updating CNPT NCC NPL J3 with:", sheetDateNgay);
+    }
+
+    // Batch update all cells
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: spreadsheetIdSanXuat7,
+        requestBody: {
+          valueInputOption: "USER_ENTERED",
+          data: updates,
+        },
+      });
+      console.log("Successfully updated date cells in CNPT NCC NPL sheet");
+    }
+  } catch (error) {
+    console.error("Error updating CNPT NCC NPL date cells:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc giá trị ngày/tháng filter hiện tại từ sheet CNPT NCC NPL
+ * C3 = tháng/năm cho bảng 1 (format trong sheet: M/YYYY hoặc 'M/YYYY)
+ * J3 = ngày cho bảng 2 (format trong sheet: D/M/YYYY)
+ * Returns: { thangNam: "YYYY-MM", denNgay: "YYYY-MM-DD" }
+ */
+export async function getCNPTNCCNPLDateCells(): Promise<{
+  thangNam: string;
+  denNgay: string;
+}> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Read both cells C3 and J3
+    const response = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: spreadsheetIdSanXuat7,
+      ranges: [
+        `'${sheetNameCNPTNCCNPL}'!C3`,
+        `'${sheetNameCNPTNCCNPL}'!J3`,
+      ],
+    });
+
+    const values = response.data.valueRanges;
+    let thangNam = "";
+    let denNgay = "";
+
+    // Parse C3 (format: M/YYYY or 'M/YYYY) -> YYYY-MM
+    if (values?.[0]?.values?.[0]?.[0]) {
+      const c3Value = String(values[0].values[0][0]).replace(/^'/, ""); // Remove leading apostrophe if present
+      const parts = c3Value.split("/");
+      if (parts.length === 2) {
+        const month = parts[0].padStart(2, "0");
+        const year = parts[1];
+        thangNam = `${year}-${month}`;
+      }
+    }
+
+    // Parse J3 (format: D/M/YYYY) -> YYYY-MM-DD
+    if (values?.[1]?.values?.[0]?.[0]) {
+      const j3Value = String(values[1].values[0][0]);
+      const parts = j3Value.split("/");
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, "0");
+        const month = parts[1].padStart(2, "0");
+        const year = parts[2];
+        denNgay = `${year}-${month}-${day}`;
+      }
+    }
+
+    // Fallback to current date if parsing fails
+    if (!thangNam) {
+      const now = new Date();
+      thangNam = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    }
+    if (!denNgay) {
+      denNgay = new Date().toISOString().split("T")[0];
+    }
+
+    console.log("Read CNPT NCC NPL date cells:", { thangNam, denNgay });
+    return { thangNam, denNgay };
+  } catch (error) {
+    console.error("Error reading CNPT NCC NPL date cells:", error);
+    // Return current date as fallback
+    const now = new Date();
+    return {
+      thangNam: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+      denNgay: now.toISOString().split("T")[0],
+    };
   }
 }
 
@@ -8317,6 +8977,136 @@ export async function getCNPTXuongNgayFromSheet(): Promise<CNPTXuongNgay[]> {
   } catch (error) {
     console.error("Error reading CNPT xuong ngay from Google Sheets:", error);
     throw error;
+  }
+}
+
+/**
+ * Cập nhật giá trị ngày/tháng filter trong sheet CNPT xưởng gia công
+ * C3 = tháng/năm cho bảng 1 (format: M/YYYY)
+ * J3 = ngày cho bảng 2 (format: D/M/YYYY)
+ */
+export async function updateCNPTXuongGiaCongDateCells(params: {
+  thangNam?: string; // Format: "YYYY-MM"
+  denNgay?: string;  // Format: "YYYY-MM-DD"
+}): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const { thangNam, denNgay } = params;
+
+    const updates: { range: string; values: any[][] }[] = [];
+
+    // Convert thangNam (YYYY-MM) to sheet format (M/YYYY)
+    if (thangNam) {
+      const [year, month] = thangNam.split("-");
+      const monthNum = parseInt(month, 10); // Remove leading zero
+      const sheetDateThang = `${monthNum}/${year}`;
+
+      updates.push({
+        range: `'${sheetNameCNPTXuongGiaCong}'!C3`,
+        values: [[sheetDateThang]],
+      });
+      console.log("Updating CNPT Xuong Gia Cong C3 with:", sheetDateThang);
+    }
+
+    // Convert denNgay (YYYY-MM-DD) to sheet format (D/M/YYYY)
+    if (denNgay) {
+      const [year, month, day] = denNgay.split("-");
+      const dayNum = parseInt(day, 10); // Remove leading zero
+      const monthNum = parseInt(month, 10); // Remove leading zero
+      const sheetDateNgay = `${dayNum}/${monthNum}/${year}`;
+
+      updates.push({
+        range: `'${sheetNameCNPTXuongGiaCong}'!J3`,
+        values: [[sheetDateNgay]],
+      });
+      console.log("Updating CNPT Xuong Gia Cong J3 with:", sheetDateNgay);
+    }
+
+    // Batch update all cells
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: spreadsheetIdSanXuat12,
+        requestBody: {
+          valueInputOption: "USER_ENTERED",
+          data: updates,
+        },
+      });
+      console.log("Successfully updated date cells in CNPT Xuong Gia Cong sheet");
+    }
+  } catch (error) {
+    console.error("Error updating CNPT Xuong Gia Cong date cells:", error);
+    throw error;
+  }
+}
+
+/**
+ * Đọc giá trị ngày/tháng filter hiện tại từ sheet CNPT xưởng gia công
+ * C3 = tháng/năm cho bảng 1 (format trong sheet: M/YYYY hoặc 'M/YYYY)
+ * J3 = ngày cho bảng 2 (format trong sheet: D/M/YYYY)
+ * Returns: { thangNam: "YYYY-MM", denNgay: "YYYY-MM-DD" }
+ */
+export async function getCNPTXuongGiaCongDateCells(): Promise<{
+  thangNam: string;
+  denNgay: string;
+}> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Read both cells C3 and J3
+    const response = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: spreadsheetIdSanXuat12,
+      ranges: [
+        `'${sheetNameCNPTXuongGiaCong}'!C3`,
+        `'${sheetNameCNPTXuongGiaCong}'!J3`,
+      ],
+    });
+
+    const values = response.data.valueRanges;
+    let thangNam = "";
+    let denNgay = "";
+
+    // Parse C3 (format: M/YYYY or 'M/YYYY) -> YYYY-MM
+    if (values?.[0]?.values?.[0]?.[0]) {
+      const c3Value = String(values[0].values[0][0]).replace(/^'/, ""); // Remove leading apostrophe if present
+      const parts = c3Value.split("/");
+      if (parts.length === 2) {
+        const month = parts[0].padStart(2, "0");
+        const year = parts[1];
+        thangNam = `${year}-${month}`;
+      }
+    }
+
+    // Parse J3 (format: D/M/YYYY) -> YYYY-MM-DD
+    if (values?.[1]?.values?.[0]?.[0]) {
+      const j3Value = String(values[1].values[0][0]);
+      const parts = j3Value.split("/");
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, "0");
+        const month = parts[1].padStart(2, "0");
+        const year = parts[2];
+        denNgay = `${year}-${month}-${day}`;
+      }
+    }
+
+    // Fallback to current date if parsing fails
+    if (!thangNam) {
+      const now = new Date();
+      thangNam = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    }
+    if (!denNgay) {
+      denNgay = new Date().toISOString().split("T")[0];
+    }
+
+    console.log("Read CNPT Xuong Gia Cong date cells:", { thangNam, denNgay });
+    return { thangNam, denNgay };
+  } catch (error) {
+    console.error("Error reading CNPT Xuong Gia Cong date cells:", error);
+    // Return current date as fallback
+    const now = new Date();
+    return {
+      thangNam: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+      denNgay: now.toISOString().split("T")[0],
+    };
   }
 }
 
@@ -9392,6 +10182,211 @@ export async function getDinhMucSXFromSheet(): Promise<DinhMucSX[]> {
   }
 }
 
+/**
+ * Thêm định mức sản xuất mới vào Google Sheets
+ */
+export async function addDinhMucSXToSheet(dinhMuc: Omit<DinhMucSX, "id">): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDinhMucSX}'!A:K`,
+    });
+
+    const allRows = response.data.values || [];
+
+    // Tìm dòng cuối có dữ liệu (data bắt đầu từ dòng 6, header dòng 5)
+    let lastDataRow = 5;
+    for (let i = allRows.length - 1; i >= 5; i--) {
+      if (allRows[i] && allRows[i][0] && allRows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = Math.max(lastDataRow + 1, 6);
+
+    const values = [
+      [
+        dinhMuc.maSP,
+        dinhMuc.vaiChinh,
+        dinhMuc.vaiPhoi1,
+        dinhMuc.vaiPhoi2,
+        dinhMuc.vaiPhoi3,
+        dinhMuc.vaiPhoi4,
+        dinhMuc.vaiPhoi5,
+        dinhMuc.phuLieu1,
+        dinhMuc.phuLieu2,
+        dinhMuc.phuKien,
+        dinhMuc.khac,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDinhMucSX}'!A${nextRow}:K${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added Dinh Muc SX at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding Dinh Muc SX to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật định mức sản xuất trong Google Sheets
+ */
+export async function updateDinhMucSXInSheet(dinhMuc: DinhMucSX): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // id 1 = dòng 6 (vì data bắt đầu từ dòng 6)
+    const rowNumber = dinhMuc.id + 5;
+
+    const values = [
+      [
+        dinhMuc.maSP,
+        dinhMuc.vaiChinh,
+        dinhMuc.vaiPhoi1,
+        dinhMuc.vaiPhoi2,
+        dinhMuc.vaiPhoi3,
+        dinhMuc.vaiPhoi4,
+        dinhMuc.vaiPhoi5,
+        dinhMuc.phuLieu1,
+        dinhMuc.phuLieu2,
+        dinhMuc.phuKien,
+        dinhMuc.khac,
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDinhMucSX}'!A${rowNumber}:K${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated Dinh Muc SX at row: ${rowNumber}`);
+  } catch (error) {
+    console.error("Error updating Dinh Muc SX in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa định mức sản xuất trong Google Sheets (clear row content)
+ */
+export async function deleteDinhMucSXFromSheet(id: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // id 1 = dòng 6 (vì data bắt đầu từ dòng 6)
+    const rowNumber = id + 5;
+
+    // Clear the row content
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDinhMucSX}'!A${rowNumber}:K${rowNumber}`,
+    });
+
+    console.log(`Successfully deleted Dinh Muc SX at row: ${rowNumber}`);
+  } catch (error) {
+    console.error("Error deleting Dinh Muc SX from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ==================== PHIẾU ĐỊNH MỨC SẢN XUẤT ====================
+const sheetNamePhieuDinhMucSX = process.env.GOOGLE_SHEET_NAME_PHIEU_DINH_MUC_SAN_XUAT || "Phiếu định mức SX";
+
+export interface PhieuDinhMucSXData {
+  maSP: string;
+  items: {
+    stt: number;
+    noiDung: string;
+    dinhMuc: string;
+    ghiChu: string;
+  }[];
+}
+
+/**
+ * Lấy dữ liệu phiếu định mức sản xuất từ Google Sheets
+ * B3: Mã SP
+ * Bảng data từ row 6: STT (A), Nội dung (B), Định mức (C), Ghi chú (D)
+ */
+export async function getPhieuDinhMucSXFromSheet(): Promise<PhieuDinhMucSXData> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Lấy mã SP từ B3 và data từ A6:D15
+    const response = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: spreadsheetIdLSX,
+      ranges: [
+        `'${sheetNamePhieuDinhMucSX}'!B3`,
+        `'${sheetNamePhieuDinhMucSX}'!A6:D15`,
+      ],
+      valueRenderOption: "FORMATTED_VALUE",
+    });
+
+    const valueRanges = response.data.valueRanges || [];
+    const maSP = valueRanges[0]?.values?.[0]?.[0] || "";
+    const dataRows = valueRanges[1]?.values || [];
+
+    const items = dataRows.map((row, index) => ({
+      stt: index + 1,
+      noiDung: row[1] || "",
+      dinhMuc: row[2] || "",
+      ghiChu: row[3] || "",
+    }));
+
+    return {
+      maSP,
+      items,
+    };
+  } catch (error) {
+    console.error("Error reading Phieu Dinh Muc SX from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật mã SP trong phiếu định mức sản xuất (B3)
+ * Sau khi cập nhật, các công thức trong sheet sẽ tự động tính toán lại
+ */
+export async function updatePhieuDinhMucSXMaSP(maSP: string): Promise<PhieuDinhMucSXData> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Cập nhật mã SP vào B3
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNamePhieuDinhMucSX}'!B3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[maSP]],
+      },
+    });
+
+    // Đợi một chút để formulas recalculate
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Đọc lại data sau khi cập nhật
+    return await getPhieuDinhMucSXFromSheet();
+  } catch (error) {
+    console.error("Error updating Phieu Dinh Muc SX ma SP:", error);
+    throw error;
+  }
+}
+
 // ==================== YÊU CẦU XUẤT KHO NPL ====================
 const sheetNameYeuCauXuatKhoNPL = process.env.GOOGLE_SHEET_NAME_YEU_CAU_XUAT_KHO_NPL || "Yêu cầu xuất kho NPL";
 
@@ -9402,8 +10397,9 @@ export interface YeuCauXuatKhoNPL {
   maNPL: string;
   dvt: string;
   dinhMuc: number;
+  tyLeHaoHut: number; // Always 3% (0.03)
   slKHSX: number;
-  tongNPLSX: number;
+  slCanDung: number; // = dinhMuc * slKHSX * (1 + tyLeHaoHut)
   maSPSuDung: string;
   mauSac: string;
   xuongSX: string;
@@ -9413,7 +10409,7 @@ export interface YeuCauXuatKhoNPL {
  * Lấy dữ liệu bảng kê yêu cầu xuất kho NPL từ Google Sheets
  * Header row 5, data từ row 6
  * Columns: Ngày tháng (A), Mã phiếu YC (B), Mã NPL (C), ĐVT (D), Định mức (E),
- *          SL KH SX (F), Tổng NPL SX (G), Mã SP sử dụng (H), Màu sắc (I), Xưởng SX (J)
+ *          Tỷ lệ hao hụt (F), SL KH SX (G), SL cần dùng (H), Mã SP sử dụng (I), Màu sắc (J), Xưởng SX (K)
  */
 export async function getYeuCauXuatKhoNPLFromSheet(): Promise<YeuCauXuatKhoNPL[]> {
   try {
@@ -9426,9 +10422,16 @@ export async function getYeuCauXuatKhoNPLFromSheet(): Promise<YeuCauXuatKhoNPL[]
       return isNaN(num) ? 0 : num;
     };
 
+    const parsePercent = (value: any): number => {
+      if (!value) return 0.03; // Default 3%
+      const strValue = String(value).replace("%", "").replace(",", ".").trim();
+      const num = parseFloat(strValue);
+      return isNaN(num) ? 0.03 : num / 100;
+    };
+
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameYeuCauXuatKhoNPL}'!A6:J`,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A6:K`,
     });
 
     const rows = response.data.values;
@@ -9445,11 +10448,12 @@ export async function getYeuCauXuatKhoNPLFromSheet(): Promise<YeuCauXuatKhoNPL[]
         maNPL: row[2] || "",
         dvt: row[3] || "",
         dinhMuc: parseNumberVN(row[4]),
-        slKHSX: parseNumberVN(row[5]),
-        tongNPLSX: parseNumberVN(row[6]),
-        maSPSuDung: row[7] || "",
-        mauSac: row[8] || "",
-        xuongSX: row[9] || "",
+        tyLeHaoHut: parsePercent(row[5]),
+        slKHSX: parseNumberVN(row[6]),
+        slCanDung: parseNumberVN(row[7]),
+        maSPSuDung: row[8] || "",
+        mauSac: row[9] || "",
+        xuongSX: row[10] || "",
       }))
       .filter((item) => item.maPhieuYC.trim() !== "" || item.maNPL.trim() !== "");
 
@@ -9462,7 +10466,7 @@ export async function getYeuCauXuatKhoNPLFromSheet(): Promise<YeuCauXuatKhoNPL[]
 
 /**
  * Thêm yêu cầu xuất kho NPL mới vào Google Sheets
- * Data từ row 6, columns A-J
+ * Data từ row 6, columns A-K
  */
 export async function addYeuCauXuatKhoNPLToSheet(data: Omit<YeuCauXuatKhoNPL, "id">): Promise<void> {
   try {
@@ -9471,7 +10475,7 @@ export async function addYeuCauXuatKhoNPLToSheet(data: Omit<YeuCauXuatKhoNPL, "i
     // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameYeuCauXuatKhoNPL}'!A:J`,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A:K`,
     });
 
     const allRows = response.data.values || [];
@@ -9495,7 +10499,7 @@ export async function addYeuCauXuatKhoNPLToSheet(data: Omit<YeuCauXuatKhoNPL, "i
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${nextRow}:U${nextRow}`,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${nextRow}:K${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [
@@ -9505,8 +10509,9 @@ export async function addYeuCauXuatKhoNPLToSheet(data: Omit<YeuCauXuatKhoNPL, "i
             data.maNPL,
             data.dvt,
             formatNumber(data.dinhMuc),
+            "3%", // Tỷ lệ hao hụt always 3%
             formatNumber(data.slKHSX),
-            formatNumber(data.tongNPLSX),
+            formatNumber(data.slCanDung),
             data.maSPSuDung,
             data.mauSac,
             data.xuongSX,
@@ -9541,7 +10546,7 @@ export async function updateYeuCauXuatKhoNPLInSheet(id: number, data: Partial<Ye
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${rowNumber}:U${rowNumber}`,
+      range: `'${sheetNameYeuCauXuatKhoNPL}'!A${rowNumber}:K${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [
@@ -9551,8 +10556,9 @@ export async function updateYeuCauXuatKhoNPLInSheet(id: number, data: Partial<Ye
             data.maNPL || "",
             data.dvt || "",
             formatNumber(data.dinhMuc),
+            "3%", // Tỷ lệ hao hụt always 3%
             formatNumber(data.slKHSX),
-            formatNumber(data.tongNPLSX),
+            formatNumber(data.slCanDung),
             data.maSPSuDung || "",
             data.mauSac || "",
             data.xuongSX || "",
@@ -9802,6 +10808,130 @@ export async function getSoLuongCatFromSheet(): Promise<SoLuongCat[]> {
     return data;
   } catch (error) {
     console.error("Error reading So Luong Cat from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm số lượng cắt mới vào Google Sheets
+ */
+export async function addSoLuongCatToSheet(data: Omit<SoLuongCat, 'id'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get column A to find the last row with data
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameSoLuongCat}'!A:A`,
+    });
+
+    const rows = response.data.values || [];
+
+    // Find the last row with actual data
+    let lastDataRow = 5; // Header is at row 5, data starts at row 6
+    for (let i = rows.length - 1; i >= 5; i--) {
+      if (rows[i] && rows[i][0] && rows[i][0].toString().trim() !== "") {
+        lastDataRow = i + 1;
+        break;
+      }
+    }
+
+    const nextRow = lastDataRow + 1;
+
+    // Write to the next row
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameSoLuongCat}'!A${nextRow}:N${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          data.maPhieuCat,
+          data.maSP,
+          data.lenhSanXuat,
+          data.xuongSanXuat,
+          data.mauSac,
+          data.soLuongKeHoach,
+          data.ngayCat,
+          data.soLuongCat,
+          data.slCatTruSlKH,
+          data.nguyenNhan1,
+          data.soLuongNhapKho,
+          data.slNKTruSlCat,
+          data.nguyenNhan2,
+          data.ghiChu,
+        ]],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error adding So Luong Cat:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật số lượng cắt trong Google Sheets
+ * id là vị trí trong data (1-based), cần +5 để có row thực tế trong sheet
+ */
+export async function updateSoLuongCatInSheet(id: number, data: Omit<SoLuongCat, 'id'>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const actualRow = id + 5; // Data starts from row 6, id starts from 1
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameSoLuongCat}'!A${actualRow}:N${actualRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[
+          data.maPhieuCat,
+          data.maSP,
+          data.lenhSanXuat,
+          data.xuongSanXuat,
+          data.mauSac,
+          data.soLuongKeHoach,
+          data.ngayCat,
+          data.soLuongCat,
+          data.slCatTruSlKH,
+          data.nguyenNhan1,
+          data.soLuongNhapKho,
+          data.slNKTruSlCat,
+          data.nguyenNhan2,
+          data.ghiChu,
+        ]],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error updating So Luong Cat:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa số lượng cắt trong Google Sheets
+ * id là vị trí trong data (1-based), cần +5 để có row thực tế trong sheet
+ */
+export async function deleteSoLuongCatFromSheet(id: number): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const actualRow = id + 5; // Data starts from row 6, id starts from 1
+
+    // Clear the row content
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameSoLuongCat}'!A${actualRow}:N${actualRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [["", "", "", "", "", "", "", "", "", "", "", "", "", ""]],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting So Luong Cat:", error);
     throw error;
   }
 }
@@ -10537,16 +11667,14 @@ export interface MaSP {
   vaiChinh: string;
   vaiPhoi: string;
   phuLieuKhac: string;
-  tinhTrangSX: string;
   lenhSX: string;
   xuongSX: string;
-  hinhAnh: string;
 }
 
 /**
  * Lấy dữ liệu mã sản phẩm từ Google Sheets
  * Header row 5, data từ row 6
- * Columns: Mã SP (A), Tên SP (B), Size (C), Vải chính (D), Vải phối (E), Phụ liệu khác (F), Tình trạng SX (G), Lệnh SX (H), Xưởng SX (I), Hình ảnh (J)
+ * Columns: Mã SP (A), Tên SP (B), Size (C), Vải chính (D), Vải phối (E), Phụ liệu khác (F), Lệnh SX (G), Xưởng SX (H)
  */
 export async function getMaSPFromSheet(): Promise<MaSP[]> {
   try {
@@ -10554,7 +11682,7 @@ export async function getMaSPFromSheet(): Promise<MaSP[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameMaSP}'!A6:J`,
+      range: `'${sheetNameMaSP}'!A6:H`,
     });
 
     const rows = response.data.values;
@@ -10572,10 +11700,8 @@ export async function getMaSPFromSheet(): Promise<MaSP[]> {
         vaiChinh: row[3] || "",
         vaiPhoi: row[4] || "",
         phuLieuKhac: row[5] || "",
-        tinhTrangSX: row[6] || "",
-        lenhSX: row[7] || "",
-        xuongSX: row[8] || "",
-        hinhAnh: row[9] || "",
+        lenhSX: row[6] || "",
+        xuongSX: row[7] || "",
       }))
       .filter((item) => item.maSP.trim() !== "");
 
@@ -10743,7 +11869,7 @@ export async function addMaSPToSheet(data: Omit<MaSP, 'id'>): Promise<boolean> {
     // Write to the next row after the last data row
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameMaSP}'!A${nextRow}:U${nextRow}`,
+      range: `'${sheetNameMaSP}'!A${nextRow}:H${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[
@@ -10753,10 +11879,8 @@ export async function addMaSPToSheet(data: Omit<MaSP, 'id'>): Promise<boolean> {
           data.vaiChinh,
           data.vaiPhoi,
           data.phuLieuKhac,
-          data.tinhTrangSX,
           data.lenhSX,
           data.xuongSX,
-          data.hinhAnh,
         ]],
       },
     });
@@ -10779,7 +11903,7 @@ export async function updateMaSPInSheet(rowIndex: number, data: Omit<MaSP, 'id'>
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameMaSP}'!A${actualRow}:J${actualRow}`,
+      range: `'${sheetNameMaSP}'!A${actualRow}:H${actualRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[
@@ -10789,10 +11913,8 @@ export async function updateMaSPInSheet(rowIndex: number, data: Omit<MaSP, 'id'>
           data.vaiChinh,
           data.vaiPhoi,
           data.phuLieuKhac,
-          data.tinhTrangSX,
           data.lenhSX,
           data.xuongSX,
-          data.hinhAnh,
         ]],
       },
     });
@@ -11571,7 +12693,7 @@ const sheetNameBCLaiLo = process.env.GOOGLE_SHEET_NAME_BC_LAI_LO || "BC Lãi/l�
 const sheetNameBCCongNoKH = process.env.GOOGLE_SHEET_NAME_BC_CONG_NO_KH || "BC công nợ khách hàng";
 const sheetNameBCCongNoNCC = process.env.GOOGLE_SHEET_NAME_BC_CONG_NO_NCC_NPL || "BC công nợ phải trả NCC NPL";
 const sheetNameBCCongNoXuong = process.env.GOOGLE_SHEET_NAME_BC_CONG_NO_XUONG_SX || "BC công nợ phải trả xưởng SX";
-const sheetNameBCBanHangTheoThang = process.env.GOOGLE_SHEET_NAME_BC_BAN_HANG_THEO_THANG || "BC bán hàng theo tháng";
+const sheetNameBCBanHangTheoThang = process.env.GOOGLE_SHEET_NAME_BC_BAN_HANG_THEO_THOI_GIAN || "BC bán hàng theo thời gian";
 const sheetNameBCSanPham = process.env.GOOGLE_SHEET_NAME_BC_SAN_PHAM || "BC Sản phẩm";
 const sheetNameBCNhanVien = process.env.GOOGLE_SHEET_NAME_BC_BAN_HANG_NHAN_VIEN || "BC BH Nhân viên";
 const sheetNameBCKhachHang = process.env.GOOGLE_SHEET_NAME_BC_KHACH_HANG || "BC Khách hàng";
@@ -11898,6 +13020,7 @@ export async function getBaoCaoCongNoXuong() {
 
 // Interface cho báo cáo bán hàng theo tháng
 export interface BaoCaoBanHangTheoThangRow {
+  rowIndex: number; // Row index in sheet (starting from 6)
   thang: number;
   nam: number;
   doanhThu: number;
@@ -11931,7 +13054,8 @@ export async function getBaoCaoBanHangTheoThang() {
     const rows = dataResponse.data.values || [];
     const parsedRows: BaoCaoBanHangTheoThangRow[] = rows
       .filter((row) => row[0] && row[1]) // Có tháng và năm
-      .map((row) => ({
+      .map((row, index) => ({
+        rowIndex: index + 6, // Row 6 is the first data row
         thang: parseInt(row[0]) || 0,
         nam: parseInt(row[1]) || 0,
         doanhThu: parseNumber(row[2]),
@@ -11944,6 +13068,108 @@ export async function getBaoCaoBanHangTheoThang() {
     };
   } catch (error) {
     console.error("Error fetching Bao Cao Ban Hang Theo Thang:", error);
+    throw error;
+  }
+}
+
+// Thêm dữ liệu báo cáo bán hàng theo tháng
+export async function addBaoCaoBanHangTheoThang(data: {
+  thang: number;
+  nam: number;
+  doanhThu: number;
+  tienVon: number;
+  loiNhuan: number;
+}) {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Append new row
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCBanHangTheoThang}!A6:E`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[data.thang, data.nam, data.doanhThu, data.tienVon, data.loiNhuan]],
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error adding Bao Cao Ban Hang Theo Thang:", error);
+    throw error;
+  }
+}
+
+// Cập nhật dữ liệu báo cáo bán hàng theo tháng
+export async function updateBaoCaoBanHangTheoThang(
+  rowIndex: number,
+  data: {
+    thang: number;
+    nam: number;
+    doanhThu: number;
+    tienVon: number;
+    loiNhuan: number;
+  }
+) {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCBanHangTheoThang}!A${rowIndex}:E${rowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[data.thang, data.nam, data.doanhThu, data.tienVon, data.loiNhuan]],
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating Bao Cao Ban Hang Theo Thang:", error);
+    throw error;
+  }
+}
+
+// Xóa dữ liệu báo cáo bán hàng theo tháng
+export async function deleteBaoCaoBanHangTheoThang(rowIndex: number) {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Get spreadsheet info to find sheet ID
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameBCBanHangTheoThang
+    );
+
+    if (!sheet?.properties?.sheetId) {
+      throw new Error("Sheet not found");
+    }
+
+    // Delete the row
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdBaoCao,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowIndex - 1, // 0-indexed
+                endIndex: rowIndex,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting Bao Cao Ban Hang Theo Thang:", error);
     throw error;
   }
 }
@@ -12006,20 +13232,39 @@ export async function getBaoCaoSanPham() {
 // BÁO CÁO BÁN HÀNG THEO NHÂN VIÊN
 // ============================================
 
-// Interface cho báo cáo bán hàng theo nhân viên
-export interface BaoCaoNhanVienRow {
-  thang: number;
+// Interface cho báo cáo bán hàng theo nhân viên - theo tháng
+export interface BaoCaoNhanVienTheoThangRow {
+  stt: number;
   nhanVien: string;
   doanhThu: number;
   loiNhuanGop: number;
 }
 
+// Interface cho báo cáo bán hàng theo nhân viên - theo năm
+export interface BaoCaoNhanVienTheoNamRow {
+  stt: number;
+  nhanVien: string;
+  doanhThuNam: number;
+  loiNhuanNam: number;
+}
+
 export interface BaoCaoNhanVienData {
-  rows: BaoCaoNhanVienRow[];
+  theoThang: {
+    rows: BaoCaoNhanVienTheoThangRow[];
+    thangBaoCao: string; // "1/2026"
+    tongDoanhThu: number;
+    tongLoiNhuan: number;
+  };
+  theoNam: {
+    rows: BaoCaoNhanVienTheoNamRow[];
+    namBaoCao: string; // "2026"
+    tongDoanhThu: number;
+    tongLoiNhuan: number;
+  };
 }
 
 // Lấy dữ liệu báo cáo bán hàng theo nhân viên
-export async function getBaoCaoNhanVien() {
+export async function getBaoCaoNhanVien(thang?: string, nam?: string) {
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -12031,24 +13276,101 @@ export async function getBaoCaoNhanVien() {
       return parseFloat(cleaned) || 0;
     };
 
-    // Lấy dữ liệu từ row 6 trở đi (Tháng, Nhân viên, Doanh thu, Lợi nhuận góp)
-    const dataResponse = await sheets.spreadsheets.values.get({
+    // Cập nhật tháng/năm báo cáo nếu có (D3 cho tháng, I3 cho năm)
+    if (thang) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdBaoCao,
+        range: `${sheetNameBCNhanVien}!D3`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[thang]],
+        },
+      });
+    }
+
+    if (nam) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdBaoCao,
+        range: `${sheetNameBCNhanVien}!I3`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[nam]],
+        },
+      });
+    }
+
+    // Lấy thông tin tháng/năm báo cáo từ D3 và I3
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCNhanVien}!D3:I3`,
+    });
+    const headerRow = headerResponse.data.values?.[0] || [];
+    const thangBaoCao = headerRow[0] || "";
+    const namBaoCao = headerRow[5] || ""; // I3 is 5 columns after D3
+
+    // Lấy dữ liệu bảng 1 (theo tháng) từ row 6 trở đi - cột A:D
+    const thangResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdBaoCao,
       range: `${sheetNameBCNhanVien}!A6:D`,
     });
 
-    const rows = dataResponse.data.values || [];
-    const parsedRows: BaoCaoNhanVienRow[] = rows
-      .filter((row) => row[0] && row[1]) // Có tháng và nhân viên
-      .map((row) => ({
-        thang: parseInt(row[0]) || 0,
-        nhanVien: row[1] || "",
-        doanhThu: parseNumber(row[2]),
-        loiNhuanGop: parseNumber(row[3]),
-      }));
+    const thangRows = thangResponse.data.values || [];
+    let tongDoanhThuThang = 0;
+    let tongLoiNhuanThang = 0;
+
+    const parsedThangRows: BaoCaoNhanVienTheoThangRow[] = thangRows
+      .filter((row) => row[0] && row[1] && !String(row[1]).toUpperCase().includes("TỔNG CỘNG"))
+      .map((row) => {
+        const doanhThu = parseNumber(row[2]);
+        const loiNhuan = parseNumber(row[3]);
+        tongDoanhThuThang += doanhThu;
+        tongLoiNhuanThang += loiNhuan;
+        return {
+          stt: parseInt(row[0]) || 0,
+          nhanVien: row[1] || "",
+          doanhThu: doanhThu,
+          loiNhuanGop: loiNhuan,
+        };
+      });
+
+    // Lấy dữ liệu bảng 2 (theo năm) từ row 6 trở đi - cột F:I
+    const namResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCNhanVien}!F6:I`,
+    });
+
+    const namRows = namResponse.data.values || [];
+    let tongDoanhThuNam = 0;
+    let tongLoiNhuanNam = 0;
+
+    const parsedNamRows: BaoCaoNhanVienTheoNamRow[] = namRows
+      .filter((row) => row[0] && row[1] && !String(row[1]).toUpperCase().includes("TỔNG CỘNG"))
+      .map((row) => {
+        const doanhThu = parseNumber(row[2]);
+        const loiNhuan = parseNumber(row[3]);
+        tongDoanhThuNam += doanhThu;
+        tongLoiNhuanNam += loiNhuan;
+        return {
+          stt: parseInt(row[0]) || 0,
+          nhanVien: row[1] || "",
+          doanhThuNam: doanhThu,
+          loiNhuanNam: loiNhuan,
+        };
+      });
 
     return {
-      rows: parsedRows,
+      theoThang: {
+        rows: parsedThangRows,
+        thangBaoCao,
+        tongDoanhThu: tongDoanhThuThang,
+        tongLoiNhuan: tongLoiNhuanThang,
+      },
+      theoNam: {
+        rows: parsedNamRows,
+        namBaoCao,
+        tongDoanhThu: tongDoanhThuNam,
+        tongLoiNhuan: tongLoiNhuanNam,
+      },
     };
   } catch (error) {
     console.error("Error fetching Bao Cao Nhan Vien:", error);
@@ -12060,20 +13382,39 @@ export async function getBaoCaoNhanVien() {
 // BÁO CÁO MUA HÀNG CỦA KHÁCH HÀNG
 // ============================================
 
-// Interface cho báo cáo mua hàng của khách hàng
-export interface BaoCaoKhachHangRow {
-  thang: number;
+// Interface cho báo cáo mua hàng của khách hàng - theo tháng
+export interface BaoCaoKhachHangTheoThangRow {
+  stt: number;
   khachHang: string;
   doanhThu: number;
   loiNhuanGop: number;
 }
 
-export interface BaoCaoKhachHangData {
-  rows: BaoCaoKhachHangRow[];
+// Interface cho báo cáo mua hàng của khách hàng - theo năm
+export interface BaoCaoKhachHangTheoNamRow {
+  stt: number;
+  khachHang: string;
+  doanhThuNam: number;
+  loiNhuanNam: number;
 }
 
-// Lấy dữ liệu báo cáo mua hàng của khách hàng
-export async function getBaoCaoKhachHang() {
+export interface BaoCaoKhachHangData {
+  theoThang: {
+    rows: BaoCaoKhachHangTheoThangRow[];
+    thangBaoCao: string; // "1/2026"
+    tongDoanhThu: number;
+    tongLoiNhuan: number;
+  };
+  theoNam: {
+    rows: BaoCaoKhachHangTheoNamRow[];
+    namBaoCao: string; // "2026"
+    tongDoanhThu: number;
+    tongLoiNhuan: number;
+  };
+}
+
+// Lấy dữ liệu báo cáo mua hàng của khách hàng (cả 2 bảng)
+export async function getBaoCaoKhachHang(thang?: string, nam?: string) {
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -12085,24 +13426,101 @@ export async function getBaoCaoKhachHang() {
       return parseFloat(cleaned) || 0;
     };
 
-    // Lấy dữ liệu từ row 7 trở đi (Tháng, Khách hàng, Doanh thu, Lợi nhuận góp)
-    const dataResponse = await sheets.spreadsheets.values.get({
+    // Cập nhật tháng/năm báo cáo nếu có
+    if (thang) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdBaoCao,
+        range: `${sheetNameBCKhachHang}!D3`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[thang]],
+        },
+      });
+    }
+
+    if (nam) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetIdBaoCao,
+        range: `${sheetNameBCKhachHang}!I3`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[nam]],
+        },
+      });
+    }
+
+    // Lấy thông tin tháng/năm báo cáo từ D3 và I3
+    const headerResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdBaoCao,
-      range: `${sheetNameBCKhachHang}!A7:D`,
+      range: `${sheetNameBCKhachHang}!D3:I3`,
+    });
+    const headerRow = headerResponse.data.values?.[0] || [];
+    const thangBaoCao = headerRow[0] || "";
+    const namBaoCao = headerRow[5] || ""; // I3 is 5 columns after D3
+
+    // Lấy dữ liệu bảng 1 (theo tháng) từ row 6 trở đi - cột A:D
+    const thangResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCKhachHang}!A6:D`,
     });
 
-    const rows = dataResponse.data.values || [];
-    const parsedRows: BaoCaoKhachHangRow[] = rows
-      .filter((row) => row[0] && row[1]) // Có tháng và khách hàng
-      .map((row) => ({
-        thang: parseInt(row[0]) || 0,
-        khachHang: row[1] || "",
-        doanhThu: parseNumber(row[2]),
-        loiNhuanGop: parseNumber(row[3]),
-      }));
+    const thangRows = thangResponse.data.values || [];
+    let tongDoanhThuThang = 0;
+    let tongLoiNhuanThang = 0;
+
+    const parsedThangRows: BaoCaoKhachHangTheoThangRow[] = thangRows
+      .filter((row) => row[0] && row[1] && !String(row[1]).toUpperCase().includes("TỔNG CỘNG"))
+      .map((row) => {
+        const doanhThu = parseNumber(row[2]);
+        const loiNhuan = parseNumber(row[3]);
+        tongDoanhThuThang += doanhThu;
+        tongLoiNhuanThang += loiNhuan;
+        return {
+          stt: parseInt(row[0]) || 0,
+          khachHang: row[1] || "",
+          doanhThu: doanhThu,
+          loiNhuanGop: loiNhuan,
+        };
+      });
+
+    // Lấy dữ liệu bảng 2 (theo năm) từ row 6 trở đi - cột F:J
+    const namResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdBaoCao,
+      range: `${sheetNameBCKhachHang}!F6:J`,
+    });
+
+    const namRows = namResponse.data.values || [];
+    let tongDoanhThuNam = 0;
+    let tongLoiNhuanNam = 0;
+
+    const parsedNamRows: BaoCaoKhachHangTheoNamRow[] = namRows
+      .filter((row) => row[0] && row[1] && !String(row[1]).toUpperCase().includes("TỔNG CỘNG"))
+      .map((row) => {
+        const doanhThu = parseNumber(row[2]);
+        const loiNhuan = parseNumber(row[3]);
+        tongDoanhThuNam += doanhThu;
+        tongLoiNhuanNam += loiNhuan;
+        return {
+          stt: parseInt(row[0]) || 0,
+          khachHang: row[1] || "",
+          doanhThuNam: doanhThu,
+          loiNhuanNam: loiNhuan,
+        };
+      });
 
     return {
-      rows: parsedRows,
+      theoThang: {
+        rows: parsedThangRows,
+        thangBaoCao,
+        tongDoanhThu: tongDoanhThuThang,
+        tongLoiNhuan: tongLoiNhuanThang,
+      },
+      theoNam: {
+        rows: parsedNamRows,
+        namBaoCao,
+        tongDoanhThu: tongDoanhThuNam,
+        tongLoiNhuan: tongLoiNhuanNam,
+      },
     };
   } catch (error) {
     console.error("Error fetching Bao Cao Khach Hang:", error);
