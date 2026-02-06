@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { PackageSearch, Tag, FileText, List } from "lucide-react";
+import { PackageSearch, Tag, FileText, List, Image } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
@@ -9,8 +9,9 @@ import { Toaster } from "react-hot-toast";
 import MaSPTab from "../components/MaSPTab";
 import ChiTietMaSPTab from "../components/ChiTietMaSPTab";
 import PhatTrienSanPhamTab from "../components/PhatTrienSanPhamTab";
+import HinhAnhSanPhamTab from "../components/HinhAnhSanPhamTab";
 
-type TabType = "phat-trien" | "ma-san-pham" | "chi-tiet-ma-sp";
+type TabType = "phat-trien" | "ma-san-pham" | "chi-tiet-ma-sp" | "hinh-anh";
 
 const TABS = [
   { id: "phat-trien" as TabType, label: "Phát triển sản phẩm", icon: List },
@@ -19,6 +20,11 @@ const TABS = [
     id: "chi-tiet-ma-sp" as TabType,
     label: "Chi tiết mã sản phẩm",
     icon: FileText,
+  },
+  {
+    id: "hinh-anh" as TabType,
+    label: "Hình ảnh sản phẩm",
+    icon: Image,
   },
 ];
 
@@ -84,6 +90,7 @@ export default function SanPhamSX() {
           {activeTab === "phat-trien" && <PhatTrienSanPhamTab />}
           {/* {activeTab === "ma-san-pham" && <MaSPTab />} */}
           {activeTab === "chi-tiet-ma-sp" && <ChiTietMaSPTab />}
+          {activeTab === "hinh-anh" && <HinhAnhSanPhamTab />}
         </div>
       </div>
     </div>

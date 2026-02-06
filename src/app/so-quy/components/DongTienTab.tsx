@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { DongTien } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function DongTienTab() {
   const [dongTienList, setDongTienList] = useState<DongTien[]>([]);
@@ -21,6 +22,10 @@ export default function DongTienTab() {
   const [editingItem, setEditingItem] = useState<DongTien | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingItem, setViewingItem] = useState<DongTien | null>(null);
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingRowIndex, setDeletingRowIndex] = useState<number | null>(null);
 
   // Dropdown options
   const [taiKhoanOptions, setTaiKhoanOptions] = useState<string[]>([]);
@@ -291,12 +296,17 @@ export default function DongTienTab() {
     }
   };
 
-  const handleDelete = async (rowIndex: number) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa dòng này?")) return;
+  const handleDelete = (rowIndex: number) => {
+    setDeletingRowIndex(rowIndex);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deletingRowIndex === null) return;
 
     toast.promise(
       (async () => {
-        const response = await fetch(`/api/dong-tien?rowIndex=${rowIndex}`, {
+        const response = await fetch(`/api/dong-tien?rowIndex=${deletingRowIndex}`, {
           method: "DELETE",
         });
 
@@ -304,6 +314,8 @@ export default function DongTienTab() {
 
         if (result.success) {
           setDongTienList(result.data);
+          setShowDeleteConfirm(false);
+          setDeletingRowIndex(null);
           return result;
         } else {
           throw new Error(result.error || "Không thể xóa dòng tiền");
@@ -1450,6 +1462,20 @@ export default function DongTienTab() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingRowIndex(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa"
+        message="Bạn có chắc chắn muốn xóa dòng tiền này?"
+        confirmText="Xóa"
+        type="danger"
+      />
     </div>
   );
 }

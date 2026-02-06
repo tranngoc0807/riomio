@@ -4,6 +4,7 @@ import { Loader2, Search, ChevronLeft, ChevronRight, Scissors, Package, Calendar
 import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import { createPortal } from "react-dom";
+import ConfirmModal from "@/components/ConfirmModal";
 
 // Portal component for modals
 const Portal = ({ children }: { children: React.ReactNode }) => {
@@ -141,6 +142,10 @@ export default function SoLuongCatTab() {
   const [deletingItem, setDeletingItem] = useState<SoLuongCat | null>(null);
   const [viewingGroup, setViewingGroup] = useState<GroupedPhieuCat | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Group delete confirmation state
+  const [showGroupDeleteConfirm, setShowGroupDeleteConfirm] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<GroupedPhieuCat | null>(null);
 
   // Multi-item form states
   const [headerForm, setHeaderForm] = useState({ maPhieuCat: "", xuongSanXuat: "", lenhSanXuat: "" });
@@ -457,17 +462,21 @@ export default function SoLuongCatTab() {
     }
   };
 
-  // Handle delete group
-  const handleDeleteGroup = async (group: GroupedPhieuCat) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa tất cả ${group.itemCount} mục của phiếu "${group.maPhieuCat}"?`)) {
-      return;
-    }
+  // Handle delete group - open confirmation modal
+  const handleDeleteGroup = (group: GroupedPhieuCat) => {
+    setGroupToDelete(group);
+    setShowGroupDeleteConfirm(true);
+  };
+
+  // Confirm delete group
+  const confirmDeleteGroup = async () => {
+    if (!groupToDelete) return;
 
     try {
       setIsSubmitting(true);
       let successCount = 0;
 
-      for (const item of group.items) {
+      for (const item of groupToDelete.items) {
         const response = await fetch(`/api/so-luong-cat/delete?id=${item.id}`, {
           method: "DELETE",
         });
@@ -488,6 +497,8 @@ export default function SoLuongCatTab() {
       toast.error("Lỗi khi xóa");
     } finally {
       setIsSubmitting(false);
+      setShowGroupDeleteConfirm(false);
+      setGroupToDelete(null);
     }
   };
 
@@ -1335,6 +1346,20 @@ export default function SoLuongCatTab() {
           </div>
         </Portal>
       )}
+
+      {/* Group Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showGroupDeleteConfirm}
+        onClose={() => {
+          setShowGroupDeleteConfirm(false);
+          setGroupToDelete(null);
+        }}
+        onConfirm={confirmDeleteGroup}
+        title="Xác nhận xóa phiếu cắt"
+        message={`Bạn có chắc chắn muốn xóa tất cả ${groupToDelete?.itemCount || 0} mục của phiếu "${groupToDelete?.maPhieuCat || ""}"?`}
+        confirmText="Xóa tất cả"
+        type="danger"
+      />
     </div>
   );
 }

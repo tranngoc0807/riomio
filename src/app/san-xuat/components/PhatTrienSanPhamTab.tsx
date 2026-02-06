@@ -11,9 +11,12 @@ import {
   ChevronRight,
   ArrowUpDown,
   Loader2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
+import ImagePickerModal from "@/components/ImagePickerModal";
+import ConfirmModal from "@/components/ConfirmModal";
 import toast from "react-hot-toast";
 
 // Types - khớp với Google Sheets PhatTrienSanPham
@@ -86,6 +89,10 @@ export default function PhatTrienSanPhamTab() {
   });
 
   const [editProduct, setEditProduct] = useState<SanPham | null>(null);
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [imagePickerTarget, setImagePickerTarget] = useState<"add" | "edit">("add");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
 
   const fetchProducts = async () => {
     try {
@@ -158,22 +165,27 @@ export default function PhatTrienSanPhamTab() {
     setShowEditModal(true);
   };
 
-  const handleDeleteProduct = async (id: number) => {
-    if (confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
-      try {
-        const response = await fetch(`/api/san-pham/delete?id=${id}`, { method: "DELETE" });
-        const result = await response.json();
-        if (result.success) {
-          toast.success("Đã xóa sản phẩm thành công");
-          fetchProducts();
-        } else {
-          toast.error(result.error || "Không thể xóa sản phẩm");
-        }
-      } catch (error) {
-        console.error("Error deleting product:", error);
-        toast.error("Lỗi kết nối server");
+  const handleDeleteProduct = (id: number) => {
+    setProductToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    try {
+      const response = await fetch(`/api/san-pham/delete?id=${productToDelete}`, { method: "DELETE" });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Đã xóa sản phẩm thành công");
+        fetchProducts();
+      } else {
+        toast.error(result.error || "Không thể xóa sản phẩm");
       }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast.error("Lỗi kết nối server");
     }
+    setProductToDelete(null);
   };
 
   const closeAddModal = () => { setShowAddModal(false); };
@@ -600,7 +612,18 @@ export default function PhatTrienSanPhamTab() {
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">Hình ảnh</h4>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Link hình ảnh</label>
-                    <input type="text" value={newProduct.image || ""} onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Nhập link hình ảnh" />
+                    <div className="flex gap-2">
+                      <input type="text" value={newProduct.image || ""} onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Nhập link hình ảnh" />
+                      <button type="button" onClick={() => { setImagePickerTarget("add"); setShowImagePicker(true); }} className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap">
+                        <ImageIcon size={16} />
+                        Chọn ảnh
+                      </button>
+                    </div>
+                    {newProduct.image && (
+                      <div className="mt-2">
+                        <img src={newProduct.image} alt="Preview" className="h-24 w-24 object-cover rounded-lg border" />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -688,8 +711,14 @@ export default function PhatTrienSanPhamTab() {
                 {selectedProduct.image && (
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-gray-900 mb-3">Hình ảnh</h4>
-                    <div className="text-sm">
-                      <a href={selectedProduct.image} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline break-all">{selectedProduct.image}</a>
+                    <div className="mt-2">
+                      <a href={selectedProduct.image} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={selectedProduct.image}
+                          alt={selectedProduct.name || "Ảnh sản phẩm"}
+                          className="max-w-full max-h-64 object-contain rounded-lg border border-gray-200 hover:opacity-90 transition-opacity cursor-pointer"
+                        />
+                      </a>
                     </div>
                   </div>
                 )}
@@ -849,7 +878,18 @@ export default function PhatTrienSanPhamTab() {
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">Hình ảnh</h4>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Link hình ảnh</label>
-                    <input type="text" value={editProduct.image || ""} onChange={(e) => setEditProduct({ ...editProduct, image: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    <div className="flex gap-2">
+                      <input type="text" value={editProduct.image || ""} onChange={(e) => setEditProduct({ ...editProduct, image: e.target.value })} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                      <button type="button" onClick={() => { setImagePickerTarget("edit"); setShowImagePicker(true); }} className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap">
+                        <ImageIcon size={16} />
+                        Chọn ảnh
+                      </button>
+                    </div>
+                    {editProduct.image && (
+                      <div className="mt-2">
+                        <img src={editProduct.image} alt="Preview" className="h-24 w-24 object-cover rounded-lg border" />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -866,6 +906,32 @@ export default function PhatTrienSanPhamTab() {
           </div>
         </Portal>
       )}
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onSelect={(url) => {
+          if (imagePickerTarget === "add") {
+            setNewProduct({ ...newProduct, image: url });
+          } else if (editProduct) {
+            setEditProduct({ ...editProduct, image: url });
+          }
+        }}
+        currentImage={imagePickerTarget === "add" ? newProduct.image : editProduct?.image}
+      />
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteProduct}
+        title="Xóa sản phẩm"
+        message="Bạn có chắc muốn xóa sản phẩm này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
     </>
   );
 }

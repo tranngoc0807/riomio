@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Loader2, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { TaiKhoan } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function TaiKhoanTab() {
   const [taiKhoanList, setTaiKhoanList] = useState<TaiKhoan[]>([]);
@@ -14,6 +15,10 @@ export default function TaiKhoanTab() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<TaiKhoan | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -89,13 +94,16 @@ export default function TaiKhoanTab() {
     setShowModal(true);
   };
 
-  const handleDelete = async (item: TaiKhoan) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${item.taiKhoan}"?`)) {
-      return;
-    }
+  const handleDelete = (item: TaiKhoan) => {
+    setDeletingItem(item);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingItem) return;
 
     try {
-      const response = await fetch(`/api/tai-khoan-so-quy?rowIndex=${item.rowIndex}`, {
+      const response = await fetch(`/api/tai-khoan-so-quy?rowIndex=${deletingItem.rowIndex}`, {
         method: "DELETE",
       });
 
@@ -110,6 +118,9 @@ export default function TaiKhoanTab() {
     } catch (err: any) {
       console.error("Error deleting account:", err);
       toast.error("Đã xảy ra lỗi khi xóa tài khoản");
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeletingItem(null);
     }
   };
 
@@ -312,6 +323,20 @@ export default function TaiKhoanTab() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingItem(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa"
+        message={`Bạn có chắc chắn muốn xóa tài khoản "${deletingItem?.taiKhoan || ""}"?`}
+        confirmText="Xóa"
+        type="danger"
+      />
     </div>
   );
 }

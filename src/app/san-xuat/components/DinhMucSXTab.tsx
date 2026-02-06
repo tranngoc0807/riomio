@@ -4,6 +4,7 @@ import { Loader2, Search, ChevronLeft, ChevronRight, Package, Plus, Edit, Trash2
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface DinhMucSX {
   id: number;
@@ -58,6 +59,8 @@ export default function DinhMucSXTab() {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<DinhMucSX | null>(null);
 
   // Mã SP dropdown states
   const [maSPList, setMaSPList] = useState<MaSP[]>([]);
@@ -228,14 +231,17 @@ export default function DinhMucSXTab() {
   };
 
   // Handle delete
-  const handleDelete = async (item: DinhMucSX) => {
-    if (!confirm(`Bạn có chắc muốn xóa định mức cho sản phẩm "${item.maSP}"?`)) {
-      return;
-    }
+  const handleDelete = (item: DinhMucSX) => {
+    setItemToDelete(item);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
 
     try {
-      setIsDeleting(item.id);
-      const response = await fetch(`/api/dinh-muc-sx?id=${item.id}`, {
+      setIsDeleting(itemToDelete.id);
+      const response = await fetch(`/api/dinh-muc-sx?id=${itemToDelete.id}`, {
         method: "DELETE",
       });
       const result = await response.json();
@@ -251,6 +257,7 @@ export default function DinhMucSXTab() {
       toast.error("Lỗi khi xóa định mức sản xuất");
     } finally {
       setIsDeleting(null);
+      setItemToDelete(null);
     }
   };
 
@@ -705,6 +712,21 @@ export default function DinhMucSXTab() {
           </div>
         </Portal>
       )}
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setItemToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Xóa định mức"
+        message={`Bạn có chắc muốn xóa định mức cho sản phẩm "${itemToDelete?.maSP || ""}"?`}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
     </div>
   );
 }

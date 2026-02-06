@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface Employee {
   id: number;
@@ -105,6 +106,10 @@ export default function EmployeesTab({
     phone: false,
   });
 
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingEmployeeId, setDeletingEmployeeId] = useState<number | null>(null);
+
   const filteredEmployees = employees.filter(
     (emp) =>
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -176,25 +181,33 @@ export default function EmployeesTab({
     }
   };
 
-  const handleDeleteEmployee = async (id: number) => {
-    if (confirm("Bạn có chắc muốn xóa nhân viên này?")) {
-      try {
-        const response = await fetch(`/api/employees/delete?id=${id}`, {
-          method: "DELETE",
-        });
+  const handleDeleteEmployee = (id: number) => {
+    setDeletingEmployeeId(id);
+    setShowDeleteConfirm(true);
+  };
 
-        const data = await response.json();
+  const confirmDeleteEmployee = async () => {
+    if (deletingEmployeeId === null) return;
 
-        if (data.success) {
-          setEmployees(employees.filter((emp) => emp.id !== id));
-          toast.success("Đã xóa nhân viên và cập nhật Google Sheets!");
-        } else {
-          toast.error(`Lỗi: ${data.error}`);
-        }
-      } catch (error: any) {
-        console.error("Error deleting employee:", error);
-        toast.error(`Lỗi khi xóa nhân viên: ${error.message}`);
+    try {
+      const response = await fetch(`/api/employees/delete?id=${deletingEmployeeId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setEmployees(employees.filter((emp) => emp.id !== deletingEmployeeId));
+        toast.success("Đã xóa nhân viên và cập nhật Google Sheets!");
+      } else {
+        toast.error(`Lỗi: ${data.error}`);
       }
+    } catch (error: any) {
+      console.error("Error deleting employee:", error);
+      toast.error(`Lỗi khi xóa nhân viên: ${error.message}`);
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeletingEmployeeId(null);
     }
   };
 
@@ -726,6 +739,20 @@ export default function EmployeesTab({
           </div>
         </Portal>
       )}
+
+      {/* Delete Employee Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingEmployeeId(null);
+        }}
+        onConfirm={confirmDeleteEmployee}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa nhân viên này?"
+        confirmText="Xóa"
+        type="danger"
+      />
     </>
   );
 }

@@ -20,6 +20,7 @@
     "@tiptap/pm": "^3.17.1",
     "@tiptap/react": "^3.17.1",
     "@tiptap/starter-kit": "^3.17.1",
+    "firebase": "^12.9.0",
     "googleapis": "^169.0.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.562.0",

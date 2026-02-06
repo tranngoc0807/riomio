@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface Employee {
   id: number;
@@ -102,6 +103,10 @@ export default function DanhSachNhanVienTab() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState(emptyEmployee);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
 
   // Load employees from API
   const loadEmployees = async () => {
@@ -233,11 +238,16 @@ export default function DanhSachNhanVienTab() {
     }
   };
 
-  const handleDeleteEmployee = async (emp: Employee) => {
-    if (!confirm(`Bạn có chắc muốn xóa nhân viên "${emp.name}"?`)) return;
+  const handleDeleteEmployee = (emp: Employee) => {
+    setDeletingEmployee(emp);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteEmployee = async () => {
+    if (!deletingEmployee) return;
 
     try {
-      const response = await fetch(`/api/employees/delete?id=${emp.id}`, {
+      const response = await fetch(`/api/employees/delete?id=${deletingEmployee.id}`, {
         method: "DELETE",
       });
 
@@ -252,6 +262,9 @@ export default function DanhSachNhanVienTab() {
     } catch (error) {
       console.error("Error deleting employee:", error);
       toast.error("Lỗi khi xóa nhân viên");
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeletingEmployee(null);
     }
   };
 
@@ -802,6 +815,20 @@ export default function DanhSachNhanVienTab() {
           </div>
         </Portal>
       )}
+
+      {/* Delete Employee Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingEmployee(null);
+        }}
+        onConfirm={confirmDeleteEmployee}
+        title="Xác nhận xóa"
+        message={`Bạn có chắc muốn xóa nhân viên "${deletingEmployee?.name || ""}"?`}
+        confirmText="Xóa"
+        type="danger"
+      />
     </>
   );
 }

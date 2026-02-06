@@ -20,6 +20,7 @@ import {
   Check,
   AlertTriangle,
 } from "lucide-react";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface UserProfile {
   id: string;
@@ -70,6 +71,10 @@ export default function UserManagement() {
     role: "tong_hop" as UserRole,
   });
   const [updatingUser, setUpdatingUser] = useState(false);
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Fetch users
   const fetchUsers = async () => {
@@ -188,10 +193,8 @@ export default function UserManagement() {
     setTimeout(() => setSuccess(""), 3000);
   };
 
-  // Delete user
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Bạn có chắc muốn xóa tài khoản này?")) return;
-
+  // Delete user - open confirmation modal
+  const handleDeleteUser = (userId: string) => {
     // Can't delete yourself
     if (userId === currentUser?.id) {
       setError("Không thể xóa tài khoản của chính mình!");
@@ -199,17 +202,27 @@ export default function UserManagement() {
       return;
     }
 
-    const { error } = await supabase.from("profiles").delete().eq("id", userId);
+    setDeletingUserId(userId);
+    setShowDeleteConfirm(true);
+  };
 
-    if (error) {
-      setError(error.message);
+  // Confirm delete user
+  const confirmDeleteUser = async () => {
+    if (!deletingUserId) return;
+
+    const { error: deleteError } = await supabase.from("profiles").delete().eq("id", deletingUserId);
+
+    if (deleteError) {
+      setError(deleteError.message);
       setTimeout(() => setError(""), 3000);
-      return;
+    } else {
+      setSuccess("Đã xóa tài khoản!");
+      fetchUsers();
+      setTimeout(() => setSuccess(""), 3000);
     }
 
-    setSuccess("Đã xóa tài khoản!");
-    fetchUsers();
-    setTimeout(() => setSuccess(""), 3000);
+    setShowDeleteConfirm(false);
+    setDeletingUserId(null);
   };
 
   const openEditModal = (user: UserProfile) => {
@@ -596,6 +609,20 @@ export default function UserManagement() {
           </div>
         </div>
       )}
+
+      {/* Delete User Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingUserId(null);
+        }}
+        onConfirm={confirmDeleteUser}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa tài khoản này?"
+        confirmText="Xóa"
+        type="danger"
+      />
     </div>
   );
 }

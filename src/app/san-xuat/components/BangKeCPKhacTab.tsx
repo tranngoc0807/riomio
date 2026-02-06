@@ -16,6 +16,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface ChiPhiKhacItem {
   id: number;
@@ -312,6 +313,8 @@ function ChiPhiKhacView({
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ChiPhiKhacItem | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<ChiPhiKhacItem | null>(null);
   const [shippingUnits, setShippingUnits] = useState<ShippingUnitOption[]>([]);
   const [workshops, setWorkshops] = useState<WorkshopOption[]>([]);
 
@@ -448,16 +451,17 @@ function ChiPhiKhacView({
     }
   };
 
-  const handleDelete = async (item: ChiPhiKhacItem) => {
-    if (
-      !confirm(`Bạn có chắc muốn xóa chi phí "${item.noiDung || item.ngay}"?`)
-    ) {
-      return;
-    }
+  const handleDelete = (item: ChiPhiKhacItem) => {
+    setItemToDelete(item);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
 
     try {
       const response = await fetch(
-        `/api/bang-ke-cp-khac/delete?id=${item.id}`,
+        `/api/bang-ke-cp-khac/delete?id=${itemToDelete.id}`,
         {
           method: "DELETE",
         }
@@ -473,6 +477,8 @@ function ChiPhiKhacView({
     } catch (error) {
       console.error("Error deleting:", error);
       toast.error("Lỗi kết nối server");
+    } finally {
+      setItemToDelete(null);
     }
   };
 
@@ -1065,6 +1071,21 @@ function ChiPhiKhacView({
           </div>
         </Portal>
       )}
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setItemToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Xóa chi phí"
+        message={`Bạn có chắc muốn xóa chi phí "${itemToDelete?.noiDung || itemToDelete?.ngay || ""}"?`}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
     </div>
   );
 }

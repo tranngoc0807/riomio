@@ -23,6 +23,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
 import toast, { Toaster } from "react-hot-toast";
 import QuanLyKhoTab from "./components/QuanLyKhoTab";
+import ConfirmModal from "@/components/ConfirmModal";
 
 // Types - khớp với Google Sheets PhatTrienSanPham
 interface SanPham {
@@ -246,6 +247,10 @@ export default function SanPhamPage() {
 
   const [editProduct, setEditProduct] = useState<SanPham | null>(null);
 
+  // Delete confirmation state for PhatTrienSanPham
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
+
   // ======== DANH MỤC SẢN PHẨM STATE ========
   const [catalogProducts, setCatalogProducts] = useState<SanPhamCatalog[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -289,6 +294,10 @@ export default function SanPhamPage() {
 
   const [editCatalogProduct, setEditCatalogProduct] =
     useState<SanPhamCatalog | null>(null);
+
+  // Delete confirmation state for CatalogProduct
+  const [showCatalogDeleteConfirm, setShowCatalogDeleteConfirm] = useState(false);
+  const [deletingCatalogProductId, setDeletingCatalogProductId] = useState<number | null>(null);
 
   // ======== PHÁT TRIỂN SẢN PHẨM FUNCTIONS ========
   const fetchProducts = async () => {
@@ -379,24 +388,32 @@ export default function SanPhamPage() {
     setShowEditModal(true);
   };
 
-  const handleDeleteProduct = async (id: number) => {
-    if (confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
-      try {
-        const response = await fetch(`/api/san-pham/delete?id=${id}`, {
-          method: "DELETE",
-        });
-        const result = await response.json();
+  const handleDeleteProduct = (id: number) => {
+    setDeletingProductId(id);
+    setShowDeleteConfirm(true);
+  };
 
-        if (result.success) {
-          toast.success("Đã xóa sản phẩm thành công");
-          fetchProducts();
-        } else {
-          toast.error(result.error || "Không thể xóa sản phẩm");
-        }
-      } catch (error) {
-        console.error("Error deleting product:", error);
-        toast.error("Lỗi kết nối server");
+  const confirmDeleteProduct = async () => {
+    if (deletingProductId === null) return;
+
+    try {
+      const response = await fetch(`/api/san-pham/delete?id=${deletingProductId}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Đã xóa sản phẩm thành công");
+        fetchProducts();
+      } else {
+        toast.error(result.error || "Không thể xóa sản phẩm");
       }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast.error("Lỗi kết nối server");
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeletingProductId(null);
     }
   };
 
@@ -621,24 +638,32 @@ export default function SanPhamPage() {
     setShowCatalogEditModal(true);
   };
 
-  const handleDeleteCatalogProduct = async (id: number) => {
-    if (confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
-      try {
-        const response = await fetch(`/api/san-pham-catalog/delete?id=${id}`, {
-          method: "DELETE",
-        });
-        const result = await response.json();
+  const handleDeleteCatalogProduct = (id: number) => {
+    setDeletingCatalogProductId(id);
+    setShowCatalogDeleteConfirm(true);
+  };
 
-        if (result.success) {
-          toast.success("Đã xóa sản phẩm thành công");
-          fetchCatalogProducts();
-        } else {
-          toast.error(result.error || "Không thể xóa sản phẩm");
-        }
-      } catch (error) {
-        console.error("Error deleting catalog product:", error);
-        toast.error("Lỗi kết nối server");
+  const confirmDeleteCatalogProduct = async () => {
+    if (deletingCatalogProductId === null) return;
+
+    try {
+      const response = await fetch(`/api/san-pham-catalog/delete?id=${deletingCatalogProductId}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Đã xóa sản phẩm thành công");
+        fetchCatalogProducts();
+      } else {
+        toast.error(result.error || "Không thể xóa sản phẩm");
       }
+    } catch (error) {
+      console.error("Error deleting catalog product:", error);
+      toast.error("Lỗi kết nối server");
+    } finally {
+      setShowCatalogDeleteConfirm(false);
+      setDeletingCatalogProductId(null);
     }
   };
 
@@ -3457,6 +3482,34 @@ export default function SanPhamPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Product Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingProductId(null);
+        }}
+        onConfirm={confirmDeleteProduct}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa sản phẩm này?"
+        confirmText="Xóa"
+        type="danger"
+      />
+
+      {/* Delete Catalog Product Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showCatalogDeleteConfirm}
+        onClose={() => {
+          setShowCatalogDeleteConfirm(false);
+          setDeletingCatalogProductId(null);
+        }}
+        onConfirm={confirmDeleteCatalogProduct}
+        title="Xác nhận xóa"
+        message="Bạn có chắc muốn xóa sản phẩm này?"
+        confirmText="Xóa"
+        type="danger"
+      />
     </div>
   );
 }

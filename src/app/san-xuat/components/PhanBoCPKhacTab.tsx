@@ -4,6 +4,7 @@ import { Loader2, Search, ChevronLeft, ChevronRight, PieChart, Plus, Pencil, Tra
 import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
+import ConfirmModal from "@/components/ConfirmModal";
 import { useAuth } from "@/context/AuthContext";
 
 interface SanPham {
@@ -148,6 +149,8 @@ export default function PhanBoCPKhacTab() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<PhanBoCPKhac | null>(null);
+  const [showGroupDeleteConfirm, setShowGroupDeleteConfirm] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<GroupedPhieu | null>(null);
   const [selectedItem, setSelectedItem] = useState<PhanBoCPKhac | null>(null);
   const [viewingGroup, setViewingGroup] = useState<GroupedPhieu | null>(null);
   const [saving, setSaving] = useState(false);
@@ -468,16 +471,19 @@ export default function PhanBoCPKhacTab() {
   };
 
   // Handle delete group
-  const handleDeleteGroup = async (group: GroupedPhieu) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa tất cả ${group.itemCount} mục của phiếu "${group.maPhieu}"?`)) {
-      return;
-    }
+  const handleDeleteGroup = (group: GroupedPhieu) => {
+    setGroupToDelete(group);
+    setShowGroupDeleteConfirm(true);
+  };
+
+  const confirmDeleteGroup = async () => {
+    if (!groupToDelete) return;
 
     try {
       setSaving(true);
       let successCount = 0;
 
-      for (const item of group.items) {
+      for (const item of groupToDelete.items) {
         const response = await fetch(`/api/phan-bo-cp-khac/delete?id=${item.id}`, {
           method: "DELETE",
         });
@@ -498,6 +504,7 @@ export default function PhanBoCPKhacTab() {
       toast.error("Lỗi khi xóa");
     } finally {
       setSaving(false);
+      setGroupToDelete(null);
     }
   };
 
@@ -1048,6 +1055,21 @@ export default function PhanBoCPKhacTab() {
           </div>
         </Portal>
       )}
+
+      {/* Group Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={showGroupDeleteConfirm}
+        onClose={() => {
+          setShowGroupDeleteConfirm(false);
+          setGroupToDelete(null);
+        }}
+        onConfirm={confirmDeleteGroup}
+        title="Xóa phiếu"
+        message={`Bạn có chắc chắn muốn xóa tất cả ${groupToDelete?.itemCount || 0} mục của phiếu "${groupToDelete?.maPhieu || ""}"?`}
+        confirmText="Xóa tất cả"
+        cancelText="Hủy"
+        type="danger"
+      />
     </div>
   );
 }
