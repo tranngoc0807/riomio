@@ -10,9 +10,10 @@ import {
   CalendarDays,
   CreditCard,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
+import { useRolePermissions } from "@/context/RolePermissionsContext";
 import DongTienTab from "./components/DongTienTab";
 import TaiKhoanTab from "./components/TaiKhoanTab";
 import BCQuyTheoNgayTab from "./components/BCQuyTheoNgayTab";
@@ -21,16 +22,35 @@ import BCTungTaiKhoanTab from "./components/BCTungTaiKhoanTab";
 
 type TabType = "phieu-thu" | "phieu-chi" | "so-quy" | "tai-khoan" | "bc-ngay" | "bc-thang" | "bc-tai-khoan";
 
+const TABS = [
+  { id: "so-quy" as TabType, label: "Sổ quỹ", icon: BookOpen },
+  { id: "tai-khoan" as TabType, label: "Tài khoản", icon: Wallet },
+  { id: "bc-ngay" as TabType, label: "BC theo ngày", icon: Calendar },
+  { id: "bc-thang" as TabType, label: "BC theo tháng", icon: CalendarDays },
+  { id: "bc-tai-khoan" as TabType, label: "BC tài khoản", icon: CreditCard },
+];
+
 export default function SoQuy() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { hasAccess, loading: permissionsLoading } = useRolePermissions();
   const tabParam = searchParams.get("tab") as TabType | null;
 
-  const [activeTab, setActiveTab] = useState<TabType>(
-    tabParam && ["phieu-thu", "phieu-chi", "so-quy", "tai-khoan", "bc-ngay", "bc-thang", "bc-tai-khoan"].includes(tabParam)
-      ? tabParam
-      : "so-quy"
-  );
+  const [activeTab, setActiveTab] = useState<TabType>("so-quy");
+
+  // Filter tabs based on permissions
+  const filteredTabs = useMemo(() => {
+    return TABS.filter((tab) => hasAccess(`so-quy/${tab.id}`));
+  }, [hasAccess]);
+
+  useEffect(() => {
+    const validTabs = filteredTabs.map((t) => t.id);
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    } else if (filteredTabs.length > 0 && !validTabs.includes(activeTab)) {
+      setActiveTab(filteredTabs[0].id);
+    }
+  }, [tabParam, filteredTabs, activeTab]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -58,88 +78,35 @@ export default function SoQuy() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         {/* Tab Navigation */}
         <div className="border-b border-gray-200">
-          <div className="flex">
-            {/* Hidden Phiếu thu tab */}
-            {/* <button
-              onClick={() => handleTabChange("phieu-thu")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "phieu-thu"
-                  ? "text-green-600 border-green-600 bg-green-50/50"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <ArrowUpCircle size={20} />
-              Phiếu thu
-            </button> */}
-            {/* Hidden Phiếu chi tab */}
-            {/* <button
-              onClick={() => handleTabChange("phieu-chi")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "phieu-chi"
-                  ? "text-red-600 border-red-600 bg-red-50/50"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <ArrowDownCircle size={20} />
-              Phiếu chi
-            </button> */}
-            <button
-              onClick={() => handleTabChange("so-quy")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "so-quy"
-                  ? "text-blue-600 border-blue-600 bg-blue-50/50"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <BookOpen size={20} />
-              Sổ quỹ
-            </button>
-            <button
-              onClick={() => handleTabChange("tai-khoan")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "tai-khoan"
-                  ? "text-purple-600 border-purple-600 bg-purple-50/50"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <Wallet size={20} />
-              Tài khoản
-            </button>
-            <div className="border-l border-gray-300 h-6 self-center mx-2" />
-            <button
-              onClick={() => handleTabChange("bc-ngay")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "bc-ngay"
-                  ? "text-blue-600 border-blue-600 bg-blue-50/50"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <Calendar size={20} />
-              BC theo ngày
-            </button>
-            <button
-              onClick={() => handleTabChange("bc-thang")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "bc-thang"
-                  ? "text-purple-600 border-purple-600 bg-purple-50/50"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <CalendarDays size={20} />
-              BC theo tháng
-            </button>
-            <button
-              onClick={() => handleTabChange("bc-tai-khoan")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "bc-tai-khoan"
-                  ? "text-indigo-600 border-indigo-600 bg-indigo-50/50"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <CreditCard size={20} />
-              BC tài khoản
-            </button>
-          </div>
+          {permissionsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            </div>
+          ) : filteredTabs.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              Bạn không có quyền truy cập các tab trong mục này
+            </div>
+          ) : (
+            <div className="flex">
+              {filteredTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === tab.id
+                        ? "text-blue-600 border-blue-600 bg-blue-50/50"
+                        : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Icon size={20} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Tab Content */}

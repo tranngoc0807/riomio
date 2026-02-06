@@ -4,6 +4,7 @@ import { Users, DollarSign, Calendar } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Toaster } from "react-hot-toast";
+import { useRolePermissions } from "@/context/RolePermissionsContext";
 
 import EmployeesTab from "./components/EmployeesTab";
 import AttendanceTab from "./components/AttendanceTab";
@@ -22,35 +23,37 @@ interface Employee {
 
 type TabType = "employees" | "attendance" | "salary";
 
+const TABS = [
+  { id: "employees" as TabType, label: "Danh sách nhân viên", icon: Users },
+  { id: "attendance" as TabType, label: "Chấm công", icon: Calendar },
+  { id: "salary" as TabType, label: "Bảng lương", icon: DollarSign },
+];
+
 export default function LuongBaoHiem() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { hasAccess, loading: permissionsLoading } = useRolePermissions();
 
-  // Lấy tab từ URL param, mặc định là "employees"
-  const tabFromUrl = searchParams.get("tab") as TabType | null;
-  const validTabs = useMemo<TabType[]>(() => ["employees", "attendance", "salary"], []);
-  const initialTab = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "employees";
-
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabType>("employees");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Set URL param on initial load if not present
-  useEffect(() => {
-    const currentTab = searchParams.get("tab");
-    if (!currentTab || !validTabs.includes(currentTab as TabType)) {
-      router.replace(`/luong-bao-hiem?tab=${initialTab}`, { scroll: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Filter tabs based on permissions
+  const filteredTabs = useMemo(() => {
+    return TABS.filter((tab) => hasAccess(`luong-bao-hiem/${tab.id}`));
+  }, [hasAccess]);
 
-  // Sync activeTab when URL changes (back/forward button)
+  // Sync activeTab when URL changes
   useEffect(() => {
     const tabParam = searchParams.get("tab") as TabType | null;
+    const validTabs = filteredTabs.map((t) => t.id);
     if (tabParam && validTabs.includes(tabParam)) {
       setActiveTab(tabParam);
+    } else if (filteredTabs.length > 0 && !validTabs.includes(activeTab)) {
+      setActiveTab(filteredTabs[0].id);
+      router.replace(`/luong-bao-hiem?tab=${filteredTabs[0].id}`, { scroll: false });
     }
-  }, [searchParams, validTabs]);
+  }, [searchParams, filteredTabs, activeTab, router]);
 
   // Update URL when tab changes
   const handleTabChange = (tab: TabType) => {
@@ -101,47 +104,37 @@ export default function LuongBaoHiem() {
       {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">
-          <div className="flex">
-            <button
-              onClick={() => handleTabChange("employees")}
-              className={`px-6 py-4 font-medium transition-colors ${
-                activeTab === "employees"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Users size={20} />
-                Danh sách nhân viên
-              </div>
-            </button>
-            <button
-              onClick={() => handleTabChange("attendance")}
-              className={`px-6 py-4 font-medium transition-colors ${
-                activeTab === "attendance"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Calendar size={20} />
-                Chấm công
-              </div>
-            </button>
-            <button
-              onClick={() => handleTabChange("salary")}
-              className={`px-6 py-4 font-medium transition-colors ${
-                activeTab === "salary"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <DollarSign size={20} />
-                Bảng lương
-              </div>
-            </button>
-          </div>
+          {permissionsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            </div>
+          ) : filteredTabs.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              Bạn không có quyền truy cập các tab trong mục này
+            </div>
+          ) : (
+            <div className="flex">
+              {filteredTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`px-6 py-4 font-medium transition-colors ${
+                      activeTab === tab.id
+                        ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon size={20} />
+                      {tab.label}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="p-6">

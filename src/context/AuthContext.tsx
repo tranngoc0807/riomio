@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [fetchingProfile, setFetchingProfile] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -179,6 +180,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event: string, newSession: Session | null) => {
         if (!mounted) return;
 
+        // IMPORTANT: Set fetchingProfile BEFORE session to prevent auto-logout race condition
+        if (newSession?.user) {
+          setFetchingProfile(true);
+        }
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -186,9 +192,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profileData = await fetchProfile(newSession.user.id);
           if (mounted) {
             setProfile(profileData);
+            setFetchingProfile(false);
           }
         } else {
           setProfile(null);
+          setFetchingProfile(false);
         }
 
         // Set initialized after handling session (only once)
@@ -215,14 +223,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!isSubscribed) return;
 
+        // IMPORTANT: Set fetchingProfile BEFORE session to prevent auto-logout race condition
+        if (currentSession?.user) {
+          setFetchingProfile(true);
+        }
+
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
           const profileData = await fetchProfile(currentSession.user.id);
-          if (isSubscribed) setProfile(profileData);
+          if (isSubscribed) {
+            setProfile(profileData);
+            setFetchingProfile(false);
+          }
         } else {
           setProfile(null);
+          setFetchingProfile(false);
         }
 
         hasInitialized = true;
@@ -248,7 +265,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auto-logout if session exists but profile is null (profile fetch failed completely)
   useEffect(() => {
-    if (initialized && session && !profile && !signingOut) {
+    // Don't auto-logout while profile is being fetched
+    if (initialized && session && !profile && !signingOut && !fetchingProfile) {
       console.warn("⚠️ AuthProvider: Session exists but no profile found. Forcing re-login...");
       // Clear everything and force re-login
       clearProfileCache();
@@ -261,7 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, session, profile, signingOut]);
+  }, [initialized, session, profile, signingOut, fetchingProfile]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -312,8 +330,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refetchProfile = async () => {
     if (user?.id) {
       console.log("📋 refetchProfile: Manually refetching profile...");
+      setFetchingProfile(true);
       const profileData = await fetchProfile(user.id, false); // Skip cache
       setProfile(profileData);
+      setFetchingProfile(false);
     }
   };
 

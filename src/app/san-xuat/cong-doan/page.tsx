@@ -10,9 +10,10 @@ import {
   Camera,
   ClipboardList,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
+import { useRolePermissions } from "@/context/RolePermissionsContext";
 
 // Import tab component from parent
 import ShippingUnitsTab from "../components/ShippingUnitsTab";
@@ -50,16 +51,24 @@ function PlaceholderTab({ title, icon: Icon }: { title: string; icon: React.Comp
 export default function CongDoanSanXuat() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { hasAccess, loading: permissionsLoading } = useRolePermissions();
 
   const [activeTab, setActiveTab] = useState<TabType>("don-vi-vc");
 
+  // Filter tabs based on permissions
+  const filteredTabs = useMemo(() => {
+    return TABS.filter((tab) => hasAccess(`san-xuat/cong-doan/${tab.id}`));
+  }, [hasAccess]);
+
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
-    const validTabs = TABS.map(t => t.id);
+    const validTabs = filteredTabs.map(t => t.id);
     if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
       setActiveTab(tabFromUrl as TabType);
+    } else if (filteredTabs.length > 0 && !validTabs.includes(activeTab)) {
+      setActiveTab(filteredTabs[0].id);
     }
-  }, [searchParams]);
+  }, [searchParams, filteredTabs, activeTab]);
 
   const handleTabChange = (tabId: TabType) => {
     setActiveTab(tabId);
@@ -84,25 +93,35 @@ export default function CongDoanSanXuat() {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="border-b border-gray-200 p-3">
-          <div className="flex flex-wrap gap-2">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                    activeTab === tab.id
-                      ? "text-white bg-blue-600 shadow-sm"
-                      : "text-gray-600 bg-gray-100 hover:bg-gray-200"
-                  }`}
-                >
-                  <Icon size={16} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          {permissionsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            </div>
+          ) : filteredTabs.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              Bạn không có quyền truy cập các tab trong mục này
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {filteredTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                      activeTab === tab.id
+                        ? "text-white bg-blue-600 shadow-sm"
+                        : "text-gray-600 bg-gray-100 hover:bg-gray-200"
+                    }`}
+                  >
+                    <Icon size={16} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="p-6">

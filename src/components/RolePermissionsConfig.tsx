@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   Shield,
-  Check,
-  X,
   Loader2,
   Save,
   ChevronDown,
@@ -16,7 +14,6 @@ import {
   FileBarChart,
   Users,
   Settings,
-  Building2,
   Boxes,
   Hammer,
   Image,
@@ -33,17 +30,48 @@ import {
   FileText,
   Clock,
   Banknote,
+  Warehouse,
+  Tag,
+  PackagePlus,
+  PackageMinus,
+  Archive,
+  FileSearch,
+  FileSpreadsheet,
+  ListChecks,
+  FileOutput,
+  PackageOpen,
+  Scissors,
+  ClipboardCheck,
+  List,
+  Truck,
+  CheckCircle,
+  Sparkles,
+  Camera,
+  PieChart,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { UserRole } from "@/context/AuthContext";
 import { clearPermissionsCache } from "@/context/RolePermissionsContext";
 
-// Menu structure definition
+// Menu structure definition with 3 levels
+interface TabItemDef {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+}
+
+interface SubItemDef {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  tabs?: TabItemDef[];
+}
+
 interface MenuItemDef {
   id: string;
   name: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
-  subItems?: { id: string; name: string; icon: React.ComponentType<{ size?: number; className?: string }> }[];
+  subItems?: SubItemDef[];
 }
 
 const MENU_STRUCTURE: MenuItemDef[] = [
@@ -52,14 +80,100 @@ const MENU_STRUCTURE: MenuItemDef[] = [
     name: "Sản xuất",
     icon: Factory,
     subItems: [
-      { id: "san-xuat/nguyen-phu-lieu", name: "Nguyên phụ liệu", icon: Boxes },
-      { id: "san-xuat/gia-cong", name: "Gia công", icon: Hammer },
-      { id: "san-xuat/hinh-in", name: "Hình In", icon: Image },
-      { id: "san-xuat/ke-hoach", name: "Kế hoạch sản xuất", icon: ClipboardList },
-      { id: "san-xuat/gia-thanh", name: "Giá thành", icon: Calculator },
-      { id: "san-xuat/cong-doan", name: "Công đoạn sản xuất", icon: Cog },
-      { id: "san-xuat/san-pham", name: "Sản phẩm", icon: PackageSearch },
-      { id: "san-xuat/chi-phi-khac", name: "Chi phí khác", icon: Receipt },
+      {
+        id: "san-xuat/nguyen-phu-lieu",
+        name: "Nguyên phụ liệu",
+        icon: Boxes,
+        tabs: [
+          { id: "san-xuat/nguyen-phu-lieu/ncc-npl", name: "NCC NPL", icon: Warehouse },
+          { id: "san-xuat/nguyen-phu-lieu/ma-npl", name: "Mã NPL", icon: Tag },
+          { id: "san-xuat/nguyen-phu-lieu/nhap-kho", name: "Nhập kho NPL", icon: PackagePlus },
+          { id: "san-xuat/nguyen-phu-lieu/xuat-kho", name: "Xuất kho NPL", icon: PackageMinus },
+          { id: "san-xuat/nguyen-phu-lieu/ton-kho", name: "Tồn kho NPL", icon: Archive },
+          { id: "san-xuat/nguyen-phu-lieu/cnpt-ncc", name: "CNPT NCC NPL", icon: Receipt },
+          { id: "san-xuat/nguyen-phu-lieu/theo-doi-cn", name: "Theo dõi CN NCC", icon: FileSearch },
+        ],
+      },
+      {
+        id: "san-xuat/gia-cong",
+        name: "Gia công",
+        icon: Hammer,
+        tabs: [
+          { id: "san-xuat/gia-cong/xuong-sx", name: "Xưởng SX", icon: Factory },
+          { id: "san-xuat/gia-cong/don-gia", name: "Đơn giá gia công", icon: Calculator },
+          { id: "san-xuat/gia-cong/bang-ke", name: "Bảng kê gia công", icon: ClipboardList },
+          { id: "san-xuat/gia-cong/cnpt-xuong", name: "CNPT xưởng", icon: Receipt },
+          { id: "san-xuat/gia-cong/theo-doi-cn", name: "Theo dõi CN xưởng", icon: FileSearch },
+        ],
+      },
+      {
+        id: "san-xuat/hinh-in",
+        name: "Hình In",
+        icon: Image,
+        tabs: [
+          { id: "san-xuat/hinh-in/danh-muc", name: "Danh mục HI", icon: List },
+          { id: "san-xuat/hinh-in/nhap-kho", name: "Nhập kho HI", icon: PackagePlus },
+          { id: "san-xuat/hinh-in/xuat-kho", name: "Xuất kho HI", icon: PackageMinus },
+          { id: "san-xuat/hinh-in/ton-kho", name: "Tồn kho HI", icon: Archive },
+        ],
+      },
+      {
+        id: "san-xuat/ke-hoach",
+        name: "Kế hoạch sản xuất",
+        icon: ClipboardList,
+        tabs: [
+          { id: "san-xuat/ke-hoach/bang-ke-lsx", name: "Bảng kê LSX", icon: FileSpreadsheet },
+          { id: "san-xuat/ke-hoach/lsx", name: "LSX", icon: ClipboardList },
+          { id: "san-xuat/ke-hoach/dinh-muc", name: "Định mức SX", icon: ListChecks },
+          { id: "san-xuat/ke-hoach/phieu-dinh-muc", name: "Phiếu định mức SX", icon: FileText },
+          { id: "san-xuat/ke-hoach/bang-ke-yc-xk", name: "Bảng kê YC xuất kho", icon: FileOutput },
+          { id: "san-xuat/ke-hoach/phieu-yc-xk", name: "Phiếu YC XK NPL", icon: PackageOpen },
+          { id: "san-xuat/ke-hoach/so-luong-cat", name: "Số lượng cắt", icon: Scissors },
+          { id: "san-xuat/ke-hoach/phieu-cat", name: "Phiếu báo SL cắt", icon: ClipboardCheck },
+        ],
+      },
+      {
+        id: "san-xuat/gia-thanh",
+        name: "Giá thành",
+        icon: Calculator,
+        tabs: [
+          { id: "san-xuat/gia-thanh/gia-thanh-gia-ban", name: "Giá thành & giá bán", icon: DollarSign },
+          { id: "san-xuat/gia-thanh/dieu-chinh-gia-von", name: "Điều chỉnh giá vốn", icon: TrendingUp },
+        ],
+      },
+      {
+        id: "san-xuat/cong-doan",
+        name: "Công đoạn sản xuất",
+        icon: Cog,
+        tabs: [
+          { id: "san-xuat/cong-doan/don-vi-vc", name: "Đơn vị vận chuyển", icon: Truck },
+          { id: "san-xuat/cong-doan/phieu-phat-trien-mau", name: "Phiếu phát triển mẫu", icon: FileText },
+          { id: "san-xuat/cong-doan/phieu-may-mau", name: "Phiếu may mẫu", icon: Scissors },
+          { id: "san-xuat/cong-doan/phieu-duyet-mau", name: "Phiếu duyệt mẫu", icon: CheckCircle },
+          { id: "san-xuat/cong-doan/phieu-hoan-thien-mau", name: "Hoàn thiện mẫu", icon: Sparkles },
+          { id: "san-xuat/cong-doan/phieu-hoan-thien-anh", name: "Hoàn thiện ảnh", icon: Camera },
+          { id: "san-xuat/cong-doan/phieu-tinh-trang-sx", name: "Tình trạng SX", icon: ClipboardList },
+        ],
+      },
+      {
+        id: "san-xuat/san-pham",
+        name: "Sản phẩm",
+        icon: PackageSearch,
+        tabs: [
+          { id: "san-xuat/san-pham/phat-trien", name: "Phát triển SP", icon: List },
+          { id: "san-xuat/san-pham/chi-tiet-ma-sp", name: "Chi tiết mã SP", icon: FileText },
+          { id: "san-xuat/san-pham/hinh-anh", name: "Hình ảnh SP", icon: Image },
+        ],
+      },
+      {
+        id: "san-xuat/chi-phi-khac",
+        name: "Chi phí khác",
+        icon: Receipt,
+        tabs: [
+          { id: "san-xuat/chi-phi-khac/bang-ke-cp", name: "Bảng kê CP khác", icon: ClipboardList },
+          { id: "san-xuat/chi-phi-khac/phan-bo-cp", name: "Phân bổ CP khác", icon: PieChart },
+        ],
+      },
     ],
   },
   {
@@ -160,11 +274,6 @@ const ROLE_COLORS: Record<UserRole, string> = {
   hinh_anh: "bg-cyan-500",
 };
 
-interface RolePermissionData {
-  role: string;
-  permissions: string[];
-}
-
 export default function RolePermissionsConfig() {
   const [selectedRole, setSelectedRole] = useState<UserRole>("tong_hop");
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -174,6 +283,7 @@ export default function RolePermissionsConfig() {
   const [expandedMenus, setExpandedMenus] = useState<string[]>(
     MENU_STRUCTURE.filter((m) => m.subItems).map((m) => m.id)
   );
+  const [expandedSubMenus, setExpandedSubMenus] = useState<string[]>([]);
 
   // Fetch permissions for selected role
   useEffect(() => {
@@ -219,7 +329,6 @@ export default function RolePermissionsConfig() {
       if (result.success) {
         toast.success(`Đã lưu phân quyền cho ${ROLE_LABELS[selectedRole]}`);
         setOriginalPermissions(permissions);
-        // Clear cache to force refetch on next page load
         clearPermissionsCache();
       } else {
         toast.error(result.error || "Không thể lưu phân quyền");
@@ -244,12 +353,36 @@ export default function RolePermissionsConfig() {
     );
   };
 
+  const toggleSubMenu = (subMenuId: string) => {
+    setExpandedSubMenus((prev) =>
+      prev.includes(subMenuId)
+        ? prev.filter((id) => id !== subMenuId)
+        : [...prev, subMenuId]
+    );
+  };
+
   const isPermissionEnabled = (menuId: string) => {
     return permissions.includes(menuId);
   };
 
-  const togglePermission = (menuId: string, hasSubItems: boolean) => {
-    // Admin always has all permissions, don't allow changes
+  // Get all descendant IDs for a menu item
+  const getAllDescendantIds = (menu: MenuItemDef | SubItemDef): string[] => {
+    const ids: string[] = [];
+    if ("subItems" in menu && menu.subItems) {
+      menu.subItems.forEach((sub) => {
+        ids.push(sub.id);
+        if ("tabs" in sub && sub.tabs) {
+          sub.tabs.forEach((tab) => ids.push(tab.id));
+        }
+      });
+    }
+    if ("tabs" in menu && menu.tabs) {
+      menu.tabs.forEach((tab) => ids.push(tab.id));
+    }
+    return ids;
+  };
+
+  const togglePermission = (menuId: string, item: MenuItemDef | SubItemDef | TabItemDef) => {
     if (selectedRole === "admin") {
       toast.error("Không thể thay đổi quyền của Admin");
       return;
@@ -260,13 +393,10 @@ export default function RolePermissionsConfig() {
         // Removing permission
         let newPerms = prev.filter((p) => p !== menuId);
 
-        // If it's a parent menu, also remove all sub-item permissions
-        if (hasSubItems) {
-          const menu = MENU_STRUCTURE.find((m) => m.id === menuId);
-          if (menu?.subItems) {
-            const subIds = menu.subItems.map((s) => s.id);
-            newPerms = newPerms.filter((p) => !subIds.includes(p));
-          }
+        // If it has descendants, also remove them
+        if ("subItems" in item || "tabs" in item) {
+          const descendantIds = getAllDescendantIds(item as MenuItemDef | SubItemDef);
+          newPerms = newPerms.filter((p) => !descendantIds.includes(p));
         }
 
         return newPerms;
@@ -274,25 +404,34 @@ export default function RolePermissionsConfig() {
         // Adding permission
         let newPerms = [...prev, menuId];
 
-        // If it's a parent menu, also add all sub-item permissions
-        if (hasSubItems) {
-          const menu = MENU_STRUCTURE.find((m) => m.id === menuId);
-          if (menu?.subItems) {
-            const subIds = menu.subItems.map((s) => s.id);
-            subIds.forEach((id) => {
-              if (!newPerms.includes(id)) {
-                newPerms.push(id);
-              }
-            });
-          }
+        // If it has descendants, also add them
+        if ("subItems" in item || "tabs" in item) {
+          const descendantIds = getAllDescendantIds(item as MenuItemDef | SubItemDef);
+          descendantIds.forEach((id) => {
+            if (!newPerms.includes(id)) {
+              newPerms.push(id);
+            }
+          });
         }
 
-        // If it's a sub-item, also add parent permission
-        const parentMenu = MENU_STRUCTURE.find((m) =>
-          m.subItems?.some((s) => s.id === menuId)
-        );
-        if (parentMenu && !newPerms.includes(parentMenu.id)) {
-          newPerms.push(parentMenu.id);
+        // Add parent permissions
+        // Find if this is a tab (3rd level)
+        for (const menu of MENU_STRUCTURE) {
+          if (menu.subItems) {
+            for (const sub of menu.subItems) {
+              if (sub.tabs?.some((t) => t.id === menuId)) {
+                // This is a tab, add sub and menu permissions
+                if (!newPerms.includes(sub.id)) newPerms.push(sub.id);
+                if (!newPerms.includes(menu.id)) newPerms.push(menu.id);
+                return newPerms;
+              }
+              if (sub.id === menuId) {
+                // This is a sub-item, add menu permission
+                if (!newPerms.includes(menu.id)) newPerms.push(menu.id);
+                return newPerms;
+              }
+            }
+          }
         }
 
         return newPerms;
@@ -302,11 +441,22 @@ export default function RolePermissionsConfig() {
 
   const hasChanges = JSON.stringify(permissions.sort()) !== JSON.stringify(originalPermissions.sort());
 
-  // Get count of enabled sub-items
+  // Get count of enabled items
   const getSubItemCount = (menu: MenuItemDef) => {
     if (!menu.subItems) return { enabled: 0, total: 0 };
-    const total = menu.subItems.length;
-    const enabled = menu.subItems.filter((s) => permissions.includes(s.id)).length;
+    let total = 0;
+    let enabled = 0;
+    menu.subItems.forEach((sub) => {
+      total++;
+      if (permissions.includes(sub.id)) enabled++;
+    });
+    return { enabled, total };
+  };
+
+  const getTabCount = (sub: SubItemDef) => {
+    if (!sub.tabs) return { enabled: 0, total: 0 };
+    const total = sub.tabs.length;
+    const enabled = sub.tabs.filter((t) => permissions.includes(t.id)).length;
     return { enabled, total };
   };
 
@@ -368,7 +518,7 @@ export default function RolePermissionsConfig() {
 
               return (
                 <div key={menu.id}>
-                  {/* Parent Menu Item */}
+                  {/* Level 1: Parent Menu Item */}
                   <div
                     className={`flex items-center gap-3 px-4 py-3 ${
                       isEnabled ? "bg-green-50/50" : "bg-white"
@@ -402,11 +552,9 @@ export default function RolePermissionsConfig() {
                     )}
 
                     <button
-                      onClick={() => togglePermission(menu.id, hasSubItems)}
+                      onClick={() => togglePermission(menu.id, menu)}
                       className={`w-14 h-8 rounded-full relative transition-colors duration-300 ${
-                        isEnabled
-                          ? "bg-green-500"
-                          : "bg-gray-300"
+                        isEnabled ? "bg-green-500" : "bg-gray-300"
                       }`}
                       disabled={selectedRole === "admin"}
                     >
@@ -418,48 +566,117 @@ export default function RolePermissionsConfig() {
                     </button>
                   </div>
 
-                  {/* Sub Items */}
+                  {/* Level 2: Sub Items */}
                   {hasSubItems && isExpanded && (
                     <div className="bg-gray-50 border-t border-gray-100">
                       {menu.subItems?.map((subItem) => {
                         const SubIcon = subItem.icon;
                         const isSubEnabled = isPermissionEnabled(subItem.id);
+                        const hasTabs = !!subItem.tabs && subItem.tabs.length > 0;
+                        const isSubExpanded = expandedSubMenus.includes(subItem.id);
+                        const tabCount = getTabCount(subItem);
 
                         return (
-                          <div
-                            key={subItem.id}
-                            className={`flex items-center gap-3 px-4 py-2.5 pl-14 ${
-                              isSubEnabled ? "bg-green-50/30" : ""
-                            }`}
-                          >
-                            <SubIcon
-                              size={16}
-                              className={isSubEnabled ? "text-blue-500" : "text-gray-400"}
-                            />
-
-                            <span
-                              className={`flex-1 text-sm ${
-                                isSubEnabled ? "text-gray-800" : "text-gray-500"
+                          <div key={subItem.id}>
+                            <div
+                              className={`flex items-center gap-3 px-4 py-2.5 pl-10 ${
+                                isSubEnabled ? "bg-green-50/30" : ""
                               }`}
                             >
-                              {subItem.name}
-                            </span>
+                              {hasTabs ? (
+                                <button
+                                  onClick={() => toggleSubMenu(subItem.id)}
+                                  className="p-1 hover:bg-gray-200 rounded"
+                                >
+                                  {isSubExpanded ? (
+                                    <ChevronDown size={16} className="text-gray-500" />
+                                  ) : (
+                                    <ChevronRight size={16} className="text-gray-500" />
+                                  )}
+                                </button>
+                              ) : (
+                                <div className="w-6" />
+                              )}
 
-                            <button
-                              onClick={() => togglePermission(subItem.id, false)}
-                              className={`w-12 h-7 rounded-full relative transition-colors duration-300 ${
-                                isSubEnabled
-                                  ? "bg-green-500"
-                                  : "bg-gray-300"
-                              }`}
-                              disabled={selectedRole === "admin"}
-                            >
-                              <span
-                                className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
-                                  isSubEnabled ? "translate-x-5" : ""
-                                }`}
+                              <SubIcon
+                                size={16}
+                                className={isSubEnabled ? "text-blue-500" : "text-gray-400"}
                               />
-                            </button>
+
+                              <span
+                                className={`flex-1 text-sm ${
+                                  isSubEnabled ? "text-gray-800" : "text-gray-500"
+                                }`}
+                              >
+                                {subItem.name}
+                              </span>
+
+                              {hasTabs && (
+                                <span className="text-xs text-gray-400">
+                                  {tabCount.enabled}/{tabCount.total}
+                                </span>
+                              )}
+
+                              <button
+                                onClick={() => togglePermission(subItem.id, subItem)}
+                                className={`w-12 h-7 rounded-full relative transition-colors duration-300 ${
+                                  isSubEnabled ? "bg-green-500" : "bg-gray-300"
+                                }`}
+                                disabled={selectedRole === "admin"}
+                              >
+                                <span
+                                  className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                                    isSubEnabled ? "translate-x-5" : ""
+                                  }`}
+                                />
+                              </button>
+                            </div>
+
+                            {/* Level 3: Tabs */}
+                            {hasTabs && isSubExpanded && (
+                              <div className="bg-gray-100/50 border-t border-gray-100">
+                                {subItem.tabs?.map((tab) => {
+                                  const TabIcon = tab.icon;
+                                  const isTabEnabled = isPermissionEnabled(tab.id);
+
+                                  return (
+                                    <div
+                                      key={tab.id}
+                                      className={`flex items-center gap-3 px-4 py-2 pl-20 ${
+                                        isTabEnabled ? "bg-green-50/20" : ""
+                                      }`}
+                                    >
+                                      <TabIcon
+                                        size={14}
+                                        className={isTabEnabled ? "text-blue-400" : "text-gray-400"}
+                                      />
+
+                                      <span
+                                        className={`flex-1 text-xs ${
+                                          isTabEnabled ? "text-gray-700" : "text-gray-500"
+                                        }`}
+                                      >
+                                        {tab.name}
+                                      </span>
+
+                                      <button
+                                        onClick={() => togglePermission(tab.id, tab)}
+                                        className={`w-10 h-6 rounded-full relative transition-colors duration-300 ${
+                                          isTabEnabled ? "bg-green-500" : "bg-gray-300"
+                                        }`}
+                                        disabled={selectedRole === "admin"}
+                                      >
+                                        <span
+                                          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                                            isTabEnabled ? "translate-x-4" : ""
+                                          }`}
+                                        />
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -504,9 +721,10 @@ export default function RolePermissionsConfig() {
           Hướng dẫn
         </h4>
         <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Bật/tắt quyền truy cập vào từng trang cho mỗi vai trò</li>
-          <li>• Khi bật menu cha, tất cả menu con sẽ được bật tự động</li>
-          <li>• Khi tắt menu cha, tất cả menu con sẽ bị tắt</li>
+          <li>• Bật/tắt quyền truy cập vào từng trang và tab cho mỗi vai trò</li>
+          <li>• Khi bật menu cha, tất cả menu con và tab sẽ được bật tự động</li>
+          <li>• Khi tắt menu cha, tất cả menu con và tab sẽ bị tắt</li>
+          <li>• Click vào mũi tên để mở rộng xem các tab chi tiết</li>
           <li>• Thay đổi sẽ được áp dụng khi người dùng đăng nhập lại hoặc tải lại trang</li>
         </ul>
       </div>

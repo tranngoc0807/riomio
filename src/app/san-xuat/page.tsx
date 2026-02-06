@@ -7,9 +7,10 @@ import {
   Settings,
   Truck,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
+import { useRolePermissions } from "@/context/RolePermissionsContext";
 
 // Import tab components
 import KeHoachSXTab from "./components/KeHoachSXTab";
@@ -31,17 +32,26 @@ const TABS = [
 export default function SanXuat() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { hasAccess, loading: permissionsLoading } = useRolePermissions();
 
   const [activeTab, setActiveTab] = useState<TabType>("production");
+
+  // Filter tabs based on permissions
+  const filteredTabs = useMemo(() => {
+    return TABS.filter((tab) => hasAccess(`san-xuat/${tab.id}`));
+  }, [hasAccess]);
 
   // Read tab from URL on mount
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
-    if (tabFromUrl && ["production", "materials", "workshops", "suppliers", "shipping"].includes(tabFromUrl)) {
+    const validTabs = filteredTabs.map((t) => t.id);
+    if (tabFromUrl && validTabs.includes(tabFromUrl as TabType)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabFromUrl as TabType);
+    } else if (filteredTabs.length > 0 && !validTabs.includes(activeTab)) {
+      setActiveTab(filteredTabs[0].id);
     }
-  }, [searchParams]);
+  }, [searchParams, filteredTabs, activeTab]);
 
   // Update URL when tab changes
   const handleTabChange = (tabId: TabType) => {
@@ -70,25 +80,35 @@ export default function SanXuat() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         {/* Tab Navigation */}
         <div className="border-b border-gray-200">
-          <div className="flex">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? "text-blue-600 border-blue-600 bg-blue-50/50"
-                      : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <Icon size={18} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          {permissionsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            </div>
+          ) : filteredTabs.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              Bạn không có quyền truy cập các tab trong mục này
+            </div>
+          ) : (
+            <div className="flex">
+              {filteredTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === tab.id
+                        ? "text-blue-600 border-blue-600 bg-blue-50/50"
+                        : "text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Icon size={18} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Tab Content */}

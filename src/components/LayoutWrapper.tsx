@@ -23,6 +23,7 @@ export default function LayoutWrapper({
     // Has session on auth page - redirect to home
     if (session && isAuthPage) {
       router.replace("/");
+      router.refresh(); // Force refresh to update auth state
       return;
     }
 
