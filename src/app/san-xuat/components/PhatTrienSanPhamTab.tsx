@@ -176,9 +176,9 @@ export default function PhatTrienSanPhamTab() {
     }
   };
 
-  const closeAddModal = () => { setShowAddModal(false); fetchProducts(); };
-  const closeViewModal = () => { setShowViewModal(false); setSelectedProduct(null); fetchProducts(); };
-  const closeEditModal = () => { setShowEditModal(false); setEditProduct(null); fetchProducts(); };
+  const closeAddModal = () => { setShowAddModal(false); };
+  const closeViewModal = () => { setShowViewModal(false); setSelectedProduct(null); };
+  const closeEditModal = () => { setShowEditModal(false); setEditProduct(null); };
 
   const fetchProductInfoByCode = async (code: string) => {
     if (!code || code.trim() === "") return;
@@ -472,23 +472,28 @@ export default function PhatTrienSanPhamTab() {
                 </div>
               )}
               <div className="space-y-4">
+                {/* Mã SP & Tên SP */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Mã SP *</label>
                     <input type="text" value={newProduct.code || ""} onChange={(e) => setNewProduct({ ...newProduct, code: e.target.value.toUpperCase() })} onBlur={(e) => fetchProductInfoByCode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="VD: RM001" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
-                    <select value={newProduct.size || ""} onChange={(e) => setNewProduct({ ...newProduct, size: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                      <option value="">-- Chọn size --</option>
-                      {sizeOptions.map((size) => (<option key={size} value={size}>{size}</option>))}
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tên SP *</label>
+                    <input type="text" value={newProduct.name || ""} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Nhập tên sản phẩm" />
                   </div>
                 </div>
+
+                {/* Size */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm *</label>
-                  <input type="text" value={newProduct.name || ""} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Nhập tên sản phẩm" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                  <select value={newProduct.size || ""} onChange={(e) => setNewProduct({ ...newProduct, size: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="">-- Chọn size --</option>
+                    {sizeOptions.map((size) => (<option key={size} value={size}>{size}</option>))}
+                  </select>
                 </div>
+
+                {/* Vải chính & Vải phối */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Vải chính</label>
@@ -499,10 +504,14 @@ export default function PhatTrienSanPhamTab() {
                     <input type="text" value={newProduct.accentFabric || ""} onChange={(e) => setNewProduct({ ...newProduct, accentFabric: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="VD: Thun" />
                   </div>
                 </div>
+
+                {/* Phụ liệu khác */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phụ liệu khác</label>
                   <input type="text" value={newProduct.otherMaterials || ""} onChange={(e) => setNewProduct({ ...newProduct, otherMaterials: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="VD: Khóa, nút, chỉ" />
                 </div>
+
+                {/* Lệnh SX & Xưởng SX */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Lệnh SX</label>
@@ -510,9 +519,65 @@ export default function PhatTrienSanPhamTab() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Xưởng SX</label>
-                    <input type="text" value={newProduct.workshop || ""} readOnly placeholder="Tự động điền theo mã SP" className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed" />
+                    <input type="text" value={newProduct.workshop || ""} onChange={(e) => setNewProduct({ ...newProduct, workshop: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Xưởng sản xuất" />
                   </div>
                 </div>
+
+                {/* Định mức */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Định mức</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải chính</label>
+                      <input type="text" value={newProduct.mainFabricQuota || ""} onChange={(e) => setNewProduct({ ...newProduct, mainFabricQuota: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải phối 1</label>
+                      <input type="text" value={newProduct.accentFabricQuota1 || ""} onChange={(e) => setNewProduct({ ...newProduct, accentFabricQuota1: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải phối 2</label>
+                      <input type="text" value={newProduct.accentFabricQuota2 || ""} onChange={(e) => setNewProduct({ ...newProduct, accentFabricQuota2: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ liệu 1</label>
+                      <input type="text" value={newProduct.materialsQuota1 || ""} onChange={(e) => setNewProduct({ ...newProduct, materialsQuota1: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ liệu 2</label>
+                      <input type="text" value={newProduct.materialsQuota2 || ""} onChange={(e) => setNewProduct({ ...newProduct, materialsQuota2: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ kiện</label>
+                      <input type="text" value={newProduct.accessoriesQuota || ""} onChange={(e) => setNewProduct({ ...newProduct, accessoriesQuota: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Khác</label>
+                      <input type="text" value={newProduct.otherQuota || ""} onChange={(e) => setNewProduct({ ...newProduct, otherQuota: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Số lượng */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Số lượng</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SL Kế hoạch</label>
+                      <input type="number" value={newProduct.plannedQuantity || ""} onChange={(e) => setNewProduct({ ...newProduct, plannedQuantity: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SL Cắt</label>
+                      <input type="number" value={newProduct.cutQuantity || ""} onChange={(e) => setNewProduct({ ...newProduct, cutQuantity: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SL Nhập kho</label>
+                      <input type="number" value={newProduct.warehouseQuantity || ""} onChange={(e) => setNewProduct({ ...newProduct, warehouseQuantity: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Công đoạn */}
                 <div className="border-t pt-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">Công đoạn</h4>
                   <div className="grid grid-cols-2 gap-4">
@@ -527,6 +592,15 @@ export default function PhatTrienSanPhamTab() {
                         {productionStageOptions.map((stage) => (<option key={stage} value={stage}>{stage}</option>))}
                       </select>
                     </div>
+                  </div>
+                </div>
+
+                {/* Hình ảnh */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Hình ảnh</h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Link hình ảnh</label>
+                    <input type="text" value={newProduct.image || ""} onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Nhập link hình ảnh" />
                   </div>
                 </div>
               </div>
@@ -558,6 +632,7 @@ export default function PhatTrienSanPhamTab() {
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
+                {/* Thông tin cơ bản */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">Thông tin cơ bản</h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -566,10 +641,37 @@ export default function PhatTrienSanPhamTab() {
                     <div className="col-span-2"><span className="text-gray-500">Tên SP:</span><span className="ml-2 font-medium">{selectedProduct.name || "-"}</span></div>
                     <div><span className="text-gray-500">Vải chính:</span><span className="ml-2 font-medium">{selectedProduct.mainFabric || "-"}</span></div>
                     <div><span className="text-gray-500">Vải phối:</span><span className="ml-2 font-medium">{selectedProduct.accentFabric || "-"}</span></div>
-                    <div><span className="text-gray-500">Xưởng SX:</span><span className="ml-2 font-medium">{selectedProduct.workshop || "-"}</span></div>
+                    <div className="col-span-2"><span className="text-gray-500">Phụ liệu khác:</span><span className="ml-2 font-medium">{selectedProduct.otherMaterials || "-"}</span></div>
                     <div><span className="text-gray-500">Lệnh SX:</span><span className="ml-2 font-medium">{selectedProduct.productionOrder || "-"}</span></div>
+                    <div><span className="text-gray-500">Xưởng SX:</span><span className="ml-2 font-medium">{selectedProduct.workshop || "-"}</span></div>
                   </div>
                 </div>
+
+                {/* Định mức */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Định mức</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-gray-500">ĐM Vải chính:</span><span className="ml-2 font-medium">{selectedProduct.mainFabricQuota || "-"}</span></div>
+                    <div><span className="text-gray-500">ĐM Vải phối 1:</span><span className="ml-2 font-medium">{selectedProduct.accentFabricQuota1 || "-"}</span></div>
+                    <div><span className="text-gray-500">ĐM Vải phối 2:</span><span className="ml-2 font-medium">{selectedProduct.accentFabricQuota2 || "-"}</span></div>
+                    <div><span className="text-gray-500">ĐM Phụ liệu 1:</span><span className="ml-2 font-medium">{selectedProduct.materialsQuota1 || "-"}</span></div>
+                    <div><span className="text-gray-500">ĐM Phụ liệu 2:</span><span className="ml-2 font-medium">{selectedProduct.materialsQuota2 || "-"}</span></div>
+                    <div><span className="text-gray-500">ĐM Phụ kiện:</span><span className="ml-2 font-medium">{selectedProduct.accessoriesQuota || "-"}</span></div>
+                    <div className="col-span-2"><span className="text-gray-500">ĐM Khác:</span><span className="ml-2 font-medium">{selectedProduct.otherQuota || "-"}</span></div>
+                  </div>
+                </div>
+
+                {/* Số lượng */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Số lượng</h4>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div><span className="text-gray-500">SL Kế hoạch:</span><span className="ml-2 font-medium">{selectedProduct.plannedQuantity || "-"}</span></div>
+                    <div><span className="text-gray-500">SL Cắt:</span><span className="ml-2 font-medium">{selectedProduct.cutQuantity || "-"}</span></div>
+                    <div><span className="text-gray-500">SL Nhập kho:</span><span className="ml-2 font-medium">{selectedProduct.warehouseQuantity || "-"}</span></div>
+                  </div>
+                </div>
+
+                {/* Công đoạn */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">Công đoạn</h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -581,6 +683,16 @@ export default function PhatTrienSanPhamTab() {
                     </div>
                   </div>
                 </div>
+
+                {/* Hình ảnh */}
+                {selectedProduct.image && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Hình ảnh</h4>
+                    <div className="text-sm">
+                      <a href={selectedProduct.image} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline break-all">{selectedProduct.image}</a>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
@@ -609,23 +721,28 @@ export default function PhatTrienSanPhamTab() {
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
+                {/* Mã SP & Tên SP */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Mã SP</label>
                     <input type="text" value={editProduct.code || ""} onChange={(e) => setEditProduct({ ...editProduct, code: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
-                    <select value={editProduct.size || ""} onChange={(e) => setEditProduct({ ...editProduct, size: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                      <option value="">-- Chọn size --</option>
-                      {sizeOptions.map((size) => (<option key={size} value={size}>{size}</option>))}
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tên SP</label>
+                    <input type="text" value={editProduct.name || ""} onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
                   </div>
                 </div>
+
+                {/* Size */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm</label>
-                  <input type="text" value={editProduct.name || ""} onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                  <select value={editProduct.size || ""} onChange={(e) => setEditProduct({ ...editProduct, size: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="">-- Chọn size --</option>
+                    {sizeOptions.map((size) => (<option key={size} value={size}>{size}</option>))}
+                  </select>
                 </div>
+
+                {/* Vải chính & Vải phối */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Vải chính</label>
@@ -636,17 +753,103 @@ export default function PhatTrienSanPhamTab() {
                     <input type="text" value={editProduct.accentFabric || ""} onChange={(e) => setEditProduct({ ...editProduct, accentFabric: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
                   </div>
                 </div>
+
+                {/* Phụ liệu khác */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phụ liệu khác</label>
+                  <input type="text" value={editProduct.otherMaterials || ""} onChange={(e) => setEditProduct({ ...editProduct, otherMaterials: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                </div>
+
+                {/* Lệnh SX & Xưởng SX */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Công đoạn phát triển</label>
-                    <input type="text" value={editProduct.developmentStage || ""} onChange={(e) => setEditProduct({ ...editProduct, developmentStage: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lệnh SX</label>
+                    <input type="text" value={editProduct.productionOrder || ""} onChange={(e) => setEditProduct({ ...editProduct, productionOrder: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Công đoạn sản xuất</label>
-                    <select value={editProduct.productionStage || ""} onChange={(e) => setEditProduct({ ...editProduct, productionStage: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                      <option value="">-- Chọn công đoạn --</option>
-                      {productionStageOptions.map((stage) => (<option key={stage} value={stage}>{stage}</option>))}
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Xưởng SX</label>
+                    <input type="text" value={editProduct.workshop || ""} onChange={(e) => setEditProduct({ ...editProduct, workshop: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                  </div>
+                </div>
+
+                {/* Định mức */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Định mức</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải chính</label>
+                      <input type="text" value={editProduct.mainFabricQuota || ""} onChange={(e) => setEditProduct({ ...editProduct, mainFabricQuota: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải phối 1</label>
+                      <input type="text" value={editProduct.accentFabricQuota1 || ""} onChange={(e) => setEditProduct({ ...editProduct, accentFabricQuota1: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Vải phối 2</label>
+                      <input type="text" value={editProduct.accentFabricQuota2 || ""} onChange={(e) => setEditProduct({ ...editProduct, accentFabricQuota2: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ liệu 1</label>
+                      <input type="text" value={editProduct.materialsQuota1 || ""} onChange={(e) => setEditProduct({ ...editProduct, materialsQuota1: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ liệu 2</label>
+                      <input type="text" value={editProduct.materialsQuota2 || ""} onChange={(e) => setEditProduct({ ...editProduct, materialsQuota2: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Phụ kiện</label>
+                      <input type="text" value={editProduct.accessoriesQuota || ""} onChange={(e) => setEditProduct({ ...editProduct, accessoriesQuota: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ĐM Khác</label>
+                      <input type="text" value={editProduct.otherQuota || ""} onChange={(e) => setEditProduct({ ...editProduct, otherQuota: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Số lượng */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Số lượng</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SL Kế hoạch</label>
+                      <input type="number" value={editProduct.plannedQuantity || ""} onChange={(e) => setEditProduct({ ...editProduct, plannedQuantity: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SL Cắt</label>
+                      <input type="number" value={editProduct.cutQuantity || ""} onChange={(e) => setEditProduct({ ...editProduct, cutQuantity: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SL Nhập kho</label>
+                      <input type="number" value={editProduct.warehouseQuantity || ""} onChange={(e) => setEditProduct({ ...editProduct, warehouseQuantity: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Công đoạn */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Công đoạn</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Công đoạn phát triển</label>
+                      <input type="text" value={editProduct.developmentStage || ""} onChange={(e) => setEditProduct({ ...editProduct, developmentStage: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Công đoạn sản xuất</label>
+                      <select value={editProduct.productionStage || ""} onChange={(e) => setEditProduct({ ...editProduct, productionStage: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="">-- Chọn công đoạn --</option>
+                        {productionStageOptions.map((stage) => (<option key={stage} value={stage}>{stage}</option>))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hình ảnh */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Hình ảnh</h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Link hình ảnh</label>
+                    <input type="text" value={editProduct.image || ""} onChange={(e) => setEditProduct({ ...editProduct, image: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
                   </div>
                 </div>
               </div>

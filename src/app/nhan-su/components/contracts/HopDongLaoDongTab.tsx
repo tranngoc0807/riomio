@@ -53,7 +53,7 @@ const getInitialContent = (employee?: Employee | null) => {
     <p>Điều kiện an toàn và vệ sinh lao động tại nơi làm việc theo quy định của pháp luật hiện hành.</p>
 
     <p style="margin-top: 16px;"><strong>ĐIỀU 3: TIỀN LƯƠNG, PHỤ CẤP VÀ CÁC KHOẢN BỔ SUNG KHÁC</strong></p>
-    <p><strong>Mức lương chính (Lương cơ bản đóng BHXH):</strong> ………… VNĐ/tháng</p>
+    <p><strong>Mức lương chính (Lương cơ bản đóng BHXH):</strong> ${employee?.luongCoBan ? employee.luongCoBan : "…………"} VNĐ/tháng</p>
     <p><strong>Các khoản phụ cấp:</strong> Theo quy định của Công ty</p>
     <p><strong>Chế độ nâng lương:</strong> Theo quy định của pháp luật và Quy chế tiền lương của Công ty</p>
     <p><strong>Thưởng:</strong> Do Công ty quyết định tùy theo hiệu quả công việc và tình hình kinh doanh của Công ty</p>

@@ -85,6 +85,7 @@ export interface Employee {
   address: string;
   contractType: string;
   bankAccount: string;
+  luongCoBan: string;
   phone: string; // Kept for backward compatibility
 }
 
@@ -94,7 +95,7 @@ export interface Employee {
  * Header ở dòng 5, đọc dữ liệu từ dòng 6, cột B đến N
  * B: Họ và tên, C: Vị trí, D: Bộ phận, E: Giới tính, F: Tình trạng lao động,
  * G: Ngày sinh, H: CCCD, I: Ngày cấp, J: Nơi Cấp, K: Quê Quán,
- * L: Địa chỉ hiện tại, M: Loại hợp đồng, N: Tài khoản
+ * L: Địa chỉ hiện tại, M: Loại hợp đồng, N: Mức lương cơ bản
  */
 export async function getEmployeesFromSheet(): Promise<Employee[]> {
   try {
@@ -128,7 +129,8 @@ export async function getEmployeesFromSheet(): Promise<Employee[]> {
         hometown: row[9] || "",
         address: row[10] || "",
         contractType: row[11] || "",
-        bankAccount: row[12] || "",
+        luongCoBan: row[12] || "",
+        bankAccount: "", // Not available in this sheet
         phone: "", // Phone not available in this sheet
       }))
       .filter((emp) => emp.name.trim() !== ""); // Lọc bỏ các dòng trống
