@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, X, Search, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
+import { Loader2, X, Search, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, ChevronDown, Image as ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Portal from "@/components/Portal";
+import ImagePickerModal from "@/components/ImagePickerModal";
 import toast from "react-hot-toast";
 
 interface DanhMucHinhIn {
@@ -140,6 +141,7 @@ export default function DanhMucHinhInTab() {
   const [itemToDelete, setItemToDelete] = useState<DanhMucHinhIn | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
 
   const [formData, setFormData] = useState({
     maHinhIn: "",
@@ -715,13 +717,28 @@ export default function DanhMucHinhInTab() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh (URL)</label>
-                    <input
-                      type="text"
-                      value={formData.hinhAnh}
-                      onChange={(e) => setFormData({ ...formData, hinhAnh: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Link hình ảnh..."
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={formData.hinhAnh}
+                        onChange={(e) => setFormData({ ...formData, hinhAnh: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Link hình ảnh..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowImagePicker(true)}
+                        className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                      >
+                        <ImageIcon size={16} />
+                        Chọn ảnh
+                      </button>
+                    </div>
+                    {formData.hinhAnh && (
+                      <div className="mt-2">
+                        <img src={formData.hinhAnh} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -843,13 +860,28 @@ export default function DanhMucHinhInTab() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh (URL)</label>
-                    <input
-                      type="text"
-                      value={formData.hinhAnh}
-                      onChange={(e) => setFormData({ ...formData, hinhAnh: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Link hình ảnh..."
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={formData.hinhAnh}
+                        onChange={(e) => setFormData({ ...formData, hinhAnh: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Link hình ảnh..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowImagePicker(true)}
+                        className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                      >
+                        <ImageIcon size={16} />
+                        Chọn ảnh
+                      </button>
+                    </div>
+                    {formData.hinhAnh && (
+                      <div className="mt-2">
+                        <img src={formData.hinhAnh} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -874,6 +906,16 @@ export default function DanhMucHinhInTab() {
           </div>
         </Portal>
       )}
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onSelect={(url) => {
+          setFormData({ ...formData, hinhAnh: url });
+        }}
+        currentImage={formData.hinhAnh}
+      />
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && itemToDelete && (

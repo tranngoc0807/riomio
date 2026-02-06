@@ -5250,7 +5250,7 @@ export interface TonKhoItem {
 /**
  * Đọc dữ liệu tồn kho từ Google Sheets "Tồn kho SP"
  * Cột A: STT, B: Mã SP, C: Tồn đầu, D: Nhập, E: Xuất, F: Tồn cuối
- * Dữ liệu bắt đầu từ dòng 8 (header ở dòng 5)
+ * Dữ liệu bắt đầu từ dòng 6 (header ở dòng 5)
  */
 export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
   try {
@@ -5261,7 +5261,7 @@ export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdTonKhoSanPham,
-      range: `'${sheetNameTonKhoSanPham}'!A8:F`, // Dữ liệu bắt đầu từ dòng 8
+      range: `'${sheetNameTonKhoSanPham}'!A6:F`, // Dữ liệu bắt đầu từ dòng 6
     });
 
     const rows = response.data.values;
@@ -5292,6 +5292,37 @@ export async function getTonKhoFromSheet(): Promise<TonKhoItem[]> {
     return tonKhoItems;
   } catch (error) {
     console.error("Error reading inventory from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật ô tháng/năm filter trong sheet Tồn kho SP
+ * C3 = tháng/năm (format: M/YYYY)
+ */
+export async function updateTonKhoSPDateCell(thangNam: string): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Convert thangNam (YYYY-MM) to sheet format (M/YYYY)
+    const [year, month] = thangNam.split("-");
+    const monthNum = parseInt(month, 10); // Remove leading zero
+    const sheetDate = `${monthNum}/${year}`;
+
+    console.log("Updating Tồn kho SP C3 with:", sheetDate);
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdTonKhoSanPham,
+      range: `'${sheetNameTonKhoSanPham}'!C3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[sheetDate]],
+      },
+    });
+
+    console.log("Successfully updated Tồn kho SP date cell");
+  } catch (error) {
+    console.error("Error updating Tồn kho SP date cell:", error);
     throw error;
   }
 }
@@ -10754,6 +10785,7 @@ export interface SoLuongCat {
   ngayCat: string;
   soLuongCat: number;
   slCatTruSlKH: number;
+  tiLeCacMau: string;
   nguyenNhan1: string;
   soLuongNhapKho: number;
   slNKTruSlCat: number;
@@ -10778,7 +10810,7 @@ export async function getSoLuongCatFromSheet(): Promise<SoLuongCat[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameSoLuongCat}'!A6:N`,
+      range: `'${sheetNameSoLuongCat}'!A6:O`,
     });
 
     const rows = response.data.values;
@@ -10787,6 +10819,8 @@ export async function getSoLuongCatFromSheet(): Promise<SoLuongCat[]> {
       return [];
     }
 
+    // Columns: A-Mã phiếu, B-Mã SP, C-LSX, D-Xưởng SX, E-Màu sắc, F-SL KH, G-Ngày cắt, H-SL cắt,
+    // I-SL cắt - SL KH, J-Tỉ lệ các màu, K-Nguyên nhân 1, L-SL NK, M-SL NK - SL cắt, N-Nguyên nhân 2, O-Ghi chú
     const data: SoLuongCat[] = rows
       .map((row, index) => ({
         id: index + 1,
@@ -10799,11 +10833,12 @@ export async function getSoLuongCatFromSheet(): Promise<SoLuongCat[]> {
         ngayCat: row[6] || "",
         soLuongCat: parseNumberVN(row[7]),
         slCatTruSlKH: parseNumberVN(row[8]),
-        nguyenNhan1: row[9] || "",
-        soLuongNhapKho: parseNumberVN(row[10]),
-        slNKTruSlCat: parseNumberVN(row[11]),
-        nguyenNhan2: row[12] || "",
-        ghiChu: row[13] || "",
+        tiLeCacMau: row[9] || "",
+        nguyenNhan1: row[10] || "",
+        soLuongNhapKho: parseNumberVN(row[11]),
+        slNKTruSlCat: parseNumberVN(row[12]),
+        nguyenNhan2: row[13] || "",
+        ghiChu: row[14] || "",
       }))
       .filter((item) => item.maPhieuCat.trim() !== "" || item.maSP.trim() !== "");
 
@@ -10843,7 +10878,7 @@ export async function addSoLuongCatToSheet(data: Omit<SoLuongCat, 'id'>): Promis
     // Write to the next row
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameSoLuongCat}'!A${nextRow}:N${nextRow}`,
+      range: `'${sheetNameSoLuongCat}'!A${nextRow}:O${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[
@@ -10856,6 +10891,7 @@ export async function addSoLuongCatToSheet(data: Omit<SoLuongCat, 'id'>): Promis
           data.ngayCat,
           data.soLuongCat,
           data.slCatTruSlKH,
+          data.tiLeCacMau || "",
           data.nguyenNhan1,
           data.soLuongNhapKho,
           data.slNKTruSlCat,
@@ -10883,7 +10919,7 @@ export async function updateSoLuongCatInSheet(id: number, data: Omit<SoLuongCat,
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameSoLuongCat}'!A${actualRow}:N${actualRow}`,
+      range: `'${sheetNameSoLuongCat}'!A${actualRow}:O${actualRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[
@@ -10896,6 +10932,7 @@ export async function updateSoLuongCatInSheet(id: number, data: Omit<SoLuongCat,
           data.ngayCat,
           data.soLuongCat,
           data.slCatTruSlKH,
+          data.tiLeCacMau || "",
           data.nguyenNhan1,
           data.soLuongNhapKho,
           data.slNKTruSlCat,
@@ -10921,13 +10958,13 @@ export async function deleteSoLuongCatFromSheet(id: number): Promise<boolean> {
     const sheets = await getGoogleSheetsClient();
     const actualRow = id + 5; // Data starts from row 6, id starts from 1
 
-    // Clear the row content
+    // Clear the row content (A to O = 15 columns including Ghi chú)
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameSoLuongCat}'!A${actualRow}:N${actualRow}`,
+      range: `'${sheetNameSoLuongCat}'!A${actualRow}:O${actualRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [["", "", "", "", "", "", "", "", "", "", "", "", "", ""]],
+        values: [["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]],
       },
     });
 
@@ -11192,6 +11229,7 @@ export interface DieuChinhGiaVon {
   id: number;
   maSP: string;
   dieuChinhGiaVon: number;
+  ghiChu: string;
 }
 
 /**
@@ -11211,7 +11249,7 @@ export async function getDieuChinhGiaVonFromSheet(): Promise<DieuChinhGiaVon[]> 
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameDieuChinhGiaVon}'!A6:B`,
+      range: `'${sheetNameDieuChinhGiaVon}'!A6:C`,
     });
 
     const rows = response.data.values;
@@ -11225,12 +11263,124 @@ export async function getDieuChinhGiaVonFromSheet(): Promise<DieuChinhGiaVon[]> 
         id: index + 1,
         maSP: row[0] || "",
         dieuChinhGiaVon: parseNumberVN(row[1]),
+        ghiChu: row[2] || "",
       }))
       .filter((item) => item.maSP.trim() !== "");
 
     return data;
   } catch (error) {
     console.error("Error reading Dieu Chinh Gia Von from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Thêm điều chỉnh giá vốn mới vào Google Sheets
+ */
+export async function addDieuChinhGiaVon(maSP: string, dieuChinhGiaVon: number, ghiChu: string = ""): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Đọc toàn bộ dữ liệu để tìm dòng cuối
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDieuChinhGiaVon}'!A6:C`,
+    });
+
+    const allRows = response.data.values || [];
+    const nextRow = allRows.length + 6; // Dữ liệu bắt đầu từ dòng 6
+
+    const values = [[maSP, dieuChinhGiaVon, ghiChu]];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDieuChinhGiaVon}'!A${nextRow}:C${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully added DieuChinhGiaVon for maSP: ${maSP} at row: ${nextRow}`);
+  } catch (error) {
+    console.error("Error adding DieuChinhGiaVon to Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật điều chỉnh giá vốn trong Google Sheets
+ */
+export async function updateDieuChinhGiaVon(id: number, maSP: string, dieuChinhGiaVon: number, ghiChu: string = ""): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // id là index + 1, nên row number = id + 5 (vì data bắt đầu từ row 6)
+    const rowNumber = id + 5;
+
+    const values = [[maSP, dieuChinhGiaVon, ghiChu]];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLSX,
+      range: `'${sheetNameDieuChinhGiaVon}'!A${rowNumber}:C${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values,
+      },
+    });
+
+    console.log(`Successfully updated DieuChinhGiaVon id: ${id} at row: ${rowNumber}`);
+  } catch (error) {
+    console.error("Error updating DieuChinhGiaVon in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa điều chỉnh giá vốn từ Google Sheets
+ */
+export async function deleteDieuChinhGiaVon(id: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Lấy sheetId
+    const sheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdLSX,
+    });
+
+    const targetSheet = sheetMetadata.data.sheets?.find(
+      (sheet) => sheet.properties?.title === sheetNameDieuChinhGiaVon
+    );
+
+    if (!targetSheet?.properties?.sheetId) {
+      throw new Error(`Sheet "${sheetNameDieuChinhGiaVon}" not found`);
+    }
+
+    const sheetId = targetSheet.properties.sheetId;
+    const rowNumber = id + 5; // id là index + 1, data bắt đầu từ row 6
+
+    // Xóa dòng
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdLSX,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: "ROWS",
+                startIndex: rowNumber - 1, // 0-indexed
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Successfully deleted DieuChinhGiaVon id: ${id} at row: ${rowNumber}`);
+  } catch (error) {
+    console.error("Error deleting DieuChinhGiaVon from Google Sheets:", error);
     throw error;
   }
 }

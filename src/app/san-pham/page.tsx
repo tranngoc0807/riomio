@@ -21,6 +21,7 @@ import {
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
+import ImagePickerModal from "@/components/ImagePickerModal";
 import toast, { Toaster } from "react-hot-toast";
 import QuanLyKhoTab from "./components/QuanLyKhoTab";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -250,6 +251,10 @@ export default function SanPhamPage() {
   // Delete confirmation state for PhatTrienSanPham
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
+
+  // Image picker state
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [imagePickerTarget, setImagePickerTarget] = useState<"newProduct" | "editProduct" | "newCatalog" | "editCatalog">("newProduct");
 
   // ======== DANH MỤC SẢN PHẨM STATE ========
   const [catalogProducts, setCatalogProducts] = useState<SanPhamCatalog[]>([]);
@@ -1846,15 +1851,33 @@ export default function SanPhamPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Hình ảnh
                   </label>
-                  <input
-                    type="text"
-                    value={newProduct.image || ""}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, image: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    placeholder="Nhập URL hình ảnh"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newProduct.image || ""}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, image: e.target.value })
+                      }
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="Nhập URL hình ảnh"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePickerTarget("newProduct");
+                        setShowImagePicker(true);
+                      }}
+                      className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                    >
+                      <ImageIcon size={16} />
+                      Chọn ảnh
+                    </button>
+                  </div>
+                  {newProduct.image && (
+                    <div className="mt-2">
+                      <img src={newProduct.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2340,18 +2363,36 @@ export default function SanPhamPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Link hình ảnh
                       </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.image || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            image: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder="https://..."
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newCatalogProduct.image || ""}
+                          onChange={(e) =>
+                            setNewCatalogProduct({
+                              ...newCatalogProduct,
+                              image: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          placeholder="https://..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImagePickerTarget("newCatalog");
+                            setShowImagePicker(true);
+                          }}
+                          className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                        >
+                          <ImageIcon size={16} />
+                          Chọn ảnh
+                        </button>
+                      </div>
+                      {newCatalogProduct.image && (
+                        <div className="mt-2">
+                          <img src={newCatalogProduct.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3064,17 +3105,35 @@ export default function SanPhamPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Link hình ảnh
                       </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.image}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            image: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={editCatalogProduct.image}
+                          onChange={(e) =>
+                            setEditCatalogProduct({
+                              ...editCatalogProduct,
+                              image: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImagePickerTarget("editCatalog");
+                            setShowImagePicker(true);
+                          }}
+                          className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                        >
+                          <ImageIcon size={16} />
+                          Chọn ảnh
+                        </button>
+                      </div>
+                      {editCatalogProduct.image && (
+                        <div className="mt-2">
+                          <img src={editCatalogProduct.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3509,6 +3568,32 @@ export default function SanPhamPage() {
         message="Bạn có chắc muốn xóa sản phẩm này?"
         confirmText="Xóa"
         type="danger"
+      />
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onSelect={(url) => {
+          if (imagePickerTarget === "newProduct") {
+            setNewProduct({ ...newProduct, image: url });
+          } else if (imagePickerTarget === "editProduct" && editProduct) {
+            setEditProduct({ ...editProduct, image: url });
+          } else if (imagePickerTarget === "newCatalog") {
+            setNewCatalogProduct({ ...newCatalogProduct, image: url });
+          } else if (imagePickerTarget === "editCatalog") {
+            setEditCatalogProduct({ ...editCatalogProduct, image: url });
+          }
+        }}
+        currentImage={
+          imagePickerTarget === "newProduct"
+            ? newProduct.image
+            : imagePickerTarget === "editProduct"
+            ? editProduct?.image
+            : imagePickerTarget === "newCatalog"
+            ? newCatalogProduct.image
+            : editCatalogProduct.image
+        }
       />
     </div>
   );

@@ -7,9 +7,11 @@ import {
   X,
   Loader2,
   Search,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
+import ImagePickerModal from "@/components/ImagePickerModal";
 import toast from "react-hot-toast";
 import type { Material, Supplier } from "@/lib/googleSheets";
 
@@ -57,6 +59,10 @@ export default function MaterialsTab() {
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [newItem, setNewItem] = useState<Omit<Material, "id">>(INITIAL_MATERIAL);
   const [editItem, setEditItem] = useState<Material>({ id: 0, ...INITIAL_MATERIAL });
+
+  // Image picker states
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [imagePickerTarget, setImagePickerTarget] = useState<"add" | "edit">("add");
 
   // Filtered data
   const filteredList = materials.filter(
@@ -453,13 +459,31 @@ export default function MaterialsTab() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Link ảnh</label>
-                  <input
-                    type="text"
-                    value={newItem.image}
-                    onChange={(e) => setNewItem({ ...newItem, image: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://..."
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newItem.image}
+                      onChange={(e) => setNewItem({ ...newItem, image: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePickerTarget("add");
+                        setShowImagePicker(true);
+                      }}
+                      className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                    >
+                      <ImageIcon size={16} />
+                      Chọn ảnh
+                    </button>
+                  </div>
+                  {newItem.image && (
+                    <div className="mt-2">
+                      <img src={newItem.image} alt="Preview" className="h-24 w-24 object-cover rounded-lg border" />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
@@ -721,13 +745,31 @@ export default function MaterialsTab() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Link ảnh</label>
-                  <input
-                    type="text"
-                    value={editItem.image}
-                    onChange={(e) => setEditItem({ ...editItem, image: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://..."
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editItem.image}
+                      onChange={(e) => setEditItem({ ...editItem, image: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePickerTarget("edit");
+                        setShowImagePicker(true);
+                      }}
+                      className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                    >
+                      <ImageIcon size={16} />
+                      Chọn ảnh
+                    </button>
+                  </div>
+                  {editItem.image && (
+                    <div className="mt-2">
+                      <img src={editItem.image} alt="Preview" className="h-24 w-24 object-cover rounded-lg border" />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
@@ -761,6 +803,20 @@ export default function MaterialsTab() {
           </div>
         </Portal>
       )}
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onSelect={(url) => {
+          if (imagePickerTarget === "add") {
+            setNewItem({ ...newItem, image: url });
+          } else {
+            setEditItem({ ...editItem, image: url });
+          }
+        }}
+        currentImage={imagePickerTarget === "add" ? newItem.image : editItem.image}
+      />
 
       {/* Delete Modal */}
       {showDeleteModal && (

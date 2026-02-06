@@ -1,13 +1,20 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, Calculator, Filter } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Calculator, Filter, Plus, Pencil, Trash2, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
 interface DieuChinhGiaVon {
   id: number;
   maSP: string;
   dieuChinhGiaVon: number;
+  ghiChu: string;
+}
+
+interface MaSPOption {
+  id: number;
+  maSP: string;
+  tenSP: string;
 }
 
 const ITEMS_PER_PAGE = 50;
@@ -18,6 +25,31 @@ export default function DieuChinhGiaVonTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showOnlyWithData, setShowOnlyWithData] = useState(false);
+
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<DieuChinhGiaVon | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form states
+  const [formMaSP, setFormMaSP] = useState("");
+  const [formGiaVon, setFormGiaVon] = useState("");
+  const [formGhiChu, setFormGhiChu] = useState("");
+
+  // MaSP dropdown states
+  const [maSPList, setMaSPList] = useState<MaSPOption[]>([]);
+  const [maSPSearchTerm, setMaSPSearchTerm] = useState("");
+  const [showMaSPDropdown, setShowMaSPDropdown] = useState(false);
+  const maSPDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filter maSPList based on search
+  const filteredMaSPOptions = maSPList.filter(
+    (item) =>
+      item.maSP.toLowerCase().includes(maSPSearchTerm.toLowerCase()) ||
+      item.tenSP?.toLowerCase().includes(maSPSearchTerm.toLowerCase())
+  );
 
   // Filtered data
   const filteredList = data.filter((item) => {
@@ -46,6 +78,18 @@ export default function DieuChinhGiaVonTab() {
   // Fetch data on mount
   useEffect(() => {
     fetchData();
+    fetchMaSPList();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (maSPDropdownRef.current && !maSPDropdownRef.current.contains(event.target as Node)) {
+        setShowMaSPDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const fetchData = async () => {
@@ -63,6 +107,142 @@ export default function DieuChinhGiaVonTab() {
       toast.error("Lỗi khi tải dữ liệu điều chỉnh giá vốn");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchMaSPList = async () => {
+    try {
+      const response = await fetch("/api/ma-sp");
+      const result = await response.json();
+      if (result.success) {
+        setMaSPList(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching ma sp list:", error);
+    }
+  };
+
+  const handleOpenAddModal = () => {
+    setFormMaSP("");
+    setFormGiaVon("");
+    setFormGhiChu("");
+    setMaSPSearchTerm("");
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (item: DieuChinhGiaVon) => {
+    setSelectedItem(item);
+    setFormMaSP(item.maSP);
+    setFormGiaVon(item.dieuChinhGiaVon.toString());
+    setFormGhiChu(item.ghiChu || "");
+    setShowEditModal(true);
+  };
+
+  const handleOpenDeleteModal = (item: DieuChinhGiaVon) => {
+    setSelectedItem(item);
+    setShowDeleteModal(true);
+  };
+
+  const handleSelectMaSP = (maSP: string) => {
+    setFormMaSP(maSP);
+    setMaSPSearchTerm("");
+    setShowMaSPDropdown(false);
+  };
+
+  const handleAdd = async () => {
+    if (!formMaSP) {
+      toast.error("Vui lòng chọn mã SP");
+      return;
+    }
+
+    const giaVon = parseFloat(formGiaVon) || 0;
+
+    try {
+      setIsSubmitting(true);
+      const response = await fetch("/api/dieu-chinh-gia-von/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          maSP: formMaSP,
+          dieuChinhGiaVon: giaVon,
+          ghiChu: formGhiChu,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Thêm điều chỉnh giá vốn thành công");
+        setShowAddModal(false);
+        fetchData();
+      } else {
+        toast.error(result.error || "Không thể thêm điều chỉnh giá vốn");
+      }
+    } catch (error) {
+      console.error("Error adding:", error);
+      toast.error("Lỗi khi thêm điều chỉnh giá vốn");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!selectedItem) return;
+
+    const giaVon = parseFloat(formGiaVon) || 0;
+
+    try {
+      setIsSubmitting(true);
+      const response = await fetch("/api/dieu-chinh-gia-von/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedItem.id,
+          maSP: formMaSP,
+          dieuChinhGiaVon: giaVon,
+          ghiChu: formGhiChu,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Cập nhật điều chỉnh giá vốn thành công");
+        setShowEditModal(false);
+        setSelectedItem(null);
+        fetchData();
+      } else {
+        toast.error(result.error || "Không thể cập nhật điều chỉnh giá vốn");
+      }
+    } catch (error) {
+      console.error("Error updating:", error);
+      toast.error("Lỗi khi cập nhật điều chỉnh giá vốn");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+
+    try {
+      setIsSubmitting(true);
+      const response = await fetch(`/api/dieu-chinh-gia-von/delete?id=${selectedItem.id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Xóa điều chỉnh giá vốn thành công");
+        setShowDeleteModal(false);
+        setSelectedItem(null);
+        fetchData();
+      } else {
+        toast.error(result.error || "Không thể xóa điều chỉnh giá vốn");
+      }
+    } catch (error) {
+      console.error("Error deleting:", error);
+      toast.error("Lỗi khi xóa điều chỉnh giá vốn");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -84,6 +264,13 @@ export default function DieuChinhGiaVonTab() {
           Điều chỉnh giá vốn ({filteredList.length})
         </h3>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm transition-colors"
+          >
+            <Plus size={18} />
+            Thêm mới
+          </button>
           <button
             onClick={() => setShowOnlyWithData(!showOnlyWithData)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
@@ -132,6 +319,8 @@ export default function DieuChinhGiaVonTab() {
               <th className="px-4 py-3 text-left font-medium text-gray-600 w-16">STT</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600">Mã SP</th>
               <th className="px-4 py-3 text-right font-medium text-gray-600 w-40">Điều chỉnh giá vốn</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Ghi chú</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600 w-28">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -144,6 +333,27 @@ export default function DieuChinhGiaVonTab() {
                 }`}>
                   {item.dieuChinhGiaVon !== 0 ? item.dieuChinhGiaVon.toLocaleString("vi-VN") : "-"}
                 </td>
+                <td className="px-4 py-2.5 text-gray-600 max-w-xs truncate" title={item.ghiChu}>
+                  {item.ghiChu || "-"}
+                </td>
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => handleOpenEditModal(item)}
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Sửa"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleOpenDeleteModal(item)}
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Xóa"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -155,6 +365,7 @@ export default function DieuChinhGiaVonTab() {
               }`}>
                 {totalDieuChinh.toLocaleString("vi-VN")}
               </td>
+              <td colSpan={2}></td>
             </tr>
           </tfoot>
         </table>
@@ -216,6 +427,259 @@ export default function DieuChinhGiaVonTab() {
           </div>
         )}
       </div>
+
+      {/* Modal Thêm mới */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Thêm điều chỉnh giá vốn</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Mã SP dropdown with search */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mã sản phẩm <span className="text-red-500">*</span>
+                </label>
+                <div className="relative" ref={maSPDropdownRef}>
+                  <input
+                    type="text"
+                    value={formMaSP || maSPSearchTerm}
+                    onChange={(e) => {
+                      setMaSPSearchTerm(e.target.value);
+                      setFormMaSP("");
+                      setShowMaSPDropdown(true);
+                    }}
+                    onFocus={() => setShowMaSPDropdown(true)}
+                    placeholder="Tìm và chọn mã SP..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  />
+                  {showMaSPDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredMaSPOptions.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">
+                          Không tìm thấy
+                        </div>
+                      ) : (
+                        filteredMaSPOptions.slice(0, 50).map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleSelectMaSP(item.maSP)}
+                            className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-b border-gray-100 last:border-0"
+                          >
+                            <div className="font-medium text-blue-600">{item.maSP}</div>
+                            {item.tenSP && (
+                              <div className="text-xs text-gray-500 truncate">{item.tenSP}</div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Giá vốn */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Điều chỉnh giá vốn
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formGiaVon}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d-]/g, "");
+                    setFormGiaVon(value);
+                  }}
+                  placeholder="Nhập số tiền điều chỉnh..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Nhập số âm để giảm giá vốn</p>
+              </div>
+
+              {/* Ghi chú */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ghi chú
+                </label>
+                <input
+                  type="text"
+                  value={formGhiChu}
+                  onChange={(e) => setFormGhiChu(e.target.value)}
+                  placeholder="Nhập ghi chú..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowAddModal(false)}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAdd}
+                disabled={isSubmitting || !formMaSP}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                Thêm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sửa */}
+      {showEditModal && selectedItem && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Sửa điều chỉnh giá vốn</h3>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedItem(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Mã SP - readonly */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mã sản phẩm
+                </label>
+                <input
+                  type="text"
+                  value={formMaSP}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                />
+              </div>
+
+              {/* Giá vốn */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Điều chỉnh giá vốn
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formGiaVon}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d-]/g, "");
+                    setFormGiaVon(value);
+                  }}
+                  placeholder="Nhập số tiền điều chỉnh..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Nhập số âm để giảm giá vốn</p>
+              </div>
+
+              {/* Ghi chú */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ghi chú
+                </label>
+                <input
+                  type="text"
+                  value={formGhiChu}
+                  onChange={(e) => setFormGhiChu(e.target.value)}
+                  placeholder="Nhập ghi chú..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedItem(null);
+                }}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleUpdate}
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Xóa */}
+      {showDeleteModal && selectedItem && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-red-600">Xác nhận xóa</h3>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSelectedItem(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <p className="text-gray-700">
+                Bạn có chắc chắn muốn xóa điều chỉnh giá vốn cho mã SP{" "}
+                <span className="font-semibold text-blue-600">{selectedItem.maSP}</span>?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Hành động này không thể hoàn tác.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSelectedItem(null);
+                }}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

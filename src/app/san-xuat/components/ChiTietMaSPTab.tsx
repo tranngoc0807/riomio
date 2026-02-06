@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, Package, ChevronDown, Pencil, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Loader2, Package, ChevronDown, Pencil, X, Image as ImageIcon, Search } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import ImagePickerModal from "@/components/ImagePickerModal";
 
 interface ChiTietMaSP {
   maSP: string;
@@ -58,6 +59,30 @@ export default function ChiTietMaSPTab() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<Partial<ChiTietMaSP>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
+
+  // Search dropdown states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filter maSPList based on search term
+  const filteredMaSPList = maSPList.filter(
+    (item) =>
+      item.maSP.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.tenSP?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchMaSPList();
@@ -429,24 +454,71 @@ export default function ChiTietMaSPTab() {
           Chi tiết mã sản phẩm
         </h3>
 
-        <div className="relative">
-          <select
-            value={selectedMaSP}
-            onChange={(e) => handleMaSPChange(e.target.value)}
-            disabled={isLoading}
-            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2.5 pr-10 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed min-w-[320px]"
+        <div className="relative min-w-[320px]" ref={dropdownRef}>
+          <div
+            onClick={() => !isLoading && setIsDropdownOpen(!isDropdownOpen)}
+            className={`bg-white border border-gray-300 rounded-lg px-4 py-2.5 pr-10 text-gray-900 font-medium cursor-pointer flex items-center justify-between ${
+              isLoading ? "bg-gray-100 cursor-not-allowed" : "hover:border-gray-400"
+            } ${isDropdownOpen ? "ring-2 ring-blue-500 border-blue-500" : ""}`}
           >
-            <option value="">-- Chọn mã sản phẩm --</option>
-            {maSPList.map((item) => (
-              <option key={item.id} value={item.maSP}>
-                {item.maSP}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-            size={20}
-          />
+            <span className={selectedMaSP ? "" : "text-gray-500"}>
+              {selectedMaSP || "-- Chọn mã sản phẩm --"}
+            </span>
+            <ChevronDown
+              className={`absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-transform ${
+                isDropdownOpen ? "rotate-180" : ""
+              }`}
+              size={20}
+            />
+          </div>
+
+          {isDropdownOpen && (
+            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden">
+              {/* Search input */}
+              <div className="p-2 border-b border-gray-200">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Tìm kiếm mã sản phẩm..."
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              </div>
+
+              {/* Options list */}
+              <div className="max-h-60 overflow-y-auto">
+                {filteredMaSPList.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                    Không tìm thấy kết quả
+                  </div>
+                ) : (
+                  filteredMaSPList.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        handleMaSPChange(item.maSP);
+                        setIsDropdownOpen(false);
+                        setSearchTerm("");
+                      }}
+                      className={`px-4 py-2.5 cursor-pointer hover:bg-blue-50 flex flex-col ${
+                        selectedMaSP === item.maSP ? "bg-blue-100" : ""
+                      }`}
+                    >
+                      <span className="font-medium text-gray-900">{item.maSP}</span>
+                      {item.tenSP && (
+                        <span className="text-xs text-gray-500 truncate">{item.tenSP}</span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -551,15 +623,44 @@ export default function ChiTietMaSPTab() {
                     <label className="text-sm text-gray-600">
                       {field.label}
                     </label>
-                    <input
-                      type="text"
-                      value={formData[field.key] || ""}
-                      onChange={(e) =>
-                        handleFormChange(field.key, e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder={`Nhập ${field.label.toLowerCase()}`}
-                    />
+                    {field.key === "hinhAnh" ? (
+                      <>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={formData[field.key] || ""}
+                            onChange={(e) =>
+                              handleFormChange(field.key, e.target.value)
+                            }
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="Nhập link hình ảnh"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowImagePicker(true)}
+                            className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                          >
+                            <ImageIcon size={16} />
+                            Chọn ảnh
+                          </button>
+                        </div>
+                        {formData.hinhAnh && (
+                          <div className="mt-2">
+                            <img src={formData.hinhAnh} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formData[field.key] || ""}
+                        onChange={(e) =>
+                          handleFormChange(field.key, e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder={`Nhập ${field.label.toLowerCase()}`}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -584,6 +685,16 @@ export default function ChiTietMaSPTab() {
           </div>
         </div>
       )}
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onSelect={(url) => {
+          handleFormChange("hinhAnh", url);
+        }}
+        currentImage={formData.hinhAnh}
+      />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 interface SelectedNPL {
   id: string;
   maNPL: string;
+  ncc: string;
   dvt: string;
   soLuong: number;
   donGiaSauThue: number;
@@ -94,7 +95,6 @@ export default function NhapKhoNPLTab() {
   );
   const [formNguoiNhap, setFormNguoiNhap] = useState("");
   const [formNoiDung, setFormNoiDung] = useState("");
-  const [formNCC, setFormNCC] = useState("");
   const [selectedNPLs, setSelectedNPLs] = useState<SelectedNPL[]>([]);
 
   // Return form states
@@ -104,7 +104,6 @@ export default function NhapKhoNPLTab() {
   );
   const [returnFormNguoiNhap, setReturnFormNguoiNhap] = useState("");
   const [returnFormNoiDung, setReturnFormNoiDung] = useState("");
-  const [returnFormNCC, setReturnFormNCC] = useState("");
   const [returnSelectedNPLs, setReturnSelectedNPLs] = useState<SelectedNPL[]>(
     [],
   );
@@ -290,7 +289,6 @@ export default function NhapKhoNPLTab() {
       profile?.full_name || profile?.email || getCachedProfileName() || "",
     );
     setFormNoiDung("");
-    setFormNCC("");
     setSelectedNPLs([]);
     setShowAddModal(true);
   };
@@ -303,7 +301,6 @@ export default function NhapKhoNPLTab() {
       profile?.full_name || profile?.email || getCachedProfileName() || "",
     );
     setReturnFormNoiDung("Trả lại NPL");
-    setReturnFormNCC(viewGroupedPhieu?.ncc || "");
     setReturnSelectedNPLs([]);
     setShowReturnModal(true);
   };
@@ -314,6 +311,7 @@ export default function NhapKhoNPLTab() {
     const newNPL: SelectedNPL = {
       id: `${material.code}-${Date.now()}`,
       maNPL: material.name,
+      ncc: material.supplier || "",
       dvt: material.unit || "",
       soLuong: 1,
       donGiaSauThue: donGia,
@@ -324,10 +322,6 @@ export default function NhapKhoNPLTab() {
     setSelectedNPLs([...selectedNPLs, newNPL]);
     setNplSearchTerm("");
     setShowNPLDropdown(false);
-
-    if (!formNCC && material.supplier) {
-      setFormNCC(material.supplier);
-    }
   };
 
   const handleAddReturnNPLToList = (material: any) => {
@@ -336,6 +330,7 @@ export default function NhapKhoNPLTab() {
     const newNPL: SelectedNPL = {
       id: `${material.code}-${Date.now()}`,
       maNPL: material.name,
+      ncc: material.supplier || "",
       dvt: material.unit || "",
       soLuong: 1,
       donGiaSauThue: donGia,
@@ -425,7 +420,7 @@ export default function NhapKhoNPLTab() {
           nguoiNhap: formNguoiNhap,
           noiDung: formNoiDung,
           maNPL: npl.maNPL,
-          ncc: formNCC,
+          ncc: npl.ncc,
           dvt: npl.dvt,
           soLuong: npl.soLuong,
           donGiaSauThue: npl.donGiaSauThue,
@@ -480,7 +475,7 @@ export default function NhapKhoNPLTab() {
           nguoiNhap: returnFormNguoiNhap,
           noiDung: returnFormNoiDung,
           maNPL: npl.maNPL,
-          ncc: returnFormNCC,
+          ncc: npl.ncc,
           dvt: npl.dvt,
           soLuong: -Math.abs(npl.soLuong), // Số lượng âm để trừ kho
           donGiaSauThue: npl.donGiaSauThue,
@@ -1166,22 +1161,6 @@ export default function NhapKhoNPLTab() {
                 </div>
               </div>
 
-              {/* NCC row */}
-              <div className="grid grid-cols-1 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nhà cung cấp (NCC)
-                  </label>
-                  <input
-                    type="text"
-                    value={formNCC}
-                    onChange={(e) => setFormNCC(e.target.value)}
-                    placeholder="Nhập tên nhà cung cấp..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
-                </div>
-              </div>
-
               {/* Add NPL Section */}
               <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 mb-4">
                 <div className="relative" ref={nplDropdownRef}>
@@ -1262,6 +1241,9 @@ export default function NhapKhoNPLTab() {
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                             Mã NPL
                           </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                            NCC
+                          </th>
                           <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-20">
                             ĐVT
                           </th>
@@ -1288,6 +1270,17 @@ export default function NhapKhoNPLTab() {
                             </td>
                             <td className="px-3 py-2 text-sm font-medium text-blue-600">
                               {npl.maNPL}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={npl.ncc}
+                                onChange={(e) =>
+                                  handleUpdateNPL(npl.id, "ncc", e.target.value)
+                                }
+                                placeholder="NCC"
+                                className="w-28 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
                             </td>
                             <td className="px-3 py-2">
                               <input
@@ -1369,7 +1362,7 @@ export default function NhapKhoNPLTab() {
                       <tfoot className="bg-gray-100">
                         <tr>
                           <td
-                            colSpan={5}
+                            colSpan={6}
                             className="px-3 py-2 text-sm font-medium text-right"
                           >
                             Tổng thành tiền:
@@ -1507,22 +1500,6 @@ export default function NhapKhoNPLTab() {
                 </div>
               </div>
 
-              {/* NCC row */}
-              <div className="grid grid-cols-1 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nhà cung cấp (NCC)
-                  </label>
-                  <input
-                    type="text"
-                    value={returnFormNCC}
-                    onChange={(e) => setReturnFormNCC(e.target.value)}
-                    placeholder="Nhập tên nhà cung cấp..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-sm"
-                  />
-                </div>
-              </div>
-
               {/* Add NPL Section */}
               <div className="p-4 bg-orange-50 rounded-lg border border-orange-200 mb-4">
                 <div className="relative" ref={returnNplDropdownRef}>
@@ -1603,6 +1580,9 @@ export default function NhapKhoNPLTab() {
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                             Mã NPL
                           </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                            NCC
+                          </th>
                           <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-20">
                             ĐVT
                           </th>
@@ -1629,6 +1609,21 @@ export default function NhapKhoNPLTab() {
                             </td>
                             <td className="px-3 py-2 text-sm font-medium text-orange-600">
                               {npl.maNPL}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={npl.ncc}
+                                onChange={(e) =>
+                                  handleUpdateReturnNPL(
+                                    npl.id,
+                                    "ncc",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="NCC"
+                                className="w-28 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
                             </td>
                             <td className="px-3 py-2">
                               <input
@@ -1716,7 +1711,7 @@ export default function NhapKhoNPLTab() {
                       <tfoot className="bg-gray-100">
                         <tr>
                           <td
-                            colSpan={5}
+                            colSpan={6}
                             className="px-3 py-2 text-sm font-medium text-right"
                           >
                             Tổng thành tiền trả:

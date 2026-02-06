@@ -28,6 +28,7 @@ interface SoLuongCat {
   ngayCat: string;
   soLuongCat: number;
   slCatTruSlKH: number;
+  tiLeCacMau: string;
   nguyenNhan1: string;
   soLuongNhapKho: number;
   slNKTruSlCat: number;
@@ -56,11 +57,14 @@ interface GroupedPhieuCat {
 
 interface FormItem {
   maSP: string;
+  xuongSanXuat: string;
+  lenhSanXuat: string;
   mauSac: string;
   soLuongKeHoach: number;
   ngayCat: string;
   soLuongCat: number;
   slCatTruSlKH: number;
+  tiLeCacMau: string;
   nguyenNhan1: string;
   soLuongNhapKho: number;
   slNKTruSlCat: number;
@@ -105,6 +109,7 @@ const emptyFormData: Omit<SoLuongCat, "id"> = {
   ngayCat: "",
   soLuongCat: 0,
   slCatTruSlKH: 0,
+  tiLeCacMau: "",
   nguyenNhan1: "",
   soLuongNhapKho: 0,
   slNKTruSlCat: 0,
@@ -114,11 +119,14 @@ const emptyFormData: Omit<SoLuongCat, "id"> = {
 
 const emptyFormItem: FormItem = {
   maSP: "",
+  xuongSanXuat: "",
+  lenhSanXuat: "",
   mauSac: "",
   soLuongKeHoach: 0,
   ngayCat: "",
   soLuongCat: 0,
   slCatTruSlKH: 0,
+  tiLeCacMau: "",
   nguyenNhan1: "",
   soLuongNhapKho: 0,
   slNKTruSlCat: 0,
@@ -148,19 +156,36 @@ export default function SoLuongCatTab() {
   const [groupToDelete, setGroupToDelete] = useState<GroupedPhieuCat | null>(null);
 
   // Multi-item form states
-  const [headerForm, setHeaderForm] = useState({ maPhieuCat: "", xuongSanXuat: "", lenhSanXuat: "" });
+  const [headerForm, setHeaderForm] = useState({ maPhieuCat: "" });
   const [formItems, setFormItems] = useState<FormItem[]>([{ ...emptyFormItem }]);
 
   // Dropdown data
   const [maSPList, setMaSPList] = useState<MaSP[]>([]);
   const [isLoadingMaSP, setIsLoadingMaSP] = useState(false);
 
+  // Bang ke LSX data for SL ke hoach lookup
+  const [bangKeLSXMap, setBangKeLSXMap] = useState<Record<string, number>>({});
+
+  // Gia thanh data for SL nhap kho lookup
+  const [giaThanhMap, setGiaThanhMap] = useState<Record<string, number>>({});
+
   // Dropdown search states
   const [maSPSearch, setMaSPSearch] = useState("");
   const [showMaSPDropdown, setShowMaSPDropdown] = useState(false);
+  const [activeDropdownIndex, setActiveDropdownIndex] = useState<number | null>(null);
   const maSPDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filtered maSP
+  // Filtered maSP - filter based on the active item's maSP value
+  const getFilteredMaSP = (searchValue: string) => {
+    if (!searchValue) return maSPList.slice(0, 50);
+    return maSPList.filter(
+      (sp) =>
+        sp.maSP.toLowerCase().includes(searchValue.toLowerCase()) ||
+        sp.tenSP.toLowerCase().includes(searchValue.toLowerCase())
+    ).slice(0, 50);
+  };
+
+  // For edit modal
   const filteredMaSP = maSPList.filter(
     (sp) =>
       sp.maSP.toLowerCase().includes(maSPSearch.toLowerCase()) ||
@@ -228,6 +253,7 @@ export default function SoLuongCatTab() {
     const handleClickOutside = (event: MouseEvent) => {
       if (maSPDropdownRef.current && !maSPDropdownRef.current.contains(event.target as Node)) {
         setShowMaSPDropdown(false);
+        setActiveDropdownIndex(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -267,6 +293,42 @@ export default function SoLuongCatTab() {
     }
   };
 
+  // Fetch Bang Ke LSX data for SL Ke Hoach lookup
+  const fetchBangKeLSX = async () => {
+    try {
+      const response = await fetch("/api/bang-ke-lsx");
+      const result = await response.json();
+      if (result.success) {
+        // Create a map of maSP -> tongSL for quick lookup
+        const map: Record<string, number> = {};
+        result.data.forEach((item: { maSP: string; tongSL: number }) => {
+          map[item.maSP] = item.tongSL;
+        });
+        setBangKeLSXMap(map);
+      }
+    } catch (error) {
+      console.error("Error fetching bang ke LSX:", error);
+    }
+  };
+
+  // Fetch Gia Thanh data for SL Nhap Kho lookup
+  const fetchGiaThanhMap = async () => {
+    try {
+      const response = await fetch("/api/gia-thanh");
+      const result = await response.json();
+      if (result.success) {
+        // Create a map of maSP -> slNhapKho for quick lookup
+        const map: Record<string, number> = {};
+        result.data.forEach((item: { maSP: string; slNhapKho: number }) => {
+          map[item.maSP] = item.slNhapKho;
+        });
+        setGiaThanhMap(map);
+      }
+    } catch (error) {
+      console.error("Error fetching gia thanh:", error);
+    }
+  };
+
   // Handle MaSP selection
   const handleMaSPSelect = (sp: MaSP) => {
     setFormData((prev) => ({
@@ -279,13 +341,62 @@ export default function SoLuongCatTab() {
     setShowMaSPDropdown(false);
   };
 
+  // Generate next Mã phiếu cắt
+  const generateNextMaPhieuCat = (): string => {
+    // Extract all existing maPhieuCat codes
+    const existingCodes = data.map((item) => item.maPhieuCat).filter((code) => code);
+
+    if (existingCodes.length === 0) {
+      return "PC001";
+    }
+
+    // Find codes that match pattern like "PC001", "PC002", etc.
+    const codePattern = /^([A-Za-z]+)(\d+)$/;
+    let maxNumber = 0;
+    let prefix = "PC";
+
+    existingCodes.forEach((code) => {
+      const match = code.match(codePattern);
+      if (match) {
+        const codePrefix = match[1];
+        const number = parseInt(match[2], 10);
+        if (number > maxNumber) {
+          maxNumber = number;
+          prefix = codePrefix;
+        }
+      }
+    });
+
+    // If no matching pattern found, try to find any numeric suffix
+    if (maxNumber === 0) {
+      existingCodes.forEach((code) => {
+        const numMatch = code.match(/(\d+)$/);
+        if (numMatch) {
+          const number = parseInt(numMatch[1], 10);
+          if (number > maxNumber) {
+            maxNumber = number;
+          }
+        }
+      });
+    }
+
+    // Generate next code
+    const nextNumber = maxNumber + 1;
+    const paddedNumber = nextNumber.toString().padStart(3, "0");
+    return `${prefix}${paddedNumber}`;
+  };
+
   // Open add modal
   const openAddModal = () => {
     setFormData(emptyFormData);
-    setHeaderForm({ maPhieuCat: "", xuongSanXuat: "", lenhSanXuat: "" });
+    const nextMaPhieuCat = generateNextMaPhieuCat();
+    setHeaderForm({ maPhieuCat: nextMaPhieuCat });
     setFormItems([{ ...emptyFormItem }]);
     setMaSPSearch("");
+    setActiveDropdownIndex(null);
     fetchMaSPList();
+    fetchBangKeLSX();
+    fetchGiaThanhMap();
     setShowAddModal(true);
   };
 
@@ -308,6 +419,7 @@ export default function SoLuongCatTab() {
       ngayCat: item.ngayCat,
       soLuongCat: item.soLuongCat,
       slCatTruSlKH: item.slCatTruSlKH,
+      tiLeCacMau: item.tiLeCacMau,
       nguyenNhan1: item.nguyenNhan1,
       soLuongNhapKho: item.soLuongNhapKho,
       slNKTruSlCat: item.slNKTruSlCat,
@@ -365,14 +477,15 @@ export default function SoLuongCatTab() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             maPhieuCat: headerForm.maPhieuCat,
-            xuongSanXuat: headerForm.xuongSanXuat,
-            lenhSanXuat: headerForm.lenhSanXuat,
+            xuongSanXuat: item.xuongSanXuat,
+            lenhSanXuat: item.lenhSanXuat,
             maSP: item.maSP,
             mauSac: item.mauSac,
             soLuongKeHoach: item.soLuongKeHoach,
             ngayCat: convertToSheetDate(item.ngayCat),
             soLuongCat: item.soLuongCat,
             slCatTruSlKH: item.slCatTruSlKH,
+            tiLeCacMau: item.tiLeCacMau,
             nguyenNhan1: item.nguyenNhan1,
             soLuongNhapKho: item.soLuongNhapKho,
             slNKTruSlCat: item.slNKTruSlCat,
@@ -614,7 +727,7 @@ export default function SoLuongCatTab() {
             setFormData({
               ...formData,
               soLuongKeHoach,
-              slCatTruSlKH: formData.soLuongCat - soLuongKeHoach,
+              slCatTruSlKH: soLuongKeHoach - formData.soLuongCat,
             });
           }}
           placeholder="0"
@@ -633,8 +746,8 @@ export default function SoLuongCatTab() {
             setFormData({
               ...formData,
               soLuongCat,
-              slCatTruSlKH: soLuongCat - formData.soLuongKeHoach,
-              slNKTruSlCat: formData.soLuongNhapKho - soLuongCat,
+              slCatTruSlKH: formData.soLuongKeHoach - soLuongCat,
+              slNKTruSlCat: soLuongCat - formData.soLuongNhapKho,
             });
           }}
           placeholder="0"
@@ -650,6 +763,18 @@ export default function SoLuongCatTab() {
           value={formData.slCatTruSlKH || 0}
           readOnly
           className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+        />
+      </div>
+
+      {/* Tỉ lệ các màu */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Tỉ lệ các màu</label>
+        <input
+          type="text"
+          value={formData.tiLeCacMau}
+          onChange={(e) => setFormData({ ...formData, tiLeCacMau: e.target.value })}
+          placeholder="Tỉ lệ các màu"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
@@ -676,7 +801,7 @@ export default function SoLuongCatTab() {
             setFormData({
               ...formData,
               soLuongNhapKho,
-              slNKTruSlCat: soLuongNhapKho - formData.soLuongCat,
+              slNKTruSlCat: formData.soLuongCat - soLuongNhapKho,
             });
           }}
           placeholder="0"
@@ -940,37 +1065,15 @@ export default function SoLuongCatTab() {
                 {/* Header - Common fields */}
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="font-medium text-blue-700 mb-3">Thông tin chung</h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu cắt *</label>
-                      <input
-                        type="text"
-                        value={headerForm.maPhieuCat}
-                        onChange={(e) => setHeaderForm({ ...headerForm, maPhieuCat: e.target.value })}
-                        placeholder="Nhập mã phiếu cắt"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Xưởng SX</label>
-                      <input
-                        type="text"
-                        value={headerForm.xuongSanXuat}
-                        onChange={(e) => setHeaderForm({ ...headerForm, xuongSanXuat: e.target.value })}
-                        placeholder="Xưởng sản xuất"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Lệnh SX</label>
-                      <input
-                        type="text"
-                        value={headerForm.lenhSanXuat}
-                        onChange={(e) => setHeaderForm({ ...headerForm, lenhSanXuat: e.target.value })}
-                        placeholder="Lệnh sản xuất"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                  <div className="max-w-md">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu cắt *</label>
+                    <input
+                      type="text"
+                      value={headerForm.maPhieuCat}
+                      onChange={(e) => setHeaderForm({ ...headerForm, maPhieuCat: e.target.value })}
+                      placeholder="Nhập mã phiếu cắt"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                 </div>
 
@@ -1002,44 +1105,90 @@ export default function SoLuongCatTab() {
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {/* Mã SP */}
-                        <div className="relative" ref={index === 0 ? maSPDropdownRef : null}>
+                        <div className="relative" ref={activeDropdownIndex === index ? maSPDropdownRef : null}>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Mã SP *</label>
                           <input
                             type="text"
                             value={item.maSP}
-                            onChange={(e) => updateFormItem(index, { maSP: e.target.value })}
-                            onFocus={() => index === 0 && setShowMaSPDropdown(true)}
-                            placeholder="Mã SP"
+                            onChange={(e) => {
+                              updateFormItem(index, { maSP: e.target.value });
+                              setActiveDropdownIndex(index);
+                            }}
+                            onFocus={() => setActiveDropdownIndex(index)}
+                            placeholder="Tìm mã SP..."
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                           />
-                          {index === 0 && showMaSPDropdown && (
-                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                          {activeDropdownIndex === index && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                               {isLoadingMaSP ? (
                                 <div className="px-3 py-2 text-gray-500 flex items-center gap-2">
                                   <Loader2 size={14} className="animate-spin" /> Đang tải...
                                 </div>
+                              ) : getFilteredMaSP(item.maSP).length === 0 ? (
+                                <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy</div>
                               ) : (
-                                maSPList.slice(0, 30).map((sp) => (
+                                getFilteredMaSP(item.maSP).map((sp) => (
                                   <div
                                     key={sp.id}
                                     onClick={() => {
-                                      updateFormItem(index, { maSP: sp.maSP });
-                                      setHeaderForm((prev) => ({
-                                        ...prev,
-                                        xuongSanXuat: prev.xuongSanXuat || sp.xuongSX || "",
-                                        lenhSanXuat: prev.lenhSanXuat || sp.lenhSX || "",
-                                      }));
-                                      setShowMaSPDropdown(false);
+                                      const slKeHoach = bangKeLSXMap[sp.maSP] || 0;
+                                      const slNhapKho = giaThanhMap[sp.maSP] || 0;
+                                      updateFormItem(index, {
+                                        maSP: sp.maSP,
+                                        xuongSanXuat: sp.xuongSX || "",
+                                        lenhSanXuat: sp.lenhSX || "",
+                                        soLuongKeHoach: slKeHoach,
+                                        slCatTruSlKH: slKeHoach - item.soLuongCat,
+                                        soLuongNhapKho: slNhapKho,
+                                        slNKTruSlCat: item.soLuongCat - slNhapKho,
+                                      });
+                                      setActiveDropdownIndex(null);
                                     }}
                                     className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-0"
                                   >
-                                    <div className="font-medium text-blue-600">{sp.maSP}</div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium text-blue-600">{sp.maSP}</span>
+                                      <div className="flex gap-1">
+                                        {bangKeLSXMap[sp.maSP] > 0 && (
+                                          <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                                            KH: {bangKeLSXMap[sp.maSP].toLocaleString("vi-VN")}
+                                          </span>
+                                        )}
+                                        {giaThanhMap[sp.maSP] > 0 && (
+                                          <span className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                                            NK: {giaThanhMap[sp.maSP].toLocaleString("vi-VN")}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                     <div className="text-xs text-gray-500 truncate">{sp.tenSP}</div>
                                   </div>
                                 ))
                               )}
                             </div>
                           )}
+                        </div>
+                        {/* Xưởng SX */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Xưởng SX</label>
+                          <input
+                            type="text"
+                            value={item.xuongSanXuat}
+                            onChange={(e) => updateFormItem(index, { xuongSanXuat: e.target.value })}
+                            placeholder="Xưởng SX"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                          />
+                        </div>
+                        {/* Lệnh SX */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Lệnh SX</label>
+                          <input
+                            type="text"
+                            value={item.lenhSanXuat}
+                            onChange={(e) => updateFormItem(index, { lenhSanXuat: e.target.value })}
+                            placeholder="Lệnh SX"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                          />
                         </div>
                         {/* Màu sắc */}
                         <div>
@@ -1072,7 +1221,7 @@ export default function SoLuongCatTab() {
                               const slKH = parseFloat(e.target.value) || 0;
                               updateFormItem(index, {
                                 soLuongKeHoach: slKH,
-                                slCatTruSlKH: item.soLuongCat - slKH,
+                                slCatTruSlKH: slKH - item.soLuongCat,
                               });
                             }}
                             placeholder="0"
@@ -1089,11 +1238,43 @@ export default function SoLuongCatTab() {
                               const slCat = parseFloat(e.target.value) || 0;
                               updateFormItem(index, {
                                 soLuongCat: slCat,
-                                slCatTruSlKH: slCat - item.soLuongKeHoach,
-                                slNKTruSlCat: item.soLuongNhapKho - slCat,
+                                slCatTruSlKH: item.soLuongKeHoach - slCat,
+                                slNKTruSlCat: slCat - item.soLuongNhapKho,
                               });
                             }}
                             placeholder="0"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        {/* SL cắt - SL KH (auto) */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">SL cắt - SL KH</label>
+                          <input
+                            type="number"
+                            value={item.slCatTruSlKH || 0}
+                            readOnly
+                            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded bg-gray-100 text-gray-600"
+                          />
+                        </div>
+                        {/* Tỉ lệ các màu */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Tỉ lệ màu</label>
+                          <input
+                            type="text"
+                            value={item.tiLeCacMau}
+                            onChange={(e) => updateFormItem(index, { tiLeCacMau: e.target.value })}
+                            placeholder="Tỉ lệ"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        {/* Nguyên nhân (cắt) */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Nguyên nhân (cắt)</label>
+                          <input
+                            type="text"
+                            value={item.nguyenNhan1}
+                            onChange={(e) => updateFormItem(index, { nguyenNhan1: e.target.value })}
+                            placeholder="Nguyên nhân"
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -1107,10 +1288,31 @@ export default function SoLuongCatTab() {
                               const slNK = parseFloat(e.target.value) || 0;
                               updateFormItem(index, {
                                 soLuongNhapKho: slNK,
-                                slNKTruSlCat: slNK - item.soLuongCat,
+                                slNKTruSlCat: item.soLuongCat - slNK,
                               });
                             }}
                             placeholder="0"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        {/* SL NK - SL cắt (auto) */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">SL NK - SL cắt</label>
+                          <input
+                            type="number"
+                            value={item.slNKTruSlCat || 0}
+                            readOnly
+                            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded bg-gray-100 text-gray-600"
+                          />
+                        </div>
+                        {/* Nguyên nhân (NK) */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Nguyên nhân (NK)</label>
+                          <input
+                            type="text"
+                            value={item.nguyenNhan2}
+                            onChange={(e) => updateFormItem(index, { nguyenNhan2: e.target.value })}
+                            placeholder="Nguyên nhân"
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -1214,6 +1416,7 @@ export default function SoLuongCatTab() {
                       <th className="px-3 py-2.5 text-right font-medium text-gray-600">SL KH</th>
                       <th className="px-3 py-2.5 text-right font-medium text-gray-600">SL cắt</th>
                       <th className="px-3 py-2.5 text-right font-medium text-gray-600">SL cắt - KH</th>
+                      <th className="px-3 py-2.5 text-left font-medium text-gray-600">Tỉ lệ màu</th>
                       <th className="px-3 py-2.5 text-left font-medium text-gray-600">Nguyên nhân</th>
                       <th className="px-3 py-2.5 text-right font-medium text-gray-600">SL NK</th>
                       <th className="px-3 py-2.5 text-right font-medium text-gray-600">SL NK - cắt</th>
@@ -1237,6 +1440,9 @@ export default function SoLuongCatTab() {
                         </td>
                         <td className={`px-3 py-2 text-right font-medium ${item.slCatTruSlKH < 0 ? "text-red-600" : item.slCatTruSlKH > 0 ? "text-green-600" : "text-gray-600"}`}>
                           {item.slCatTruSlKH !== 0 ? item.slCatTruSlKH.toLocaleString("vi-VN") : "-"}
+                        </td>
+                        <td className="px-3 py-2 text-gray-600 max-w-[80px]">
+                          <div className="truncate" title={item.tiLeCacMau}>{item.tiLeCacMau || "-"}</div>
                         </td>
                         <td className="px-3 py-2 text-gray-500 max-w-[80px]">
                           <div className="truncate" title={item.nguyenNhan1}>{item.nguyenNhan1 || "-"}</div>
@@ -1285,7 +1491,7 @@ export default function SoLuongCatTab() {
                       <td colSpan={4} className="px-3 py-2 text-right">Tổng cộng:</td>
                       <td className="px-3 py-2 text-right text-purple-600">{viewingGroup.totalSLKH.toLocaleString("vi-VN")}</td>
                       <td className="px-3 py-2 text-right text-green-600">{viewingGroup.totalSLCat.toLocaleString("vi-VN")}</td>
-                      <td colSpan={2}></td>
+                      <td colSpan={3}></td>
                       <td className="px-3 py-2 text-right text-orange-600">{viewingGroup.totalSLNK.toLocaleString("vi-VN")}</td>
                       <td colSpan={4}></td>
                     </tr>

@@ -11,9 +11,11 @@ import {
   ChevronDown,
   Printer,
   Download,
+  Image as ImageIcon,
 } from "lucide-react";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Portal from "@/components/Portal";
+import ImagePickerModal from "@/components/ImagePickerModal";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import html2canvas from "html2canvas";
@@ -182,6 +184,10 @@ export default function OrdersTab() {
 
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [showProductDropdown, setShowProductDropdown] = useState(false);
+
+  // Image picker for order items
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [imagePickerProductId, setImagePickerProductId] = useState<string | null>(null);
 
   // Refs for click outside
   const customerDropdownRef = useRef<HTMLDivElement>(null);
@@ -1579,18 +1585,28 @@ export default function OrdersTab() {
                               <tr key={product.id} className="hover:bg-gray-50">
                                 <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
                                 <td className="px-3 py-2 text-center">
-                                  {product.image ? (
-                                    <img
-                                      src={product.image}
-                                      alt={product.productCode}
-                                      className="w-10 h-10 object-cover rounded mx-auto"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                                      }}
-                                    />
-                                  ) : null}
-                                  <span className={product.image ? 'hidden' : 'text-gray-400 text-xs'}>-</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setImagePickerProductId(product.id);
+                                      setShowImagePicker(true);
+                                    }}
+                                    className="w-10 h-10 border border-gray-300 rounded flex items-center justify-center mx-auto hover:border-blue-500 hover:bg-blue-50 transition-colors overflow-hidden"
+                                    title="Chọn hình ảnh"
+                                  >
+                                    {product.image ? (
+                                      <img
+                                        src={product.image}
+                                        alt={product.productCode}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                        }}
+                                      />
+                                    ) : null}
+                                    <ImageIcon size={16} className={product.image ? 'hidden' : 'text-gray-400'} />
+                                  </button>
                                 </td>
                                 <td className="px-3 py-2 text-sm font-medium text-blue-600">{product.productCode}</td>
                                 <td className="px-3 py-2">
@@ -2092,6 +2108,22 @@ export default function OrdersTab() {
           </div>
         </Portal>
       )}
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={showImagePicker}
+        onClose={() => {
+          setShowImagePicker(false);
+          setImagePickerProductId(null);
+        }}
+        onSelect={(url) => {
+          if (imagePickerProductId) {
+            handleUpdateProductInList(imagePickerProductId, "image", url);
+          }
+          setShowImagePicker(false);
+          setImagePickerProductId(null);
+        }}
+      />
     </>
   );
 }

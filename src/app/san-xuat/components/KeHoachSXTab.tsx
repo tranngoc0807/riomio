@@ -8,9 +8,11 @@ import {
   X,
   Loader2,
   Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
 import Portal from "@/components/Portal";
+import ImagePickerModal from "@/components/ImagePickerModal";
 import toast from "react-hot-toast";
 import type { KeHoachSX, Workshop, SanPham, SanPhamBanHang } from "@/lib/googleSheets";
 import PrintableLenhSanXuat from "./PrintableLenhSanXuat";
@@ -207,6 +209,11 @@ export default function KeHoachSXTab() {
   const [formCompletionDate, setFormCompletionDate] = useState("");
   const [formNote, setFormNote] = useState("");
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
+
+  // Image picker states
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [imagePickerProductId, setImagePickerProductId] = useState<string | null>(null);
+  const [isEditImagePicker, setIsEditImagePicker] = useState(false);
 
   // Search states
   const [searchTerm, setSearchTerm] = useState("");
@@ -1054,9 +1061,22 @@ export default function KeHoachSXTab() {
                                 type="text"
                                 value={product.image.startsWith("data:") ? "" : product.image}
                                 onChange={(e) => handleUpdateProductImage(product.id, e.target.value)}
-                                className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                                 placeholder="URL hình ảnh"
                               />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setImagePickerProductId(product.id);
+                                  setIsEditImagePicker(false);
+                                  setShowImagePicker(true);
+                                }}
+                                className="px-2 py-1 bg-purple-100 text-purple-700 rounded border border-purple-200 flex items-center gap-1 text-sm font-medium hover:bg-purple-200"
+                                title="Chọn ảnh từ Firebase"
+                              >
+                                <ImageIcon size={14} />
+                                Chọn
+                              </button>
                               <label className="cursor-pointer px-2 py-1 hover:bg-blue-50 rounded border border-gray-300 flex items-center gap-1 text-sm text-blue-600" title="Tải hình lên">
                                 <Upload size={14} />
                                 <span>Tải lên</span>
@@ -1409,9 +1429,22 @@ export default function KeHoachSXTab() {
                               type="text"
                               value={product.image?.startsWith("data:") ? "" : (product.image || "")}
                               onChange={(e) => handleUpdateEditProductImage(product.id, e.target.value)}
-                              className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
+                              className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
                               placeholder="URL hình ảnh"
                             />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImagePickerProductId(String(product.id));
+                                setIsEditImagePicker(true);
+                                setShowImagePicker(true);
+                              }}
+                              className="px-2 py-1 bg-purple-100 text-purple-700 rounded border border-purple-200 flex items-center gap-1 text-sm font-medium hover:bg-purple-200"
+                              title="Chọn ảnh từ Firebase"
+                            >
+                              <ImageIcon size={14} />
+                              Chọn
+                            </button>
                             <label className="cursor-pointer px-2 py-1 hover:bg-green-50 rounded border border-gray-300 flex items-center gap-1 text-sm text-green-600" title="Tải hình lên">
                               <Upload size={14} />
                               <span>Tải lên</span>
@@ -1535,6 +1568,25 @@ export default function KeHoachSXTab() {
           </div>
         </Portal>
       )}
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={showImagePicker}
+        onClose={() => {
+          setShowImagePicker(false);
+          setImagePickerProductId(null);
+        }}
+        onSelect={(url) => {
+          if (imagePickerProductId) {
+            if (isEditImagePicker) {
+              handleUpdateEditProductImage(Number(imagePickerProductId), url);
+            } else {
+              handleUpdateProductImage(imagePickerProductId, url);
+            }
+          }
+        }}
+        currentImage={undefined}
+      />
     </>
   );
 }
