@@ -1941,7 +1941,7 @@ export async function getSuppliersFromSheet(): Promise<Supplier[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdNCC,
-      range: `'${sheetNameNCC}'!B3:G`, // Đọc từ dòng 3, cột B đến G (header ở dòng 2)
+      range: `'${sheetNameNCC}'!B6:G`, // Đọc từ dòng 6, cột B đến G (header ở dòng 5)
     });
 
     const rows = response.data.values;
@@ -1986,9 +1986,9 @@ export async function addSupplierToSheet(supplier: Supplier): Promise<void> {
 
     const allRows = response.data.values || [];
 
-    // Bỏ qua header (dòng 1-2), dữ liệu bắt đầu từ dòng 3
-    let lastDataRow = 2; // Header ở dòng 2
-    for (let i = allRows.length - 1; i >= 2; i--) {
+    // Bỏ qua header (dòng 1-5), dữ liệu bắt đầu từ dòng 6
+    let lastDataRow = 5; // Header ở dòng 5
+    for (let i = allRows.length - 1; i >= 5; i--) {
       if (allRows[i] && allRows[i][1] && allRows[i][1].toString().trim() !== "") {
         lastDataRow = i + 1;
         break;
@@ -1997,8 +1997,8 @@ export async function addSupplierToSheet(supplier: Supplier): Promise<void> {
 
     const nextRow = lastDataRow + 1;
 
-    // Đếm số nhà cung cấp thực tế để đánh STT (bỏ qua 2 dòng đầu)
-    const supplierRows = allRows.slice(2).filter(
+    // Đếm số nhà cung cấp thực tế để đánh STT (bỏ qua 5 dòng đầu)
+    const supplierRows = allRows.slice(5).filter(
       (row) => row && row[1] && row[1].toString().trim() !== ""
     );
     const sttNumber = supplierRows.length + 1;
@@ -2039,8 +2039,8 @@ export async function updateSupplierInSheet(supplier: Supplier): Promise<void> {
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 3, ID 2 = dòng 4, etc. (header ở dòng 2)
-    const rowNumber = supplier.id + 2;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc. (header ở dòng 5)
+    const rowNumber = supplier.id + 5;
 
     const values = [
       [
@@ -2076,8 +2076,8 @@ export async function deleteSupplierFromSheet(supplierId: number): Promise<void>
   try {
     const sheets = await getGoogleSheetsClient();
 
-    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 3, ID 2 = dòng 4, etc. (header ở dòng 2)
-    const rowNumber = supplierId + 2;
+    // ID ánh xạ tới vị trí dòng: ID 1 = dòng 6, ID 2 = dòng 7, etc. (header ở dòng 5)
+    const rowNumber = supplierId + 5;
 
     // Lấy sheetId để xóa dòng - tìm sheet theo tên
     const sheetMetadata = await sheets.spreadsheets.get({
