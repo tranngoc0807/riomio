@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Factory, Plus, Pencil, Trash2, X, Save } from "lucide-react";
+import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Factory } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import DatePicker from "@/components/DatePicker";
@@ -24,14 +24,6 @@ export default function TonKhoNPLTab() {
   const [denNgay, setDenNgay] = useState<string>(
     currentDate.toISOString().split("T")[0]
   );
-
-  // CRUD states for "Tồn kho đến ngày"
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<TonKhoNPLNgay | null>(null);
-  const [deletingItem, setDeletingItem] = useState<TonKhoNPLNgay | null>(null);
-  const [formMaSP, setFormMaSP] = useState("");
-  const [formSoLuong, setFormSoLuong] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
   // Pagination
   const [currentPageThang, setCurrentPageThang] = useState(1);
@@ -110,103 +102,6 @@ export default function TonKhoNPLTab() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // CRUD handlers for "Tồn kho đến ngày"
-  const handleAdd = async () => {
-    if (!formMaSP.trim()) {
-      toast.error("Mã SP không được để trống");
-      return;
-    }
-    try {
-      setIsSaving(true);
-      const response = await fetch("/api/ton-kho-npl/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ maSP: formMaSP, soLuong: Number(formSoLuong) || 0 }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        toast.success("Đã thêm thành công");
-        setShowAddModal(false);
-        setFormMaSP("");
-        setFormSoLuong("");
-        fetchData();
-      } else {
-        toast.error(result.error || "Lỗi khi thêm");
-      }
-    } catch {
-      toast.error("Lỗi khi thêm dữ liệu");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (!editingItem || !formMaSP.trim()) {
-      toast.error("Mã SP không được để trống");
-      return;
-    }
-    try {
-      setIsSaving(true);
-      const response = await fetch("/api/ton-kho-npl/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rowIndex: editingItem.id - 1, // id = index + 1 → rowIndex = id - 1
-          maSP: formMaSP,
-          soLuong: Number(formSoLuong) || 0,
-        }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        toast.success("Đã cập nhật thành công");
-        setEditingItem(null);
-        setFormMaSP("");
-        setFormSoLuong("");
-        fetchData();
-      } else {
-        toast.error(result.error || "Lỗi khi cập nhật");
-      }
-    } catch {
-      toast.error("Lỗi khi cập nhật dữ liệu");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deletingItem) return;
-    try {
-      setIsSaving(true);
-      const response = await fetch(`/api/ton-kho-npl/delete?rowIndex=${deletingItem.id - 1}`, {
-        method: "DELETE",
-      });
-      const result = await response.json();
-      if (result.success) {
-        toast.success("Đã xóa thành công");
-        setDeletingItem(null);
-        fetchData();
-      } else {
-        toast.error(result.error || "Lỗi khi xóa");
-      }
-    } catch {
-      toast.error("Lỗi khi xóa dữ liệu");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const openEditModal = (item: TonKhoNPLNgay) => {
-    setEditingItem(item);
-    setFormMaSP(item.maSP);
-    setFormSoLuong(String(item.soLuong));
-  };
-
-  const openAddModal = () => {
-    setFormMaSP("");
-    setFormSoLuong("");
-    setShowAddModal(true);
   };
 
   // Calculate totals for tonKhoThang
@@ -502,9 +397,9 @@ export default function TonKhoNPLTab() {
             </div>
           </div>
 
-          {/* Search + Add button */}
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-4">
-            <div className="relative max-w-md flex-1">
+          {/* Search */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
@@ -517,13 +412,6 @@ export default function TonKhoNPLTab() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
             </div>
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm whitespace-nowrap"
-            >
-              <Plus size={18} />
-              Thêm mới
-            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -539,15 +427,12 @@ export default function TonKhoNPLTab() {
                   <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase w-32">
                     Số lượng
                   </th>
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase w-28">
-                    Thao tác
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {currentItemsNgay.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
+                    <td colSpan={3} className="px-3 py-8 text-center text-gray-500">
                       Không có dữ liệu tồn kho
                     </td>
                   </tr>
@@ -558,24 +443,6 @@ export default function TonKhoNPLTab() {
                       <td className="px-3 py-2.5 font-medium text-gray-900">{item.maSP}</td>
                       <td className="px-3 py-2.5 text-right font-medium text-green-600">
                         {item.soLuong.toLocaleString("vi-VN")}
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => openEditModal(item)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Sửa"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            onClick={() => setDeletingItem(item)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Xóa"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))
@@ -590,7 +457,6 @@ export default function TonKhoNPLTab() {
                     <td className="px-3 py-3 text-right text-green-600">
                       {totalSoLuongNgay.toLocaleString("vi-VN")}
                     </td>
-                    <td />
                   </tr>
                 </tfoot>
               )}
@@ -602,150 +468,6 @@ export default function TonKhoNPLTab() {
             totalPages={totalPagesNgay}
             onPageChange={setCurrentPageNgay}
           />
-        </div>
-      )}
-
-      {/* Modal Thêm mới */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md m-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Plus size={20} className="text-green-600" />
-                Thêm tồn kho NPL
-              </h3>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mã SP *</label>
-                <input
-                  type="text"
-                  value={formMaSP}
-                  onChange={(e) => setFormMaSP(e.target.value)}
-                  placeholder="VD: VUD960 Vải xước thái..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
-                <input
-                  type="number"
-                  value={formSoLuong}
-                  onChange={(e) => setFormSoLuong(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleAdd}
-                  disabled={isSaving}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  Thêm
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Sửa */}
-      {editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setEditingItem(null)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md m-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Pencil size={20} className="text-blue-600" />
-                Sửa tồn kho NPL
-              </h3>
-              <button onClick={() => setEditingItem(null)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mã SP *</label>
-                <input
-                  type="text"
-                  value={formMaSP}
-                  onChange={(e) => setFormMaSP(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
-                <input
-                  type="number"
-                  value={formSoLuong}
-                  onChange={(e) => setFormSoLuong(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setEditingItem(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleUpdate}
-                  disabled={isSaving}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  Lưu
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Xác nhận xóa */}
-      {deletingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setDeletingItem(null)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm m-4">
-            <div className="p-6 text-center space-y-4">
-              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 size={24} className="text-red-600" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">Xác nhận xóa</h3>
-              <p className="text-gray-600 text-sm">
-                Bạn có chắc muốn xóa <strong>{deletingItem.maSP}</strong>?
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setDeletingItem(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={isSaving}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                  Xóa
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
