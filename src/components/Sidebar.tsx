@@ -370,7 +370,7 @@ export default function Sidebar() {
 
   // Helper function to check if a link is active (including query params)
   const isLinkActive = (href: string) => {
-    const [hrefPath, hrefQuery] = href.split('?');
+    const [hrefPath, hrefQuery] = href.split("?");
 
     // Check pathname
     if (pathname !== hrefPath) return false;
@@ -392,8 +392,8 @@ export default function Sidebar() {
   // Convert href to menu ID for permission check
   const getMenuIdFromHref = (href: string): string => {
     // Remove leading slash and query params
-    const [path] = href.split('?');
-    return path.startsWith('/') ? path.slice(1) : path;
+    const [path] = href.split("?");
+    return path.startsWith("/") ? path.slice(1) : path;
   };
 
   // Filter menu items based on dynamic permissions from Supabase
@@ -420,12 +420,12 @@ export default function Sidebar() {
   useEffect(() => {
     filteredMenuItems.forEach((item) => {
       if (item.subItems) {
-        const hasActiveSubItem = item.subItems.some(
-          (sub) => isLinkActive(sub.href)
+        const hasActiveSubItem = item.subItems.some((sub) =>
+          isLinkActive(sub.href),
         );
         if (hasActiveSubItem) {
           setExpandedMenus((prev) =>
-            prev.includes(item.href) ? prev : [...prev, item.href]
+            prev.includes(item.href) ? prev : [...prev, item.href],
           );
         }
       }
@@ -434,7 +434,7 @@ export default function Sidebar() {
 
   const toggleMenu = (href: string) => {
     setExpandedMenus((prev) =>
-      prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href]
+      prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href],
     );
   };
 
@@ -472,7 +472,7 @@ export default function Sidebar() {
           onClick={() => setIsOpen(false)}
           className="block p-6 border-b border-blue-700 hover:bg-blue-700/30 transition-colors cursor-pointer flex-shrink-0"
         >
-          <h1 className="text-xl font-bold">Riomio Shop</h1>
+          <h1 className="text-xl font-bold">RIOMIO</h1>
           <p className="text-blue-300 text-sm mt-1">Hệ thống quản lý</p>
         </Link>
 
@@ -701,7 +701,11 @@ export default function Sidebar() {
                       onClick={() => setShowNewPassword(!showNewPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     >
-                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showNewPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -721,20 +725,32 @@ export default function Sidebar() {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     >
-                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showConfirmPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
                     </button>
                   </div>
                 </div>
 
-                {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                  <p className="text-red-500 text-sm">Mật khẩu xác nhận không khớp</p>
-                )}
+                {newPassword &&
+                  confirmPassword &&
+                  newPassword !== confirmPassword && (
+                    <p className="text-red-500 text-sm">
+                      Mật khẩu xác nhận không khớp
+                    </p>
+                  )}
 
                 {newPassword && newPassword.length < 6 && (
-                  <p className="text-orange-500 text-sm">Mật khẩu phải có ít nhất 6 ký tự</p>
+                  <p className="text-orange-500 text-sm">
+                    Mật khẩu phải có ít nhất 6 ký tự
+                  </p>
                 )}
               </div>
             </div>
@@ -753,7 +769,13 @@ export default function Sidebar() {
               </button>
               <button
                 onClick={handleChangePassword}
-                disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6}
+                disabled={
+                  changingPassword ||
+                  !newPassword ||
+                  !confirmPassword ||
+                  newPassword !== confirmPassword ||
+                  newPassword.length < 6
+                }
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {changingPassword ? (

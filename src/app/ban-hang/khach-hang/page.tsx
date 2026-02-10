@@ -27,13 +27,18 @@ export default function KhachHangPage() {
   const [activeTab, setActiveTab] = useState<TabType>("danh-sach");
 
   // Filter tabs based on permissions
+  // Cho phép tất cả sub-tab nếu có quyền truy cập trang cha "ban-hang/khach-hang"
   const filteredTabs = useMemo(() => {
+    if (hasAccess("ban-hang/khach-hang")) {
+      return TABS;
+    }
     return TABS.filter((tab) => hasAccess(`ban-hang/khach-hang/${tab.id}`));
   }, [hasAccess]);
 
   useEffect(() => {
     const validTabs = filteredTabs.map((t) => t.id);
     if (tabParam && validTabs.includes(tabParam)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tabParam);
     } else if (filteredTabs.length > 0 && !validTabs.includes(activeTab)) {
       setActiveTab(filteredTabs[0].id);

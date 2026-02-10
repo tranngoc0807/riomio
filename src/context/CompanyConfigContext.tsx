@@ -117,18 +117,23 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadConfig = async () => {
       try {
+        // Xóa các row thừa (id != 1), chỉ giữ row id=1
+        await supabase
+          .from("company_config")
+          .delete()
+          .is("id", null);
+
         const { data, error } = await supabase
           .from("company_config")
           .select("*")
-          .limit(1)
-          .single();
+          .eq("id", 1)
+          .maybeSingle();
 
         if (error) {
           console.error("Error loading company config:", error);
-          // If no config exists, create default one
-          if (error.code === "PGRST116") {
-            await createDefaultConfig();
-          }
+        } else if (!data) {
+          // Không có row nào → tạo mặc định
+          await createDefaultConfig();
         } else if (data) {
           // Map database fields (snake_case) to camelCase
           const loadedConfig: CompanyConfig = {
@@ -170,7 +175,8 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
 
   const createDefaultConfig = async () => {
     try {
-      const { error } = await supabase.from("company_config").insert({
+      const { error } = await supabase.from("company_config").upsert({
+        id: 1,
         name: defaultConfig.name,
         tax_code: defaultConfig.taxCode,
         address: defaultConfig.address,

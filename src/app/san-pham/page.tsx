@@ -3581,7 +3581,7 @@ export default function SanPhamPage() {
             setEditProduct({ ...editProduct, image: url });
           } else if (imagePickerTarget === "newCatalog") {
             setNewCatalogProduct({ ...newCatalogProduct, image: url });
-          } else if (imagePickerTarget === "editCatalog") {
+          } else if (imagePickerTarget === "editCatalog" && editCatalogProduct) {
             setEditCatalogProduct({ ...editCatalogProduct, image: url });
           }
         }}
@@ -3592,7 +3592,7 @@ export default function SanPhamPage() {
             ? editProduct?.image
             : imagePickerTarget === "newCatalog"
             ? newCatalogProduct.image
-            : editCatalogProduct.image
+            : editCatalogProduct?.image
         }
       />
     </div>

@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       ngayCat: body.ngayCat || "",
       soLuongCat,
       slCatTruSlKH: soLuongCat - soLuongKeHoach,
+      tiLeCacMau: body.tiLeCacMau || "",
       nguyenNhan1: body.nguyenNhan1 || "",
       soLuongNhapKho,
       slNKTruSlCat: soLuongNhapKho - soLuongCat,

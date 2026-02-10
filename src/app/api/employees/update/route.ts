@@ -45,6 +45,7 @@ export async function PUT(request: NextRequest) {
       address: body.address || "",
       contractType: body.contractType || "",
       bankAccount: body.bankAccount || "",
+      luongCoBan: body.luongCoBan || "",
       phone: body.phone || "",
     };
 
