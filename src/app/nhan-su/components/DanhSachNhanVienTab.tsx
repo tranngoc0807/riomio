@@ -35,6 +35,7 @@ interface Employee {
   contractType: string;
   bankAccount: string;
   phone: string;
+  email: string;
 }
 
 const CONTRACT_TYPES = [
@@ -68,6 +69,7 @@ const emptyEmployee = {
   contractType: "1 năm",
   bankAccount: "",
   phone: "",
+  email: "",
 };
 
 // Helper function to get initials from name
@@ -165,6 +167,7 @@ export default function DanhSachNhanVienTab() {
       contractType: emp.contractType || "1 năm",
       bankAccount: emp.bankAccount || "",
       phone: emp.phone || "",
+      email: emp.email || "",
     });
     setSelectedEmployee(emp);
     setShowEditModal(true);
@@ -421,6 +424,17 @@ export default function DanhSachNhanVienTab() {
             onChange={(e) => setFormData((prev) => ({ ...prev, bankAccount: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Nhập số tài khoản"
+          />
+        </div>
+
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Nhập email"
           />
         </div>
       </div>
@@ -794,6 +808,11 @@ export default function DanhSachNhanVienTab() {
                 <div className="p-4 bg-gray-50 rounded-xl">
                   <p className="text-sm text-gray-500">Tài khoản ngân hàng</p>
                   <p className="font-semibold text-gray-900">{selectedEmployee.bankAccount || "Chưa cập nhật"}</p>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="font-semibold text-gray-900">{selectedEmployee.email || "Chưa cập nhật"}</p>
                 </div>
               </div>
 

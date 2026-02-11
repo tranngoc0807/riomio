@@ -7,6 +7,7 @@ import {
   Package,
   Factory,
   Loader2,
+  FileDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -214,6 +215,96 @@ export default function BaoCaoTaiChinhTab() {
     return new Intl.NumberFormat("vi-VN").format(value);
   };
 
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    let title = "";
+    let tableHTML = "";
+
+    if (activeSubTab === "lai-lo" && data) {
+      title = `Báo cáo lãi/lỗ - Tháng ${data.month}/${data.year}`;
+      const rows = data.rows.map((row) => {
+        const isHeader = ["I", "II", "III", "IV"].includes(row.stt);
+        return `<tr style="${isHeader ? "background:#e8f0fe;font-weight:600;" : ""}">
+          <td style="padding:6px 10px;border:1px solid #ddd;">${row.stt}</td>
+          <td style="padding:6px 10px;border:1px solid #ddd;">${row.chiTieu}</td>
+          <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${row.thangTruoc !== 0 ? formatCurrency(row.thangTruoc) : ""}</td>
+          <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${row.thangNay !== 0 ? formatCurrency(row.thangNay) : ""}</td>
+          <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.chenhLech}</td>
+          <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.tyTrong}</td>
+        </tr>`;
+      }).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:left;">STT</th><th style="text-align:left;">Chi tiêu</th>
+        <th style="text-align:right;">Tháng trước</th><th style="text-align:right;">Tháng này</th>
+        <th style="text-align:center;">Chênh lệch</th><th style="text-align:center;">Tỷ trọng</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    } else if (activeSubTab === "cong-no-khach-hang" && congNoData) {
+      title = `Báo cáo công nợ khách hàng - Tháng ${congNoData.month}/${congNoData.year}`;
+      const rows = congNoData.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;">${row.khachHang}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.duDauKi)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.phatSinh)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.thanhToan)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;font-weight:600;${row.duCuoiKi > 0 ? "color:red;" : row.duCuoiKi < 0 ? "color:green;" : ""}">${formatCurrency(row.duCuoiKi)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:center;width:50px;">STT</th><th style="text-align:left;">Khách hàng</th>
+        <th style="text-align:right;">Dư đầu kì</th><th style="text-align:right;">Phát sinh</th>
+        <th style="text-align:right;">Thanh toán</th><th style="text-align:right;">Dư cuối kì</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    } else if (activeSubTab === "cong-no-ncc" && congNoNCCData) {
+      title = `Báo cáo công nợ phải trả NCC NPL - Tháng ${congNoNCCData.month}/${congNoNCCData.year}`;
+      const rows = congNoNCCData.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;">${row.nccNPL}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.duDauKi)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.phatSinh)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.thanhToan)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;font-weight:600;${row.duCuoiKi > 0 ? "color:red;" : row.duCuoiKi < 0 ? "color:green;" : ""}">${formatCurrency(row.duCuoiKi)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:center;width:50px;">STT</th><th style="text-align:left;">NCC NPL</th>
+        <th style="text-align:right;">Dư đầu kì</th><th style="text-align:right;">Phát sinh</th>
+        <th style="text-align:right;">Thanh toán</th><th style="text-align:right;">Dư cuối kì</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    } else if (activeSubTab === "cong-no-xuong" && congNoXuongData) {
+      title = `Báo cáo công nợ phải trả xưởng SX - Tháng ${congNoXuongData.month}/${congNoXuongData.year}`;
+      const rows = congNoXuongData.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;">${row.xuongSX}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.duDau)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.tienGiaCong)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.thanhToan)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;font-weight:600;${row.duCuoi > 0 ? "color:red;" : row.duCuoi < 0 ? "color:green;" : ""}">${formatCurrency(row.duCuoi)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:center;width:50px;">STT</th><th style="text-align:left;">Xưởng SX</th>
+        <th style="text-align:right;">Dư đầu</th><th style="text-align:right;">Tiền gia công</th>
+        <th style="text-align:right;">Thanh toán</th><th style="text-align:right;">Dư cuối</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    } else {
+      return;
+    }
+
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:Arial,sans-serif; padding:30px; color:#333; }
+        h1 { font-size:20px; margin-bottom:20px; text-align:center; }
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        th { padding:8px 10px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; }
+        @media print { body { padding:15px; } }
+      </style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      ${tableHTML}
+    </body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
   return (
     <div>
       {/* Sub-tabs navigation */}
@@ -279,6 +370,15 @@ export default function BaoCaoTaiChinhTab() {
                   {loading && <Loader2 size={16} className="animate-spin" />}
                   Xem báo cáo
                 </button>
+                {data && (
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                  >
+                    <FileDown size={16} />
+                    Xuất PDF
+                  </button>
+                )}
               </div>
             </div>
 
@@ -367,10 +467,17 @@ export default function BaoCaoTaiChinhTab() {
               </div>
             ) : congNoData ? (
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="p-6 border-b">
+                <div className="p-6 border-b flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Báo cáo công nợ khách hàng - Tháng {congNoData.month}/{congNoData.year}
                   </h3>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileDown size={16} />
+                    Xuất PDF
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -441,10 +548,17 @@ export default function BaoCaoTaiChinhTab() {
               </div>
             ) : congNoNCCData ? (
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="p-6 border-b">
+                <div className="p-6 border-b flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Báo cáo công nợ phải trả NCC NPL - Tháng {congNoNCCData.month}/{congNoNCCData.year}
                   </h3>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileDown size={16} />
+                    Xuất PDF
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -515,10 +629,17 @@ export default function BaoCaoTaiChinhTab() {
               </div>
             ) : congNoXuongData ? (
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="p-6 border-b">
+                <div className="p-6 border-b flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Báo cáo công nợ phải trả xưởng SX - Tháng {congNoXuongData.month}/{congNoXuongData.year}
                   </h3>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileDown size={16} />
+                    Xuất PDF
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">

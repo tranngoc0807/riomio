@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Sticky table headers - scroll data only */
+.overflow-x-auto:has(> table) {
+  max-height: calc(100vh - 300px);
+  overflow-y: auto;
+}
+
+.overflow-x-auto > table > thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}

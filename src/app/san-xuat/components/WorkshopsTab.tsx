@@ -153,8 +153,10 @@ export default function WorkshopsTab() {
 
     try {
       setIsDeleting(true);
-      const response = await fetch(`/api/workshops/delete?id=${itemToDelete}`, {
+      const response = await fetch("/api/workshops/delete", {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: itemToDelete }),
       });
 
       const result = await response.json();

@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       bankAccount: body.bankAccount || "",
       luongCoBan: body.luongCoBan || "",
       phone: body.phone || "",
+      email: body.email || "",
     };
 
     await addEmployeeToSheet(employee);

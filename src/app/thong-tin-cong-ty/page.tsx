@@ -32,10 +32,38 @@ const iconOptions: Record<string, React.ComponentType<{ size?: number }>> = {
 };
 
 const announcementTypes = [
-  { value: "info", icon: Info, bgColor: "bg-blue-50", borderColor: "border-blue-200", textColor: "text-blue-700", iconBg: "bg-blue-100" },
-  { value: "success", icon: Check, bgColor: "bg-green-50", borderColor: "border-green-200", textColor: "text-green-700", iconBg: "bg-green-100" },
-  { value: "warning", icon: AlertTriangle, bgColor: "bg-yellow-50", borderColor: "border-yellow-200", textColor: "text-yellow-700", iconBg: "bg-yellow-100" },
-  { value: "celebration", icon: PartyPopper, bgColor: "bg-pink-50", borderColor: "border-pink-200", textColor: "text-pink-700", iconBg: "bg-pink-100" },
+  {
+    value: "info",
+    icon: Info,
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
+    textColor: "text-blue-700",
+    iconBg: "bg-blue-100",
+  },
+  {
+    value: "success",
+    icon: Check,
+    bgColor: "bg-green-50",
+    borderColor: "border-green-200",
+    textColor: "text-green-700",
+    iconBg: "bg-green-100",
+  },
+  {
+    value: "warning",
+    icon: AlertTriangle,
+    bgColor: "bg-yellow-50",
+    borderColor: "border-yellow-200",
+    textColor: "text-yellow-700",
+    iconBg: "bg-yellow-100",
+  },
+  {
+    value: "celebration",
+    icon: PartyPopper,
+    bgColor: "bg-pink-50",
+    borderColor: "border-pink-200",
+    textColor: "text-pink-700",
+    iconBg: "bg-pink-100",
+  },
 ];
 
 export default function ThongTinCongTy() {
@@ -46,21 +74,59 @@ export default function ThongTinCongTy() {
   };
 
   // Filter active announcements
-  const activeAnnouncements = config.announcements.filter(a => a.isActive);
+  const activeAnnouncements = config.announcements.filter((a) => a.isActive);
 
   return (
     <div className="space-y-0 -m-6 flex flex-col min-h-screen">
       {/* Main Content */}
       <div className="flex-1">
+        {/* Thông báo - Banner trên cùng */}
+        {activeAnnouncements.length > 0 && (
+          <div className="bg-white px-6 py-4">
+            <div className="max-w-6xl mx-auto space-y-3">
+              {activeAnnouncements.map((announcement) => {
+                const typeConfig =
+                  announcementTypes.find(
+                    (t) => t.value === announcement.type,
+                  ) || announcementTypes[0];
+                const TypeIcon = typeConfig.icon;
+                return (
+                  <div
+                    key={announcement.id}
+                    className={`${typeConfig.bgColor} ${typeConfig.borderColor} border rounded-xl p-5 flex items-start gap-4`}
+                  >
+                    <div
+                      className={`p-3 ${typeConfig.iconBg} rounded-lg shrink-0`}
+                    >
+                      <TypeIcon className={typeConfig.textColor} size={24} />
+                    </div>
+                    <div>
+                      <h4
+                        className={`font-bold text-lg ${typeConfig.textColor}`}
+                      >
+                        {announcement.title}
+                      </h4>
+                      <p className="text-gray-700 mt-1">
+                        {announcement.content}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Hero Section with Background Image */}
         <div className="relative min-h-[500px] overflow-hidden">
           {/* Background Image */}
           <Image
-            src="/team.png"
+            src={config.heroImage || "/team.png"}
             alt="Business Team"
             fill
             className="object-cover object-center"
             priority
+            unoptimized={config.heroImage?.startsWith("http")}
           />
 
           {/* Overlay */}
@@ -81,7 +147,9 @@ export default function ThongTinCongTy() {
           <div className="relative z-10 max-w-7xl mx-auto px-6 py-16 lg:py-24">
             <div className="max-w-2xl">
               <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-                <span className="text-orange-400 italic">{config.heroTitle1}</span>
+                <span className="text-orange-400 italic">
+                  {config.heroTitle1}
+                </span>
                 <br />
                 <span className="text-white italic">{config.heroTitle2}</span>
               </h1>
@@ -118,9 +186,7 @@ export default function ThongTinCongTy() {
                 </div>
                 <h3 className="text-2xl font-bold text-orange-500">TẦM NHÌN</h3>
               </div>
-              <p className="text-gray-600 leading-relaxed">
-                {config.vision}
-              </p>
+              <p className="text-gray-600 leading-relaxed">{config.vision}</p>
             </div>
 
             {/* Sứ mệnh */}
@@ -131,35 +197,10 @@ export default function ThongTinCongTy() {
                 </div>
                 <h3 className="text-2xl font-bold text-blue-600">SỨ MỆNH</h3>
               </div>
-              <p className="text-gray-600 leading-relaxed">
-                {config.mission}
-              </p>
+              <p className="text-gray-600 leading-relaxed">{config.mission}</p>
             </div>
           </div>
         </div>
-
-        {/* Thông báo */}
-        {activeAnnouncements.length > 0 && (
-          <div className="bg-white px-6 py-8">
-            <div className="max-w-6xl mx-auto space-y-4">
-              {activeAnnouncements.map((announcement) => {
-                const typeConfig = announcementTypes.find(t => t.value === announcement.type) || announcementTypes[0];
-                const TypeIcon = typeConfig.icon;
-                return (
-                  <div key={announcement.id} className={`${typeConfig.bgColor} ${typeConfig.borderColor} border rounded-xl p-5 flex items-start gap-4`}>
-                    <div className={`p-3 ${typeConfig.iconBg} rounded-lg shrink-0`}>
-                      <TypeIcon className={typeConfig.textColor} size={24} />
-                    </div>
-                    <div>
-                      <h4 className={`font-bold text-lg ${typeConfig.textColor}`}>{announcement.title}</h4>
-                      <p className="text-gray-700 mt-1">{announcement.content}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Lĩnh vực hoạt động */}
         <div className="relative bg-gradient-to-br from-blue-50 via-white to-blue-50 px-6 py-12 overflow-hidden">
@@ -239,14 +280,13 @@ export default function ThongTinCongTy() {
                 </div>
                 <div>
                   <h3 className="font-bold text-blue-600 text-lg">Riomio</h3>
-                  <p className="text-orange-500 text-sm font-medium">Shop</p>
                 </div>
               </div>
 
               {/* Registration Info */}
               <p className="text-gray-600 text-sm leading-relaxed">
-                Giấy chứng nhận ĐKDN số {config.taxCode} do Sở Kế hoạch Đầu
-                tư Thành phố Hà Nội cấp ngày{" "}
+                Giấy chứng nhận ĐKDN số {config.taxCode} do Sở Kế hoạch Đầu tư
+                Thành phố Hà Nội cấp ngày{" "}
                 {new Date(config.foundedDate).toLocaleDateString("vi-VN")}
               </p>
 
@@ -383,8 +423,8 @@ export default function ThongTinCongTy() {
         <div className="bg-gray-50 border-t border-gray-200">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <p className="text-center text-gray-500 text-sm">
-              © {new Date().getFullYear()} {config.name}. Tất cả quyền được
-              bảo lưu.
+              © {new Date().getFullYear()} {config.name}. Tất cả quyền được bảo
+              lưu.
             </p>
           </div>
         </div>

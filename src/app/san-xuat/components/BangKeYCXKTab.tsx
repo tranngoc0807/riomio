@@ -184,23 +184,11 @@ export default function BangKeYCXKTab() {
       groups[key].totalSlCanDung += item.slCanDung || 0;
     });
 
-    // Sort by date descending then by maPhieuYC descending
+    // Sort by maPhieuYC number descending (YC23 > YC22 > YC21...)
     return Object.values(groups).sort((a, b) => {
-      // Parse dates (format: dd/mm/yyyy)
-      const parseDate = (dateStr: string) => {
-        if (!dateStr) return new Date(0);
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-        }
-        return new Date(0);
-      };
-      const dateA = parseDate(a.ngayThang);
-      const dateB = parseDate(b.ngayThang);
-      if (dateB.getTime() !== dateA.getTime()) {
-        return dateB.getTime() - dateA.getTime();
-      }
-      return b.maPhieuYC.localeCompare(a.maPhieuYC);
+      const numA = parseInt(a.maPhieuYC.replace(/\D/g, "")) || 0;
+      const numB = parseInt(b.maPhieuYC.replace(/\D/g, "")) || 0;
+      return numB - numA;
     });
   }, [filteredList]);
 
@@ -232,19 +220,29 @@ export default function BangKeYCXKTab() {
       setIsSubmitting(true);
       const itemsToDelete = data.filter(item => item.maPhieuYC === phieuToDelete);
 
-      for (const item of itemsToDelete) {
-        await fetch(`/api/yeu-cau-xuat-kho-npl/delete?id=${item.id}`, {
+      // Sort by id descending to delete from bottom up (avoid row shifting in Google Sheets)
+      const sortedItems = [...itemsToDelete].sort((a, b) => b.id - a.id);
+
+      for (const item of sortedItems) {
+        const response = await fetch("/api/yeu-cau-xuat-kho-npl/delete", {
           method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: item.id }),
         });
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || `Lỗi khi xóa mục ${item.id}`);
+        }
       }
 
       toast.success(`Đã xóa phiếu ${phieuToDelete} (${itemsToDelete.length} mục)`);
       fetchData();
       setShowDeleteModal(false);
       setPhieuToDelete(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting phieu:", error);
-      toast.error("Lỗi khi xóa phiếu");
+      toast.error(error.message || "Lỗi khi xóa phiếu");
+      fetchData();
     } finally {
       setIsSubmitting(false);
     }
@@ -410,7 +408,9 @@ export default function BangKeYCXKTab() {
     setFormData(emptyFormData);
     // Auto generate next maPhieuYC
     const nextMaPhieu = generateNextMaPhieuYC();
-    setAddHeaderData({ ngayThang: "", maPhieuYC: nextMaPhieu });
+    const today = new Date();
+    const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+    setAddHeaderData({ ngayThang: todayStr, maPhieuYC: nextMaPhieu });
     setNplItems([]);
     setCurrentNPLItem(emptyNPLItem);
     setNplSearch("");

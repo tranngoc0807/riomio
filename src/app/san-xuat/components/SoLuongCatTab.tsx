@@ -225,7 +225,11 @@ export default function SoLuongCatTab() {
       groups[key].totalSLCat += item.soLuongCat || 0;
       groups[key].totalSLNK += item.soLuongNhapKho || 0;
     });
-    return Object.values(groups);
+    return Object.values(groups).sort((a, b) => {
+      const numA = parseInt(a.maPhieuCat.replace(/\D/g, "")) || 0;
+      const numB = parseInt(b.maPhieuCat.replace(/\D/g, "")) || 0;
+      return numB - numA;
+    });
   }, [filteredList]);
 
   // Pagination for grouped data
@@ -589,7 +593,8 @@ export default function SoLuongCatTab() {
       setIsSubmitting(true);
       let successCount = 0;
 
-      for (const item of groupToDelete.items) {
+      const sortedItems = [...groupToDelete.items].sort((a, b) => b.id - a.id);
+      for (const item of sortedItems) {
         const response = await fetch(`/api/so-luong-cat/delete?id=${item.id}`, {
           method: "DELETE",
         });
@@ -917,9 +922,9 @@ export default function SoLuongCatTab() {
       </div>
 
       {/* Table - Grouped View */}
-      <div className="overflow-x-auto border border-gray-200 rounded-xl">
+      <div className="overflow-auto max-h-[70vh] border border-gray-200 rounded-xl">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="bg-green-50 border-b border-gray-200">
               <th className="px-3 py-3 text-left font-medium text-gray-600 w-12">STT</th>
               <th className="px-3 py-3 text-left font-medium text-gray-600">Mã phiếu cắt</th>

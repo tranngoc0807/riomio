@@ -19,12 +19,14 @@ import TaiKhoanTab from "./components/TaiKhoanTab";
 import BCQuyTheoNgayTab from "./components/BCQuyTheoNgayTab";
 import BCQuyTheoThangTab from "./components/BCQuyTheoThangTab";
 import BCTungTaiKhoanTab from "./components/BCTungTaiKhoanTab";
+import DuQuyTab from "./components/DuQuyTab";
 
-type TabType = "phieu-thu" | "phieu-chi" | "so-quy" | "tai-khoan" | "bc-ngay" | "bc-thang" | "bc-tai-khoan";
+type TabType = "phieu-thu" | "phieu-chi" | "so-quy" | "tai-khoan" | "du-quy" | "bc-ngay" | "bc-thang" | "bc-tai-khoan";
 
 const TABS = [
   { id: "so-quy" as TabType, label: "Sổ quỹ", icon: BookOpen },
   { id: "tai-khoan" as TabType, label: "Tài khoản", icon: Wallet },
+  { id: "du-quy" as TabType, label: "Dư quỹ", icon: Wallet },
   { id: "bc-ngay" as TabType, label: "BC theo ngày", icon: Calendar },
   { id: "bc-thang" as TabType, label: "BC theo tháng", icon: CalendarDays },
   { id: "bc-tai-khoan" as TabType, label: "BC tài khoản", icon: CreditCard },
@@ -152,6 +154,9 @@ export default function SoQuy() {
 
           {/* Tài khoản Tab */}
           {activeTab === "tai-khoan" && <TaiKhoanTab />}
+
+          {/* Dư quỹ Tab */}
+          {activeTab === "du-quy" && <DuQuyTab />}
 
           {/* BC quỹ theo ngày Tab */}
           {activeTab === "bc-ngay" && <BCQuyTheoNgayTab />}

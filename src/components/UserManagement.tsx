@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useAuth, UserRole } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
+import { useRoles } from "@/hooks/useRoles";
 import {
   Users,
   UserPlus,
@@ -26,26 +27,13 @@ interface UserProfile {
   id: string;
   email: string;
   full_name: string;
-  role: UserRole;
+  role: string;
   created_at: string;
 }
 
-const roles: { value: UserRole; label: string; color: string }[] = [
-  { value: "admin", label: "Admin", color: "bg-red-100 text-red-700" },
-  { value: "tong_hop", label: "Tổng hợp", color: "bg-blue-100 text-blue-700" },
-  { value: "ke_toan", label: "Kế toán", color: "bg-green-100 text-green-700" },
-  { value: "pattern", label: "Pattern", color: "bg-purple-100 text-purple-700" },
-  { value: "may_mau", label: "May mẫu", color: "bg-pink-100 text-pink-700" },
-  { value: "thiet_ke", label: "Thiết kế", color: "bg-indigo-100 text-indigo-700" },
-  { value: "quan_ly_don_hang", label: "Quản lý đơn hàng", color: "bg-orange-100 text-orange-700" },
-  { value: "sale_si", label: "Sale sỉ", color: "bg-yellow-100 text-yellow-700" },
-  { value: "sale_san", label: "Sale sàn", color: "bg-amber-100 text-amber-700" },
-  { value: "thu_kho", label: "Thủ kho", color: "bg-teal-100 text-teal-700" },
-  { value: "hinh_anh", label: "Hình ảnh", color: "bg-cyan-100 text-cyan-700" },
-];
-
 export default function UserManagement() {
   const { profile: currentUser } = useAuth();
+  const { roles, getRoleLabel, getRoleColor } = useRoles();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -60,7 +48,7 @@ export default function UserManagement() {
     email: "",
     password: "",
     fullName: "",
-    role: "tong_hop" as UserRole,
+    role: "tong_hop",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
@@ -68,7 +56,7 @@ export default function UserManagement() {
   // Edit user form
   const [editUser, setEditUser] = useState({
     fullName: "",
-    role: "tong_hop" as UserRole,
+    role: "tong_hop",
   });
   const [updatingUser, setUpdatingUser] = useState(false);
 
@@ -206,19 +194,40 @@ export default function UserManagement() {
     setShowDeleteConfirm(true);
   };
 
-  // Confirm delete user
+  // Confirm delete user - delete from both auth and profiles
   const confirmDeleteUser = async () => {
     if (!deletingUserId) return;
 
-    const { error: deleteError } = await supabase.from("profiles").delete().eq("id", deletingUserId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError("Phiên đăng nhập hết hạn!");
+        setTimeout(() => setError(""), 3000);
+        return;
+      }
 
-    if (deleteError) {
-      setError(deleteError.message);
+      const response = await fetch("/api/admin/delete-user", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId: deletingUserId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Lỗi xóa tài khoản!");
+        setTimeout(() => setError(""), 3000);
+      } else {
+        setSuccess("Đã xóa tài khoản!");
+        fetchUsers();
+        setTimeout(() => setSuccess(""), 3000);
+      }
+    } catch {
+      setError("Lỗi kết nối server!");
       setTimeout(() => setError(""), 3000);
-    } else {
-      setSuccess("Đã xóa tài khoản!");
-      fetchUsers();
-      setTimeout(() => setSuccess(""), 3000);
     }
 
     setShowDeleteConfirm(false);
@@ -307,8 +316,6 @@ export default function UserManagement() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {users.map((user) => {
-                  const roleConfig =
-                    roles.find((r) => r.value === user.role) || roles[2];
                   const isCurrentUser = user.id === currentUser?.id;
                   return (
                     <tr
@@ -339,9 +346,10 @@ export default function UserManagement() {
                       </td>
                       <td className="px-4 py-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${roleConfig.color}`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700`}
                         >
-                          {roleConfig.label}
+                          <span className={`w-2 h-2 rounded-full ${getRoleColor(user.role)}`}></span>
+                          {getRoleLabel(user.role)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-600">
@@ -475,16 +483,16 @@ export default function UserManagement() {
                 <div className="grid grid-cols-3 gap-2">
                   {roles.map((r) => (
                     <button
-                      key={r.value}
+                      key={r.id}
                       type="button"
-                      onClick={() => setNewUser({ ...newUser, role: r.value })}
+                      onClick={() => setNewUser({ ...newUser, role: r.id })}
                       className={`p-2 rounded-lg border-2 transition-all text-center text-sm font-medium ${
-                        newUser.role === r.value
+                        newUser.role === r.id
                           ? "border-blue-500 bg-blue-50 text-blue-700"
                           : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
-                      {r.label}
+                      {r.display_name}
                     </button>
                   ))}
                 </div>
@@ -568,18 +576,18 @@ export default function UserManagement() {
                 <div className="grid grid-cols-3 gap-2">
                   {roles.map((r) => (
                     <button
-                      key={r.value}
+                      key={r.id}
                       type="button"
                       onClick={() =>
-                        setEditUser({ ...editUser, role: r.value })
+                        setEditUser({ ...editUser, role: r.id })
                       }
                       className={`p-2 rounded-lg border-2 transition-all text-center text-sm font-medium ${
-                        editUser.role === r.value
+                        editUser.role === r.id
                           ? "border-blue-500 bg-blue-50 text-blue-700"
                           : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
-                      {r.label}
+                      {r.display_name}
                     </button>
                   ))}
                 </div>

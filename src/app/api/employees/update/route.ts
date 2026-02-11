@@ -47,6 +47,7 @@ export async function PUT(request: NextRequest) {
       bankAccount: body.bankAccount || "",
       luongCoBan: body.luongCoBan || "",
       phone: body.phone || "",
+      email: body.email || "",
     };
 
     await updateEmployeeInSheet(employee);

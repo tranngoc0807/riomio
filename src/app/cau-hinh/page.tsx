@@ -26,8 +26,10 @@ import {
   AlertTriangle,
   Info,
   Pencil,
+  Upload,
+  Loader2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -177,6 +179,38 @@ export default function CauHinh() {
   // Function to change tab and update URL
   const setActiveTab = (tab: "users" | "permissions" | "config") => {
     router.push(`/cau-hinh?tab=${tab}`, { scroll: false });
+  };
+
+  // Image upload
+  const heroImageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
+
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingHeroImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "");
+      formData.append("customName", "hero-banner");
+
+      const response = await fetch("/api/firebase-storage", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.success && result.url) {
+        setEditConfig({ ...editConfig, heroImage: result.url });
+      }
+    } catch (error) {
+      console.error("Error uploading hero image:", error);
+    } finally {
+      setUploadingHeroImage(false);
+      if (heroImageInputRef.current) heroImageInputRef.current.value = "";
+    }
   };
 
   // Modal states
@@ -444,13 +478,23 @@ export default function CauHinh() {
         <div className="bg-gray-200 min-h-screen">
           <div className="py-6 px-4 lg:px-6">
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              {/* Announcements Section - NEW */}
-              {config.announcements.filter((a) => a.isActive).length > 0 && (
-                <EditableSection
-                  onEdit={() => setEditingSection("announcements")}
-                  label="Thông báo"
-                >
-                  <div className="p-4 space-y-3">
+              {/* Announcements Section - Banner thông báo */}
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Bell size={18} className="text-blue-600" />
+                    Banner thông báo
+                  </h3>
+                  <button
+                    onClick={() => setEditingSection("announcements")}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center gap-1 hover:bg-blue-700"
+                  >
+                    <Pencil size={14} />
+                    Sửa thông báo
+                  </button>
+                </div>
+                {config.announcements.filter((a) => a.isActive).length > 0 ? (
+                  <div className="space-y-3">
                     {config.announcements
                       .filter((a) => a.isActive)
                       .map((announcement) => {
@@ -486,34 +530,27 @@ export default function CauHinh() {
                         );
                       })}
                   </div>
-                </EditableSection>
-              )}
-
-              {/* Add Announcements Button when empty */}
-              {config.announcements.filter((a) => a.isActive).length === 0 && (
-                <div className="p-4 border-b border-dashed border-gray-300">
-                  <button
-                    onClick={() => setEditingSection("announcements")}
-                    className="w-full py-8 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Bell size={24} />
-                    <span>Thêm thông báo (Giáng sinh, Tết, v.v.)</span>
-                  </button>
-                </div>
-              )}
+                ) : (
+                  <div className="py-6 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 flex items-center justify-center gap-2">
+                    <Megaphone size={20} />
+                    <span>Chưa có thông báo nào. Bấm &quot;Sửa thông báo&quot; để thêm.</span>
+                  </div>
+                )}
+              </div>
 
               {/* Hero Section */}
               <EditableSection
                 onEdit={() => setEditingSection("hero")}
-                label="Banner"
+                label="Ảnh bìa"
               >
                 <div className="relative min-h-[400px] overflow-hidden">
                   <Image
-                    src="/team.png"
+                    src={config.heroImage || "/team.png"}
                     alt="Business Team"
                     fill
                     className="object-cover object-center"
                     priority
+                    unoptimized={config.heroImage?.startsWith("http")}
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-900/85 via-blue-800/70 to-transparent" />
                   <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
@@ -707,9 +744,52 @@ export default function CauHinh() {
       <EditModal
         isOpen={editingSection === "hero"}
         onClose={handleCancel}
-        title="Chỉnh sửa Banner"
+        title="Chỉnh sửa Ảnh bìa"
       >
         <div className="space-y-4">
+          {/* Image Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ảnh nền
+            </label>
+            <div className="relative rounded-xl overflow-hidden border border-gray-200">
+              <div className="relative h-48">
+                <Image
+                  src={editConfig.heroImage || "/team.png"}
+                  alt="Hero preview"
+                  fill
+                  className="object-cover"
+                  unoptimized={editConfig.heroImage?.startsWith("http")}
+                />
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                  <button
+                    onClick={() => heroImageInputRef.current?.click()}
+                    disabled={uploadingHeroImage}
+                    className="px-4 py-2 bg-white/90 text-gray-800 rounded-lg font-medium flex items-center gap-2 hover:bg-white transition-colors disabled:opacity-50"
+                  >
+                    {uploadingHeroImage ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Đang tải lên...
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={18} />
+                        Thay đổi ảnh
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <input
+                ref={heroImageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleHeroImageUpload}
+                className="hidden"
+              />
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tiêu đề dòng 1 (màu cam)

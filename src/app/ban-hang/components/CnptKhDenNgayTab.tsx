@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, RefreshCw, FileText, Calendar } from "lucide-react";
+import { Loader2, RefreshCw, FileText } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 interface CnptKhDenNgayItem {
@@ -21,11 +21,6 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("vi-VN").format(value);
 };
 
-// Get days in selected month
-const getDaysInMonth = (month: number, year: number) => {
-  return new Date(year, month, 0).getDate();
-};
-
 export default function CnptKhDenNgayTab() {
   const [tableData, setTableData] = useState<CnptKhDenNgayData>({
     data: [],
@@ -35,44 +30,10 @@ export default function CnptKhDenNgayTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Date selector state
-  const today = new Date();
-  const [selectedDay, setSelectedDay] = useState(today.getDate());
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
-
-  // Calculate daysInMonth for current selection
-  const daysInMonth = getDaysInMonth(selectedMonth, selectedYear);
-
   // Fetch data on mount
   useEffect(() => {
     fetchData();
   }, []);
-
-  // Parse current date from API and set selectors
-  useEffect(() => {
-    if (tableData.currentDate) {
-      // Format: "DD/MM/YYYY" e.g., "31/12/2025"
-      const parts = tableData.currentDate.split("/");
-      if (parts.length === 3) {
-        const day = parseInt(parts[0]);
-        const month = parseInt(parts[1]);
-        const year = parseInt(parts[2]);
-        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-          setSelectedDay(day);
-          setSelectedMonth(month);
-          setSelectedYear(year);
-        }
-      }
-    }
-  }, [tableData.currentDate]);
-
-  // Adjust day if it exceeds days in the selected month
-  useEffect(() => {
-    if (selectedDay > daysInMonth) {
-      setSelectedDay(daysInMonth);
-    }
-  }, [selectedMonth, selectedYear, daysInMonth, selectedDay]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -94,13 +55,10 @@ export default function CnptKhDenNgayTab() {
   };
 
   const handleDateChange = async () => {
-    const dayStr = selectedDay.toString().padStart(2, "0");
-    const monthStr = selectedMonth.toString().padStart(2, "0");
-    const newDate = `${dayStr}/${monthStr}/${selectedYear}`;
-
-    if (newDate === tableData.currentDate) {
-      return;
-    }
+    const today = new Date();
+    const dayStr = today.getDate().toString().padStart(2, "0");
+    const monthStr = (today.getMonth() + 1).toString().padStart(2, "0");
+    const newDate = `${dayStr}/${monthStr}/${today.getFullYear()}`;
 
     setIsUpdating(true);
     try {
@@ -138,85 +96,24 @@ export default function CnptKhDenNgayTab() {
   // Calculate total
   const totalSoTien = tableData.data.reduce((sum, item) => sum + item.soTien, 0);
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
   return (
     <div className="space-y-4">
       <Toaster position="top-right" />
 
-      {/* Date Selector */}
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-200">
-        <div className="flex items-center gap-4 flex-wrap">
-          <Calendar className="text-purple-600" size={24} />
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Ngày:</label>
-            <select
-              value={selectedDay}
-              onChange={(e) => setSelectedDay(parseInt(e.target.value))}
-              disabled={isUpdating}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
-            >
-              {days.map((day) => (
-                <option key={day} value={day}>
-                  {day}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Tháng:</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              disabled={isUpdating}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
-            >
-              {months.map((month) => (
-                <option key={month} value={month}>
-                  {month}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Năm:</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              disabled={isUpdating}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
-            >
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={handleDateChange}
-            disabled={isUpdating}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isUpdating ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <RefreshCw size={18} />
-            )}
-            <span>Cập nhật</span>
-          </button>
-          <button
-            onClick={fetchData}
-            disabled={isLoading || isUpdating}
-            className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors disabled:opacity-50"
-            title="Làm mới"
-          >
-            <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
-          </button>
-        </div>
+      {/* Update Button */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleDateChange}
+          disabled={isUpdating}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isUpdating ? (
+            <Loader2 className="animate-spin" size={18} />
+          ) : (
+            <RefreshCw size={18} />
+          )}
+          <span>Cập nhật</span>
+        </button>
       </div>
 
       {/* Table */}
@@ -225,7 +122,7 @@ export default function CnptKhDenNgayTab() {
           <div className="flex items-center gap-2 text-white">
             <FileText size={18} />
             <span className="font-semibold">
-              {tableData.tieuDe || `Bảng kê công nợ khách hàng đến ngày: ${selectedDay}/${selectedMonth}/${selectedYear}`}
+              {tableData.tieuDe || "Bảng kê công nợ khách hàng đến ngày"}
             </span>
           </div>
         </div>

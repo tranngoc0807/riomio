@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, FileText, Calculator, History, Send, Loader2, RefreshCw, Plus, X, Check, User, Briefcase, DollarSign, Clock, Gift, AlertCircle, CheckCircle, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Banknote, FileText, Calculator, History, Send, Loader2, RefreshCw, Plus, X, Check, User, Briefcase, DollarSign, Clock, Gift, AlertCircle, CheckCircle, Calendar, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { BangKeTienLuongItem } from "@/lib/googleSheets";
@@ -424,6 +424,145 @@ export default function BangLuongTab() {
   const selectedPhieuNVData = salaryData.find(
     (item) => item.maPhieu === selectedPhieuNVMaPhieu && item.hoVaTen === selectedPhieuNVEmployee
   );
+
+  const handleExportPhieuLuongPDF = () => {
+    if (!selectedPhieuNVData) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const d = selectedPhieuNVData;
+    const fmt = (v: number | null | undefined) => (!v || v === 0) ? "-" : v.toLocaleString("vi-VN");
+
+    printWindow.document.write(`<html><head><title>Phiếu lương - ${d.hoVaTen}</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:Arial,sans-serif; padding:30px; color:#333; max-width:800px; margin:0 auto; }
+        h1 { font-size:20px; margin-bottom:5px; text-align:center; color:#7c3aed; }
+        .subtitle { text-align:center; color:#666; margin-bottom:20px; font-size:13px; }
+        .info { display:flex; justify-content:space-between; padding:15px; background:#f5f3ff; border-radius:8px; margin-bottom:20px; }
+        .info-left { font-size:14px; }
+        .info-left strong { font-size:18px; display:block; margin-bottom:4px; }
+        .info-right { text-align:right; }
+        .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:15px; }
+        .card { padding:12px; border-radius:8px; border:1px solid #e5e7eb; }
+        .card .label { font-size:11px; color:#666; margin-bottom:4px; }
+        .card .value { font-size:18px; font-weight:700; }
+        .section { margin-bottom:15px; }
+        .section-title { font-size:14px; font-weight:600; padding:8px 12px; background:#f9fafb; border-bottom:1px solid #e5e7eb; }
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        td { padding:8px 12px; border-bottom:1px solid #f0f0f0; }
+        .row { display:flex; justify-content:space-between; padding:6px 12px; background:#f9fafb; margin:3px 0; border-radius:4px; }
+        .total-box { text-align:center; padding:20px; background:linear-gradient(135deg,#22c55e,#059669); color:white; border-radius:12px; margin-top:20px; }
+        .total-box .amount { font-size:36px; font-weight:900; }
+        .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px; }
+        @media print { body { padding:15px; } }
+      </style></head><body>
+      <h1>PHIẾU THÔNG BÁO LƯƠNG</h1>
+      <p class="subtitle">Mã phiếu: ${d.maPhieu}</p>
+
+      <div class="info">
+        <div class="info-left">
+          <strong>${d.hoVaTen}</strong>
+          <span>Chức vụ: ${d.chucVu || "N/A"} | Bộ phận: ${d.boPhan || "N/A"}</span>
+        </div>
+        <div class="info-right">
+          <div style="font-size:12px;color:#666;">Kỳ lương</div>
+          <div style="font-size:13px;">${d.ngayBatDau} - ${d.ngayKetThuc}</div>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div class="card" style="background:#eff6ff;border-color:#bfdbfe;">
+          <div class="label">Mức lương cơ bản</div>
+          <div class="value" style="color:#1d4ed8;">${fmt(d.mucLuongCoBan)}</div>
+        </div>
+        <div class="card" style="background:#f0fdf4;border-color:#bbf7d0;">
+          <div class="label">Thưởng chuyên cần</div>
+          <div class="value" style="color:#15803d;">${fmt(d.thuongChuyenCan)}</div>
+        </div>
+        <div class="card" style="background:#f5f3ff;border-color:#ddd6fe;">
+          <div class="label">Quỹ lương</div>
+          <div class="value" style="color:#7c3aed;">${fmt(d.quyLuong)}</div>
+        </div>
+      </div>
+
+      <div class="section" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+        <div class="section-title">Công & Lương thực tế</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:12px;">
+          <div style="text-align:center;padding:8px;background:#f9fafb;border-radius:6px;">
+            <div style="font-size:11px;color:#666;">Công thực tế</div>
+            <div style="font-size:18px;font-weight:700;">${d.congThucTe || 0}</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:#fff7ed;border-radius:6px;">
+            <div style="font-size:11px;color:#666;">Đi muộn</div>
+            <div style="font-size:18px;font-weight:700;color:#ea580c;">${d.diMuon || 0}</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:#eff6ff;border-radius:6px;">
+            <div style="font-size:11px;color:#666;">Lương thực tế</div>
+            <div style="font-size:16px;font-weight:700;color:#1d4ed8;">${fmt(d.luongThucTe)}</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:#f0fdf4;border-radius:6px;">
+            <div style="font-size:11px;color:#666;">Lương thêm giờ</div>
+            <div style="font-size:16px;font-weight:700;color:#16a34a;">${fmt(d.luongThemGio)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+        <div class="section-title" style="background:#f0fdf4;">Phụ cấp</div>
+        <div style="padding:10px;">
+          <div class="grid3">
+            <div class="row"><span>Ăn trưa/ngày</span><span>${fmt(d.phuCapAnTruaNgay)}</span></div>
+            <div class="row"><span>Ăn trưa/tháng</span><span>${fmt(d.phuCapAnTruaThang)}</span></div>
+            <div class="row"><span>Xăng xe</span><span>${fmt(d.phuCapXangXeThang)}</span></div>
+            <div class="row"><span>Điện thoại</span><span>${fmt(d.phuCapDienThoaiThang)}</span></div>
+            <div class="row"><span>Độc hại</span><span>${fmt(d.phuCapDocHaiNangNhocThang)}</span></div>
+            <div class="row"><span>Trang phục</span><span>${fmt(d.phuCapTrangPhucThang)}</span></div>
+            <div class="row"><span>Nhà ở</span><span>${fmt(d.phuCapNhaOThang)}</span></div>
+            <div class="row"><span>Giữ trẻ/nuôi con</span><span>${fmt(d.giuTreVaNuoiCon)}</span></div>
+            <div class="row"><span>Khác</span><span>${fmt(d.phuCapKhac)}</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 12px;background:#dcfce7;border-radius:6px;font-weight:700;color:#166534;border:1px solid #86efac;">
+            <span>TỔNG PHỤ CẤP</span><span style="font-size:18px;">${fmt(d.tongPhuCap)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="section" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+          <div class="section-title" style="background:#eff6ff;">Thưởng & KPI</div>
+          <div style="padding:10px;">
+            <div class="row"><span>KPI SX, VP</span><span style="color:#2563eb;font-weight:600;">+${fmt(d.kpiSXVP)}</span></div>
+            <div class="row"><span>KPI Sale</span><span style="color:#0891b2;font-weight:600;">+${fmt(d.kpiSale)}</span></div>
+            <div class="row"><span>Thưởng sáng kiến</span><span style="color:#16a34a;font-weight:600;">+${fmt(d.thuongSangKien)}</span></div>
+            <div class="row"><span>Cộng khác</span><span style="color:#7c3aed;font-weight:600;">+${fmt(d.congKhac)}</span></div>
+          </div>
+        </div>
+        <div class="section" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+          <div class="section-title" style="background:#fff7ed;">Các khoản trừ</div>
+          <div style="padding:10px;">
+            <div class="row"><span>BHXH, BHYT, BHTN</span><span style="color:#ea580c;font-weight:600;">-${fmt(d.truBHYTBHXHBHTN)}</span></div>
+            <div class="row"><span>Thuế TNCN</span><span style="color:#dc2626;font-weight:600;">-${fmt(d.truTNCN)}</span></div>
+            <div class="row"><span>Công đoàn</span><span style="color:#666;font-weight:600;">-${fmt(d.truCongDoan)}</span></div>
+            <div class="row"><span>Trừ khác</span><span style="color:#666;font-weight:600;">-${fmt(d.truKhac)}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="total-box">
+        <div style="font-size:16px;margin-bottom:8px;">THỰC LĨNH</div>
+        <div class="amount">${fmt(d.thucLinh)}</div>
+        <div style="font-size:14px;margin-top:4px;">VNĐ</div>
+      </div>
+
+      ${d.ghiChu ? `<div style="margin-top:15px;padding:12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;">
+        <strong style="color:#92400e;font-size:13px;">Ghi chú:</strong>
+        <p style="color:#666;margin-top:4px;">${d.ghiChu}</p>
+      </div>` : ""}
+    </body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
 
   return (
     <div className="space-y-6">
@@ -867,10 +1006,20 @@ export default function BangLuongTab() {
           <div>
             {/* Header with dropdowns */}
             <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-t-xl p-6 text-white">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Send size={24} />
-                Phiếu thông báo lương cho nhân viên
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Send size={24} />
+                  Phiếu thông báo lương cho nhân viên
+                </h3>
+                <button
+                  onClick={handleExportPhieuLuongPDF}
+                  disabled={!selectedPhieuNVData}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-purple-700 rounded-lg hover:bg-purple-50 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FileDown size={16} />
+                  Xuất PDF
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-purple-100 mb-1">Nhân viên</label>

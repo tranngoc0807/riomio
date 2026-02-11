@@ -136,9 +136,9 @@ export default function GiaThanhGiaBanTab() {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto border border-gray-200 rounded-xl">
+      <div className="overflow-auto max-h-[70vh] border border-gray-200 rounded-xl">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="bg-blue-50 border-b border-gray-200">
               <th className="px-3 py-3 text-left font-medium text-gray-600 w-12 sticky left-0 bg-blue-50">STT</th>
               <th className="px-3 py-3 text-left font-medium text-gray-600">Mã SP</th>

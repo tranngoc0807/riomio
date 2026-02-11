@@ -11,18 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 
-export type UserRole =
-  | "admin"
-  | "tong_hop" // Tổng hợp
-  | "ke_toan" // Kế toán
-  | "pattern" // Pattern
-  | "may_mau" // May mẫu
-  | "thiet_ke" // Thiết kế
-  | "quan_ly_don_hang" // Quản lý đơn hàng
-  | "sale_si" // Sale sỉ
-  | "sale_san" // Sale sàn
-  | "thu_kho" // Thủ kho
-  | "hinh_anh"; // Hình ảnh
+export type UserRole = string;
 
 interface Profile {
   id: string;

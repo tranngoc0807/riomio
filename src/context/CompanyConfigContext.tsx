@@ -45,6 +45,7 @@ export interface CompanyConfig {
   logo: string;
 
   // Content sections
+  heroImage: string;
   heroTitle1: string;
   heroTitle2: string;
   heroDescription: string;
@@ -74,6 +75,7 @@ const defaultConfig: CompanyConfig = {
   position: "Giám đốc điều hành",
   logo: "",
 
+  heroImage: "/team.png",
   heroTitle1: "GIỚI THIỆU",
   heroTitle2: "CÔNG TY",
   heroDescription: "Chào mừng đến với Công ty TNHH Riomio Shop. Chúng tôi tự hào là đơn vị tiên phong trong lĩnh vực sản xuất và kinh doanh các sản phẩm thời trang chất lượng cao, phục vụ khách hàng trên toàn quốc với đội ngũ nhân viên chuyên nghiệp và tận tâm.",
@@ -150,6 +152,7 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
             representative: data.representative,
             position: data.position,
             logo: data.logo,
+            heroImage: data.hero_image || defaultConfig.heroImage,
             heroTitle1: data.hero_title1,
             heroTitle2: data.hero_title2,
             heroDescription: data.hero_description,
@@ -190,6 +193,7 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
         representative: defaultConfig.representative,
         position: defaultConfig.position,
         logo: defaultConfig.logo,
+        hero_image: defaultConfig.heroImage,
         hero_title1: defaultConfig.heroTitle1,
         hero_title2: defaultConfig.heroTitle2,
         hero_description: defaultConfig.heroDescription,
@@ -227,6 +231,7 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
           representative: newConfig.representative,
           position: newConfig.position,
           logo: newConfig.logo,
+          hero_image: newConfig.heroImage,
           hero_title1: newConfig.heroTitle1,
           hero_title2: newConfig.heroTitle2,
           hero_description: newConfig.heroDescription,

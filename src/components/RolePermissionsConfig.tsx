@@ -48,10 +48,12 @@ import {
   Sparkles,
   Camera,
   PieChart,
+  ShoppingBag,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { UserRole } from "@/context/AuthContext";
 import { clearPermissionsCache } from "@/context/RolePermissionsContext";
+import { useRoles, clearRolesCache } from "@/hooks/useRoles";
+import { ROLE_COLOR_PALETTE } from "@/types/roles";
 
 // Menu structure definition with 3 levels
 interface TabItemDef {
@@ -72,6 +74,7 @@ interface MenuItemDef {
   name: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   subItems?: SubItemDef[];
+  tabs?: TabItemDef[];
 }
 
 const MENU_STRUCTURE: MenuItemDef[] = [
@@ -180,6 +183,10 @@ const MENU_STRUCTURE: MenuItemDef[] = [
     id: "san-pham",
     name: "Sản phẩm",
     icon: Package,
+    tabs: [
+      { id: "san-pham/danh-muc", name: "Danh mục sản phẩm", icon: ShoppingBag },
+      { id: "san-pham/quan-ly-kho", name: "Quản lý kho", icon: Warehouse },
+    ],
   },
   {
     id: "ban-hang",
@@ -232,65 +239,101 @@ const MENU_STRUCTURE: MenuItemDef[] = [
   },
 ];
 
-const ALL_ROLES: UserRole[] = [
-  "admin",
-  "tong_hop",
-  "ke_toan",
-  "pattern",
-  "may_mau",
-  "thiet_ke",
-  "quan_ly_don_hang",
-  "sale_si",
-  "sale_san",
-  "thu_kho",
-  "hinh_anh",
-];
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Admin",
-  tong_hop: "Tổng hợp",
-  ke_toan: "Kế toán",
-  pattern: "Pattern",
-  may_mau: "May mẫu",
-  thiet_ke: "Thiết kế",
-  quan_ly_don_hang: "Quản lý đơn hàng",
-  sale_si: "Sale sỉ",
-  sale_san: "Sale sàn",
-  thu_kho: "Thủ kho",
-  hinh_anh: "Hình ảnh",
-};
-
-const ROLE_COLORS: Record<UserRole, string> = {
-  admin: "bg-red-500",
-  tong_hop: "bg-blue-500",
-  ke_toan: "bg-green-500",
-  pattern: "bg-purple-500",
-  may_mau: "bg-pink-500",
-  thiet_ke: "bg-indigo-500",
-  quan_ly_don_hang: "bg-orange-500",
-  sale_si: "bg-yellow-500",
-  sale_san: "bg-amber-500",
-  thu_kho: "bg-teal-500",
-  hinh_anh: "bg-cyan-500",
-};
 
 export default function RolePermissionsConfig() {
-  const [selectedRole, setSelectedRole] = useState<UserRole>("tong_hop");
+  const { roles, loading: rolesLoading, fetchRoles, getRoleLabel, getRoleColor } = useRoles();
+  const nonAdminRoles = roles.filter((r) => r.id !== "admin");
+
+  const [selectedRole, setSelectedRole] = useState<string>("");
   const [permissions, setPermissions] = useState<string[]>([]);
   const [originalPermissions, setOriginalPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Add/delete role state
+  const [showAddRoleModal, setShowAddRoleModal] = useState(false);
+  const [newRoleDisplayName, setNewRoleDisplayName] = useState("");
+  const [newRoleColor, setNewRoleColor] = useState(ROLE_COLOR_PALETTE[0]);
+  const [addingRole, setAddingRole] = useState(false);
+  const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(
-    MENU_STRUCTURE.filter((m) => m.subItems).map((m) => m.id)
+    MENU_STRUCTURE.filter((m) => m.subItems || m.tabs).map((m) => m.id)
   );
   const [expandedSubMenus, setExpandedSubMenus] = useState<string[]>([]);
 
+  // Set initial selectedRole when roles load
+  useEffect(() => {
+    if (nonAdminRoles.length > 0 && !selectedRole) {
+      setSelectedRole(nonAdminRoles[0].id);
+    }
+  }, [nonAdminRoles, selectedRole]);
+
   // Fetch permissions for selected role
   useEffect(() => {
-    fetchPermissions(selectedRole);
+    if (selectedRole) {
+      fetchPermissions(selectedRole);
+    }
   }, [selectedRole]);
 
-  const fetchPermissions = async (role: UserRole) => {
+  // Role management handlers
+  const handleAddRole = async () => {
+    if (!newRoleDisplayName.trim()) {
+      toast.error("Vui lòng nhập tên vai trò");
+      return;
+    }
+    setAddingRole(true);
+    try {
+      const response = await fetch("/api/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: newRoleDisplayName.trim(), color: newRoleColor }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Đã thêm vai trò mới");
+        clearRolesCache();
+        await fetchRoles(true);
+        setShowAddRoleModal(false);
+        setNewRoleDisplayName("");
+        setNewRoleColor(ROLE_COLOR_PALETTE[0]);
+      } else {
+        toast.error(result.error || "Không thể thêm vai trò");
+      }
+    } catch {
+      toast.error("Lỗi khi thêm vai trò");
+    } finally {
+      setAddingRole(false);
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    if (!confirm(`Bạn có chắc muốn xóa vai trò này? Tất cả người dùng có vai trò này sẽ được chuyển sang "Tổng hợp".`)) return;
+    setDeletingRoleId(roleId);
+    try {
+      const response = await fetch("/api/roles", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: roleId, reassign_to: "tong_hop" }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Đã xóa vai trò");
+        clearRolesCache();
+        await fetchRoles(true);
+        if (selectedRole === roleId) {
+          setSelectedRole("");
+        }
+      } else {
+        toast.error(result.error || "Không thể xóa vai trò");
+      }
+    } catch {
+      toast.error("Lỗi khi xóa vai trò");
+    } finally {
+      setDeletingRoleId(null);
+    }
+  };
+
+  const fetchPermissions = async (role: string) => {
     try {
       setLoading(true);
       const response = await fetch(`/api/role-permissions?role=${role}`);
@@ -327,7 +370,7 @@ export default function RolePermissionsConfig() {
       const result = await response.json();
 
       if (result.success) {
-        toast.success(`Đã lưu phân quyền cho ${ROLE_LABELS[selectedRole]}`);
+        toast.success(`Đã lưu phân quyền cho ${getRoleLabel(selectedRole)}`);
         setOriginalPermissions(permissions);
         clearPermissionsCache();
       } else {
@@ -366,7 +409,7 @@ export default function RolePermissionsConfig() {
   };
 
   // Get all descendant IDs for a menu item
-  const getAllDescendantIds = (menu: MenuItemDef | SubItemDef): string[] => {
+  const getAllDescendantIds = (menu: MenuItemDef | SubItemDef | TabItemDef): string[] => {
     const ids: string[] = [];
     if ("subItems" in menu && menu.subItems) {
       menu.subItems.forEach((sub) => {
@@ -402,7 +445,7 @@ export default function RolePermissionsConfig() {
         return newPerms;
       } else {
         // Adding permission
-        let newPerms = [...prev, menuId];
+        const newPerms = [...prev, menuId];
 
         // If it has descendants, also add them
         if ("subItems" in item || "tabs" in item) {
@@ -415,8 +458,13 @@ export default function RolePermissionsConfig() {
         }
 
         // Add parent permissions
-        // Find if this is a tab (3rd level)
+        // Find if this is a tab (3rd level) or direct tab
         for (const menu of MENU_STRUCTURE) {
+          // Check direct tabs on top-level menu
+          if (menu.tabs?.some((t) => t.id === menuId)) {
+            if (!newPerms.includes(menu.id)) newPerms.push(menu.id);
+            return newPerms;
+          }
           if (menu.subItems) {
             for (const sub of menu.subItems) {
               if (sub.tabs?.some((t) => t.id === menuId)) {
@@ -443,6 +491,11 @@ export default function RolePermissionsConfig() {
 
   // Get count of enabled items
   const getSubItemCount = (menu: MenuItemDef) => {
+    if (menu.tabs && !menu.subItems) {
+      const total = menu.tabs.length;
+      const enabled = menu.tabs.filter((t) => permissions.includes(t.id)).length;
+      return { enabled, total };
+    }
     if (!menu.subItems) return { enabled: 0, total: 0 };
     let total = 0;
     let enabled = 0;
@@ -466,20 +519,37 @@ export default function RolePermissionsConfig() {
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Chọn vai trò để cấu hình</h3>
         <div className="flex flex-wrap gap-2">
-          {ALL_ROLES.filter((r) => r !== "admin").map((role) => (
-            <button
-              key={role}
-              onClick={() => setSelectedRole(role)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                selectedRole === role
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full ${ROLE_COLORS[role]}`}></span>
-              {ROLE_LABELS[role]}
-            </button>
+          {nonAdminRoles.map((role) => (
+            <div key={role.id} className="relative group">
+              <button
+                onClick={() => setSelectedRole(role.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  selectedRole === role.id
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${role.color}`}></span>
+                {role.display_name}
+              </button>
+              {!role.is_system && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeleteRole(role.id); }}
+                  disabled={deletingRoleId === role.id}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs hidden group-hover:flex items-center justify-center hover:bg-red-600"
+                  title="Xóa vai trò"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           ))}
+          <button
+            onClick={() => setShowAddRoleModal(true)}
+            className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition-all"
+          >
+            + Thêm
+          </button>
         </div>
         <p className="text-xs text-gray-500 mt-3">
           * Admin mặc định có quyền truy cập tất cả các trang
@@ -490,9 +560,9 @@ export default function RolePermissionsConfig() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${ROLE_COLORS[selectedRole]}`}></div>
+            <div className={`w-3 h-3 rounded-full ${getRoleColor(selectedRole)}`}></div>
             <h3 className="font-semibold text-gray-900">
-              Quyền truy cập của: {ROLE_LABELS[selectedRole]}
+              Quyền truy cập của: {getRoleLabel(selectedRole)}
             </h3>
           </div>
           {hasChanges && (
@@ -512,6 +582,8 @@ export default function RolePermissionsConfig() {
             {MENU_STRUCTURE.map((menu) => {
               const Icon = menu.icon;
               const hasSubItems = !!menu.subItems;
+              const hasDirectTabs = !!menu.tabs && !menu.subItems;
+              const isExpandable = hasSubItems || hasDirectTabs;
               const isExpanded = expandedMenus.includes(menu.id);
               const isEnabled = isPermissionEnabled(menu.id);
               const subCount = getSubItemCount(menu);
@@ -524,7 +596,7 @@ export default function RolePermissionsConfig() {
                       isEnabled ? "bg-green-50/50" : "bg-white"
                     }`}
                   >
-                    {hasSubItems ? (
+                    {isExpandable ? (
                       <button
                         onClick={() => toggleMenu(menu.id)}
                         className="p-1 hover:bg-gray-100 rounded"
@@ -545,7 +617,7 @@ export default function RolePermissionsConfig() {
                       {menu.name}
                     </span>
 
-                    {hasSubItems && (
+                    {isExpandable && (
                       <span className="text-xs text-gray-500">
                         {subCount.enabled}/{subCount.total} mục
                       </span>
@@ -682,6 +754,52 @@ export default function RolePermissionsConfig() {
                       })}
                     </div>
                   )}
+
+                  {/* Direct Tabs (top-level item with tabs, no subItems) */}
+                  {hasDirectTabs && isExpanded && (
+                    <div className="bg-gray-50 border-t border-gray-100">
+                      {menu.tabs?.map((tab) => {
+                        const TabIcon = tab.icon;
+                        const isTabEnabled = isPermissionEnabled(tab.id);
+
+                        return (
+                          <div
+                            key={tab.id}
+                            className={`flex items-center gap-3 px-4 py-2.5 pl-14 ${
+                              isTabEnabled ? "bg-green-50/30" : ""
+                            }`}
+                          >
+                            <TabIcon
+                              size={16}
+                              className={isTabEnabled ? "text-blue-500" : "text-gray-400"}
+                            />
+
+                            <span
+                              className={`flex-1 text-sm ${
+                                isTabEnabled ? "text-gray-800" : "text-gray-500"
+                              }`}
+                            >
+                              {tab.name}
+                            </span>
+
+                            <button
+                              onClick={() => togglePermission(tab.id, tab)}
+                              className={`w-12 h-7 rounded-full relative transition-colors duration-300 ${
+                                isTabEnabled ? "bg-green-500" : "bg-gray-300"
+                              }`}
+                              disabled={selectedRole === "admin"}
+                            >
+                              <span
+                                className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                                  isTabEnabled ? "translate-x-5" : ""
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -728,6 +846,63 @@ export default function RolePermissionsConfig() {
           <li>• Thay đổi sẽ được áp dụng khi người dùng đăng nhập lại hoặc tải lại trang</li>
         </ul>
       </div>
+
+      {/* Add Role Modal */}
+      {showAddRoleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Thêm vai trò mới</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tên vai trò</label>
+                <input
+                  type="text"
+                  value={newRoleDisplayName}
+                  onChange={(e) => setNewRoleDisplayName(e.target.value)}
+                  placeholder="Ví dụ: Quản lý kho"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddRole(); }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Màu sắc</label>
+                <div className="flex flex-wrap gap-2">
+                  {ROLE_COLOR_PALETTE.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setNewRoleColor(color)}
+                      className={`w-8 h-8 rounded-full ${color} transition-all ${
+                        newRoleColor === color
+                          ? "ring-2 ring-offset-2 ring-blue-500 scale-110"
+                          : "hover:scale-105"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setShowAddRoleModal(false); setNewRoleDisplayName(""); }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                disabled={addingRole}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAddRole}
+                disabled={addingRole || !newRoleDisplayName.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+              >
+                {addingRole ? "Đang thêm..." : "Thêm vai trò"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

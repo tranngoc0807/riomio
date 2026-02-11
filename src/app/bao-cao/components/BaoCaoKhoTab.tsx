@@ -13,6 +13,7 @@ import {
   Search,
   Calendar,
   RefreshCw,
+  FileDown,
 } from "lucide-react";
 
 type SubTabType = "ton-kho-npl" | "ton-kho-hang-hoa";
@@ -371,6 +372,109 @@ export default function BaoCaoKhoTab() {
     );
   };
 
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    let title = "";
+    let tableHTML = "";
+
+    if (activeSubTab === "ton-kho-npl" && activeNPLSubTab === "kho-cong-ty") {
+      title = `Tồn kho NPL kho công ty - Tháng ${selectedMonth.split("-")[1]}/${selectedMonth.split("-")[0]}`;
+      const rows = filteredNPLCongTy.map((item, i) => `<tr>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;">${item.maNPL}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.tonDau)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">+${fmt(item.nhapKho)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">-${fmt(item.xuatKho)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;${item.tonCuoi < 0 ? "color:red;" : ""}">${fmt(item.tonCuoi)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.donGiaSauThue)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(item.giaTriTon)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:center;width:40px;">STT</th><th style="text-align:left;">Mã NPL</th>
+        <th style="text-align:right;">Tồn đầu</th><th style="text-align:right;">Nhập kho</th>
+        <th style="text-align:right;">Xuất kho</th><th style="text-align:right;">Tồn cuối</th>
+        <th style="text-align:right;">Đơn giá</th><th style="text-align:right;">Giá trị tồn</th>
+      </tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;">
+          <td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng cộng:</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalNPLCongTy.tonDau)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">+${fmt(totalNPLCongTy.nhapKho)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">-${fmt(totalNPLCongTy.xuatKho)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalNPLCongTy.tonCuoi)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;"></td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalNPLCongTy.giaTriTon)}</td>
+        </tr>
+      </tbody></table>`;
+    } else if (activeSubTab === "ton-kho-npl" && activeNPLSubTab === "xuong-sx") {
+      title = "Tồn kho NPL xưởng SX";
+      const rows = filteredNPLXuongSX.map((item, i) => `<tr>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;">${item.ngayThang}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;">${item.xuongSX}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;">${item.tenNPL}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${item.dvt}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.soLuong)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.donGia)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(item.thanhTien)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:center;width:40px;">STT</th><th>Ngày tháng</th><th>Xưởng SX</th>
+        <th>Tên NPL</th><th style="text-align:center;">ĐVT</th>
+        <th style="text-align:right;">Số lượng</th><th style="text-align:right;">Đơn giá</th><th style="text-align:right;">Thành tiền</th>
+      </tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;">
+          <td colspan="5" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng cộng:</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalNPLXuongSX.soLuong)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;"></td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalNPLXuongSX.thanhTien)}</td>
+        </tr>
+      </tbody></table>`;
+    } else if (activeSubTab === "ton-kho-hang-hoa") {
+      title = `Tồn kho sản phẩm - Tháng ${selectedMonthSP.split("-")[1]}/${selectedMonthSP.split("-")[0]}`;
+      const rows = filteredTonKho.map((item, i) => `<tr>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;">${item.maSp}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;${item.tonDau < 0 ? "color:red;" : ""}">${fmt(item.tonDau)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(item.nhap)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:orange;">${fmt(item.xuat)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;${item.tonCuoi < 0 ? "color:red;" : ""}">${fmt(item.tonCuoi)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:center;width:40px;">STT</th><th style="text-align:left;">Mã SP</th>
+        <th style="text-align:right;">Tồn đầu</th><th style="text-align:right;">Nhập</th>
+        <th style="text-align:right;">Xuất</th><th style="text-align:right;">Tồn cuối</th>
+      </tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;">
+          <td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng cộng:</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalTonKho.tonDau)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalTonKho.nhap)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:orange;">${fmt(totalTonKho.xuat)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalTonKho.tonCuoi)}</td>
+        </tr>
+      </tbody></table>`;
+    } else {
+      return;
+    }
+
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:Arial,sans-serif; padding:30px; color:#333; }
+        h1 { font-size:20px; margin-bottom:20px; text-align:center; }
+        table { width:100%; border-collapse:collapse; font-size:12px; }
+        th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; }
+        @media print { body { padding:15px; } }
+      </style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      ${tableHTML}
+    </body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
   return (
     <div>
       {/* Main Sub-tabs navigation */}
@@ -468,9 +572,18 @@ export default function BaoCaoKhoTab() {
                   <h3 className="text-lg font-semibold text-gray-900">
                     Tồn kho NPL kho công ty ({filteredNPLCongTy.length})
                   </h3>
-                  <span className="text-sm text-gray-600">
-                    Tháng {selectedMonth.split("-")[1]}/{selectedMonth.split("-")[0]}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-600">
+                      Tháng {selectedMonth.split("-")[1]}/{selectedMonth.split("-")[0]}
+                    </span>
+                    <button
+                      onClick={handleExportPDF}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                    >
+                      <FileDown size={14} />
+                      Xuất PDF
+                    </button>
+                  </div>
                 </div>
 
                 {loadingNPL ? (
@@ -539,10 +652,17 @@ export default function BaoCaoKhoTab() {
             {/* Tồn kho NPL Xưởng SX */}
             {activeNPLSubTab === "xuong-sx" && (
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="px-6 py-4 bg-orange-50 border-b border-gray-200">
+                <div className="px-6 py-4 bg-orange-50 border-b border-gray-200 flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Tồn kho NPL xưởng SX ({filteredNPLXuongSX.length})
                   </h3>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                  >
+                    <FileDown size={14} />
+                    Xuất PDF
+                  </button>
                 </div>
 
                 {loadingNPL ? (
@@ -648,9 +768,18 @@ export default function BaoCaoKhoTab() {
                 <h3 className="text-lg font-semibold text-gray-900">
                   Tồn kho sản phẩm ({filteredTonKho.length})
                 </h3>
-                <span className="text-sm text-gray-600">
-                  Tháng {selectedMonthSP.split("-")[1]}/{selectedMonthSP.split("-")[0]}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">
+                    Tháng {selectedMonthSP.split("-")[1]}/{selectedMonthSP.split("-")[0]}
+                  </span>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                  >
+                    <FileDown size={14} />
+                    Xuất PDF
+                  </button>
+                </div>
               </div>
 
               {loadingTonKho ? (

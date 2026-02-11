@@ -87,15 +87,16 @@ export interface Employee {
   bankAccount: string;
   luongCoBan: string;
   phone: string; // Kept for backward compatibility
+  email: string;
 }
 
 /**
  * Đọc dữ liệu nhân viên từ Google Sheets
  * ID được tự động generate, bỏ qua cột A (STT)
- * Header ở dòng 5, đọc dữ liệu từ dòng 6, cột B đến N
+ * Header ở dòng 5, đọc dữ liệu từ dòng 6, cột B đến O
  * B: Họ và tên, C: Vị trí, D: Bộ phận, E: Giới tính, F: Tình trạng lao động,
  * G: Ngày sinh, H: CCCD, I: Ngày cấp, J: Nơi Cấp, K: Quê Quán,
- * L: Địa chỉ hiện tại, M: Loại hợp đồng, N: Mức lương cơ bản
+ * L: Địa chỉ hiện tại, M: Loại hợp đồng, N: Mức lương cơ bản, O: Email
  */
 export async function getEmployeesFromSheet(): Promise<Employee[]> {
   try {
@@ -103,7 +104,7 @@ export async function getEmployeesFromSheet(): Promise<Employee[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdNhanVienLuong,
-      range: `${sheetNameNhanVienLuong}!B6:N`, // Header dòng 5, dữ liệu từ dòng 6, đọc cột B-N
+      range: `${sheetNameNhanVienLuong}!B6:O`, // Header dòng 5, dữ liệu từ dòng 6, đọc cột B-O
     });
 
     const rows = response.data.values;
@@ -132,6 +133,7 @@ export async function getEmployeesFromSheet(): Promise<Employee[]> {
         luongCoBan: row[12] || "",
         bankAccount: "", // Not available in this sheet
         phone: "", // Phone not available in this sheet
+        email: row[13] || "",
       }))
       .filter((emp) => emp.name.trim() !== ""); // Lọc bỏ các dòng trống
 
@@ -211,7 +213,7 @@ export async function addEmployeeToSheet(employee: Employee): Promise<void> {
     // Đọc toàn bộ dữ liệu để tìm dòng cuối cùng có data (từ dòng 6 trở đi)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdNhanVienLuong,
-      range: `${sheetNameNhanVienLuong}!B6:N`, // Đọc từ B6 đến N
+      range: `${sheetNameNhanVienLuong}!B6:O`, // Đọc từ B6 đến O
     });
 
     const allRows = response.data.values || [];
@@ -230,10 +232,10 @@ export async function addEmployeeToSheet(employee: Employee): Promise<void> {
     // Data bắt đầu từ dòng 6, nên dòng mới = 6 + lastDataRowIndex + 1
     const nextRow = lastDataRowIndex >= 0 ? 6 + lastDataRowIndex + 1 : 6;
 
-    // Ghi dữ liệu nhân viên (cột B-N, 13 cột)
+    // Ghi dữ liệu nhân viên (cột B-O, 14 cột)
     // B: Họ và tên, C: Vị trí, D: Bộ phận, E: Giới tính, F: Tình trạng lao động,
     // G: Ngày sinh, H: CCCD, I: Ngày cấp, J: Nơi Cấp, K: Quê Quán,
-    // L: Địa chỉ hiện tại, M: Loại hợp đồng, N: Tài khoản
+    // L: Địa chỉ hiện tại, M: Loại hợp đồng, N: Tài khoản, O: Email
     const values = [
       [
         employee.name,             // B: Họ và tên
@@ -249,13 +251,14 @@ export async function addEmployeeToSheet(employee: Employee): Promise<void> {
         employee.address,          // L: Địa chỉ hiện tại
         employee.contractType,     // M: Loại hợp đồng
         employee.bankAccount,      // N: Tài khoản
+        employee.email,            // O: Email
       ],
     ];
 
     // Ghi dữ liệu vào dòng mới
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdNhanVienLuong,
-      range: `${sheetNameNhanVienLuong}!B${nextRow}:N${nextRow}`,
+      range: `${sheetNameNhanVienLuong}!B${nextRow}:O${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -273,7 +276,7 @@ export async function addEmployeeToSheet(employee: Employee): Promise<void> {
  * Cập nhật thông tin một nhân viên trong Google Sheets
  * ID được dùng để xác định vị trí dòng
  * Header ở dòng 5, dữ liệu từ dòng 6: ID 1 = dòng 6, ID 2 = dòng 7, etc.
- * Ghi vào cột B-N
+ * Ghi vào cột B-O
  */
 export async function updateEmployeeInSheet(
   employee: Employee
@@ -299,12 +302,13 @@ export async function updateEmployeeInSheet(
         employee.address,          // L: Địa chỉ hiện tại
         employee.contractType,     // M: Loại hợp đồng
         employee.bankAccount,      // N: Tài khoản
+        employee.email,            // O: Email
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdNhanVienLuong,
-      range: `${sheetNameNhanVienLuong}!B${rowNumber}:N${rowNumber}`,
+      range: `${sheetNameNhanVienLuong}!B${rowNumber}:O${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -7929,6 +7933,32 @@ export async function getTonKhoNPLNgayFromSheet(): Promise<TonKhoNPLNgay[]> {
     return tonKhoNgayList;
   } catch (error) {
     console.error("Error reading ton kho NPL ngay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật số lượng tồn kho NPL đến ngày trong Google Sheets
+ * Cột L, dữ liệu từ dòng 6
+ */
+export async function updateTonKhoNPLNgaySoLuong(
+  id: number,
+  soLuong: number
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const rowNumber = id + 5; // id=1 → row 6
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat6,
+      range: `'${sheetNameTonKhoNPL}'!L${rowNumber}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[soLuong]],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating ton kho NPL ngay so luong:", error);
     throw error;
   }
 }

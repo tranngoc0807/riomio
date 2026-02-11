@@ -13,6 +13,7 @@ import {
   Trash2,
   X,
   Check,
+  FileDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { createPortal } from "react-dom";
@@ -429,6 +430,134 @@ export default function BaoCaoBanHangTab() {
     }
   };
 
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    let title = "";
+    let tableHTML = "";
+
+    if (activeSubTab === "theo-thang" && data) {
+      title = "Báo cáo bán hàng theo tháng";
+      const rows = data.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.thang}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.nam}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.doanhThu)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.tienVon)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;font-weight:600;${row.loiNhuan > 0 ? "color:green;" : row.loiNhuan < 0 ? "color:red;" : ""}">${formatCurrency(row.loiNhuan)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:center;">Tháng</th><th style="text-align:center;">Năm</th>
+        <th style="text-align:right;">Doanh thu</th><th style="text-align:right;">Tiền vốn</th>
+        <th style="text-align:right;">Lợi nhuận</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    } else if (activeSubTab === "theo-khach-hang" && khachHangData) {
+      title = "Báo cáo bán hàng theo khách hàng";
+      const rows1 = khachHangData.theoThang.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;">${row.khachHang}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.doanhThu)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;${row.loiNhuanGop > 0 ? "color:green;" : row.loiNhuanGop < 0 ? "color:red;" : ""}">${formatCurrency(row.loiNhuanGop)}</td>
+      </tr>`).join("");
+      const rows2 = khachHangData.theoNam.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;">${row.khachHang}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.doanhThuNam)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;${row.loiNhuanNam > 0 ? "color:green;" : row.loiNhuanNam < 0 ? "color:red;" : ""}">${formatCurrency(row.loiNhuanNam)}</td>
+      </tr>`).join("");
+      tableHTML = `
+        <h2 style="font-size:16px;margin-bottom:10px;">Theo tháng ${khachHangData.theoThang.thangBaoCao}</h2>
+        <table><thead><tr>
+          <th style="text-align:center;width:50px;">STT</th><th style="text-align:left;">Khách hàng</th>
+          <th style="text-align:right;">Doanh thu</th><th style="text-align:right;">Lợi nhuận gộp</th>
+        </tr></thead><tbody>${rows1}
+          <tr style="background:#fef9c3;font-weight:600;">
+            <td colspan="2" style="padding:6px 10px;border:1px solid #ddd;text-align:right;">TỔNG CỘNG</td>
+            <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:blue;">${formatCurrency(khachHangData.theoThang.tongDoanhThu)}</td>
+            <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:green;">${formatCurrency(khachHangData.theoThang.tongLoiNhuan)}</td>
+          </tr>
+        </tbody></table>
+        <br/><h2 style="font-size:16px;margin-bottom:10px;">Theo năm ${khachHangData.theoNam.namBaoCao}</h2>
+        <table><thead><tr>
+          <th style="text-align:center;width:50px;">STT</th><th style="text-align:left;">Khách hàng</th>
+          <th style="text-align:right;">Doanh thu năm</th><th style="text-align:right;">Lợi nhuận năm</th>
+        </tr></thead><tbody>${rows2}
+          <tr style="background:#fef9c3;font-weight:600;">
+            <td colspan="2" style="padding:6px 10px;border:1px solid #ddd;text-align:right;">TỔNG CỘNG</td>
+            <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:blue;">${formatCurrency(khachHangData.theoNam.tongDoanhThu)}</td>
+            <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:green;">${formatCurrency(khachHangData.theoNam.tongLoiNhuan)}</td>
+          </tr>
+        </tbody></table>`;
+    } else if (activeSubTab === "theo-nhan-vien" && nhanVienData) {
+      title = "Báo cáo bán hàng theo nhân viên";
+      const rows1 = nhanVienData.theoThang.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;">${row.nhanVien}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.doanhThu)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;${row.loiNhuanGop > 0 ? "color:green;" : row.loiNhuanGop < 0 ? "color:red;" : ""}">${formatCurrency(row.loiNhuanGop)}</td>
+      </tr>`).join("");
+      const rows2 = nhanVienData.theoNam.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;">${row.nhanVien}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.doanhThuNam)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;${row.loiNhuanNam > 0 ? "color:green;" : row.loiNhuanNam < 0 ? "color:red;" : ""}">${formatCurrency(row.loiNhuanNam)}</td>
+      </tr>`).join("");
+      tableHTML = `
+        <h2 style="font-size:16px;margin-bottom:10px;">Theo tháng ${nhanVienData.theoThang.thangBaoCao}</h2>
+        <table><thead><tr>
+          <th style="text-align:center;width:50px;">STT</th><th style="text-align:left;">Nhân viên</th>
+          <th style="text-align:right;">Doanh thu</th><th style="text-align:right;">Lợi nhuận gộp</th>
+        </tr></thead><tbody>${rows1}
+          <tr style="background:#fef9c3;font-weight:600;">
+            <td colspan="2" style="padding:6px 10px;border:1px solid #ddd;text-align:right;">TỔNG CỘNG</td>
+            <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:blue;">${formatCurrency(nhanVienData.theoThang.tongDoanhThu)}</td>
+            <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:green;">${formatCurrency(nhanVienData.theoThang.tongLoiNhuan)}</td>
+          </tr>
+        </tbody></table>
+        <br/><h2 style="font-size:16px;margin-bottom:10px;">Theo năm ${nhanVienData.theoNam.namBaoCao}</h2>
+        <table><thead><tr>
+          <th style="text-align:center;width:50px;">STT</th><th style="text-align:left;">Nhân viên</th>
+          <th style="text-align:right;">Doanh thu năm</th><th style="text-align:right;">Lợi nhuận năm</th>
+        </tr></thead><tbody>${rows2}
+          <tr style="background:#fef9c3;font-weight:600;">
+            <td colspan="2" style="padding:6px 10px;border:1px solid #ddd;text-align:right;">TỔNG CỘNG</td>
+            <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:blue;">${formatCurrency(nhanVienData.theoNam.tongDoanhThu)}</td>
+            <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;color:green;">${formatCurrency(nhanVienData.theoNam.tongLoiNhuan)}</td>
+          </tr>
+        </tbody></table>`;
+    } else if (activeSubTab === "theo-san-pham" && sanPhamData) {
+      title = "Báo cáo doanh thu theo sản phẩm";
+      const rows = sanPhamData.rows.map((row) => `<tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;">${row.tenSanPham}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${row.soLuongBan}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;">${formatCurrency(row.doanhThu)}</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:right;font-weight:600;${row.loiNhuanGop > 0 ? "color:green;" : row.loiNhuanGop < 0 ? "color:red;" : ""}">${formatCurrency(row.loiNhuanGop)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:left;">Tên sản phẩm</th><th style="text-align:right;">Số lượng bán</th>
+        <th style="text-align:right;">Doanh thu</th><th style="text-align:right;">Lợi nhuận gộp</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    } else {
+      return;
+    }
+
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:Arial,sans-serif; padding:30px; color:#333; }
+        h1 { font-size:20px; margin-bottom:20px; text-align:center; }
+        h2 { font-size:16px; margin:15px 0 10px; }
+        table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:10px; }
+        th { padding:8px 10px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; }
+        @media print { body { padding:15px; } }
+      </style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      ${tableHTML}
+    </body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
   return (
     <div>
       {/* Sub-tabs navigation */}
@@ -468,13 +597,22 @@ export default function BaoCaoBanHangTab() {
                   <h3 className="text-lg font-semibold text-gray-900">
                     Báo cáo bán hàng theo tháng
                   </h3>
-                  <button
-                    onClick={openAddModal}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus size={18} />
-                    Thêm mới
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportPDF}
+                      className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
+                    >
+                      <FileDown size={16} />
+                      Xuất PDF
+                    </button>
+                    <button
+                      onClick={openAddModal}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus size={18} />
+                      Thêm mới
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -782,7 +920,17 @@ export default function BaoCaoBanHangTab() {
                 <Loader2 size={32} className="animate-spin text-blue-600" />
               </div>
             ) : khachHangData ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <div className="flex justify-end mb-4">
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileDown size={16} />
+                    Xuất PDF
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Bảng 1: Báo cáo theo tháng */}
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                   <div className="p-4 border-b bg-blue-50">
@@ -936,6 +1084,7 @@ export default function BaoCaoBanHangTab() {
                   </div>
                 </div>
               </div>
+              </div>
             ) : (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <p className="text-gray-500 text-center">Chưa có dữ liệu</p>
@@ -951,7 +1100,17 @@ export default function BaoCaoBanHangTab() {
                 <Loader2 size={32} className="animate-spin text-blue-600" />
               </div>
             ) : nhanVienData ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <div className="flex justify-end mb-4">
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileDown size={16} />
+                    Xuất PDF
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Bảng 1: Báo cáo theo tháng */}
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                   <div className="p-4 border-b bg-blue-50">
@@ -1105,6 +1264,7 @@ export default function BaoCaoBanHangTab() {
                   </div>
                 </div>
               </div>
+              </div>
             ) : (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <p className="text-gray-500 text-center">Chưa có dữ liệu</p>
@@ -1121,10 +1281,17 @@ export default function BaoCaoBanHangTab() {
               </div>
             ) : sanPhamData ? (
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="p-6 border-b">
+                <div className="p-6 border-b flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Báo cáo doanh thu theo sản phẩm
                   </h3>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileDown size={16} />
+                    Xuất PDF
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">

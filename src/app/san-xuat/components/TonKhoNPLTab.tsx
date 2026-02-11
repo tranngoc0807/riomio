@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Factory } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Factory, Pencil } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import DatePicker from "@/components/DatePicker";
 import type { TonKhoNPLThang, TonKhoNPLNgay, TonKhoNPLXuongSX } from "@/lib/googleSheets";
@@ -24,6 +24,12 @@ export default function TonKhoNPLTab() {
   const [denNgay, setDenNgay] = useState<string>(
     currentDate.toISOString().split("T")[0]
   );
+
+  // Inline edit for soLuong
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   // Pagination
   const [currentPageThang, setCurrentPageThang] = useState(1);
@@ -101,6 +107,44 @@ export default function TonKhoNPLTab() {
       toast.error("Lỗi khi tải danh sách tồn kho NPL");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const startEditSoLuong = (item: { id: number; soLuong: number }) => {
+    setEditingId(item.id);
+    setEditValue(String(item.soLuong));
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  };
+
+  const saveSoLuong = async (id: number) => {
+    const newValue = parseFloat(editValue.replace(/\./g, "").replace(",", "."));
+    if (isNaN(newValue)) {
+      toast.error("Số lượng không hợp lệ");
+      setEditingId(null);
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const response = await fetch("/api/ton-kho-npl/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, soLuong: newValue }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTonKhoNgay((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, soLuong: newValue } : item))
+        );
+        toast.success("Đã cập nhật số lượng");
+      } else {
+        toast.error(result.error || "Lỗi khi cập nhật");
+      }
+    } catch (error) {
+      toast.error("Lỗi khi cập nhật số lượng");
+    } finally {
+      setIsSaving(false);
+      setEditingId(null);
     }
   };
 
@@ -442,7 +486,30 @@ export default function TonKhoNPLTab() {
                       <td className="px-3 py-2.5 text-gray-600">{startIndexNgay + index + 1}</td>
                       <td className="px-3 py-2.5 font-medium text-gray-900">{item.maSP}</td>
                       <td className="px-3 py-2.5 text-right font-medium text-green-600">
-                        {item.soLuong.toLocaleString("vi-VN")}
+                        {editingId === item.id ? (
+                          <input
+                            ref={editInputRef}
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveSoLuong(item.id);
+                              if (e.key === "Escape") setEditingId(null);
+                            }}
+                            onBlur={() => saveSoLuong(item.id)}
+                            disabled={isSaving}
+                            className="w-24 px-2 py-1 text-right border border-green-400 rounded focus:ring-2 focus:ring-green-500 focus:outline-none"
+                          />
+                        ) : (
+                          <span
+                            onClick={() => startEditSoLuong(item)}
+                            className="cursor-pointer hover:bg-green-50 hover:text-green-700 px-2 py-1 rounded inline-flex items-center gap-1"
+                            title="Click để sửa"
+                          >
+                            {item.soLuong.toLocaleString("vi-VN")}
+                            <Pencil size={12} className="text-gray-400" />
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Building2,
   Factory,
   ShoppingCart,
   Wallet,
@@ -37,96 +36,71 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  UserCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
-import { useAuth, UserRole } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { useRolePermissions } from "@/context/RolePermissionsContext";
+import { useRoles } from "@/hooks/useRoles";
 
 interface MenuItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ size?: number }>;
-  roles?: UserRole[]; // Roles that can access this menu
   subItems?: {
     name: string;
     href: string;
     icon: React.ComponentType<{ size?: number }>;
-    roles?: UserRole[];
   }[];
 }
-
-// Define role groups for easier management
-const ALL_ROLES: UserRole[] = [
-  "admin",
-  "tong_hop",
-  "ke_toan",
-  "pattern",
-  "may_mau",
-  "thiet_ke",
-  "quan_ly_don_hang",
-  "sale_si",
-  "sale_san",
-  "thu_kho",
-  "hinh_anh",
-];
-
-const FINANCIAL_ROLES: UserRole[] = ["admin", "ke_toan", "quan_ly_don_hang"];
 
 const menuItems: MenuItem[] = [
   {
     name: "Sản xuất",
     href: "/san-xuat",
     icon: Factory,
-    roles: ALL_ROLES,
+
     subItems: [
       {
         name: "Nguyên phụ liệu",
         href: "/san-xuat/nguyen-phu-lieu",
         icon: Boxes,
-        roles: ALL_ROLES,
       },
       {
         name: "Gia công",
         href: "/san-xuat/gia-cong",
         icon: Hammer,
-        roles: ALL_ROLES,
       },
       {
         name: "Hình In",
         href: "/san-xuat/hinh-in",
         icon: Image,
-        roles: ALL_ROLES,
       },
       {
         name: "Kế hoạch sản xuất",
         href: "/san-xuat/ke-hoach",
         icon: ClipboardList,
-        roles: ALL_ROLES,
       },
       {
         name: "Giá thành",
         href: "/san-xuat/gia-thanh",
         icon: Calculator,
-        roles: ALL_ROLES,
       },
       {
         name: "Công đoạn sản xuất",
         href: "/san-xuat/cong-doan",
         icon: Cog,
-        roles: ALL_ROLES,
       },
       {
         name: "Sản phẩm",
         href: "/san-xuat/san-pham",
         icon: PackageSearch,
-        roles: ALL_ROLES,
       },
       {
         name: "Chi phí khác",
         href: "/san-xuat/chi-phi-khac",
         icon: Receipt,
-        roles: ALL_ROLES,
       },
     ],
   },
@@ -134,37 +108,32 @@ const menuItems: MenuItem[] = [
     name: "Sản phẩm",
     href: "/san-pham",
     icon: Package,
-    roles: ALL_ROLES,
   },
   {
     name: "Bán hàng",
     href: "/ban-hang",
     icon: ShoppingCart,
-    roles: ALL_ROLES,
+
     subItems: [
       {
         name: "Đơn hàng",
         href: "/ban-hang/don-hang",
         icon: ShoppingCart,
-        roles: ALL_ROLES,
       },
       {
         name: "Khách hàng",
         href: "/ban-hang/khach-hang",
         icon: Users,
-        roles: ALL_ROLES,
       },
       {
         name: "Chương trình bán hàng",
         href: "/ban-hang/chuong-trinh",
         icon: FileBarChart,
-        roles: ALL_ROLES,
       },
       {
         name: "Chi phí bán hàng",
         href: "/ban-hang/chi-phi",
         icon: Receipt,
-        roles: ALL_ROLES,
       },
     ],
   },
@@ -172,19 +141,17 @@ const menuItems: MenuItem[] = [
     name: "Dòng tiền",
     href: "/dong-tien",
     icon: Wallet,
-    roles: FINANCIAL_ROLES,
+
     subItems: [
       {
         name: "Quản lý tiền vay",
         href: "/quan-ly-tien-vay",
         icon: HandCoins,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Sổ quỹ",
         href: "/so-quy",
         icon: BookOpen,
-        roles: FINANCIAL_ROLES,
       },
     ],
   },
@@ -192,37 +159,32 @@ const menuItems: MenuItem[] = [
     name: "Báo cáo",
     href: "/bao-cao",
     icon: FileBarChart,
-    roles: FINANCIAL_ROLES,
+
     subItems: [
       {
         name: "Báo cáo tài chính",
         href: "/bao-cao?tab=tai-chinh",
         icon: DollarSign,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Báo cáo bán hàng",
         href: "/bao-cao?tab=ban-hang",
         icon: TrendingUp,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Báo cáo kho",
         href: "/bao-cao?tab=kho",
         icon: Package,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Báo cáo dòng tiền",
         href: "/bao-cao?tab=dong-tien",
         icon: Wallet,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Báo cáo chi phí",
         href: "/bao-cao?tab=chi-phi",
         icon: Receipt,
-        roles: FINANCIAL_ROLES,
       },
     ],
   },
@@ -230,37 +192,32 @@ const menuItems: MenuItem[] = [
     name: "Nhân sự",
     href: "/nhan-su",
     icon: UserCog,
-    roles: FINANCIAL_ROLES,
+
     subItems: [
       {
         name: "Danh sách nhân viên",
         href: "/nhan-su?tab=danh-sach",
         icon: Users,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Quy chế & Hợp đồng",
         href: "/nhan-su?tab=quy-che-hop-dong",
         icon: FileText,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Chấm công nhân viên",
         href: "/nhan-su?tab=cham-cong",
         icon: Clock,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Bảng lương",
         href: "/nhan-su?tab=bang-luong",
         icon: Banknote,
-        roles: FINANCIAL_ROLES,
       },
       {
         name: "Bảo hiểm",
         href: "/nhan-su?tab=bao-hiem",
         icon: Shield,
-        roles: FINANCIAL_ROLES,
       },
     ],
   },
@@ -268,37 +225,8 @@ const menuItems: MenuItem[] = [
     name: "Cấu hình",
     href: "/cau-hinh",
     icon: Settings,
-    roles: ["admin"],
   },
 ];
-
-const roleLabels: Record<UserRole, string> = {
-  admin: "Admin",
-  tong_hop: "Tổng hợp",
-  ke_toan: "Kế toán",
-  pattern: "Pattern",
-  may_mau: "May mẫu",
-  thiet_ke: "Thiết kế",
-  quan_ly_don_hang: "Quản lý đơn hàng",
-  sale_si: "Sale sỉ",
-  sale_san: "Sale sàn",
-  thu_kho: "Thủ kho",
-  hinh_anh: "Hình ảnh",
-};
-
-const roleColors: Record<UserRole, string> = {
-  admin: "bg-red-500",
-  tong_hop: "bg-blue-500",
-  ke_toan: "bg-green-500",
-  pattern: "bg-purple-500",
-  may_mau: "bg-pink-500",
-  thiet_ke: "bg-indigo-500",
-  quan_ly_don_hang: "bg-orange-500",
-  sale_si: "bg-yellow-500",
-  sale_san: "bg-amber-500",
-  thu_kho: "bg-teal-500",
-  hinh_anh: "bg-cyan-500",
-};
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -315,6 +243,7 @@ export default function Sidebar() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const { profile, session, signOut, initialized } = useAuth();
+  const { getRoleLabel, getRoleColor } = useRoles();
   const { hasAccess, loading: permissionsLoading } = useRolePermissions();
 
   // Reset password form when modal closes
@@ -587,11 +516,11 @@ export default function Sidebar() {
                     <>
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          roleColors[profile.role]
+                          getRoleColor(profile.role)
                         }`}
                       ></span>
                       <span className="text-xs text-blue-300">
-                        {roleLabels[profile.role]}
+                        {getRoleLabel(profile.role)}
                       </span>
                     </>
                   ) : (
@@ -612,6 +541,14 @@ export default function Sidebar() {
             {/* Dropdown Menu */}
             {showUserMenu && (
               <div className="mt-2 bg-blue-800 rounded-lg shadow-lg border border-blue-700 overflow-hidden">
+                <Link
+                  href="/profile"
+                  onClick={() => { setShowUserMenu(false); setIsOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-blue-100 hover:bg-blue-700/50 transition-colors border-b border-blue-700"
+                >
+                  <UserCircle size={18} />
+                  <span className="font-medium">Thông tin cá nhân</span>
+                </Link>
                 <button
                   onClick={() => {
                     setShowUserMenu(false);
@@ -661,11 +598,11 @@ export default function Sidebar() {
                   <div className="flex items-center gap-2 mt-1">
                     <span
                       className={`w-2 h-2 rounded-full ${
-                        profile ? roleColors[profile.role] : "bg-gray-400"
+                        profile ? getRoleColor(profile.role) : "bg-gray-400"
                       }`}
                     ></span>
                     <span className="text-blue-100 text-sm">
-                      {profile ? roleLabels[profile.role] : ""}
+                      {profile ? getRoleLabel(profile.role) : ""}
                     </span>
                   </div>
                   <p className="text-blue-200 text-sm mt-1">
@@ -794,6 +731,7 @@ export default function Sidebar() {
           </div>
         </div>
       )}
+
     </>
   );
 }
