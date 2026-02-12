@@ -142,6 +142,10 @@ export default function XuatKhoNPLTab() {
 
   // Danh sách xưởng sản xuất - lấy từ API
   const [xuongSXList, setXuongSXList] = useState<any[]>([]);
+  const [showXuongDropdown, setShowXuongDropdown] = useState(false);
+  const [showReturnXuongDropdown, setShowReturnXuongDropdown] = useState(false);
+  const xuongDropdownRef = useRef<HTMLDivElement>(null);
+  const returnXuongDropdownRef = useRef<HTMLDivElement>(null);
 
   // Tồn kho NPL - để lookup tồn cuối khi chọn mã NPL
   const [tonKhoNPLData, setTonKhoNPLData] = useState<any[]>([]);
@@ -251,6 +255,18 @@ export default function XuatKhoNPLTab() {
         !returnNplDropdownRef.current.contains(event.target as Node)
       ) {
         setShowReturnNPLDropdown(false);
+      }
+      if (
+        xuongDropdownRef.current &&
+        !xuongDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowXuongDropdown(false);
+      }
+      if (
+        returnXuongDropdownRef.current &&
+        !returnXuongDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowReturnXuongDropdown(false);
       }
     };
 
@@ -1060,21 +1076,45 @@ export default function XuatKhoNPLTab() {
                   />
                 </div>
 
-                {/* Xưởng SX - Dropdown */}
-                <div>
+                {/* Xưởng SX - Search */}
+                <div className="relative" ref={xuongDropdownRef}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Xưởng SX</label>
-                  <select
-                    value={formXuongSX}
-                    onChange={(e) => setFormXuongSX(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                  >
-                    <option value="">Chọn xưởng sản xuất...</option>
-                    {xuongSXList.map((xuong) => (
-                      <option key={xuong.id} value={xuong.name}>
-                        {xuong.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formXuongSX}
+                      onChange={(e) => {
+                        setFormXuongSX(e.target.value);
+                        setShowXuongDropdown(true);
+                      }}
+                      onFocus={() => setShowXuongDropdown(true)}
+                      placeholder="Chọn xưởng sản xuất..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  </div>
+                  {showXuongDropdown && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {xuongSXList
+                        .filter((x) => x.name.toLowerCase().includes(formXuongSX.toLowerCase()))
+                        .map((xuong) => (
+                          <button
+                            key={xuong.id}
+                            type="button"
+                            onClick={() => {
+                              setFormXuongSX(xuong.name);
+                              setShowXuongDropdown(false);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 border-b border-gray-100 last:border-0"
+                          >
+                            {xuong.name}
+                          </button>
+                        ))}
+                      {xuongSXList.filter((x) => x.name.toLowerCase().includes(formXuongSX.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-gray-400">Không tìm thấy</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1854,22 +1894,46 @@ export default function XuatKhoNPLTab() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                 </div>
-                <div>
+                <div className="relative" ref={returnXuongDropdownRef}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Xưởng SX
                   </label>
-                  <select
-                    value={returnFormXuongSX}
-                    onChange={(e) => setReturnFormXuongSX(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-white"
-                  >
-                    <option value="">Chọn xưởng sản xuất...</option>
-                    {xuongSXList.map((xuong) => (
-                      <option key={xuong.id} value={xuong.name}>
-                        {xuong.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={returnFormXuongSX}
+                      onChange={(e) => {
+                        setReturnFormXuongSX(e.target.value);
+                        setShowReturnXuongDropdown(true);
+                      }}
+                      onFocus={() => setShowReturnXuongDropdown(true)}
+                      placeholder="Chọn xưởng sản xuất..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  </div>
+                  {showReturnXuongDropdown && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {xuongSXList
+                        .filter((x) => x.name.toLowerCase().includes(returnFormXuongSX.toLowerCase()))
+                        .map((xuong) => (
+                          <button
+                            key={xuong.id}
+                            type="button"
+                            onClick={() => {
+                              setReturnFormXuongSX(xuong.name);
+                              setShowReturnXuongDropdown(false);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 border-b border-gray-100 last:border-0"
+                          >
+                            {xuong.name}
+                          </button>
+                        ))}
+                      {xuongSXList.filter((x) => x.name.toLowerCase().includes(returnFormXuongSX.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-gray-400">Không tìm thấy</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
