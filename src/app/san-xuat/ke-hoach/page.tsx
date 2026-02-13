@@ -14,21 +14,18 @@ import { useRolePermissions } from "@/context/RolePermissionsContext";
 
 // Import existing tab component from parent
 import KeHoachSXTab from "../components/KeHoachSXTab";
-import LSXTab from "../components/LSXTab";
 import DinhMucSXTab from "../components/DinhMucSXTab";
 import BangKeYCXKTab from "../components/BangKeYCXKTab";
 import SoLuongCatTab from "../components/SoLuongCatTab";
 
 type TabType =
   | "bang-ke-lsx"
-  | "lsx"
   | "dinh-muc"
   | "bang-ke-yc-xk"
   | "so-luong-cat";
 
 const TABS = [
   { id: "bang-ke-lsx" as TabType, label: "Bảng kê LSX", icon: FileSpreadsheet },
-  { id: "lsx" as TabType, label: "LSX", icon: ClipboardList },
   { id: "dinh-muc" as TabType, label: "Định mức sản xuất", icon: ListChecks },
   { id: "bang-ke-yc-xk" as TabType, label: "Bảng kê Yêu cầu xuất kho NPL", icon: FileOutput },
   { id: "so-luong-cat" as TabType, label: "Số lượng cắt", icon: Scissors },
@@ -116,7 +113,6 @@ export default function KeHoachSanXuat() {
 
         <div className="p-6">
           {activeTab === "bang-ke-lsx" && <KeHoachSXTab />}
-          {activeTab === "lsx" && <LSXTab />}
           {activeTab === "dinh-muc" && <DinhMucSXTab />}
           {activeTab === "bang-ke-yc-xk" && <BangKeYCXKTab />}
           {activeTab === "so-luong-cat" && <SoLuongCatTab />}

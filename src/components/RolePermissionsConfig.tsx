@@ -126,7 +126,6 @@ const MENU_STRUCTURE: MenuItemDef[] = [
         icon: ClipboardList,
         tabs: [
           { id: "san-xuat/ke-hoach/bang-ke-lsx", name: "Bảng kê LSX", icon: FileSpreadsheet },
-          { id: "san-xuat/ke-hoach/lsx", name: "LSX", icon: ClipboardList },
           { id: "san-xuat/ke-hoach/dinh-muc", name: "Định mức SX", icon: ListChecks },
           { id: "san-xuat/ke-hoach/phieu-dinh-muc", name: "Phiếu định mức SX", icon: FileText },
           { id: "san-xuat/ke-hoach/bang-ke-yc-xk", name: "Bảng kê YC xuất kho", icon: FileOutput },

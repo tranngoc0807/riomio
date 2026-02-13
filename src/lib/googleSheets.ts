@@ -1864,6 +1864,58 @@ export async function updateOrderInSheet(order: Order): Promise<void> {
 }
 
 /**
+ * Cập nhật nhiều đơn hàng cùng lúc trong Google Sheets (batch)
+ * Sử dụng batchUpdate để ghi tất cả trong 1 request
+ */
+export async function batchUpdateOrdersInSheet(orders: Order[]): Promise<void> {
+  try {
+    if (orders.length === 0) return;
+
+    const sheets = await getGoogleSheetsClient();
+
+    const data = orders.map((order) => {
+      const rowNumber = order.id + 5;
+      return {
+        range: `'${sheetNameBanHang}'!A${rowNumber}:P${rowNumber}`,
+        values: [
+          [
+            order.code,
+            order.date,
+            order.customer,
+            order.productCode || "",
+            order.image || "",
+            order.items,
+            order.productPrice ? formatNumberVN(order.productPrice) : "",
+            order.subtotal ? formatNumberVN(order.subtotal) : "",
+            order.salesProgram || "",
+            order.discount || "",
+            order.priceAfterDiscount ? formatNumberVN(order.priceAfterDiscount) : "",
+            order.subtotalAfterDiscount ? formatNumberVN(order.subtotalAfterDiscount) : "",
+            order.paymentDiscount || "",
+            formatNumberVN(order.total),
+            order.salesUser || "",
+            order.notes || "",
+          ],
+        ],
+      };
+    });
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: spreadsheetIdBanHang,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data,
+      },
+    });
+
+    console.log(`Successfully batch updated ${orders.length} orders`);
+  } catch (error) {
+    console.error("Error batch updating orders in Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
  * Xóa đơn hàng khỏi Google Sheets
  * Sheet: Bán hàng, dữ liệu bắt đầu từ dòng 6
  */

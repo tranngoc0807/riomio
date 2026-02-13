@@ -125,6 +125,23 @@ const INITIAL_ORDER = {
   notes: "",
 };
 
+// Date format helpers: Google Sheet uses DD/MM/YYYY, input[type=date] uses YYYY-MM-DD
+const toSheetDate = (isoDate: string): string => {
+  // YYYY-MM-DD → DD/MM/YYYY
+  if (!isoDate) return "";
+  if (isoDate.includes("/")) return isoDate; // Already DD/MM/YYYY
+  const [y, m, d] = isoDate.split("-");
+  return `${d}/${m}/${y}`;
+};
+
+const toInputDate = (sheetDate: string): string => {
+  // DD/MM/YYYY → YYYY-MM-DD
+  if (!sheetDate) return "";
+  if (sheetDate.includes("-") && sheetDate.indexOf("-") === 4) return sheetDate; // Already YYYY-MM-DD
+  const [d, m, y] = sheetDate.split("/");
+  return `${y}-${m}-${d}`;
+};
+
 // Helper function to get cached profile from localStorage as fallback
 const getCachedProfileName = (): string => {
   try {
@@ -169,6 +186,9 @@ export default function OrdersTab() {
   // Edit grouped order states
   const [editGroupedOrder, setEditGroupedOrder] = useState<GroupedOrder | null>(null);
   const [editProducts, setEditProducts] = useState<Order[]>([]);
+  const [editProductSearchTerm, setEditProductSearchTerm] = useState("");
+  const [showEditProductDropdown, setShowEditProductDropdown] = useState(false);
+  const editProductDropdownRef = useRef<HTMLDivElement>(null);
 
   // Dropdown data for order form
   const [customersList, setCustomersList] = useState<Customer[]>([]);
@@ -204,6 +224,12 @@ export default function OrdersTab() {
       p.name.toLowerCase().includes(productSearchTerm.toLowerCase())
   );
 
+  const filteredEditProducts = productsList.filter(
+    (p) =>
+      p.code.toLowerCase().includes(editProductSearchTerm.toLowerCase()) ||
+      p.name.toLowerCase().includes(editProductSearchTerm.toLowerCase())
+  );
+
   // Search term for orders table
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -221,7 +247,7 @@ export default function OrdersTab() {
         const customer = customersList.find((c) => c.name === order.customer);
         groups[order.code] = {
           orderCode: order.code,
-          date: order.date,
+          date: toSheetDate(order.date),
           customer: order.customer,
           customerCategory: customer?.category || "",
           paymentDiscount: order.paymentDiscount,
@@ -292,6 +318,12 @@ export default function OrdersTab() {
         !productDropdownRef.current.contains(event.target as Node)
       ) {
         setShowProductDropdown(false);
+      }
+      if (
+        editProductDropdownRef.current &&
+        !editProductDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowEditProductDropdown(false);
       }
     };
 
@@ -606,7 +638,7 @@ export default function OrdersTab() {
 
         const orderData = {
           code: formOrderCode,
-          date: formDate,
+          date: toSheetDate(formDate),
           customer: selectedCustomer.name,
           productCode: product.productCode,
           image: product.image,
@@ -741,6 +773,7 @@ export default function OrdersTab() {
   const handleEditGrouped = (group: GroupedOrder) => {
     setEditGroupedOrder({ ...group });
     setEditProducts(group.products.map((p) => ({ ...p })));
+    setEditProductSearchTerm("");
     fetchDropdownData();
     setShowEditModal(true);
   };
@@ -1157,22 +1190,16 @@ export default function OrdersTab() {
                 {/* Header with logo and date */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "5px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div
+                    <img
+                      src="/logo_riomio.jpg"
+                      alt="Riomio"
                       style={{
                         width: "45px",
                         height: "45px",
                         borderRadius: "50%",
-                        background: "linear-gradient(135deg, #22c55e 50%, #ef4444 50%)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#fff",
-                        fontWeight: "bold",
-                        fontSize: "10px",
+                        objectFit: "cover",
                       }}
-                    >
-                      <span style={{ transform: "rotate(-10deg)" }}>R</span>
-                    </div>
+                    />
                     <div>
                       <div style={{ fontWeight: "bold", fontSize: "14px", color: "#16a34a" }}>RIOMIO OFFICIAL</div>
                       <div style={{ fontSize: "9px", color: "#666" }}>ADD: B12 TT7 Nguyễn Sơn Hà, KĐT Văn Quán, Phúc La, Hà Đông, Hà Nội</div>
@@ -1793,8 +1820,8 @@ export default function OrdersTab() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ngày đặt</label>
                   <input
                     type="date"
-                    value={editGroupedOrder.date}
-                    onChange={(e) => setEditGroupedOrder({ ...editGroupedOrder, date: e.target.value })}
+                    value={toInputDate(editGroupedOrder.date)}
+                    onChange={(e) => setEditGroupedOrder({ ...editGroupedOrder, date: toSheetDate(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                 </div>
@@ -1815,6 +1842,85 @@ export default function OrdersTab() {
                     readOnly
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
                   />
+                </div>
+              </div>
+
+              {/* Add Product Section */}
+              <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="relative" ref={editProductDropdownRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thêm sản phẩm</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={editProductSearchTerm}
+                      onChange={(e) => {
+                        setEditProductSearchTerm(e.target.value);
+                        setShowEditProductDropdown(true);
+                      }}
+                      onFocus={() => setShowEditProductDropdown(true)}
+                      placeholder="Tìm theo mã SP hoặc tên..."
+                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  </div>
+                  {showEditProductDropdown && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredEditProducts.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy sản phẩm</div>
+                      ) : (
+                        filteredEditProducts.map((product) => (
+                          <div
+                            key={product.id}
+                            onClick={() => {
+                              // Check if already in list
+                              if (editProducts.some((p) => p.productCode === product.code)) {
+                                toast.error("Sản phẩm đã có trong danh sách");
+                                return;
+                              }
+                              // Determine price based on customer type
+                              const customerCat = editGroupedOrder?.customerCategory || "";
+                              const productPrice = isWholesaleCustomer(customerCat)
+                                ? product.wholesalePrice
+                                : product.retailPrice;
+
+                              const newOrder: Order = {
+                                id: 0, // Will be assigned by server
+                                code: editGroupedOrder!.orderCode,
+                                date: editGroupedOrder!.date,
+                                customer: editGroupedOrder!.customer,
+                                productCode: product.code,
+                                image: product.image || "",
+                                items: 1,
+                                productPrice,
+                                subtotal: productPrice,
+                                salesProgram: "",
+                                discount: "",
+                                priceAfterDiscount: productPrice,
+                                subtotalAfterDiscount: productPrice,
+                                paymentDiscount: "",
+                                total: productPrice,
+                                salesUser: editGroupedOrder!.salesUser,
+                                notes: "",
+                              };
+                              setEditProducts([...editProducts, newOrder]);
+                              setEditProductSearchTerm("");
+                              setShowEditProductDropdown(false);
+                            }}
+                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
+                          >
+                            <div className="font-medium text-sm">
+                              {product.code && <span className="text-blue-600">{product.code}</span>}
+                              {product.code && product.name && " - "}
+                              {product.name}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Sỉ: {product.wholesalePrice.toLocaleString("vi-VN")}đ | Lẻ: {product.retailPrice.toLocaleString("vi-VN")}đ
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2037,12 +2143,9 @@ export default function OrdersTab() {
                 onClick={async () => {
                   try {
                     setIsUpdating(true);
-                    let hasError = false;
-                    let errorMessage = "";
 
-                    // Update all products sequentially
-                    for (const product of editProducts) {
-                      // Calculate total for this product
+                    // Calculate total for each product
+                    const preparedProducts = editProducts.map((product) => {
                       let productTotal = product.subtotalAfterDiscount;
                       if (product.paymentDiscount) {
                         if (product.paymentDiscount.includes("%")) {
@@ -2053,29 +2156,45 @@ export default function OrdersTab() {
                           productTotal = Math.round(product.subtotalAfterDiscount - fixedDiscount);
                         }
                       }
-                      const updateData = {
+                      return {
                         ...product,
                         date: editGroupedOrder.date,
                         paymentDiscount: product.paymentDiscount || "",
                         total: productTotal,
                         notes: product.notes || "",
                       };
-                      const response = await fetch("/api/orders/update", {
+                    });
+
+                    // Separate new products (id=0) from existing ones
+                    const existingProducts = preparedProducts.filter((p) => p.id > 0);
+                    const newProducts = preparedProducts.filter((p) => p.id === 0);
+
+                    // Batch update existing products
+                    if (existingProducts.length > 0) {
+                      const response = await fetch("/api/orders/batch-update", {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(updateData),
+                        body: JSON.stringify({ orders: existingProducts }),
                       });
                       const result = await response.json();
                       if (!result.success) {
-                        hasError = true;
-                        errorMessage = result.error || `Lỗi khi cập nhật sản phẩm ${product.productCode}`;
-                        toast.error(errorMessage);
-                        break; // Dừng lại khi có lỗi
+                        toast.error(result.error || "Lỗi khi cập nhật đơn hàng");
+                        return;
                       }
                     }
 
-                    if (hasError) {
-                      return; // Không đóng modal, không báo thành công
+                    // Add new products one by one
+                    for (const product of newProducts) {
+                      const response = await fetch("/api/orders/add", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(product),
+                      });
+                      const result = await response.json();
+                      if (!result.success) {
+                        toast.error(result.error || `Lỗi khi thêm sản phẩm ${product.productCode}`);
+                        return;
+                      }
                     }
 
                     await fetchOrders();

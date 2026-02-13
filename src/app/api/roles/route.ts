@@ -6,6 +6,21 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Fallback roles khi chưa tạo bảng roles trong Supabase
+const FALLBACK_ROLES = [
+  { id: "admin", display_name: "Admin", color: "bg-red-500", is_system: true, sort_order: 0 },
+  { id: "tong_hop", display_name: "Tổng hợp", color: "bg-blue-500", is_system: false, sort_order: 1 },
+  { id: "ke_toan", display_name: "Kế toán", color: "bg-green-500", is_system: false, sort_order: 2 },
+  { id: "pattern", display_name: "Pattern", color: "bg-purple-500", is_system: false, sort_order: 3 },
+  { id: "may_mau", display_name: "May mẫu", color: "bg-pink-500", is_system: false, sort_order: 4 },
+  { id: "thiet_ke", display_name: "Thiết kế", color: "bg-indigo-500", is_system: false, sort_order: 5 },
+  { id: "quan_ly_don_hang", display_name: "Quản lý đơn hàng", color: "bg-orange-500", is_system: false, sort_order: 6 },
+  { id: "sale_si", display_name: "Sale sỉ", color: "bg-yellow-500", is_system: false, sort_order: 7 },
+  { id: "sale_san", display_name: "Sale sàn", color: "bg-amber-500", is_system: false, sort_order: 8 },
+  { id: "thu_kho", display_name: "Thủ kho", color: "bg-teal-500", is_system: false, sort_order: 9 },
+  { id: "hinh_anh", display_name: "Hình ảnh", color: "bg-cyan-500", is_system: false, sort_order: 10 },
+];
+
 /**
  * GET /api/roles
  * Lấy danh sách tất cả roles
@@ -18,17 +33,20 @@ export async function GET() {
       .order("sort_order", { ascending: true });
 
     if (error) {
+      // Bảng chưa tồn tại → trả về fallback roles
+      if (error.message.includes("roles") || error.code === "PGRST204" || error.code === "42P01") {
+        return NextResponse.json({ success: true, data: FALLBACK_ROLES });
+      }
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: data && data.length > 0 ? data : FALLBACK_ROLES });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: error.message || "Internal server error" },
-      { status: 500 }
+      { success: true, data: FALLBACK_ROLES }
     );
   }
 }
