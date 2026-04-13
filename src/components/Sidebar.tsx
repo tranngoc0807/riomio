@@ -110,6 +110,29 @@ const menuItems: MenuItem[] = [
     icon: Package,
   },
   {
+    name: "Hình ảnh",
+    href: "/hinh-anh",
+    icon: Image,
+
+    subItems: [
+      {
+        name: "Sản phẩm",
+        href: "/hinh-anh?tab=san-pham",
+        icon: Package,
+      },
+      {
+        name: "Nguyên phụ liệu",
+        href: "/hinh-anh?tab=nguyen-phu-lieu",
+        icon: Boxes,
+      },
+      {
+        name: "Hình in",
+        href: "/hinh-anh?tab=hinh-in",
+        icon: Image,
+      },
+    ],
+  },
+  {
     name: "Bán hàng",
     href: "/ban-hang",
     icon: ShoppingCart,

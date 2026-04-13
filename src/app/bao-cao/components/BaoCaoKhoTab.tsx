@@ -14,14 +14,18 @@ import {
   Calendar,
   RefreshCw,
   FileDown,
+  Image as ImageIcon,
+  FileSpreadsheet,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
-type SubTabType = "ton-kho-npl" | "ton-kho-hang-hoa";
+type SubTabType = "ton-kho-npl" | "ton-kho-hang-hoa" | "ton-kho-hinh-in";
 type NPLSubTabType = "kho-cong-ty" | "xuong-sx";
 
 const SUB_TABS = [
   { id: "ton-kho-npl" as SubTabType, label: "Báo cáo tồn kho NPL", icon: Package },
   { id: "ton-kho-hang-hoa" as SubTabType, label: "Báo cáo tồn kho hàng hóa", icon: ShoppingCart },
+  { id: "ton-kho-hinh-in" as SubTabType, label: "Báo cáo tồn kho hình in", icon: ImageIcon },
 ];
 
 const NPL_SUB_TABS = [
@@ -29,7 +33,7 @@ const NPL_SUB_TABS = [
   { id: "xuong-sx" as NPLSubTabType, label: "Tồn kho NPL xưởng SX", icon: Warehouse },
 ];
 
-const VALID_SUB_TABS: SubTabType[] = ["ton-kho-npl", "ton-kho-hang-hoa"];
+const VALID_SUB_TABS: SubTabType[] = ["ton-kho-npl", "ton-kho-hang-hoa", "ton-kho-hinh-in"];
 const VALID_NPL_SUB_TABS: NPLSubTabType[] = ["kho-cong-ty", "xuong-sx"];
 
 interface TonKhoNPLThang {
@@ -62,6 +66,15 @@ interface TonKhoItem {
   nhap: number;     // Nhập
   xuat: number;     // Xuất
   tonCuoi: number;  // Tồn cuối
+}
+
+interface TonKhoHinhInThang {
+  id: number;
+  maHI: string;
+  duDauKi: number;
+  nhapKho: number;
+  xuatKho: number;
+  duCuoiKi: number;
 }
 
 const ITEMS_PER_PAGE = 50;
@@ -108,10 +121,12 @@ export default function BaoCaoKhoTab() {
   const [tonKhoNPLCongTy, setTonKhoNPLCongTy] = useState<TonKhoNPLThang[]>([]);
   const [tonKhoNPLXuongSX, setTonKhoNPLXuongSX] = useState<TonKhoNPLXuongSX[]>([]);
   const [tonKhoItems, setTonKhoItems] = useState<TonKhoItem[]>([]);
+  const [tonKhoHinhIn, setTonKhoHinhIn] = useState<TonKhoHinhInThang[]>([]);
 
   // Loading states
   const [loadingNPL, setLoadingNPL] = useState(false);
   const [loadingTonKho, setLoadingTonKho] = useState(false);
+  const [loadingHinhIn, setLoadingHinhIn] = useState(false);
 
   // Month filter for NPL Kho Công Ty (format: YYYY-MM)
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -125,13 +140,21 @@ export default function BaoCaoKhoTab() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
+  // Month filter for Tồn kho hình in
+  const [selectedMonthHI, setSelectedMonthHI] = useState(() => {
+    const now = new Date();
+    return { month: now.getMonth() + 1, year: now.getFullYear() };
+  });
+
   // Search states - separate for each tab
   const [searchTermNPL, setSearchTermNPL] = useState("");
   const [searchTermSP, setSearchTermSP] = useState("");
+  const [searchTermHI, setSearchTermHI] = useState("");
 
   // Pagination states - separate for each tab
   const [currentPageNPL, setCurrentPageNPL] = useState(1);
   const [currentPageSP, setCurrentPageSP] = useState(1);
+  const [currentPageHI, setCurrentPageHI] = useState(1);
 
   // Fetch NPL data on mount with current month
   useEffect(() => {
@@ -142,6 +165,9 @@ export default function BaoCaoKhoTab() {
   useEffect(() => {
     if (activeSubTab === "ton-kho-hang-hoa" && tonKhoItems.length === 0) {
       fetchTonKho(selectedMonthSP);
+    }
+    if (activeSubTab === "ton-kho-hinh-in" && tonKhoHinhIn.length === 0) {
+      fetchTonKhoHinhIn();
     }
   }, [activeSubTab]);
 
@@ -154,6 +180,45 @@ export default function BaoCaoKhoTab() {
   useEffect(() => {
     setCurrentPageSP(1);
   }, [searchTermSP]);
+
+  // Reset HI page when HI search changes
+  useEffect(() => {
+    setCurrentPageHI(1);
+  }, [searchTermHI]);
+
+  const fetchTonKhoHinhIn = async () => {
+    try {
+      setLoadingHinhIn(true);
+      const monthYear = `${selectedMonthHI.month}/${selectedMonthHI.year}`;
+      const response = await fetch(`/api/ton-kho-hinh-in?monthYear=${encodeURIComponent(monthYear)}`);
+      const result = await response.json();
+      if (result.success) {
+        // Sort: mã có số lượng lên đầu
+        const sorted = (result.thangData || []).sort((a: TonKhoHinhInThang, b: TonKhoHinhInThang) => {
+          const aHas = a.duCuoiKi > 0 ? 1 : 0;
+          const bHas = b.duCuoiKi > 0 ? 1 : 0;
+          if (bHas !== aHas) return bHas - aHas;
+          return b.duCuoiKi - a.duCuoiKi;
+        });
+        setTonKhoHinhIn(sorted);
+      }
+    } catch (error) {
+      console.error("Error fetching ton kho hinh in:", error);
+    } finally {
+      setLoadingHinhIn(false);
+    }
+  };
+
+  const handleMonthChangeHI = (month: number, year: number) => {
+    setSelectedMonthHI({ month, year });
+    // Fetch will be triggered by the effect below
+  };
+
+  useEffect(() => {
+    if (activeSubTab === "ton-kho-hinh-in") {
+      fetchTonKhoHinhIn();
+    }
+  }, [selectedMonthHI]);
 
   const fetchTonKhoNPL = async (thangNam?: string) => {
     try {
@@ -217,18 +282,36 @@ export default function BaoCaoKhoTab() {
   };
 
   // Filter functions - use separate search terms
-  const filteredNPLCongTy = tonKhoNPLCongTy.filter(item =>
-    item.maNPL.toLowerCase().includes(searchTermNPL.toLowerCase())
-  );
+  // Sort: mã có số lượng (tonCuoi > 0) lên đầu, từ lớn xuống bé
+  const filteredNPLCongTy = tonKhoNPLCongTy
+    .filter(item => item.maNPL.toLowerCase().includes(searchTermNPL.toLowerCase()))
+    .sort((a, b) => {
+      const aHas = a.tonCuoi > 0 ? 1 : 0;
+      const bHas = b.tonCuoi > 0 ? 1 : 0;
+      if (bHas !== aHas) return bHas - aHas;
+      return b.tonCuoi - a.tonCuoi;
+    });
 
-  const filteredNPLXuongSX = tonKhoNPLXuongSX.filter(item =>
-    item.tenNPL.toLowerCase().includes(searchTermNPL.toLowerCase()) ||
-    item.xuongSX.toLowerCase().includes(searchTermNPL.toLowerCase())
-  );
+  const filteredNPLXuongSX = tonKhoNPLXuongSX
+    .filter(item =>
+      item.tenNPL.toLowerCase().includes(searchTermNPL.toLowerCase()) ||
+      item.xuongSX.toLowerCase().includes(searchTermNPL.toLowerCase())
+    )
+    .sort((a, b) => {
+      const aHas = a.soLuong > 0 ? 1 : 0;
+      const bHas = b.soLuong > 0 ? 1 : 0;
+      if (bHas !== aHas) return bHas - aHas;
+      return b.soLuong - a.soLuong;
+    });
 
-  const filteredTonKho = tonKhoItems.filter(item =>
-    item.maSp.toLowerCase().includes(searchTermSP.toLowerCase())
-  );
+  const filteredTonKho = tonKhoItems
+    .filter(item => item.maSp.toLowerCase().includes(searchTermSP.toLowerCase()))
+    .sort((a, b) => {
+      const aHas = a.tonCuoi > 0 ? 1 : 0;
+      const bHas = b.tonCuoi > 0 ? 1 : 0;
+      if (bHas !== aHas) return bHas - aHas;
+      return b.tonCuoi - a.tonCuoi;
+    });
 
   // NPL pagination
   const currentNPLData = activeNPLSubTab === "kho-cong-ty" ? filteredNPLCongTy : filteredNPLXuongSX;
@@ -262,6 +345,21 @@ export default function BaoCaoKhoTab() {
     nhap: filteredTonKho.reduce((sum, item) => sum + item.nhap, 0),
     xuat: filteredTonKho.reduce((sum, item) => sum + item.xuat, 0),
     tonCuoi: filteredTonKho.reduce((sum, item) => sum + item.tonCuoi, 0),
+  };
+
+  // HI filter, pagination, totals
+  const filteredHinhIn = tonKhoHinhIn
+    .filter(item => item.maHI.toLowerCase().includes(searchTermHI.toLowerCase()));
+
+  const totalPagesHI = Math.ceil(filteredHinhIn.length / ITEMS_PER_PAGE);
+  const startIndexHI = (currentPageHI - 1) * ITEMS_PER_PAGE;
+  const paginatedHIData = filteredHinhIn.slice(startIndexHI, startIndexHI + ITEMS_PER_PAGE);
+
+  const totalHinhIn = {
+    duDauKi: filteredHinhIn.reduce((sum, item) => sum + item.duDauKi, 0),
+    nhapKho: filteredHinhIn.reduce((sum, item) => sum + item.nhapKho, 0),
+    xuatKho: filteredHinhIn.reduce((sum, item) => sum + item.xuatKho, 0),
+    duCuoiKi: filteredHinhIn.reduce((sum, item) => sum + item.duCuoiKi, 0),
   };
 
   const renderPaginationNPL = () => {
@@ -455,6 +553,29 @@ export default function BaoCaoKhoTab() {
           <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalTonKho.tonCuoi)}</td>
         </tr>
       </tbody></table>`;
+    } else if (activeSubTab === "ton-kho-hinh-in") {
+      title = `Tồn kho hình in - Tháng ${selectedMonthHI.month}/${selectedMonthHI.year}`;
+      const rows = filteredHinhIn.map((item, i) => `<tr>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;">${item.maHI}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.duDauKi)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(item.nhapKho)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${fmt(item.xuatKho)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${fmt(item.duCuoiKi)}</td>
+      </tr>`).join("");
+      tableHTML = `<table><thead><tr>
+        <th style="text-align:center;width:40px;">STT</th><th style="text-align:left;">Mã HI</th>
+        <th style="text-align:right;">Dư đầu kì</th><th style="text-align:right;">Nhập kho</th>
+        <th style="text-align:right;">Xuất kho</th><th style="text-align:right;">Dư cuối kì</th>
+      </tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;">
+          <td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng cộng:</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalHinhIn.duDauKi)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalHinhIn.nhapKho)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${fmt(totalHinhIn.xuatKho)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalHinhIn.duCuoiKi)}</td>
+        </tr>
+      </tbody></table>`;
     } else {
       return;
     }
@@ -473,6 +594,64 @@ export default function BaoCaoKhoTab() {
     </body></html>`);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportExcel = () => {
+    let sheetData: Record<string, string | number>[] = [];
+    let fileName = "";
+
+    if (activeSubTab === "ton-kho-npl" && activeNPLSubTab === "kho-cong-ty") {
+      fileName = `Ton_kho_NPL_kho_cong_ty_${selectedMonth}`;
+      sheetData = filteredNPLCongTy.map((item, i) => ({
+        "STT": i + 1,
+        "Mã NPL": item.maNPL,
+        "Tồn đầu": item.tonDau,
+        "Nhập kho": item.nhapKho,
+        "Xuất kho": item.xuatKho,
+        "Tồn cuối": item.tonCuoi,
+        "Đơn giá": item.donGiaSauThue,
+        "Giá trị tồn": item.giaTriTon,
+      }));
+    } else if (activeSubTab === "ton-kho-npl" && activeNPLSubTab === "xuong-sx") {
+      fileName = "Ton_kho_NPL_xuong_SX";
+      sheetData = filteredNPLXuongSX.map((item, i) => ({
+        "STT": i + 1,
+        "Ngày tháng": item.ngayThang,
+        "Xưởng SX": item.xuongSX,
+        "Tên NPL": item.tenNPL,
+        "ĐVT": item.dvt,
+        "Số lượng": item.soLuong,
+        "Đơn giá": item.donGia,
+        "Thành tiền": item.thanhTien,
+      }));
+    } else if (activeSubTab === "ton-kho-hang-hoa") {
+      fileName = `Ton_kho_hang_hoa_${selectedMonthSP}`;
+      sheetData = filteredTonKho.map((item, i) => ({
+        "STT": i + 1,
+        "Mã SP": item.maSp,
+        "Tồn đầu": item.tonDau,
+        "Nhập": item.nhap,
+        "Xuất": item.xuat,
+        "Tồn cuối": item.tonCuoi,
+      }));
+    } else if (activeSubTab === "ton-kho-hinh-in") {
+      fileName = `Ton_kho_hinh_in_T${selectedMonthHI.month}_${selectedMonthHI.year}`;
+      sheetData = filteredHinhIn.map((item, i) => ({
+        "STT": i + 1,
+        "Mã HI": item.maHI,
+        "Dư đầu kì": item.duDauKi,
+        "Nhập kho": item.nhapKho,
+        "Xuất kho": item.xuatKho,
+        "Dư cuối kì": item.duCuoiKi,
+      }));
+    } else {
+      return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
   };
 
   return (
@@ -581,7 +760,14 @@ export default function BaoCaoKhoTab() {
                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
                     >
                       <FileDown size={14} />
-                      Xuất PDF
+                      PDF
+                    </button>
+                    <button
+                      onClick={handleExportExcel}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    >
+                      <FileSpreadsheet size={14} />
+                      Excel
                     </button>
                   </div>
                 </div>
@@ -656,13 +842,22 @@ export default function BaoCaoKhoTab() {
                   <h3 className="text-lg font-semibold text-gray-900">
                     Tồn kho NPL xưởng SX ({filteredNPLXuongSX.length})
                   </h3>
-                  <button
-                    onClick={handleExportPDF}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                  >
-                    <FileDown size={14} />
-                    Xuất PDF
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportPDF}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                    >
+                      <FileDown size={14} />
+                      PDF
+                    </button>
+                    <button
+                      onClick={handleExportExcel}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    >
+                      <FileSpreadsheet size={14} />
+                      Excel
+                    </button>
+                  </div>
                 </div>
 
                 {loadingNPL ? (
@@ -777,7 +972,14 @@ export default function BaoCaoKhoTab() {
                     className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
                   >
                     <FileDown size={14} />
-                    Xuất PDF
+                    PDF
+                  </button>
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                  >
+                    <FileSpreadsheet size={14} />
+                    Excel
                   </button>
                 </div>
               </div>
@@ -840,6 +1042,153 @@ export default function BaoCaoKhoTab() {
                     </div>
                   )}
                   {renderPaginationSP()}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Báo cáo tồn kho hình in */}
+        {activeSubTab === "ton-kho-hinh-in" && (
+          <div>
+            <div className="mb-4 flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                  <Calendar size={16} />
+                  Tháng:
+                </label>
+                <select
+                  value={selectedMonthHI.month}
+                  onChange={(e) => handleMonthChangeHI(parseInt(e.target.value), selectedMonthHI.year)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>Tháng {m}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedMonthHI.year}
+                  onChange={(e) => handleMonthChangeHI(selectedMonthHI.month, parseInt(e.target.value))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                >
+                  {Array.from({ length: 8 }, (_, i) => new Date().getFullYear() - 5 + i).map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={fetchTonKhoHinhIn}
+                  disabled={loadingHinhIn}
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="Tải lại dữ liệu"
+                >
+                  <RefreshCw size={18} className={loadingHinhIn ? "animate-spin" : ""} />
+                </button>
+              </div>
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Tìm theo mã HI..."
+                  value={searchTermHI}
+                  onChange={(e) => setSearchTermHI(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-6 py-4 bg-purple-50 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Tồn kho hình in ({filteredHinhIn.length})
+                </h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">
+                    Tháng {selectedMonthHI.month}/{selectedMonthHI.year}
+                  </span>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                  >
+                    <FileDown size={14} />
+                    PDF
+                  </button>
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                  >
+                    <FileSpreadsheet size={14} />
+                    Excel
+                  </button>
+                </div>
+              </div>
+
+              {loadingHinhIn ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="px-4 py-3 text-left font-medium text-gray-600 w-12">STT</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-600">Mã HI</th>
+                          <th className="px-4 py-3 text-right font-medium text-gray-600 w-28">Dư đầu kì</th>
+                          <th className="px-4 py-3 text-right font-medium text-gray-600 w-28">Nhập kho</th>
+                          <th className="px-4 py-3 text-right font-medium text-gray-600 w-28">Xuất kho</th>
+                          <th className="px-4 py-3 text-right font-medium text-gray-600 w-28">Dư cuối kì</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {paginatedHIData.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-600">{startIndexHI + index + 1}</td>
+                            <td className="px-4 py-3 font-medium text-blue-600">{item.maHI}</td>
+                            <td className="px-4 py-3 text-right text-gray-600">
+                              {item.duDauKi !== 0 ? item.duDauKi.toLocaleString("vi-VN") : "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right text-green-600">
+                              {item.nhapKho !== 0 ? item.nhapKho.toLocaleString("vi-VN") : "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right text-red-600">
+                              {item.xuatKho !== 0 ? item.xuatKho.toLocaleString("vi-VN") : "-"}
+                            </td>
+                            <td className={`px-4 py-3 text-right font-medium ${item.duCuoiKi > 0 ? "text-blue-600" : "text-gray-400"}`}>
+                              {item.duCuoiKi !== 0 ? item.duCuoiKi.toLocaleString("vi-VN") : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gray-100 font-semibold">
+                          <td colSpan={2} className="px-4 py-3 text-right">Tổng cộng:</td>
+                          <td className="px-4 py-3 text-right">{totalHinhIn.duDauKi !== 0 ? totalHinhIn.duDauKi.toLocaleString("vi-VN") : "-"}</td>
+                          <td className="px-4 py-3 text-right text-green-600">{totalHinhIn.nhapKho !== 0 ? totalHinhIn.nhapKho.toLocaleString("vi-VN") : "-"}</td>
+                          <td className="px-4 py-3 text-right text-red-600">{totalHinhIn.xuatKho !== 0 ? totalHinhIn.xuatKho.toLocaleString("vi-VN") : "-"}</td>
+                          <td className="px-4 py-3 text-right text-blue-600">{totalHinhIn.duCuoiKi !== 0 ? totalHinhIn.duCuoiKi.toLocaleString("vi-VN") : "-"}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  {filteredHinhIn.length === 0 && !loadingHinhIn && (
+                    <div className="text-center py-8 text-gray-500">
+                      Không có dữ liệu tồn kho hình in
+                    </div>
+                  )}
+                  {totalPagesHI > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                      <div className="text-sm text-gray-500">
+                        Hiển thị {startIndexHI + 1} - {Math.min(startIndexHI + ITEMS_PER_PAGE, filteredHinhIn.length)} / {filteredHinhIn.length}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setCurrentPageHI(p => Math.max(1, p - 1))} disabled={currentPageHI === 1} className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"><ChevronLeft size={18} /></button>
+                        <span className="text-sm">{currentPageHI} / {totalPagesHI}</span>
+                        <button onClick={() => setCurrentPageHI(p => Math.min(totalPagesHI, p + 1))} disabled={currentPageHI === totalPagesHI} className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"><ChevronRight size={18} /></button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

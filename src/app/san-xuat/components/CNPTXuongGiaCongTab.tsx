@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, Search, Receipt, Calendar, RefreshCw } from "lucide-react";
+import { Loader2, Search, Receipt, Calendar, RefreshCw, FileDown, FileSpreadsheet } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 interface CNPTXuongThang {
   id: number;
@@ -121,6 +122,74 @@ export default function CNPTXuongGiaCongTab() {
   // Calculate totals for cnptNgay
   const totalSoTien = filteredNgay.reduce((sum, item) => sum + item.soTien, 0);
 
+  const handleExportThangPDF = () => {
+    if (filteredThang.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = filteredThang.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.xuongSX}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.duDau ? fmt(item.duDau) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.tienGiaCong ? fmt(item.tienGiaCong) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.thanhToan ? fmt(item.thanhToan) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;${item.duCuoi > 0 ? "color:red;" : ""}">${fmt(item.duCuoi)}</td>
+    </tr>`).join("");
+    const title = `CNPT xưởng gia công - ${filterThangNam}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr><th style="width:35px;">STT</th><th>Xưởng SX</th><th style="text-align:right;">Dư đầu</th><th style="text-align:right;">Tiền gia công</th><th style="text-align:right;">Thanh toán</th><th style="text-align:right;">Dư cuối</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalDuDau)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalTienGiaCong)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalThanhToan)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalDuCuoi)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportThangExcel = () => {
+    if (filteredThang.length === 0) return;
+    const sheetData = filteredThang.map((item, i) => ({
+      "STT": i + 1, "Xưởng SX": item.xuongSX, "Dư đầu": item.duDau,
+      "Tiền gia công": item.tienGiaCong, "Thanh toán": item.thanhToan, "Dư cuối": item.duCuoi,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "CNPT xuong");
+    XLSX.writeFile(wb, `CNPT_xuong_gia_cong_${filterThangNam || "all"}.xlsx`);
+  };
+
+  const handleExportNgayPDF = () => {
+    if (filteredNgay.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = filteredNgay.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.xuongSX}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.soTien ? fmt(item.soTien) : "-"}</td>
+    </tr>`).join("");
+    const title = `Số dư đầu kì CNPT xưởng SX đến ngày ${filterDenNgay}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr><th style="width:35px;">STT</th><th>Xưởng SX</th><th style="text-align:right;">Số tiền</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalSoTien)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportNgayExcel = () => {
+    if (filteredNgay.length === 0) return;
+    const sheetData = filteredNgay.map((item, i) => ({
+      "STT": i + 1, "Xưởng SX": item.xuongSX, "Số tiền": item.soTien,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "So du dau ki");
+    XLSX.writeFile(wb, `So_du_dau_ki_CNPT_xuong_${filterDenNgay || "all"}.xlsx`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -198,6 +267,8 @@ export default function CNPTXuongGiaCongTab() {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 w-64"
                 />
               </div>
+              <button onClick={handleExportThangPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+              <button onClick={handleExportThangExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
             </div>
           </div>
 
@@ -301,6 +372,8 @@ export default function CNPTXuongGiaCongTab() {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 w-64"
                 />
               </div>
+              <button onClick={handleExportNgayPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+              <button onClick={handleExportNgayExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
             </div>
           </div>
 

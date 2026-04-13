@@ -11,6 +11,9 @@ import {
   Trash2,
   ArrowLeft,
   RotateCcw,
+  FileDown,
+  FileSpreadsheet,
+  Pencil,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -19,6 +22,7 @@ import toast from "react-hot-toast";
 import html2canvas from "html2canvas";
 import { useAuth } from "@/context/AuthContext";
 import type { XuatKhoNPL } from "@/lib/googleSheets";
+import * as XLSX from "xlsx";
 
 // Fixed options for Loại chi phí
 const LOAI_CHI_PHI_OPTIONS = [
@@ -86,6 +90,12 @@ export default function XuatKhoNPLTab() {
     useState<GroupedPhieuXuat | null>(null);
   const [selectedItemDetail, setSelectedItemDetail] =
     useState<XuatKhoNPL | null>(null);
+
+  // Edit item state
+  const [showEditItemModal, setShowEditItemModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<XuatKhoNPL | null>(null);
+  const [editForm, setEditForm] = useState({ soLuong: 0, donGia: 0, loaiChiPhi: "", ghiChu: "" });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -194,7 +204,20 @@ export default function XuatKhoNPLTab() {
       groups[item.maPhieu].totalThanhTien += item.thanhTien || 0;
     });
 
-    return Object.values(groups);
+    // Sắp xếp theo ngày mới nhất lên trước
+    return Object.values(groups).sort((a, b) => {
+      const parseDate = (d: string) => {
+        if (!d) return 0;
+        // DD/MM/YYYY
+        if (d.includes('/')) {
+          const [dd, mm, yyyy] = d.split('/');
+          return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+        }
+        // YYYY-MM-DD
+        return new Date(d).getTime() || 0;
+      };
+      return parseDate(b.ngayThang) - parseDate(a.ngayThang);
+    });
   }, [data]);
 
   // Sync view state with URL params - URL is the single source of truth
@@ -831,6 +854,116 @@ export default function XuatKhoNPLTab() {
     0
   );
 
+  // Edit item
+  const handleOpenEditItem = (item: XuatKhoNPL) => {
+    setEditingItem(item);
+    setEditForm({ soLuong: item.soLuong, donGia: item.donGia, loaiChiPhi: item.loaiChiPhi, ghiChu: item.ghiChu });
+    setShowEditItemModal(true);
+  };
+
+  const handleSaveEditItem = async () => {
+    if (!editingItem) return;
+    try {
+      setIsSavingEdit(true);
+      const response = await fetch("/api/xuat-kho-npl/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingItem.id, ...editForm }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Cập nhật thành công");
+        setShowEditItemModal(false);
+        setEditingItem(null);
+        fetchData();
+      } else {
+        toast.error(result.error || "Không thể cập nhật");
+      }
+    } catch (error) {
+      toast.error("Lỗi khi cập nhật");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Export danh sách PDF
+  const handleExportListPDF = () => {
+    if (filteredGroupedPhieu.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = filteredGroupedPhieu.map((g, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;font-weight:600;color:#2563eb;">${g.maPhieu}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.ngayThang}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.maSP || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.xuongSX || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${g.totalItems}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;font-weight:600;">${fmt(g.totalThanhTien)}</td>
+    </tr>`).join("");
+    printWindow.document.write(`<html><head><title>Danh sách phiếu xuất kho NPL</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>DANH SÁCH PHIẾU XUẤT KHO NPL</h1>
+      <table><thead><tr><th style="width:30px;">STT</th><th>Mã phiếu</th><th>Ngày</th><th>Mã SP</th><th>Xưởng SX</th><th>Số NPL</th><th style="text-align:right;">Thành tiền</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="6" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalThanhTien)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportListExcel = () => {
+    if (filteredGroupedPhieu.length === 0) return;
+    const sheetData = filteredGroupedPhieu.map((g, i) => ({
+      "STT": i + 1, "Mã phiếu": g.maPhieu, "Ngày tháng": g.ngayThang,
+      "Mã SP": g.maSP, "Lệnh SX": g.lenhSX, "Xưởng SX": g.xuongSX,
+      "Nội dung": g.noiDung, "Số NPL": g.totalItems, "Thành tiền": g.totalThanhTien,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Xuat kho NPL");
+    XLSX.writeFile(wb, "Xuat_kho_NPL.xlsx");
+  };
+
+  // Export chi tiết 1 phiếu
+  const handleExportDetailPDF = (phieu: GroupedPhieuXuat | null) => {
+    if (!phieu) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = phieu.items.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.maNPL}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.dvt || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.soLuong)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.donGia > 0 ? fmt(item.donGia) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.thanhTien > 0 ? fmt(item.thanhTien) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.loaiChiPhi || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.ghiChu || "-"}</td>
+    </tr>`).join("");
+    const title = `Phiếu xuất kho NPL - ${phieu.maPhieu}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:5px; text-align:center; } .info { text-align:center; color:#666; margin-bottom:15px; font-size:13px; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <p class="info">Ngày: ${phieu.ngayThang} | Mã SP: ${phieu.maSP || "-"} | Xưởng: ${phieu.xuongSX || "-"}</p>
+      <table><thead><tr><th style="width:30px;">STT</th><th>Mã NPL</th><th>ĐVT</th><th style="text-align:right;">SL</th><th style="text-align:right;">Đơn giá</th><th style="text-align:right;">Thành tiền</th><th>Loại CP</th><th>Ghi chú</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="5" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(phieu.totalThanhTien)}</td><td colspan="2"></td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportDetailExcel = (phieu: GroupedPhieuXuat | null) => {
+    if (!phieu) return;
+    const sheetData = phieu.items.map((item, i) => ({
+      "STT": i + 1, "Mã NPL": item.maNPL, "ĐVT": item.dvt, "SL": item.soLuong,
+      "Đơn giá": item.donGia, "Thành tiền": item.thanhTien, "Loại CP": item.loaiChiPhi, "Ghi chú": item.ghiChu,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Chi tiet");
+    XLSX.writeFile(wb, `${phieu.maPhieu}.xlsx`);
+  };
+
   return (
     <>
       {/* Header */}
@@ -853,13 +986,17 @@ export default function XuatKhoNPLTab() {
             />
           </div>
         </div>
-        <button
-          onClick={handleOpenAddModal}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <Plus size={20} />
-          Tạo phiếu xuất kho
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+          <button onClick={handleExportListExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            <Plus size={20} />
+            Tạo phiếu xuất kho
+          </button>
+        </div>
       </div>
 
       {/* Table - Grouped */}
@@ -1343,13 +1480,17 @@ export default function XuatKhoNPLTab() {
                     {viewGroupedPhieu.maPhieu}
                   </p>
                 </div>
-                <button
-                  onClick={handleOpenReturnModal}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors font-medium"
-                >
-                  <RotateCcw size={20} />
-                  Phiếu hoàn NPL
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleExportDetailPDF(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors font-medium"><FileDown size={16} /> PDF</button>
+                  <button onClick={() => handleExportDetailExcel(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-medium"><FileSpreadsheet size={16} /> Excel</button>
+                  <button
+                    onClick={handleOpenReturnModal}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors font-medium"
+                  >
+                    <RotateCcw size={20} />
+                    Phiếu hoàn NPL
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1507,16 +1648,22 @@ export default function XuatKhoNPLTab() {
                             {item.ghiChu || "-"}
                           </td>
                           <td className="px-5 py-4 text-center">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteItem(item.id.toString());
-                              }}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                              title="Xóa"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleOpenEditItem(item); }}
+                                className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
+                                title="Sửa"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id.toString()); }}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                                title="Xóa"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1713,6 +1860,58 @@ export default function XuatKhoNPLTab() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal sửa item NPL */}
+      {showEditItemModal && editingItem && (
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+              <div className="flex items-center justify-between p-6 border-b">
+                <div>
+                  <h3 className="text-lg font-semibold">Sửa mã NPL</h3>
+                  <p className="text-sm text-gray-500">{editingItem.maNPL}</p>
+                </div>
+                <button onClick={() => setShowEditItemModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
+                  <input type="number" value={editForm.soLuong} onChange={(e) => setEditForm({ ...editForm, soLuong: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Đơn giá</label>
+                  <input type="number" value={editForm.donGia} onChange={(e) => setEditForm({ ...editForm, donGia: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <span className="text-sm text-gray-500">Thành tiền: </span>
+                  <span className="font-semibold text-green-600">{(editForm.soLuong * editForm.donGia).toLocaleString("vi-VN")}đ</span>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Loại chi phí</label>
+                  <select value={editForm.loaiChiPhi} onChange={(e) => setEditForm({ ...editForm, loaiChiPhi: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="">Chọn loại chi phí</option>
+                    <option value="CP QLDN">CP QLDN</option>
+                    <option value="Giá thành">Giá thành</option>
+                    <option value="CP bán hàng">CP bán hàng</option>
+                    <option value="CP rủi ro SX">CP rủi ro SX</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                  <input type="text" value={editForm.ghiChu} onChange={(e) => setEditForm({ ...editForm, ghiChu: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <button onClick={() => setShowEditItemModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Hủy</button>
+                  <button onClick={handleSaveEditItem} disabled={isSavingEdit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                    {isSavingEdit && <Loader2 className="animate-spin" size={16} />}
+                    Cập nhật
+                  </button>
+                </div>
               </div>
             </div>
           </div>

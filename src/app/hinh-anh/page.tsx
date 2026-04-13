@@ -1,41 +1,52 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { PackageSearch, Tag, FileText, List, Image } from "lucide-react";
+import { Image as ImageIcon, Package, Boxes, Printer } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 import { useRolePermissions } from "@/context/RolePermissionsContext";
+import HinhAnhSanPhamTab from "../san-xuat/components/HinhAnhSanPhamTab";
 
-import MaSPTab from "../components/MaSPTab";
-import ChiTietMaSPTab from "../components/ChiTietMaSPTab";
-import PhatTrienSanPhamTab from "../components/PhatTrienSanPhamTab";
-import HinhAnhSanPhamTab from "../components/HinhAnhSanPhamTab";
-
-type TabType = "phat-trien" | "ma-san-pham" | "chi-tiet-ma-sp" | "hinh-anh";
+type TabType = "san-pham" | "nguyen-phu-lieu" | "hinh-in";
 
 const TABS = [
-  { id: "phat-trien" as TabType, label: "Phát triển sản phẩm", icon: List },
-  // { id: "ma-san-pham" as TabType, label: "Mã sản phẩm", icon: Tag },
-  {
-    id: "chi-tiet-ma-sp" as TabType,
-    label: "Chi tiết mã sản phẩm",
-    icon: FileText,
-  },
-  // Đã chuyển sang mục Hình ảnh (/hinh-anh)
-  // { id: "hinh-anh" as TabType, label: "Hình ảnh sản phẩm", icon: Image },
+  { id: "san-pham" as TabType, label: "Sản phẩm", icon: Package },
+  { id: "nguyen-phu-lieu" as TabType, label: "Nguyên phụ liệu", icon: Boxes },
+  { id: "hinh-in" as TabType, label: "Hình in", icon: Printer },
 ];
 
-export default function SanPhamSX() {
+const FOLDER_CONFIG: Record<TabType, { id: string; label: string }[]> = {
+  "san-pham": [
+    { id: "", label: "Tất cả" },
+    { id: "san-pham", label: "Sản phẩm" },
+    { id: "ke-hoach-sx", label: "Kế hoạch SX" },
+  ],
+  "nguyen-phu-lieu": [
+    { id: "", label: "Tất cả" },
+    { id: "nguyen-phu-lieu", label: "Nguyên phụ liệu" },
+  ],
+  "hinh-in": [
+    { id: "", label: "Tất cả" },
+    { id: "hinh-in", label: "Hình in" },
+  ],
+};
+
+const DEFAULT_FOLDER: Record<TabType, string> = {
+  "san-pham": "san-pham",
+  "nguyen-phu-lieu": "nguyen-phu-lieu",
+  "hinh-in": "hinh-in",
+};
+
+export default function HinhAnhPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { hasAccess, loading: permissionsLoading } = useRolePermissions();
 
-  const [activeTab, setActiveTab] = useState<TabType>("phat-trien");
+  const [activeTab, setActiveTab] = useState<TabType>("san-pham");
 
-  // Filter tabs based on permissions
   const filteredTabs = useMemo(() => {
-    return TABS.filter((tab) => hasAccess(`san-xuat/san-pham/${tab.id}`));
+    if (hasAccess("hinh-anh")) return TABS;
+    return TABS.filter((tab) => hasAccess(`hinh-anh/${tab.id}`));
   }, [hasAccess]);
 
   useEffect(() => {
@@ -60,11 +71,11 @@ export default function SanPhamSX() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <PackageSearch className="text-blue-600" size={32} />
-            Sản phẩm
+            <ImageIcon className="text-blue-600" size={32} />
+            Hình ảnh
           </h1>
           <p className="text-gray-600 mt-1">
-            Quản lý sản phẩm trong quy trình sản xuất
+            Quản lý hình ảnh sản phẩm, nguyên phụ liệu và hình in
           </p>
         </div>
       </div>
@@ -103,10 +114,24 @@ export default function SanPhamSX() {
         </div>
 
         <div className="p-6">
-          {activeTab === "phat-trien" && <PhatTrienSanPhamTab />}
-          {/* {activeTab === "ma-san-pham" && <MaSPTab />} */}
-          {activeTab === "chi-tiet-ma-sp" && <ChiTietMaSPTab />}
-          {activeTab === "hinh-anh" && <HinhAnhSanPhamTab />}
+          {activeTab === "san-pham" && (
+            <HinhAnhSanPhamTab
+              folders={FOLDER_CONFIG["san-pham"]}
+              defaultFolder={DEFAULT_FOLDER["san-pham"]}
+            />
+          )}
+          {activeTab === "nguyen-phu-lieu" && (
+            <HinhAnhSanPhamTab
+              folders={FOLDER_CONFIG["nguyen-phu-lieu"]}
+              defaultFolder={DEFAULT_FOLDER["nguyen-phu-lieu"]}
+            />
+          )}
+          {activeTab === "hinh-in" && (
+            <HinhAnhSanPhamTab
+              folders={FOLDER_CONFIG["hinh-in"]}
+              defaultFolder={DEFAULT_FOLDER["hinh-in"]}
+            />
+          )}
         </div>
       </div>
     </div>

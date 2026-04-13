@@ -4442,12 +4442,12 @@ const sheetNameChiPhiBanHang = process.env.GOOGLE_SHEET_NAME_CHI_PHI_BAN_HANG ||
 
 export interface ChiPhiBanHang {
   id: number;
-  ngayThang: string;      // Cột A
-  noiDung: string;        // Cột B
-  nguoiNhan: string;      // Cột C
-  loaiChiPhi: string;     // Cột D
-  soTien: number;         // Cột E
-  ghiChu: string;         // Cột F
+  ngayThang: string;      // Cột A - Ngày tháng
+  nguoiChi: string;       // Cột B - Người chi
+  noiDung: string;        // Cột C - Nội dung
+  phanLoai: string;       // Cột D - Phân loại
+  soTien: number;         // Cột E - Số tiền
+  maPhieuChi: string;     // Cột F - Mã phiếu chi (PCBH##)
   rowIndex: number;       // Dòng trong sheet (để update/delete)
 }
 
@@ -4474,11 +4474,11 @@ export async function getChiPhiBanHangFromSheet(): Promise<ChiPhiBanHang[]> {
         id: index + 1,
         rowIndex: index + 6, // Dòng thực tế trong sheet
         ngayThang: row[0] || "",
-        noiDung: row[1] || "",
-        nguoiNhan: row[2] || "",
-        loaiChiPhi: row[3] || "",
+        nguoiChi: row[1] || "",
+        noiDung: row[2] || "",
+        phanLoai: row[3] || "",
         soTien: parseFloat(String(row[4] || "0").replace(/[,.]/g, "")) || 0,
-        ghiChu: row[5] || "",
+        maPhieuChi: row[5] || "",
       }))
       .filter((item) => item.ngayThang.trim() !== "" || item.noiDung.trim() !== "");
 
@@ -4498,11 +4498,11 @@ export async function addChiPhiBanHang(data: Omit<ChiPhiBanHang, "id" | "rowInde
 
     const values = [[
       data.ngayThang,
+      data.nguoiChi,
       data.noiDung,
-      data.nguoiNhan,
-      data.loaiChiPhi,
+      data.phanLoai,
       data.soTien,
-      data.ghiChu,
+      data.maPhieuChi,
     ]];
 
     await sheets.spreadsheets.values.append({
@@ -4526,11 +4526,11 @@ export async function updateChiPhiBanHang(rowIndex: number, data: Omit<ChiPhiBan
 
     const values = [[
       data.ngayThang,
+      data.nguoiChi,
       data.noiDung,
-      data.nguoiNhan,
-      data.loaiChiPhi,
+      data.phanLoai,
       data.soTien,
-      data.ghiChu,
+      data.maPhieuChi,
     ]];
 
     await sheets.spreadsheets.values.update({
@@ -4879,7 +4879,7 @@ export async function getSanPhamCatalogFromSheet(): Promise<SanPhamCatalog[]> {
       .map((row, index) => ({
         id: index + 1,
         name: (row[4] || "").toString().trim(),    // F - Mã SP đầy đủ (RAD1337 Đỏ BB)
-        color: (row[1] || "").toString().trim(),   // C - Màu sắc (Đỏ)
+        color: (row[3] || "").toString().trim(),   // E - Màu sắc (Đỏ)
         sizeChart: row[8] || "",                   // J - Dòng size (3/4-10/11)
         image: row[5] || "",                       // G - Hình ảnh
         wholesalePrice: parsePriceCatalog(row[6]), // H - Giá sỉ (150,000)
@@ -4944,35 +4944,22 @@ export async function addSanPhamCatalogToSheet(product: SanPhamCatalog): Promise
 
     const values = [
       [
-        sttNumber, // A - STT
-        product.name,
-        product.sizeChart,
-        product.image,
-        product.color,
-        product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",
-        product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "",
-        product.costPrice > 0 ? formatNumberVN(product.costPrice) : "",
-        product.mainFabric,
-        product.accentFabric,
-        product.otherMaterials,
-        product.mainFabricQuota,
-        product.accentFabricQuota,
-        product.materialsQuota,
-        product.accessoriesQuota,
-        product.otherQuota,
-        product.plannedQuantity || "",
-        product.cutQuantity || "",
-        product.warehouseQuantity || "",
-        product.finalStatus,
-        product.nplSyncStatus,
-        product.productionStatus,
-        product.warehouseEntry,
+        sttNumber,                                                              // A - STT
+        product.name,                                                           // B - Mã SP
+        "",                                                                     // C - Hình in
+        "",                                                                     // D - Size
+        product.color,                                                          // E - Màu sắc
+        "",                                                                     // F - Mã SP đầy đủ (tự tạo)
+        product.image,                                                          // G - Hình ảnh
+        product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "", // H - Giá sỉ
+        product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",     // I - Giá lẻ
+        product.sizeChart,                                                      // J - Dòng size
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanPhamCatalog,
-      range: `${sheetNameSanPhamCatalog}!A${nextRow}:W${nextRow}`,
+      range: `${sheetNameSanPhamCatalog}!A${nextRow}:J${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -4995,40 +4982,32 @@ export async function updateSanPhamCatalogInSheet(product: SanPhamCatalog): Prom
 
     const rowNumber = product.id + 1; // ID 1 = dòng 2
 
-    // Giữ nguyên STT, chỉ cập nhật từ cột B
-    const values = [
-      [
-        product.name,
-        product.sizeChart,
-        product.image,
-        product.color,
-        product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",
-        product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "",
-        product.costPrice > 0 ? formatNumberVN(product.costPrice) : "",
-        product.mainFabric,
-        product.accentFabric,
-        product.otherMaterials,
-        product.mainFabricQuota,
-        product.accentFabricQuota,
-        product.materialsQuota,
-        product.accessoriesQuota,
-        product.otherQuota,
-        product.plannedQuantity || "",
-        product.cutQuantity || "",
-        product.warehouseQuantity || "",
-        product.finalStatus,
-        product.nplSyncStatus,
-        product.productionStatus,
-        product.warehouseEntry,
-      ],
+    // Cập nhật từng cột riêng để không ghi đè cột có công thức (C, D, F, K)
+    const data = [
+      {
+        range: `${sheetNameSanPhamCatalog}!B${rowNumber}`,
+        values: [[product.name]], // B - Mã SP
+      },
+      {
+        range: `${sheetNameSanPhamCatalog}!E${rowNumber}`,
+        values: [[product.color]], // E - Màu sắc
+      },
+      {
+        range: `${sheetNameSanPhamCatalog}!G${rowNumber}:J${rowNumber}`,
+        values: [[
+          product.image,                                                          // G - Hình ảnh
+          product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "", // H - Giá sỉ
+          product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",     // I - Giá lẻ
+          product.sizeChart,                                                      // J - Dòng size
+        ]],
+      },
     ];
 
-    await sheets.spreadsheets.values.update({
+    await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: spreadsheetIdSanPhamCatalog,
-      range: `${sheetNameSanPhamCatalog}!B${rowNumber}:W${rowNumber}`,
-      valueInputOption: "USER_ENTERED",
       requestBody: {
-        values,
+        valueInputOption: "USER_ENTERED",
+        data,
       },
     });
 
@@ -7795,6 +7774,63 @@ export async function deleteXuatKhoNPLFromSheet(id: number): Promise<void> {
   }
 }
 
+/**
+ * Cập nhật item xuất kho NPL trong Google Sheets
+ */
+export async function updateXuatKhoNPLInSheet(id: number, data: Partial<XuatKhoNPL>): Promise<boolean> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const actualRow = id + 5; // Row 6 = id 1
+
+    const currentResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameXuatKhoNPL}'!A${actualRow}:O${actualRow}`,
+    });
+
+    const currentRow = currentResponse.data.values?.[0] || [];
+
+    const parseNum = (val: any): number => {
+      if (!val) return 0;
+      const cleaned = String(val).replace(/\./g, "").replace(",", ".");
+      return parseFloat(cleaned) || 0;
+    };
+
+    const soLuong = data.soLuong ?? parseNum(currentRow[9]);
+    const donGia = data.donGia ?? parseNum(currentRow[10]);
+    const thanhTien = soLuong * donGia;
+
+    const updatedRow = [
+      currentRow[0] ?? "",   // maPhieu
+      currentRow[1] ?? "",   // ngayThang
+      currentRow[2] ?? "",   // nguoiNhap
+      currentRow[3] ?? "",   // noiDung
+      currentRow[4] ?? "",   // maSP
+      currentRow[5] ?? "",   // lenhSX
+      currentRow[6] ?? "",   // xuongSX
+      currentRow[7] ?? "",   // maNPL
+      currentRow[8] ?? "",   // dvt
+      soLuong,               // soLuong
+      donGia,                // donGia
+      thanhTien,             // thanhTien
+      data.loaiChiPhi ?? currentRow[12] ?? "", // loaiChiPhi
+      data.ghiChu ?? currentRow[13] ?? "",     // ghiChu
+      currentRow[14] ?? "",  // tonThucTe
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameXuatKhoNPL}'!A${actualRow}:O${actualRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [updatedRow] },
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error updating xuat kho NPL:", error);
+    throw error;
+  }
+}
+
 // ===================== PHIEU XUAT KHO NPL (PXK NPL) =====================
 const spreadsheetIdSanXuat5 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
 const sheetNamePhieuXuatNPL = process.env.GOOGLE_SHEET_NAME_PHIEU_XUAT_NPL || "PXK NPL";
@@ -9435,21 +9471,16 @@ const sheetNameNhapKhoHinhIn = process.env.GOOGLE_SHEET_NAME_NHAP_KHO_HINH_IN ||
 
 export interface NhapKhoHinhIn {
   id: number;
-  ngayThang: string;
-  maHinhIn: string;
-  soLuong: number;
-  donGia: number;
-  thanhTien: number;
-  ncc: string;
-  maPhieuNhap: string;
-  maSPSuDung: string;
-  ghiChu: string;
+  ngayThang: string;      // Cột A - Ngày tháng
+  maHinhIn: string;       // Cột B - Mã hình in
+  hinhAnh: string;        // Cột C - Hình ảnh
+  soLuong: number;        // Cột D - Số lượng
 }
 
 /**
  * Đọc dữ liệu nhập kho hình in từ Google Sheets
  * Header dòng 5, dữ liệu từ dòng 6
- * Columns: A-J (Ngày tháng, Mã hình in, Số lượng, Đơn giá, Thành tiền, NCC, Mã phiếu nhập, Mã SP sử dụng, Ghi chú)
+ * Columns: A-D (Ngày tháng, Mã hình in, Hình ảnh, Số lượng)
  */
 export async function getNhapKhoHinhInFromSheet(): Promise<NhapKhoHinhIn[]> {
   try {
@@ -9457,7 +9488,7 @@ export async function getNhapKhoHinhInFromSheet(): Promise<NhapKhoHinhIn[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanXuat14,
-      range: `'${sheetNameNhapKhoHinhIn}'!A6:J`, // Header dòng 5, dữ liệu từ dòng 6
+      range: `'${sheetNameNhapKhoHinhIn}'!A6:D`, // Header dòng 5, dữ liệu từ dòng 6
     });
 
     const rows = response.data.values;
@@ -9481,13 +9512,8 @@ export async function getNhapKhoHinhInFromSheet(): Promise<NhapKhoHinhIn[]> {
         id: index + 1,
         ngayThang: row[0] || "",
         maHinhIn: row[1] || "",
-        soLuong: parseNumberVN(row[2]),
-        donGia: parseNumberVN(row[3]),
-        thanhTien: parseNumberVN(row[4]),
-        ncc: row[5] || "",
-        maPhieuNhap: row[6] || "",
-        maSPSuDung: row[7] || "",
-        ghiChu: row[8] || "",
+        hinhAnh: row[2] || "",
+        soLuong: parseNumberVN(row[3]),
       }))
       .filter((item) => item.ngayThang.trim() !== "" && !item.ngayThang.startsWith('#') && item.maHinhIn.trim() !== "");
 
@@ -9536,20 +9562,15 @@ export async function addNhapKhoHinhInToSheet(
       [
         nhapKho.ngayThang,
         nhapKho.maHinhIn,
+        nhapKho.hinhAnh,
         formatNumber(nhapKho.soLuong),
-        formatNumber(nhapKho.donGia),
-        formatNumber(nhapKho.thanhTien),
-        nhapKho.ncc,
-        nhapKho.maPhieuNhap,
-        nhapKho.maSPSuDung,
-        nhapKho.ghiChu,
       ],
     ];
 
     // Use update instead of append to insert at the specific row
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanXuat14,
-      range: `'${sheetNameNhapKhoHinhIn}'!A${insertRowIndex}:I${insertRowIndex}`,
+      range: `'${sheetNameNhapKhoHinhIn}'!A${insertRowIndex}:D${insertRowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
@@ -9582,19 +9603,14 @@ export async function updateNhapKhoHinhInInSheet(
       [
         nhapKho.ngayThang,
         nhapKho.maHinhIn,
+        nhapKho.hinhAnh,
         formatNumber(nhapKho.soLuong),
-        formatNumber(nhapKho.donGia),
-        formatNumber(nhapKho.thanhTien),
-        nhapKho.ncc,
-        nhapKho.maPhieuNhap,
-        nhapKho.maSPSuDung,
-        nhapKho.ghiChu,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanXuat14,
-      range: `'${sheetNameNhapKhoHinhIn}'!A${rowIndex}:I${rowIndex}`,
+      range: `'${sheetNameNhapKhoHinhIn}'!A${rowIndex}:D${rowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
@@ -9621,7 +9637,7 @@ export async function deleteNhapKhoHinhInFromSheet(
     // Clear the row content
     await sheets.spreadsheets.values.clear({
       spreadsheetId: spreadsheetIdSanXuat14,
-      range: `'${sheetNameNhapKhoHinhIn}'!A${rowIndex}:H${rowIndex}`,
+      range: `'${sheetNameNhapKhoHinhIn}'!A${rowIndex}:D${rowIndex}`,
     });
 
     console.log("Nhap kho hinh in deleted successfully");
@@ -9703,23 +9719,20 @@ export async function getChiPhiHinhInFromSheet(): Promise<ChiPhiHinhIn[]> {
 // XUẤT KHO HÌNH IN
 // ============================================
 
-const spreadsheetIdSanXuat16 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
-const sheetNameXuatKhoHinhIn = process.env.GOOGLE_SHEET_NAME_XUAT_KHO_HINH_IN || "Xuất kho HI";
+const spreadsheetIdSanXuat16 = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG;
+const sheetNameXuatKhoHinhIn = process.env.GOOGLE_SHEET_NAME_XUAT_KHO_HINH_IN || "Xuất hình in";
 
 export interface XuatKhoHinhIn {
   id: number;
-  ngayThang: string;
-  maHinhIn: string;
-  soLuong: number;
-  maSPSuDung: string;
-  maPhieuXuat: string;
-  ghiChu: string;
+  ngayThang: string;      // Cột A - Ngày đặt
+  maHinhIn: string;       // Cột B - Mã hình in
+  soLuong: number;        // Cột C - Tổng SL
 }
 
 /**
- * Đọc dữ liệu xuất kho hình in từ Google Sheets
+ * Đọc dữ liệu xuất hình in từ Google Sheets
  * Header dòng 5, dữ liệu từ dòng 6
- * Columns: A-F (Ngày tháng, Mã hình in, Số lượng, Mã SP sử dụng, Mã phiếu xuất, Ghi chú)
+ * Columns: A-C (Ngày đặt, Mã hình in, Tổng SL)
  */
 export async function getXuatKhoHinhInFromSheet(): Promise<XuatKhoHinhIn[]> {
   try {
@@ -9727,7 +9740,7 @@ export async function getXuatKhoHinhInFromSheet(): Promise<XuatKhoHinhIn[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanXuat16,
-      range: `'${sheetNameXuatKhoHinhIn}'!A6:F`, // Header dòng 5, dữ liệu từ dòng 6
+      range: `'${sheetNameXuatKhoHinhIn}'!A6:C`, // Header dòng 5, dữ liệu từ dòng 6
     });
 
     const rows = response.data.values;
@@ -9752,9 +9765,6 @@ export async function getXuatKhoHinhInFromSheet(): Promise<XuatKhoHinhIn[]> {
         ngayThang: row[0] || "",
         maHinhIn: row[1] || "",
         soLuong: parseNumberVN(row[2]),
-        maSPSuDung: row[3] || "",
-        maPhieuXuat: row[4] || "",
-        ghiChu: row[5] || "",
       }))
       .filter((item) => item.ngayThang.trim() !== "" && !item.ngayThang.startsWith('#') && item.maHinhIn.trim() !== "");
 
@@ -9804,16 +9814,13 @@ export async function addXuatKhoHinhInToSheet(
         xuatKho.ngayThang,
         xuatKho.maHinhIn,
         formatNumber(xuatKho.soLuong),
-        xuatKho.maSPSuDung,
-        xuatKho.maPhieuXuat,
-        xuatKho.ghiChu,
       ],
     ];
 
     // Use update instead of append to insert at the specific row
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanXuat16,
-      range: `'${sheetNameXuatKhoHinhIn}'!A${insertRowIndex}:F${insertRowIndex}`,
+      range: `'${sheetNameXuatKhoHinhIn}'!A${insertRowIndex}:C${insertRowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
@@ -9847,15 +9854,12 @@ export async function updateXuatKhoHinhInInSheet(
         xuatKho.ngayThang,
         xuatKho.maHinhIn,
         formatNumber(xuatKho.soLuong),
-        xuatKho.maSPSuDung,
-        xuatKho.maPhieuXuat,
-        xuatKho.ghiChu,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdSanXuat16,
-      range: `'${sheetNameXuatKhoHinhIn}'!A${rowIndex}:F${rowIndex}`,
+      range: `'${sheetNameXuatKhoHinhIn}'!A${rowIndex}:C${rowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });

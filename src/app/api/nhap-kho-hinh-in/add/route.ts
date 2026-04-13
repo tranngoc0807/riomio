@@ -33,13 +33,8 @@ export async function POST(request: NextRequest) {
     const nhapKho = {
       ngayThang: body.ngayThang || "",
       maHinhIn: body.maHinhIn || "",
+      hinhAnh: body.hinhAnh || "",
       soLuong: parseFloat(body.soLuong) || 0,
-      donGia: parseFloat(body.donGia) || 0,
-      thanhTien: parseFloat(body.thanhTien) || 0,
-      ncc: body.ncc || "",
-      maPhieuNhap: body.maPhieuNhap || "",
-      maSPSuDung: body.maSPSuDung || "",
-      ghiChu: body.ghiChu || "",
     };
 
     await addNhapKhoHinhInToSheet(nhapKho);

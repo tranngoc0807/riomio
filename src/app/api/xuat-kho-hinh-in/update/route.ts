@@ -45,9 +45,6 @@ export async function PUT(request: NextRequest) {
       ngayThang: body.ngayThang || "",
       maHinhIn: body.maHinhIn || "",
       soLuong: parseFloat(body.soLuong) || 0,
-      maSPSuDung: body.maSPSuDung || "",
-      maPhieuXuat: body.maPhieuXuat || "",
-      ghiChu: body.ghiChu || "",
     };
 
     await updateXuatKhoHinhInInSheet(xuatKho);

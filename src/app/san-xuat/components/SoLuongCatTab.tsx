@@ -1,10 +1,11 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, Scissors, Package, Calendar, Plus, Pencil, Trash2, X, Check } from "lucide-react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Scissors, Package, Calendar, Plus, Pencil, Trash2, X, Check, FileDown, ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import { createPortal } from "react-dom";
 import ConfirmModal from "@/components/ConfirmModal";
+import html2canvas from "html2canvas";
 
 // Portal component for modals
 const Portal = ({ children }: { children: React.ReactNode }) => {
@@ -150,6 +151,7 @@ export default function SoLuongCatTab() {
   const [deletingItem, setDeletingItem] = useState<SoLuongCat | null>(null);
   const [viewingGroup, setViewingGroup] = useState<GroupedPhieuCat | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const detailTableRef = useRef<HTMLDivElement>(null);
 
   // Group delete confirmation state
   const [showGroupDeleteConfirm, setShowGroupDeleteConfirm] = useState(false);
@@ -851,6 +853,96 @@ export default function SoLuongCatTab() {
     </div>
   );
 
+  // Export danh sách PDF
+  const handleExportListPDF = () => {
+    if (groupedData.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = groupedData.map((g, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;font-weight:600;color:#2563eb;">${g.maPhieuCat}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.xuongSanXuat || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.lenhSanXuat || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${g.itemCount}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(g.totalSLKH)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(g.totalSLCat)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(g.totalSLNK)}</td>
+    </tr>`).join("");
+    printWindow.document.write(`<html><head><title>Số lượng cắt</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>SỐ LƯỢNG CẮT</h1>
+      <table><thead><tr><th style="width:30px;">STT</th><th>Mã phiếu</th><th>Xưởng SX</th><th>Lệnh SX</th><th>Số SP</th><th style="text-align:right;">SL KH</th><th style="text-align:right;">SL cắt</th><th style="text-align:right;">SL NK</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="5" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalSLKH)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalSLCat)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalSLNK)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  // Download danh sách ảnh JPG
+  const handleExportListImage = async () => {
+    const tableEl = document.querySelector("[data-export-table]");
+    if (!tableEl) return;
+    try {
+      const canvas = await html2canvas(tableEl as HTMLElement, { backgroundColor: "#ffffff", scale: 2 });
+      const link = document.createElement("a");
+      link.download = "So_luong_cat.jpg";
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+      toast.success("Đã tải ảnh");
+    } catch (err) {
+      console.error("Error exporting image:", err);
+      toast.error("Lỗi khi xuất ảnh");
+    }
+  };
+
+  // Export chi tiết phiếu PDF
+  const handleExportDetailPDF = (group: GroupedPhieuCat | null) => {
+    if (!group) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = group.items.map((item, i) => `<tr>
+      <td style="padding:4px 6px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;">${item.maSP || "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;">${item.mauSac || "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;">${item.ngayCat || "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;text-align:right;">${item.soLuongKeHoach > 0 ? fmt(item.soLuongKeHoach) : "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;text-align:right;">${item.soLuongCat > 0 ? fmt(item.soLuongCat) : "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;text-align:right;${item.slCatTruSlKH < 0 ? "color:red;" : ""}">${item.slCatTruSlKH !== 0 ? fmt(item.slCatTruSlKH) : "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;">${item.tiLeCacMau || "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;text-align:right;">${item.soLuongNhapKho > 0 ? fmt(item.soLuongNhapKho) : "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;text-align:right;${item.slNKTruSlCat < 0 ? "color:red;" : ""}">${item.slNKTruSlCat !== 0 ? fmt(item.slNKTruSlCat) : "-"}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;">${item.ghiChu || "-"}</td>
+    </tr>`).join("");
+    const title = `Phiếu cắt - ${group.maPhieuCat}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:5px; text-align:center; } .info { text-align:center; color:#666; margin-bottom:15px; font-size:13px; } table { width:100%; border-collapse:collapse; font-size:11px; } th { padding:5px 6px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <p class="info">Xưởng: ${group.xuongSanXuat || "-"} | Lệnh SX: ${group.lenhSanXuat || "-"}</p>
+      <table><thead><tr><th style="width:25px;">STT</th><th>Mã SP</th><th>Màu sắc</th><th>Ngày cắt</th><th style="text-align:right;">SL KH</th><th style="text-align:right;">SL cắt</th><th style="text-align:right;">Cắt-KH</th><th>Tỉ lệ màu</th><th style="text-align:right;">SL NK</th><th style="text-align:right;">NK-Cắt</th><th>Ghi chú</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="4" style="padding:4px 6px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:4px 6px;border:1px solid #ddd;text-align:right;">${fmt(group.totalSLKH)}</td><td style="padding:4px 6px;border:1px solid #ddd;text-align:right;">${fmt(group.totalSLCat)}</td><td colspan="2"></td><td style="padding:4px 6px;border:1px solid #ddd;text-align:right;">${fmt(group.totalSLNK)}</td><td colspan="2"></td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  // Download chi tiết phiếu ảnh JPG
+  const handleExportDetailImage = async () => {
+    if (!detailTableRef.current) return;
+    try {
+      const canvas = await html2canvas(detailTableRef.current, { backgroundColor: "#ffffff", scale: 2 });
+      const link = document.createElement("a");
+      link.download = `${viewingGroup?.maPhieuCat || "phieu_cat"}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+      toast.success("Đã tải ảnh");
+    } catch (err) {
+      console.error("Error exporting image:", err);
+      toast.error("Lỗi khi xuất ảnh");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -879,6 +971,8 @@ export default function SoLuongCatTab() {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-72"
             />
           </div>
+          <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+          <button onClick={handleExportListImage} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"><ImageIcon size={14} /> JPG</button>
           <button
             onClick={openAddModal}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -922,7 +1016,7 @@ export default function SoLuongCatTab() {
       </div>
 
       {/* Table - Grouped View */}
-      <div className="overflow-auto max-h-[70vh] border border-gray-200 rounded-xl">
+      <div data-export-table className="overflow-auto max-h-[70vh] border border-gray-200 rounded-xl">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
             <tr className="bg-green-50 border-b border-gray-200">
@@ -1406,11 +1500,15 @@ export default function SoLuongCatTab() {
                     {viewingGroup.lenhSanXuat && ` | Lệnh SX: ${viewingGroup.lenhSanXuat}`}
                   </p>
                 </div>
-                <button onClick={() => { setShowDetailsModal(false); setViewingGroup(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
-                  <X size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleExportDetailPDF(viewingGroup)} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+                  <button onClick={handleExportDetailImage} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"><ImageIcon size={14} /> JPG</button>
+                  <button onClick={() => { setShowDetailsModal(false); setViewingGroup(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
-              <div className="overflow-x-auto flex-1">
+              <div ref={detailTableRef} className="overflow-x-auto flex-1">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-green-50">
                     <tr className="border-b border-gray-200">

@@ -39,7 +39,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { ngayThang, noiDung, nguoiNhan, loaiChiPhi, soTien, ghiChu } = body;
+    const { ngayThang, nguoiChi, noiDung, phanLoai, soTien, maPhieuChi } = body;
 
     // Validation
     if (!ngayThang || !noiDung) {
@@ -51,11 +51,11 @@ export async function POST(request: Request) {
 
     await addChiPhiBanHang({
       ngayThang,
+      nguoiChi: nguoiChi || "",
       noiDung,
-      nguoiNhan: nguoiNhan || "",
-      loaiChiPhi: loaiChiPhi || "",
+      phanLoai: phanLoai || "",
       soTien: soTien || 0,
-      ghiChu: ghiChu || "",
+      maPhieuChi: maPhieuChi || "",
     });
 
     // Fetch updated list
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { rowIndex, ngayThang, noiDung, nguoiNhan, loaiChiPhi, soTien, ghiChu } = body;
+    const { rowIndex, ngayThang, nguoiChi, noiDung, phanLoai, soTien, maPhieuChi } = body;
 
     // Validation
     if (!rowIndex || !ngayThang || !noiDung) {
@@ -98,11 +98,11 @@ export async function PUT(request: Request) {
 
     await updateChiPhiBanHang(rowIndex, {
       ngayThang,
+      nguoiChi: nguoiChi || "",
       noiDung,
-      nguoiNhan: nguoiNhan || "",
-      loaiChiPhi: loaiChiPhi || "",
+      phanLoai: phanLoai || "",
       soTien: soTien || 0,
-      ghiChu: ghiChu || "",
+      maPhieuChi: maPhieuChi || "",
     });
 
     // Fetch updated list

@@ -23,7 +23,7 @@ interface FirebaseImage {
   url: string;
 }
 
-const FOLDERS = [
+const DEFAULT_FOLDERS = [
   { id: "", label: "Thư mục gốc" },
   { id: "san-pham", label: "Sản phẩm" },
   { id: "ke-hoach-sx", label: "Kế hoạch SX" },
@@ -31,12 +31,18 @@ const FOLDERS = [
 
 const ITEMS_PER_PAGE = 24;
 
-export default function HinhAnhSanPhamTab() {
+interface HinhAnhSanPhamTabProps {
+  folders?: { id: string; label: string }[];
+  defaultFolder?: string;
+}
+
+export default function HinhAnhSanPhamTab({ folders, defaultFolder }: HinhAnhSanPhamTabProps = {}) {
+  const FOLDERS = folders || DEFAULT_FOLDERS;
   const [images, setImages] = useState<FirebaseImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedFolder, setSelectedFolder] = useState("");
+  const [selectedFolder, setSelectedFolder] = useState(defaultFolder || "");
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<FirebaseImage | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<FirebaseImage | null>(null);

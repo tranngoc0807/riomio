@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Loader2, CreditCard, RefreshCw, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, CreditCard, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface BCTungTaiKhoanRow {
   ngayThang: string;
@@ -89,6 +90,49 @@ export default function BCTungTaiKhoanTab() {
     currentPage * itemsPerPage
   ) || [];
 
+  const handleExportPDF = () => {
+    if (!data?.transactions?.length) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = data.transactions.map((row) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${row.ngayThang}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${row.doiTuong}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${row.noiDung}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${row.phanLoai}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${row.thu ? fmt(row.thu) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${row.chi ? fmt(row.chi) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${fmt(row.duCuoi)}</td>
+    </tr>`).join("");
+    const title = `Báo cáo tài khoản: ${data.selectedAccount}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr><th>Ngày</th><th>Đối tượng</th><th>Nội dung</th><th>Phân loại</th><th style="text-align:right;">Thu</th><th style="text-align:right;">Chi</th><th style="text-align:right;">Dư cuối</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="4" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totals.thu)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${fmt(totals.chi)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(lastBalance)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportExcel = () => {
+    if (!data?.transactions?.length) return;
+    const sheetData = data.transactions.map((row) => ({
+      "Ngày tháng": row.ngayThang,
+      "Đối tượng": row.doiTuong,
+      "Nội dung": row.noiDung,
+      "Phân loại": row.phanLoai,
+      "Thu": row.thu,
+      "Chi": row.chi,
+      "Dư cuối": row.duCuoi,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    const accountName = data.selectedAccount.replace(/[/\\?*[\]]/g, "_");
+    XLSX.writeFile(wb, `BC_tai_khoan_${accountName}.xlsx`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -143,6 +187,20 @@ export default function BCTungTaiKhoanTab() {
             {isUpdating && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
           </div>
 
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+          >
+            <FileDown size={14} />
+            PDF
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            <FileSpreadsheet size={14} />
+            Excel
+          </button>
           <button
             onClick={fetchData}
             className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"

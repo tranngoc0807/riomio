@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(wc -l /Users/admin/Desktop/Riomio-shop/src/app/bao-cao/components/BaoCao*.tsx)",
+      "Bash(git checkout:*)"
     ]
   }
 }

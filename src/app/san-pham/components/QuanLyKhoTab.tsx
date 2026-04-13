@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Package, Loader2, AlertCircle, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, Search, ChevronDown } from "lucide-react";
+import { Package, Loader2, AlertCircle, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, Search, ChevronDown, FileDown, FileSpreadsheet } from "lucide-react";
 import { TonKhoSP, TonDauSP, XuatKhoSP, Customer, SanPhamCatalog, TonKhoItem, NhapKhoSP } from "@/lib/googleSheets";
 import DatePicker from "@/components/DatePicker";
 import Portal from "@/components/Portal";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import * as XLSX from "xlsx";
 
 type TabType = "ton-kho" | "ton-dau" | "xuat-kho" | "nhap-kho";
 const VALID_TABS: TabType[] = ["ton-kho", "ton-dau", "xuat-kho", "nhap-kho"];
@@ -243,8 +244,16 @@ export default function QuanLyKhoTab() {
       const result = await response.json();
 
       if (result.success) {
-        // Reverse để hiển thị mới nhất lên trước
-        setNhapKhoList([...result.data].reverse());
+        // Sắp xếp theo ngày nhập mới nhất lên trước
+        const parseDate = (d: string) => {
+          if (!d) return 0;
+          if (d.includes('/')) {
+            const [dd, mm, yyyy] = d.split('/');
+            return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+          }
+          return new Date(d).getTime() || 0;
+        };
+        setNhapKhoList([...result.data].sort((a: NhapKhoSP, b: NhapKhoSP) => parseDate(b.ngayNhap) - parseDate(a.ngayNhap)));
       } else {
         console.error("Error fetching nhập kho:", result.error);
       }
@@ -305,8 +314,16 @@ export default function QuanLyKhoTab() {
       if (result.success) {
         setTonKhoList(result.data.tonKho);
         setTonDauList(result.data.tonDau);
-        // Reverse để hiển thị mới nhất lên trước
-        setXuatKhoList([...(result.data.xuatKho || [])].reverse());
+        // Sắp xếp theo ngày mới nhất lên trước
+        const parseDateXK = (d: string) => {
+          if (!d) return 0;
+          if (d.includes('/')) {
+            const [dd, mm, yyyy] = d.split('/');
+            return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+          }
+          return new Date(d).getTime() || 0;
+        };
+        setXuatKhoList([...(result.data.xuatKho || [])].sort((a: XuatKhoSP, b: XuatKhoSP) => parseDateXK(b.ngayThang) - parseDateXK(a.ngayThang)));
       } else {
         setError(result.error || "Không thể tải dữ liệu tồn kho");
       }
@@ -353,6 +370,42 @@ export default function QuanLyKhoTab() {
   const startIndexNhapKho = (currentPageNhapKho - 1) * itemsPerPage;
   const endIndexNhapKho = startIndexNhapKho + itemsPerPage;
   const currentItemsNhapKho = filteredNhapKho.slice(startIndexNhapKho, endIndexNhapKho);
+
+  // Export tồn kho PDF
+  const handleExportTonKhoPDF = () => {
+    if (tonKhoList.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = tonKhoList.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.code}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.nhapDauKy)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.nhapTrongKy)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.xuatTrongKy)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;${item.tonCuoiKy < 0 ? "color:red;" : ""}">${fmt(item.tonCuoiKy)}</td>
+    </tr>`).join("");
+    const title = `Tồn kho hàng hóa - ${thangNam}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr><th style="width:35px;">STT</th><th>Mã SP</th><th style="text-align:right;">Nhập đầu</th><th style="text-align:right;">Nhập trong kỳ</th><th style="text-align:right;">Xuất</th><th style="text-align:right;">Tồn cuối</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  // Export tồn kho Excel
+  const handleExportTonKhoExcel = () => {
+    if (tonKhoList.length === 0) return;
+    const sheetData = tonKhoList.map((item, i) => ({
+      "STT": i + 1, "Mã SP": item.code, "Nhập đầu": item.nhapDauKy,
+      "Nhập trong kỳ": item.nhapTrongKy, "Xuất": item.xuatTrongKy, "Tồn cuối": item.tonCuoiKy,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ton kho");
+    XLSX.writeFile(wb, `Ton_kho_hang_hoa_${thangNam}.xlsx`);
+  };
 
   // Add product line
   const addProductLine = () => {
@@ -835,6 +888,8 @@ export default function QuanLyKhoTab() {
                 <div className="flex items-center gap-2">
                   <DatePicker value={thangNam} onChange={setThangNam} type="month" className="bg-white/20 text-white placeholder-white/70 border-none outline-none px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer min-w-45" />
                   <button onClick={() => fetchTonKho(true, "ton-kho")} className="bg-white text-blue-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors">Xác nhận</button>
+                  <button onClick={handleExportTonKhoPDF} className="flex items-center gap-1 bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"><FileDown size={14} /> PDF</button>
+                  <button onClick={handleExportTonKhoExcel} className="flex items-center gap-1 bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"><FileSpreadsheet size={14} /> Excel</button>
                 </div>
               </div>
             </div>

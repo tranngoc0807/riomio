@@ -199,7 +199,14 @@ export default function BaoCaoBanHangTab() {
       const result = await response.json();
 
       if (result.success) {
-        setSanPhamData(result.data);
+        // Sort: mã có số lượng bán > 0 lên đầu, từ lớn xuống bé
+        const sortedRows = [...(result.data.rows || [])].sort((a: BaoCaoSanPhamRow, b: BaoCaoSanPhamRow) => {
+          const aHas = a.soLuongBan > 0 ? 1 : 0;
+          const bHas = b.soLuongBan > 0 ? 1 : 0;
+          if (bHas !== aHas) return bHas - aHas;
+          return b.soLuongBan - a.soLuongBan;
+        });
+        setSanPhamData({ ...result.data, rows: sortedRows });
       } else {
         toast.error(result.error || "Không thể tải báo cáo");
       }
@@ -224,6 +231,13 @@ export default function BaoCaoBanHangTab() {
       const result = await response.json();
 
       if (result.success) {
+        // Sort: doanh thu lớn nhất lên đầu
+        if (result.data.theoThang?.rows) {
+          result.data.theoThang.rows.sort((a: BaoCaoNhanVienTheoThangRow, b: BaoCaoNhanVienTheoThangRow) => b.doanhThu - a.doanhThu);
+        }
+        if (result.data.theoNam?.rows) {
+          result.data.theoNam.rows.sort((a: BaoCaoNhanVienTheoNamRow, b: BaoCaoNhanVienTheoNamRow) => b.doanhThuNam - a.doanhThuNam);
+        }
         setNhanVienData(result.data);
         // Update selected values from response
         if (result.data.theoThang?.thangBaoCao) {
@@ -260,6 +274,13 @@ export default function BaoCaoBanHangTab() {
       const result = await response.json();
 
       if (result.success) {
+        // Sort: doanh thu lớn nhất lên đầu
+        if (result.data.theoThang?.rows) {
+          result.data.theoThang.rows.sort((a: BaoCaoKhachHangTheoThangRow, b: BaoCaoKhachHangTheoThangRow) => b.doanhThu - a.doanhThu);
+        }
+        if (result.data.theoNam?.rows) {
+          result.data.theoNam.rows.sort((a: BaoCaoKhachHangTheoNamRow, b: BaoCaoKhachHangTheoNamRow) => b.doanhThuNam - a.doanhThuNam);
+        }
         setKhachHangData(result.data);
         // Update selected values from response
         if (result.data.theoThang?.thangBaoCao) {

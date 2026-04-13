@@ -9,9 +9,12 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  FileDown,
+  FileSpreadsheet,
 } from "lucide-react";
 import { DongTien } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
+import * as XLSX from "xlsx";
 import ConfirmModal from "@/components/ConfirmModal";
 
 export default function DongTienTab() {
@@ -411,6 +414,59 @@ export default function DongTienTab() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedList = dongTienList.slice(startIndex, endIndex);
 
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = dongTienList.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.ngayThang}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.tenTK}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.doiTuong}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.phanLoaiThuChi}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.noiDung}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${item.tongThu ? fmt(item.tongThu) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${item.tongChi ? fmt(item.tongChi) : "-"}</td>
+    </tr>`).join("");
+    const title = "Sổ quỹ - Dòng tiền";
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:11px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr>
+        <th style="text-align:center;width:35px;">STT</th><th>Ngày</th><th>Tên TK</th><th>Đối tượng</th><th>Phân loại</th><th>Nội dung</th><th style="text-align:right;">Tổng thu</th><th style="text-align:right;">Tổng chi</th>
+      </tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;">
+          <td colspan="6" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng cộng:</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalThu)}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${fmt(totalChi)}</td>
+        </tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportExcel = () => {
+    const sheetData = dongTienList.map((item, i) => ({
+      "STT": i + 1,
+      "Ngày tháng": item.ngayThang,
+      "Tên TK": item.tenTK,
+      "NCC NPL": item.nccNPL,
+      "Thu tiền hàng": item.thuTienHang,
+      "Mã phiếu thu": item.maPhieuThu,
+      "Mã phiếu chi": item.maPhieuChi,
+      "Đối tượng": item.doiTuong,
+      "Nội dung": item.noiDung,
+      "Phân loại thu chi": item.phanLoaiThuChi,
+      "Tổng thu": item.tongThu,
+      "Tổng chi": item.tongChi,
+      "Ghi chú": item.ghiChu,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Dong tien");
+    XLSX.writeFile(wb, "So_quy_dong_tien.xlsx");
+  };
+
   return (
     <div className="space-y-4">
       <Toaster position="top-right" />
@@ -445,6 +501,20 @@ export default function DongTienTab() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+          >
+            <FileDown size={16} />
+            PDF
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            <FileSpreadsheet size={16} />
+            Excel
+          </button>
           <button
             onClick={handleOpenPhieuThu}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -1452,6 +1522,65 @@ export default function DongTienTab() {
 
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  const item = viewingItem;
+                  if (!item) return;
+                  const printWindow = window.open("", "_blank");
+                  if (!printWindow) return;
+                  const fmt = (v: number) => v.toLocaleString("vi-VN");
+                  const isPhieuThu = !!item.maPhieuThu;
+                  const maPhieu = item.maPhieuThu || item.maPhieuChi || "";
+                  const loai = isPhieuThu ? "PHIẾU THU" : "PHIẾU CHI";
+                  const color = isPhieuThu ? "#16a34a" : "#dc2626";
+
+                  printWindow.document.write(`<html><head><title>${loai} - ${maPhieu}</title>
+                    <style>
+                      * { margin:0; padding:0; box-sizing:border-box; }
+                      body { font-family:Arial,sans-serif; padding:40px; color:#333; max-width:800px; margin:0 auto; }
+                      h1 { font-size:24px; text-align:center; color:${color}; margin-bottom:8px; }
+                      .ma-phieu { text-align:center; font-size:16px; color:#666; margin-bottom:25px; }
+                      .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 30px; margin-bottom:20px; }
+                      .info-item label { display:block; font-size:12px; color:#666; margin-bottom:2px; }
+                      .info-item p { font-size:14px; color:#111; }
+                      .full-width { grid-column: 1 / -1; }
+                      .summary { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:20px 0; padding:15px 0; border-top:2px solid #eee; border-bottom:2px solid #eee; }
+                      .summary-box { padding:15px; border-radius:8px; text-align:center; }
+                      .summary-box.thu { background:#f0fdf4; }
+                      .summary-box.chi { background:#fef2f2; }
+                      .summary-box label { display:block; font-size:12px; color:#666; margin-bottom:5px; }
+                      .summary-box .amount { font-size:22px; font-weight:700; }
+                      .amount-thu { color:#16a34a; }
+                      .amount-chi { color:#dc2626; }
+                      @media print { body { padding:20px; } }
+                    </style></head><body>
+                    <h1>${loai}</h1>
+                    <p class="ma-phieu">Mã: ${maPhieu}</p>
+                    <div class="info-grid">
+                      <div class="info-item"><label>Ngày tháng</label><p>${item.ngayThang}</p></div>
+                      <div class="info-item"><label>Tên TK</label><p>${item.tenTK || "-"}</p></div>
+                      <div class="info-item"><label>NCC NPL</label><p>${item.nccNPL || "-"}</p></div>
+                      <div class="info-item"><label>Xưởng SX</label><p>${item.xuongSX || "-"}</p></div>
+                      <div class="info-item"><label>Chi vận chuyển</label><p>${item.chiVanChuyen || "-"}</p></div>
+                      <div class="info-item"><label>Thu tiền hàng</label><p>${item.thuTienHang || "-"}</p></div>
+                      <div class="info-item"><label>Đối tượng</label><p>${item.doiTuong || "-"}</p></div>
+                      <div class="info-item"><label>Phân loại thu chi</label><p>${item.phanLoaiThuChi || "-"}</p></div>
+                      <div class="info-item full-width"><label>Nội dung</label><p>${item.noiDung || "-"}</p></div>
+                    </div>
+                    <div class="summary">
+                      <div class="summary-box thu"><label>Tổng thu</label><div class="amount amount-thu">${fmt(item.tongThu)} đ</div></div>
+                      <div class="summary-box chi"><label>Tổng chi</label><div class="amount amount-chi">${fmt(item.tongChi)} đ</div></div>
+                    </div>
+                    ${item.ghiChu ? `<div class="info-item" style="margin-top:15px;"><label>Ghi chú</label><p>${item.ghiChu}</p></div>` : ""}
+                  </body></html>`);
+                  printWindow.document.close();
+                  setTimeout(() => printWindow.print(), 300);
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+              >
+                <FileDown size={16} />
+                Xuất PDF
+              </button>
               <button
                 onClick={() => setShowViewModal(false)}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"

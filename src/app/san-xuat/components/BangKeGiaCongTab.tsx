@@ -1,11 +1,12 @@
 "use client";
 
-import { Loader2, X, Search, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, X, Search, Plus, Trash2, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import type { Workshop, DonGiaGiaCong } from "@/lib/googleSheets";
+import * as XLSX from "xlsx";
 
 interface BangKeGiaCong {
   id: number;
@@ -49,7 +50,7 @@ interface GroupedPhieuGiaCong {
   totalThanhTien: number;
 }
 
-const ITEMS_PER_PAGE = 50;
+const ITEMS_PER_PAGE = 100;
 
 // Helper function to get cached profile
 const getCachedProfileName = (): string => {
@@ -116,7 +117,18 @@ export default function BangKeGiaCongTab() {
       groups[item.maPGC].totalThanhTien += item.thanhTien || 0;
     });
 
-    return Object.values(groups);
+    // Sắp xếp theo ngày mới nhất lên trước
+    return Object.values(groups).sort((a, b) => {
+      const parseDate = (d: string) => {
+        if (!d) return 0;
+        if (d.includes('/')) {
+          const [dd, mm, yyyy] = d.split('/');
+          return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+        }
+        return new Date(d).getTime() || 0;
+      };
+      return parseDate(b.ngayThang) - parseDate(a.ngayThang);
+    });
   }, [data]);
 
   // Filtered grouped phieu
@@ -446,6 +458,85 @@ export default function BangKeGiaCongTab() {
     0
   );
 
+  // Export danh sách PDF
+  const handleExportListPDF = () => {
+    if (filteredGroupedPhieu.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = filteredGroupedPhieu.map((g, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;font-weight:600;color:#2563eb;">${g.maPGC}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.ngayThang}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.xuongSX || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.phanLoai || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${g.totalItems}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(g.totalSoLuong)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;font-weight:600;">${fmt(g.totalThanhTien)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.doiSoat || "-"}</td>
+    </tr>`).join("");
+    printWindow.document.write(`<html><head><title>Bảng kê gia công</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:11px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>BẢNG KÊ GIA CÔNG</h1>
+      <table><thead><tr><th style="width:30px;">STT</th><th>Mã PGC</th><th>Ngày</th><th>Xưởng SX</th><th>Phân loại</th><th>Số SP</th><th style="text-align:right;">Tổng SL</th><th style="text-align:right;">Thành tiền</th><th>Đối soát</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="6" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(filteredGroupedPhieu.reduce((s, g) => s + g.totalSoLuong, 0))}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalThanhTien)}</td><td></td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportListExcel = () => {
+    if (filteredGroupedPhieu.length === 0) return;
+    const sheetData = filteredGroupedPhieu.map((g, i) => ({
+      "STT": i + 1, "Mã PGC": g.maPGC, "Ngày tháng": g.ngayThang, "Xưởng SX": g.xuongSX,
+      "Phân loại": g.phanLoai, "Số SP": g.totalItems, "Tổng SL": g.totalSoLuong,
+      "Thành tiền": g.totalThanhTien, "Đối soát": g.doiSoat,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bang ke GC");
+    XLSX.writeFile(wb, "Bang_ke_gia_cong.xlsx");
+  };
+
+  // Export chi tiết 1 phiếu
+  const handleExportDetailPDF = (phieu: GroupedPhieuGiaCong | null) => {
+    if (!phieu) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = phieu.items.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.maSPSX}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.maSP || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.soLuong)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.donGia > 0 ? fmt(item.donGia) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.thanhTien > 0 ? fmt(item.thanhTien) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.ghiChu || "-"}</td>
+    </tr>`).join("");
+    const title = `Phiếu gia công - ${phieu.maPGC}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:5px; text-align:center; } .info { text-align:center; color:#666; margin-bottom:15px; font-size:13px; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <p class="info">Ngày: ${phieu.ngayThang} | Xưởng: ${phieu.xuongSX || "-"} | Phân loại: ${phieu.phanLoai || "-"}</p>
+      <table><thead><tr><th style="width:30px;">STT</th><th>Mã SP SX</th><th>Mã SP</th><th style="text-align:right;">SL</th><th style="text-align:right;">Đơn giá</th><th style="text-align:right;">Thành tiền</th><th>Ghi chú</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="3" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(phieu.totalSoLuong)}</td><td></td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(phieu.totalThanhTien)}</td><td></td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportDetailExcel = (phieu: GroupedPhieuGiaCong | null) => {
+    if (!phieu) return;
+    const sheetData = phieu.items.map((item, i) => ({
+      "STT": i + 1, "Mã SP SX": item.maSPSX, "Mã SP": item.maSP, "SL": item.soLuong,
+      "Đơn giá": item.donGia, "Thành tiền": item.thanhTien, "Ghi chú": item.ghiChu,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Chi tiet");
+    XLSX.writeFile(wb, `${phieu.maPGC}.xlsx`);
+  };
+
   return (
     <>
       {/* Header */}
@@ -468,13 +559,17 @@ export default function BangKeGiaCongTab() {
             />
           </div>
         </div>
-        <button
-          onClick={handleOpenAddModal}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <Plus size={20} />
-          Tạo phiếu gia công
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+          <button onClick={handleExportListExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            <Plus size={20} />
+            Tạo phiếu gia công
+          </button>
+        </div>
       </div>
 
       {/* Summary Card */}
@@ -879,9 +974,13 @@ export default function BangKeGiaCongTab() {
                 <h3 className="text-xl font-semibold text-gray-900">Chi tiết phiếu gia công</h3>
                 <p className="text-sm text-gray-500">{viewGroupedPhieu.maPGC}</p>
               </div>
-              <button onClick={() => { setShowViewModal(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleExportDetailPDF(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+                <button onClick={() => handleExportDetailExcel(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
+                <button onClick={() => { setShowViewModal(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               {/* Header Info */}

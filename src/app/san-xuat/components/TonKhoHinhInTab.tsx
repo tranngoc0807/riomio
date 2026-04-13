@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Edit2, Check, X } from "lucide-react";
+import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Edit2, Check, X, FileDown, FileSpreadsheet } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 interface TonKhoHinhInThang {
   id: number;
@@ -253,6 +254,76 @@ export default function TonKhoHinhInTab() {
     "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
   ];
 
+  // Export tồn kho theo tháng
+  const handleExportThangPDF = () => {
+    if (filteredThang.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = filteredThang.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.maHI}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.duDauKi ? fmt(item.duDauKi) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${item.nhapKho ? fmt(item.nhapKho) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${item.xuatKho ? fmt(item.xuatKho) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.duCuoiKi ? fmt(item.duCuoiKi) : "-"}</td>
+    </tr>`).join("");
+    const title = `Tồn kho hình in - Tháng ${selectedMonth}/${selectedYear}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr><th style="width:35px;">STT</th><th>Mã HI</th><th style="text-align:right;">Dư đầu kì</th><th style="text-align:right;">Nhập kho</th><th style="text-align:right;">Xuất kho</th><th style="text-align:right;">Dư cuối kì</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalDuDauKi)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalNhapKho)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalXuatKho)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalDuCuoiKi)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportThangExcel = () => {
+    if (filteredThang.length === 0) return;
+    const sheetData = filteredThang.map((item, i) => ({
+      "STT": i + 1, "Mã HI": item.maHI, "Dư đầu kì": item.duDauKi,
+      "Nhập kho": item.nhapKho, "Xuất kho": item.xuatKho, "Dư cuối kì": item.duCuoiKi,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ton kho HI");
+    XLSX.writeFile(wb, `Ton_kho_hinh_in_T${selectedMonth}_${selectedYear}.xlsx`);
+  };
+
+  // Export số dư đầu kì đến ngày
+  const handleExportNgayPDF = () => {
+    if (filteredNgay.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = filteredNgay.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.maHI}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.soLuong ? fmt(item.soLuong) : "-"}</td>
+    </tr>`).join("");
+    const title = `Số dư đầu kì hình in đến ngày ${selectedDate}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr><th style="width:35px;">STT</th><th>Mã HI</th><th style="text-align:right;">Số lượng</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalSoLuong)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportNgayExcel = () => {
+    if (filteredNgay.length === 0) return;
+    const sheetData = filteredNgay.map((item, i) => ({
+      "STT": i + 1, "Mã HI": item.maHI, "Số lượng": item.soLuong,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "So du dau ki");
+    XLSX.writeFile(wb, `So_du_dau_ki_hinh_in_${selectedDate}.xlsx`);
+  };
+
   // Pagination component
   const renderPagination = (
     currentPage: number,
@@ -386,6 +457,8 @@ export default function TonKhoHinhInTab() {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 w-64"
                 />
               </div>
+              <button onClick={handleExportThangPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+              <button onClick={handleExportThangExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
             </div>
           </div>
 
@@ -522,6 +595,8 @@ export default function TonKhoHinhInTab() {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 w-64"
                 />
               </div>
+              <button onClick={handleExportNgayPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+              <button onClick={handleExportNgayExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
             </div>
           </div>
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, AlertCircle, UserCheck, RefreshCw, Search, ChevronDown } from "lucide-react";
+import { Loader2, AlertCircle, UserCheck, RefreshCw, Search, ChevronDown, FileDown, FileSpreadsheet } from "lucide-react";
 import { CongNoTransaction } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 interface CongNoData {
   selectedCustomer: string;
@@ -26,7 +27,9 @@ export default function CongNoTab() {
   const [error, setError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const ITEMS_PER_PAGE = 100;
 
   useEffect(() => {
     fetchCongNoData();
@@ -51,6 +54,7 @@ export default function CongNoTab() {
   const handleSelectCustomer = (customerName: string) => {
     setIsDropdownOpen(false);
     setSearchTerm("");
+    setCurrentPage(1);
     handleCustomerChange(customerName);
   };
 
@@ -137,6 +141,48 @@ export default function CongNoTab() {
     ? congNoData.transactions[congNoData.transactions.length - 1].duCuoi
     : 0;
 
+  // Pagination
+  const totalPages = Math.ceil(congNoData.transactions.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedTransactions = congNoData.transactions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handleExportPDF = () => {
+    if (!congNoData.selectedCustomer || congNoData.transactions.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = congNoData.transactions.map((t, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${t.ngayThang}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${t.maDonHang || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${t.tienHang ? fmt(t.tienHang) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${t.thanhToan ? fmt(t.thanhToan) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${fmt(t.duCuoi)}</td>
+    </tr>`).join("");
+    const title = `Theo dõi công nợ: ${congNoData.selectedCustomer}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr><th style="width:35px;">STT</th><th>Ngày tháng</th><th>Mã đơn hàng</th><th style="text-align:right;">Tiền hàng</th><th style="text-align:right;">Thanh toán</th><th style="text-align:right;">Dư cuối</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="3" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalTienHang)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalThanhToan)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(duCuoiCung)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportExcel = () => {
+    if (!congNoData.selectedCustomer || congNoData.transactions.length === 0) return;
+    const sheetData = congNoData.transactions.map((t, i) => ({
+      "STT": i + 1, "Ngày tháng": t.ngayThang, "Mã đơn hàng": t.maDonHang,
+      "Tiền hàng": t.tienHang, "Thanh toán": t.thanhToan, "Dư cuối": t.duCuoi,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cong no");
+    const name = congNoData.selectedCustomer.replace(/[/\\?*[\]]/g, "_");
+    XLSX.writeFile(wb, `Cong_no_${name}.xlsx`);
+  };
+
   return (
     <div className="space-y-4">
       <Toaster position="top-right" />
@@ -213,6 +259,12 @@ export default function CongNoTab() {
           >
             <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
           </button>
+          {congNoData.selectedCustomer && congNoData.transactions.length > 0 && (
+            <>
+              <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+              <button onClick={handleExportExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
+            </>
+          )}
         </div>
       </div>
 
@@ -267,7 +319,7 @@ export default function CongNoTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {congNoData.transactions.length === 0 ? (
+              {paginatedTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     {congNoData.selectedCustomer
@@ -276,9 +328,9 @@ export default function CongNoTab() {
                   </td>
                 </tr>
               ) : (
-                congNoData.transactions.map((transaction, index) => (
+                paginatedTransactions.map((transaction, index) => (
                   <tr key={index} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-600">{index + 1}</td>
+                    <td className="px-4 py-3 text-gray-600">{startIndex + index + 1}</td>
                     <td className="px-4 py-3 text-gray-900">{transaction.ngayThang}</td>
                     <td className="px-4 py-3">
                       {transaction.maDonHang ? (
@@ -306,6 +358,18 @@ export default function CongNoTab() {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+            <div className="text-sm text-gray-500">
+              Hiển thị {startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, congNoData.transactions.length)} / {congNoData.transactions.length} giao dịch
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Trước</button>
+              <span className="text-sm text-gray-600">{currentPage} / {totalPages}</span>
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Sau</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Note */}

@@ -47,7 +47,7 @@ export default function ImagePickerModal({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFolder, setSelectedFolder] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(
-    currentImage || null
+    currentImage || null,
   );
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -55,7 +55,7 @@ export default function ImagePickerModal({
     try {
       setLoading(true);
       const response = await fetch(
-        `/api/firebase-storage?folder=${selectedFolder}`
+        `/api/firebase-storage?folder=${selectedFolder}`,
       );
       const result = await response.json();
       if (result.success) {
@@ -109,13 +109,16 @@ export default function ImagePickerModal({
   };
 
   const filteredImages = images.filter((img) =>
-    img.name.toLowerCase().includes(searchTerm.toLowerCase())
+    img.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Pagination logic
   const totalPages = Math.ceil(filteredImages.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedImages = filteredImages.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedImages = filteredImages.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE,
+  );
 
   // Reset to page 1 when search term or folder changes
   useEffect(() => {
@@ -125,12 +128,12 @@ export default function ImagePickerModal({
   // Lock body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, [isOpen]);
 
@@ -144,11 +147,9 @@ export default function ImagePickerModal({
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              Chọn hình ảnh từ Firebase
+              Chọn hình ảnh từ Store
             </h3>
-            <p className="text-sm text-gray-500">
-              Chọn hoặc upload ảnh mới
-            </p>
+            <p className="text-sm text-gray-500">Chọn hoặc upload ảnh mới</p>
           </div>
           <button
             onClick={onClose}
@@ -255,7 +256,9 @@ export default function ImagePickerModal({
                       </div>
                     )}
                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-0.5">
-                      <p className="text-[10px] text-white truncate">{image.name}</p>
+                      <p className="text-[10px] text-white truncate">
+                        {image.name}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -288,7 +291,10 @@ export default function ImagePickerModal({
                       }, [])
                       .map((page, idx) =>
                         page === "..." ? (
-                          <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 text-sm">
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="px-1 text-gray-400 text-sm"
+                          >
                             ...
                           </span>
                         ) : (
@@ -303,12 +309,14 @@ export default function ImagePickerModal({
                           >
                             {page}
                           </button>
-                        )
+                        ),
                       )}
                   </div>
 
                   <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                     disabled={currentPage === totalPages}
                     className="p-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -316,7 +324,12 @@ export default function ImagePickerModal({
                   </button>
 
                   <span className="ml-2 text-xs text-gray-500">
-                    {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredImages.length)} / {filteredImages.length}
+                    {startIndex + 1}-
+                    {Math.min(
+                      startIndex + ITEMS_PER_PAGE,
+                      filteredImages.length,
+                    )}{" "}
+                    / {filteredImages.length}
                   </span>
                 </div>
               )}

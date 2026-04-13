@@ -56,7 +56,16 @@ export default function ChiPhiHinhInTab() {
       const response = await fetch("/api/chi-phi-hinh-in");
       const result = await response.json();
       if (result.success) {
-        setData(result.data);
+        // Sắp xếp theo ngày mới nhất lên trước
+        const parseDate = (d: string) => {
+          if (!d) return 0;
+          if (d.includes('/')) {
+            const [dd, mm, yyyy] = d.split('/');
+            return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+          }
+          return new Date(d).getTime() || 0;
+        };
+        setData([...result.data].sort((a: ChiPhiHinhIn, b: ChiPhiHinhIn) => parseDate(b.ngayThang) - parseDate(a.ngayThang)));
       } else {
         toast.error("Không thể tải dữ liệu chi phí hình in");
       }

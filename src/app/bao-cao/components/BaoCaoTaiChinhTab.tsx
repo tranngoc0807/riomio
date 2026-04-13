@@ -8,8 +8,10 @@ import {
   Factory,
   Loader2,
   FileDown,
+  FileSpreadsheet,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 type SubTabType = "lai-lo" | "cong-no-khach-hang" | "cong-no-ncc" | "cong-no-xuong";
 
@@ -131,6 +133,15 @@ export default function BaoCaoTaiChinhTab() {
       const result = await response.json();
 
       if (result.success) {
+        // Sort: dư cuối kỳ lớn nhất lên đầu, có số lượng trước
+        if (result.data.rows) {
+          result.data.rows.sort((a: BaoCaoCongNoKHRow, b: BaoCaoCongNoKHRow) => {
+            const aHas = a.duCuoiKi !== 0 ? 1 : 0;
+            const bHas = b.duCuoiKi !== 0 ? 1 : 0;
+            if (bHas !== aHas) return bHas - aHas;
+            return Math.abs(b.duCuoiKi) - Math.abs(a.duCuoiKi);
+          });
+        }
         setCongNoData(result.data);
       } else {
         toast.error(result.error || "Không thể tải báo cáo");
@@ -150,6 +161,15 @@ export default function BaoCaoTaiChinhTab() {
       const result = await response.json();
 
       if (result.success) {
+        // Sort: dư cuối kỳ lớn nhất lên đầu, có số lượng trước
+        if (result.data.rows) {
+          result.data.rows.sort((a: BaoCaoCongNoNCCRow, b: BaoCaoCongNoNCCRow) => {
+            const aHas = a.duCuoiKi !== 0 ? 1 : 0;
+            const bHas = b.duCuoiKi !== 0 ? 1 : 0;
+            if (bHas !== aHas) return bHas - aHas;
+            return Math.abs(b.duCuoiKi) - Math.abs(a.duCuoiKi);
+          });
+        }
         setCongNoNCCData(result.data);
       } else {
         toast.error(result.error || "Không thể tải báo cáo");
@@ -169,6 +189,15 @@ export default function BaoCaoTaiChinhTab() {
       const result = await response.json();
 
       if (result.success) {
+        // Sort: dư cuối lớn nhất lên đầu, có số lượng trước
+        if (result.data.rows) {
+          result.data.rows.sort((a: BaoCaoCongNoXuongRow, b: BaoCaoCongNoXuongRow) => {
+            const aHas = a.duCuoi !== 0 ? 1 : 0;
+            const bHas = b.duCuoi !== 0 ? 1 : 0;
+            if (bHas !== aHas) return bHas - aHas;
+            return Math.abs(b.duCuoi) - Math.abs(a.duCuoi);
+          });
+        }
         setCongNoXuongData(result.data);
       } else {
         toast.error(result.error || "Không thể tải báo cáo");
@@ -305,6 +334,60 @@ export default function BaoCaoTaiChinhTab() {
     setTimeout(() => printWindow.print(), 300);
   };
 
+  const handleExportExcel = () => {
+    let sheetData: Record<string, string | number>[] = [];
+    let fileName = "";
+
+    if (activeSubTab === "lai-lo" && data) {
+      fileName = `Bao_cao_lai_lo_T${data.month}_${data.year}`;
+      sheetData = data.rows.map((row) => ({
+        "STT": row.stt,
+        "Chi tiêu": row.chiTieu,
+        "Tháng trước": row.thangTruoc,
+        "Tháng này": row.thangNay,
+        "Chênh lệch": row.chenhLech,
+        "Tỷ trọng": row.tyTrong,
+      }));
+    } else if (activeSubTab === "cong-no-khach-hang" && congNoData) {
+      fileName = `Cong_no_khach_hang_T${congNoData.month}_${congNoData.year}`;
+      sheetData = congNoData.rows.map((row, i) => ({
+        "STT": i + 1,
+        "Khách hàng": row.khachHang,
+        "Dư đầu kì": row.duDauKi,
+        "Phát sinh": row.phatSinh,
+        "Thanh toán": row.thanhToan,
+        "Dư cuối kì": row.duCuoiKi,
+      }));
+    } else if (activeSubTab === "cong-no-ncc" && congNoNCCData) {
+      fileName = `Cong_no_NCC_NPL_T${congNoNCCData.month}_${congNoNCCData.year}`;
+      sheetData = congNoNCCData.rows.map((row, i) => ({
+        "STT": i + 1,
+        "NCC NPL": row.nccNPL,
+        "Dư đầu kì": row.duDauKi,
+        "Phát sinh": row.phatSinh,
+        "Thanh toán": row.thanhToan,
+        "Dư cuối kì": row.duCuoiKi,
+      }));
+    } else if (activeSubTab === "cong-no-xuong" && congNoXuongData) {
+      fileName = `Cong_no_xuong_SX_T${congNoXuongData.month}_${congNoXuongData.year}`;
+      sheetData = congNoXuongData.rows.map((row, i) => ({
+        "STT": i + 1,
+        "Xưởng SX": row.xuongSX,
+        "Dư đầu": row.duDau,
+        "Tiền gia công": row.tienGiaCong,
+        "Thanh toán": row.thanhToan,
+        "Dư cuối": row.duCuoi,
+      }));
+    } else {
+      return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
+  };
+
   return (
     <div>
       {/* Sub-tabs navigation */}
@@ -371,13 +454,22 @@ export default function BaoCaoTaiChinhTab() {
                   Xem báo cáo
                 </button>
                 {data && (
-                  <button
-                    onClick={handleExportPDF}
-                    className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                  >
-                    <FileDown size={16} />
-                    Xuất PDF
-                  </button>
+                  <>
+                    <button
+                      onClick={handleExportPDF}
+                      className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                    >
+                      <FileDown size={16} />
+                      PDF
+                    </button>
+                    <button
+                      onClick={handleExportExcel}
+                      className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    >
+                      <FileSpreadsheet size={16} />
+                      Excel
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -476,7 +568,14 @@ export default function BaoCaoTaiChinhTab() {
                     className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
                   >
                     <FileDown size={16} />
-                    Xuất PDF
+                    PDF
+                  </button>
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileSpreadsheet size={16} />
+                    Excel
                   </button>
                 </div>
                 <div className="overflow-x-auto">
@@ -557,7 +656,14 @@ export default function BaoCaoTaiChinhTab() {
                     className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
                   >
                     <FileDown size={16} />
-                    Xuất PDF
+                    PDF
+                  </button>
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileSpreadsheet size={16} />
+                    Excel
                   </button>
                 </div>
                 <div className="overflow-x-auto">
@@ -638,7 +744,14 @@ export default function BaoCaoTaiChinhTab() {
                     className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
                   >
                     <FileDown size={16} />
-                    Xuất PDF
+                    PDF
+                  </button>
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm"
+                  >
+                    <FileSpreadsheet size={16} />
+                    Excel
                   </button>
                 </div>
                 <div className="overflow-x-auto">

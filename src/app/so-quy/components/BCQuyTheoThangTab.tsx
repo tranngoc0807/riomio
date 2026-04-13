@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, CalendarDays, RefreshCw } from "lucide-react";
+import { Loader2, CalendarDays, RefreshCw, FileDown, FileSpreadsheet } from "lucide-react";
 import Calendar from "@/components/ui/Calendar";
 import MonthPicker from "@/components/ui/MonthPicker";
+import * as XLSX from "xlsx";
 
 interface BCQuyTable1Row {
   stt: string;
@@ -169,6 +170,70 @@ export default function BCQuyTheoThangTab() {
   // Calculate totals for Table 2
   const table2Total = data?.table2.reduce((acc, row) => acc + row.soTien, 0) || 0;
 
+  const handleExportPDF = () => {
+    if (!data) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+
+    const rows1 = data.table1.map((row) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${row.taiKhoan}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${row.duDau ? fmt(row.duDau) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${row.thu ? fmt(row.thu) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${row.chi ? fmt(row.chi) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${row.duCuoi ? fmt(row.duCuoi) : "-"}</td>
+    </tr>`).join("");
+
+    const rows2 = data.table2.map((row) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${row.taiKhoan}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${row.soTien ? fmt(row.soTien) : "-"}</td>
+    </tr>`).join("");
+
+    printWindow.document.write(`<html><head><title>Báo cáo quỹ theo tháng</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1,h2 { text-align:center; margin-bottom:15px; } h1 { font-size:20px; } h2 { font-size:16px; margin-top:30px; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>BÁO CÁO QUỸ THEO THÁNG</h1>
+      <h2>Báo cáo quỹ - Tháng ${data.date1}</h2>
+      <table><thead><tr><th style="width:40px;">STT</th><th>Tài khoản</th><th style="text-align:right;">Dư đầu</th><th style="text-align:right;">Thu</th><th style="text-align:right;">Chi</th><th style="text-align:right;">Dư cuối</th></tr></thead><tbody>${rows1}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(table1Totals.duDau)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(table1Totals.thu)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${fmt(table1Totals.chi)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(table1Totals.duCuoi)}</td></tr>
+      </tbody></table>
+      <h2>Bảng kê số dư quỹ đầu kỳ đến ngày ${data.date2}</h2>
+      <table><thead><tr><th style="width:40px;">STT</th><th>Tài khoản</th><th style="text-align:right;">Số tiền</th></tr></thead><tbody>${rows2}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(table2Total)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportExcel = () => {
+    if (!data) return;
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Báo cáo quỹ
+    const sheet1Data = data.table1.map((row) => ({
+      "STT": row.stt,
+      "Tài khoản": row.taiKhoan,
+      "Dư đầu": row.duDau,
+      "Thu": row.thu,
+      "Chi": row.chi,
+      "Dư cuối": row.duCuoi,
+    }));
+    const ws1 = XLSX.utils.json_to_sheet(sheet1Data);
+    XLSX.utils.book_append_sheet(wb, ws1, "Bao cao quy");
+
+    // Sheet 2: Số dư đầu kỳ
+    const sheet2Data = data.table2.map((row) => ({
+      "STT": row.stt,
+      "Tài khoản": row.taiKhoan,
+      "Số tiền": row.soTien,
+    }));
+    const ws2 = XLSX.utils.json_to_sheet(sheet2Data);
+    XLSX.utils.book_append_sheet(wb, ws2, "So du dau ky");
+
+    XLSX.writeFile(wb, "BC_quy_theo_thang.xlsx");
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -186,13 +251,29 @@ export default function BCQuyTheoThangTab() {
           <CalendarDays size={20} className="text-purple-600" />
           Báo cáo quỹ theo tháng
         </h3>
-        <button
-          onClick={fetchData}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <RefreshCw size={16} />
-          Làm mới
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+          >
+            <FileDown size={14} />
+            PDF
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            <FileSpreadsheet size={14} />
+            Excel
+          </button>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <RefreshCw size={16} />
+            Làm mới
+          </button>
+        </div>
       </div>
 
       {/* Two Tables Side by Side */}

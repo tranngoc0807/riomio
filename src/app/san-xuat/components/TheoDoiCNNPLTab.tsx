@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, ChevronDown, Search, Filter } from "lucide-react";
+import { Loader2, ChevronDown, Search, Filter, FileDown, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface CongNoNCCRow {
   id: number;
@@ -107,6 +108,43 @@ export default function TheoDoiCNNPLTab() {
   const totalThanhToan = filteredCongNoData.reduce((sum, row) => sum + row.thanhToan, 0);
   const lastBalance = filteredCongNoData.length > 0 ? filteredCongNoData[filteredCongNoData.length - 1].duCuoi : 0;
 
+  const handleExportPDF = () => {
+    if (filteredCongNoData.length === 0 || !nccNPLName) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN");
+    const rows = filteredCongNoData.map((row, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${row.date}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${row.maPhieu || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${row.tienNhap ? fmt(row.tienNhap) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${row.thanhToan ? fmt(row.thanhToan) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${fmt(row.duCuoi)}</td>
+    </tr>`).join("");
+    const title = `Theo dõi CN NCC NPL: ${nccNPLName}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <table><thead><tr><th style="width:35px;">STT</th><th>Ngày</th><th>Mã phiếu</th><th style="text-align:right;">Tiền nhập</th><th style="text-align:right;">Thanh toán</th><th style="text-align:right;">Dư cuối</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="3" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(totalTienNhap)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalThanhToan)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(lastBalance)}</td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleExportExcel = () => {
+    if (filteredCongNoData.length === 0 || !nccNPLName) return;
+    const sheetData = filteredCongNoData.map((row, i) => ({
+      "STT": i + 1, "Ngày": row.date, "Mã phiếu": row.maPhieu,
+      "Tiền nhập": row.tienNhap, "Thanh toán": row.thanhToan, "Dư cuối": row.duCuoi,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "CN NCC NPL");
+    const name = nccNPLName.replace(/[/\\?*[\]]/g, "_");
+    XLSX.writeFile(wb, `Theo_doi_CN_NCC_${name}.xlsx`);
+  };
+
   return (
     <div>
       {/* Header */}
@@ -195,6 +233,12 @@ export default function TheoDoiCNNPLTab() {
               </>
             )}
           </div>
+          {filteredCongNoData.length > 0 && (
+            <>
+              <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
+              <button onClick={handleExportExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
+            </>
+          )}
         </div>
       </div>
 
