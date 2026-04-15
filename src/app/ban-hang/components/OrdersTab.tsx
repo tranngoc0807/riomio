@@ -196,6 +196,7 @@ export default function OrdersTab() {
     null,
   );
   const [editProducts, setEditProducts] = useState<Order[]>([]);
+  const [deletedProductIds, setDeletedProductIds] = useState<number[]>([]);
   const [editProductSearchTerm, setEditProductSearchTerm] = useState("");
   const [showEditProductDropdown, setShowEditProductDropdown] = useState(false);
   const editProductDropdownRef = useRef<HTMLDivElement>(null);
@@ -863,6 +864,7 @@ export default function OrdersTab() {
   const handleEditGrouped = (group: GroupedOrder) => {
     setEditGroupedOrder({ ...group });
     setEditProducts(group.products.map((p) => ({ ...p })));
+    setDeletedProductIds([]);
     setEditProductSearchTerm("");
     fetchDropdownData();
     setShowEditModal(true);
@@ -2804,6 +2806,8 @@ export default function OrdersTab() {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50">
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-10">
+                        </th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">
                           STT
                         </th>
@@ -2845,6 +2849,22 @@ export default function OrdersTab() {
                     <tbody className="divide-y divide-gray-200">
                       {editProducts.map((product, index) => (
                         <tr key={product.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              onClick={() => {
+                                if (product.id > 0) {
+                                  setDeletedProductIds((prev) => [...prev, product.id]);
+                                }
+                                setEditProducts((prev) =>
+                                  prev.filter((p) => p !== product)
+                                );
+                              }}
+                              className="text-red-400 hover:text-red-600 transition-colors"
+                              title="Xóa sản phẩm"
+                            >
+                              <X size={16} />
+                            </button>
+                          </td>
                           <td className="px-3 py-2 text-sm text-gray-600">
                             {index + 1}
                           </td>
@@ -3090,7 +3110,7 @@ export default function OrdersTab() {
                     <tfoot className="bg-gray-100">
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="px-3 py-2 text-sm font-medium text-right"
                         >
                           Tổng tiền hàng sau CK:
@@ -3189,7 +3209,7 @@ export default function OrdersTab() {
                       (p) => p.id === 0,
                     );
 
-                    // Batch update existing products
+                    // Batch update existing products FIRST (before delete to avoid row shift)
                     if (existingProducts.length > 0) {
                       const response = await fetch("/api/orders/batch-update", {
                         method: "PUT",
@@ -3200,6 +3220,23 @@ export default function OrdersTab() {
                       if (!result.success) {
                         toast.error(
                           result.error || "Lỗi khi cập nhật đơn hàng",
+                        );
+                        return;
+                      }
+                    }
+
+                    // Delete removed products from Google Sheets
+                    // Sort by ID descending so higher rows are deleted first (avoids row shift issues)
+                    const sortedDeleteIds = [...deletedProductIds].sort((a, b) => b - a);
+                    for (const deletedId of sortedDeleteIds) {
+                      const response = await fetch(
+                        `/api/orders/delete?id=${deletedId}`,
+                        { method: "DELETE" },
+                      );
+                      const result = await response.json();
+                      if (!result.success) {
+                        toast.error(
+                          result.error || "Lỗi khi xóa sản phẩm",
                         );
                         return;
                       }

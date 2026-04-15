@@ -147,7 +147,7 @@ export default function CnptKhTheoThangTab() {
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.thanhToan ? formatCurrency(item.thanhToan) : "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;${item.duCuoiKy > 0 ? "color:red;" : ""}">${formatCurrency(item.duCuoiKy)}</td>
     </tr>`).join("");
-    const title = tableData.tieuDe || `Công nợ phải thu KH - Tháng ${selectedMonth}/${selectedYear}`;
+    const title = `Bảng kê công nợ khách hàng - Tháng ${selectedMonth}/${selectedYear}`;
     printWindow.document.write(`<html><head><title>${title}</title>
       <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
       <h1>${title.toUpperCase()}</h1>
@@ -243,7 +243,7 @@ export default function CnptKhTheoThangTab() {
           <div className="flex items-center gap-2 text-white">
             <FileText size={18} />
             <span className="font-semibold">
-              {tableData.tieuDe || `Bảng kê công nợ phải thu khách hàng: ${selectedMonth}/${selectedYear}`}
+              {`Bảng kê công nợ khách hàng: ${selectedMonth}/${selectedYear}`}
             </span>
           </div>
         </div>

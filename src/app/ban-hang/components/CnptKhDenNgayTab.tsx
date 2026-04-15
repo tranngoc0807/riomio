@@ -122,7 +122,7 @@ export default function CnptKhDenNgayTab() {
           <div className="flex items-center gap-2 text-white">
             <FileText size={18} />
             <span className="font-semibold">
-              {tableData.tieuDe || "Bảng kê công nợ khách hàng đến ngày"}
+              {"Bảng kê công nợ khách hàng đến ngày"}
             </span>
           </div>
         </div>
