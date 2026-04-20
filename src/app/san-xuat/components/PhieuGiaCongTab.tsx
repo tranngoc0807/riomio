@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, ChevronDown, Search, FileText, Calendar, Factory, Package } from "lucide-react";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 interface PhieuGiaCongDetail {
   id: number;
@@ -32,6 +33,7 @@ export default function PhieuGiaCongTab() {
   const [isChangingPhieu, setIsChangingPhieu] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const printableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchMaPhieuList();
@@ -191,7 +193,16 @@ export default function PhieuGiaCongTab() {
             )}
           </div>
         </div>
+        {phieuData && (
+          <PrintDownloadButton
+            targetRef={printableRef}
+            fileName={`PhieuGiaCong_${phieuData.maPhieu || "phieu"}`}
+            title={`Phiếu gia công - ${phieuData.maPhieu || ""}`}
+          />
+        )}
       </div>
+
+      <div ref={printableRef}>
 
       {/* Phiếu Info Cards */}
       {phieuData && !isLoading && !isChangingPhieu && (
@@ -311,6 +322,7 @@ export default function PhieuGiaCongTab() {
             </table>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

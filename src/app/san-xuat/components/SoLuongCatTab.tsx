@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import { createPortal } from "react-dom";
 import ConfirmModal from "@/components/ConfirmModal";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 import html2canvas from "html2canvas";
 
 // Portal component for modals
@@ -927,22 +928,6 @@ export default function SoLuongCatTab() {
     setTimeout(() => printWindow.print(), 300);
   };
 
-  // Download chi tiết phiếu ảnh JPG
-  const handleExportDetailImage = async () => {
-    if (!detailTableRef.current) return;
-    try {
-      const canvas = await html2canvas(detailTableRef.current, { backgroundColor: "#ffffff", scale: 2 });
-      const link = document.createElement("a");
-      link.download = `${viewingGroup?.maPhieuCat || "phieu_cat"}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", 0.95);
-      link.click();
-      toast.success("Đã tải ảnh");
-    } catch (err) {
-      console.error("Error exporting image:", err);
-      toast.error("Lỗi khi xuất ảnh");
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -1502,7 +1487,11 @@ export default function SoLuongCatTab() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => handleExportDetailPDF(viewingGroup)} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
-                  <button onClick={handleExportDetailImage} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"><ImageIcon size={14} /> JPG</button>
+                  <PrintDownloadButton
+                    targetRef={detailTableRef}
+                    fileName={viewingGroup.maPhieuCat || "PhieuCat"}
+                    title={`Phiếu cắt - ${viewingGroup.maPhieuCat}`}
+                  />
                   <button onClick={() => { setShowDetailsModal(false); setViewingGroup(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
                     <X size={20} />
                   </button>

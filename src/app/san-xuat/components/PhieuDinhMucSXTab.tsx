@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, FileText, ChevronDown, Printer } from "lucide-react";
+import { Loader2, FileText, ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 interface MaSP {
   id: number;
@@ -33,6 +34,7 @@ export default function PhieuDinhMucSXTab() {
   const [showMaSPDropdown, setShowMaSPDropdown] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const printableRef = useRef<HTMLDivElement>(null);
 
   // Filtered mã SP list - show all when not searching, filter when typing
   const filteredMaSPList = isSearching && maSPSearchTerm
@@ -124,10 +126,6 @@ export default function PhieuDinhMucSXTab() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -145,17 +143,16 @@ export default function PhieuDinhMucSXTab() {
           <FileText size={20} className="text-blue-600" />
           Phiếu định mức sản xuất
         </h3>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors print:hidden"
-        >
-          <Printer size={18} />
-          In phiếu
-        </button>
+        <PrintDownloadButton
+          targetRef={printableRef}
+          fileName={`PhieuDinhMucSX_${data?.maSP || "phieu"}`}
+          title={`Phiếu định mức sản xuất - ${data?.maSP || ""}`}
+          className="print:hidden"
+        />
       </div>
 
       {/* Form Content */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden print:border-0 print:shadow-none">
+      <div ref={printableRef} className="bg-white border border-gray-200 rounded-xl overflow-hidden print:border-0 print:shadow-none">
         {/* Company Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 print:bg-white print:text-black">
           <div className="flex items-center gap-4">

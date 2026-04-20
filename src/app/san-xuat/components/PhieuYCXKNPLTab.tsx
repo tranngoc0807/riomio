@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, ChevronDown, Search, FileText, Calendar, Factory, Package, Layers } from "lucide-react";
 import toast from "react-hot-toast";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 interface PhieuYCXKNPLDetail {
   id: number;
@@ -37,6 +38,7 @@ export default function PhieuYCXKNPLTab() {
   const [isChanging, setIsChanging] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const printableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchMaYeuCauList();
@@ -194,7 +196,16 @@ export default function PhieuYCXKNPLTab() {
             )}
           </div>
         </div>
+        {data && (
+          <PrintDownloadButton
+            targetRef={printableRef}
+            fileName={`PhieuYCXKNPL_${data.maYeuCau || "phieu"}`}
+            title={`Phiếu yêu cầu xuất kho NPL - ${data.maYeuCau || ""}`}
+          />
+        )}
       </div>
+
+      <div ref={printableRef}>
 
       {/* Info Cards */}
       {data && !isLoading && !isChanging && (
@@ -343,6 +354,7 @@ export default function PhieuYCXKNPLTab() {
             </table>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

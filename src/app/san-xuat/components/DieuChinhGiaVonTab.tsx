@@ -3,6 +3,7 @@
 import { Loader2, Search, ChevronLeft, ChevronRight, Calculator, Filter, Plus, Pencil, Trash2, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 interface DieuChinhGiaVon {
   id: number;
@@ -43,6 +44,7 @@ export default function DieuChinhGiaVonTab() {
   const [maSPSearchTerm, setMaSPSearchTerm] = useState("");
   const [showMaSPDropdown, setShowMaSPDropdown] = useState(false);
   const maSPDropdownRef = useRef<HTMLDivElement>(null);
+  const printableRef = useRef<HTMLDivElement>(null);
 
   // Filter maSPList based on search
   const filteredMaSPOptions = maSPList.filter(
@@ -264,6 +266,11 @@ export default function DieuChinhGiaVonTab() {
           Điều chỉnh giá vốn ({filteredList.length})
         </h3>
         <div className="flex items-center gap-3">
+          <PrintDownloadButton
+            targetRef={printableRef}
+            fileName="PhieuDieuChinhGiaVon"
+            title="Phiếu điều chỉnh giá vốn"
+          />
           <button
             onClick={handleOpenAddModal}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm transition-colors"
@@ -295,6 +302,7 @@ export default function DieuChinhGiaVonTab() {
         </div>
       </div>
 
+      <div ref={printableRef}>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
@@ -426,6 +434,7 @@ export default function DieuChinhGiaVonTab() {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {/* Modal Thêm mới */}

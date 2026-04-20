@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, ChevronDown, Search, FileText, Calendar, Factory, Package, ClipboardList } from "lucide-react";
 import toast from "react-hot-toast";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 interface LSXDetail {
   id: number;
@@ -44,6 +45,7 @@ export default function LSXTab() {
   const [isChangingLenh, setIsChangingLenh] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const printableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchMaLenhList();
@@ -216,7 +218,16 @@ export default function LSXTab() {
             )}
           </div>
         </div>
+        {lsxData && (
+          <PrintDownloadButton
+            targetRef={printableRef}
+            fileName={`LenhSanXuat_${lsxData.maLenh || "lenh"}`}
+            title={`Lệnh sản xuất - ${lsxData.maLenh || ""}`}
+          />
+        )}
       </div>
+
+      <div ref={printableRef}>
 
       {/* LSX Info Cards */}
       {lsxData && !isLoading && !isChangingLenh && (
@@ -365,6 +376,7 @@ export default function LSXTab() {
             </table>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, ChevronDown, Search, FileText, Calendar, Package, Scissors } from "lucide-react";
 import toast from "react-hot-toast";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 interface PhieuBaoSLCatDetail {
   id: number;
@@ -33,6 +34,7 @@ export default function PhieuBaoSLCatTab() {
   const [isChanging, setIsChanging] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const printableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchMaPhieuList();
@@ -189,7 +191,16 @@ export default function PhieuBaoSLCatTab() {
             )}
           </div>
         </div>
+        {data && (
+          <PrintDownloadButton
+            targetRef={printableRef}
+            fileName={`PhieuBaoSLCat_${data.maPhieu || "phieu"}`}
+            title={`Phiếu báo số lượng cắt - ${data.maPhieu || ""}`}
+          />
+        )}
       </div>
+
+      <div ref={printableRef}>
 
       {/* Info Cards */}
       {data && !isLoading && !isChanging && (
@@ -311,6 +322,7 @@ export default function PhieuBaoSLCatTab() {
             </table>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -3,7 +3,9 @@
     "allow": [
       "Read(//tmp/**)",
       "Bash(wc -l /Users/admin/Desktop/Riomio-shop/src/app/bao-cao/components/BaoCao*.tsx)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(md5 -q /Users/admin/Desktop/Riomio-shop/src/app/san-pham/components/QuanLyKhoTab.tsx)",
+      "Bash(git status *)"
     ]
   }
 }

@@ -6,6 +6,7 @@ import { Package, Loader2, AlertCircle, ChevronLeft, ChevronRight, Plus, Edit, T
 import { TonKhoSP, TonDauSP, XuatKhoSP, Customer, SanPhamCatalog, TonKhoItem, NhapKhoSP } from "@/lib/googleSheets";
 import DatePicker from "@/components/DatePicker";
 import Portal from "@/components/Portal";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import * as XLSX from "xlsx";
@@ -95,17 +96,26 @@ export default function QuanLyKhoTab() {
 
   // View phiếu xuất kho detail
   const [viewPhieuXuatKho, setViewPhieuXuatKho] = useState<{ maPXK: string; items: XuatKhoSP[] } | null>(null);
+  const phieuXuatKhoPrintRef = useRef<HTMLDivElement>(null);
+
+  // View phiếu nhập kho detail
+  const [viewPhieuNhapKho, setViewPhieuNhapKho] = useState<{ maPNK: string; items: NhapKhoSP[] } | null>(null);
+  const phieuNhapKhoPrintRef = useRef<HTMLDivElement>(null);
 
   // Modal states for Xuất kho
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedXuatKho, setSelectedXuatKho] = useState<XuatKhoSP | null>(null);
+  const [editXuatKhoGroup, setEditXuatKhoGroup] = useState<{ maPXK: string; items: XuatKhoSP[] } | null>(null);
+  const [editXuatKhoItems, setEditXuatKhoItems] = useState<XuatKhoSP[]>([]);
+  const [deletedXuatKhoIds, setDeletedXuatKhoIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Modal states for Nhập kho
   const [showAddNhapKhoModal, setShowAddNhapKhoModal] = useState(false);
   const [showEditNhapKhoModal, setShowEditNhapKhoModal] = useState(false);
-  const [selectedNhapKho, setSelectedNhapKho] = useState<NhapKhoSP | null>(null);
+  const [editNhapKhoGroup, setEditNhapKhoGroup] = useState<{ maPNK: string; items: NhapKhoSP[] } | null>(null);
+  const [editNhapKhoItems, setEditNhapKhoItems] = useState<NhapKhoSP[]>([]);
+  const [deletedNhapKhoIds, setDeletedNhapKhoIds] = useState<number[]>([]);
 
   // Delete confirmation modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -123,17 +133,6 @@ export default function QuanLyKhoTab() {
   });
   const [productLines, setProductLines] = useState<ProductLine[]>([{ maSP: "", soLuong: 1, tonKho: 0 }]);
 
-  // Form state for editing
-  const [editForm, setEditForm] = useState({
-    maPXK: "",
-    ngayThang: "",
-    maSP: "",
-    soLuong: 0,
-    maDonHang: "",
-    khachHang: "",
-    userThucHien: "",
-  });
-
   // Form state for adding nhập kho
   const [newNhapKhoPhieu, setNewNhapKhoPhieu] = useState({
     maPNK: "",
@@ -141,14 +140,6 @@ export default function QuanLyKhoTab() {
   });
   const [nhapKhoProductLines, setNhapKhoProductLines] = useState<NhapKhoProductLine[]>([{ maSP: "", soLuong: 1, ghiChu: "", tonCuoi: 0 }]);
 
-  // Form state for editing nhập kho
-  const [editNhapKhoForm, setEditNhapKhoForm] = useState({
-    maPNK: "",
-    ngayNhap: "",
-    maSP: "",
-    soLuong: 0,
-    ghiChu: "",
-  });
 
   // Dropdown states for nhập kho add form
   const [nhapKhoProductDropdownIndex, setNhapKhoProductDropdownIndex] = useState<number | null>(null);
@@ -380,10 +371,21 @@ export default function QuanLyKhoTab() {
   const endIndexXuatKho = startIndexXuatKho + itemsPerPage;
   const currentGroupsXuatKho = groupedXuatKho.slice(startIndexXuatKho, endIndexXuatKho);
 
-  const totalPagesNhapKho = Math.ceil(filteredNhapKho.length / itemsPerPage);
+  // Group nhập kho by maPNK
+  const groupedNhapKho = (() => {
+    const map = new Map<string, NhapKhoSP[]>();
+    filteredNhapKho.forEach((item) => {
+      const key = item.maPNK;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+    });
+    return Array.from(map.entries()).map(([maPNK, items]) => ({ maPNK, items }));
+  })();
+
+  const totalPagesNhapKho = Math.ceil(groupedNhapKho.length / itemsPerPage);
   const startIndexNhapKho = (currentPageNhapKho - 1) * itemsPerPage;
   const endIndexNhapKho = startIndexNhapKho + itemsPerPage;
-  const currentItemsNhapKho = filteredNhapKho.slice(startIndexNhapKho, endIndexNhapKho);
+  const currentGroupsNhapKho = groupedNhapKho.slice(startIndexNhapKho, endIndexNhapKho);
 
   // Export tồn kho PDF
   const handleExportTonKhoPDF = () => {
@@ -499,46 +501,58 @@ export default function QuanLyKhoTab() {
     }
   };
 
-  // Handle edit
-  const handleEditXuatKho = (item: XuatKhoSP) => {
-    setSelectedXuatKho(item);
-    setEditForm({
-      maPXK: item.maPXK,
-      ngayThang: item.ngayThang,
-      maSP: item.maSP,
-      soLuong: item.soLuong,
-      maDonHang: item.maDonHang,
-      khachHang: item.khachHang,
-      userThucHien: item.userThucHien,
-    });
+  // Handle edit xuất kho - pass whole group
+  const handleEditXuatKho = (group: { maPXK: string; items: XuatKhoSP[] }) => {
+    setEditXuatKhoGroup(group);
+    setEditXuatKhoItems(group.items.map((i) => ({ ...i })));
+    setDeletedXuatKhoIds([]);
     setShowEditModal(true);
   };
 
-  // Handle save edit
+  // Handle save edit xuất kho - update all items then delete removed
   const handleSaveEdit = async () => {
-    if (!selectedXuatKho) return;
+    if (!editXuatKhoGroup) return;
 
     setSaving(true);
     try {
-      const response = await fetch("/api/xuat-kho-sp/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedXuatKho.id,
-          ...editForm,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success("Cập nhật thành công");
-        setShowEditModal(false);
-        setSelectedXuatKho(null);
-        fetchTonKho();
-      } else {
-        toast.error(result.error || "Không thể cập nhật");
+      // Update existing items first
+      for (const item of editXuatKhoItems) {
+        const response = await fetch("/api/xuat-kho-sp/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: item.id,
+            maPXK: item.maPXK,
+            ngayThang: item.ngayThang,
+            maSP: item.maSP,
+            soLuong: item.soLuong,
+            maDonHang: item.maDonHang,
+            khachHang: item.khachHang,
+            userThucHien: item.userThucHien,
+          }),
+        });
+        const result = await response.json();
+        if (!result.success) {
+          toast.error(result.error || `Lỗi cập nhật ${item.maSP}`);
+          return;
+        }
       }
+
+      // Delete removed items (highest ID first to avoid row shift)
+      const sortedDeleteIds = [...deletedXuatKhoIds].sort((a, b) => b - a);
+      for (const id of sortedDeleteIds) {
+        const response = await fetch(`/api/xuat-kho-sp/delete?id=${id}`, { method: "DELETE" });
+        const result = await response.json();
+        if (!result.success) {
+          toast.error(result.error || "Lỗi khi xóa sản phẩm");
+          return;
+        }
+      }
+
+      toast.success("Cập nhật phiếu xuất kho thành công");
+      setShowEditModal(false);
+      setEditXuatKhoGroup(null);
+      fetchTonKho();
     } catch (error) {
       console.error("Error updating:", error);
       toast.error("Lỗi kết nối server");
@@ -639,44 +653,56 @@ export default function QuanLyKhoTab() {
     }
   };
 
-  // Handle edit nhập kho
-  const handleEditNhapKho = (item: NhapKhoSP) => {
-    setSelectedNhapKho(item);
-    setEditNhapKhoForm({
-      maPNK: item.maPNK,
-      ngayNhap: item.ngayNhap,
-      maSP: item.maSP,
-      soLuong: item.soLuong,
-      ghiChu: item.ghiChu,
-    });
+  // Handle edit nhập kho - pass whole group
+  const handleEditNhapKho = (group: { maPNK: string; items: NhapKhoSP[] }) => {
+    setEditNhapKhoGroup(group);
+    setEditNhapKhoItems(group.items.map((i) => ({ ...i })));
+    setDeletedNhapKhoIds([]);
     setShowEditNhapKhoModal(true);
   };
 
-  // Handle save edit nhập kho
+  // Handle save edit nhập kho - update all items then delete removed
   const handleSaveEditNhapKho = async () => {
-    if (!selectedNhapKho) return;
+    if (!editNhapKhoGroup) return;
 
     setSaving(true);
     try {
-      const response = await fetch("/api/nhap-kho-sp/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedNhapKho.id,
-          ...editNhapKhoForm,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success("Cập nhật thành công");
-        setShowEditNhapKhoModal(false);
-        setSelectedNhapKho(null);
-        fetchNhapKho();
-      } else {
-        toast.error(result.error || "Không thể cập nhật");
+      // Update existing items first
+      for (const item of editNhapKhoItems) {
+        const response = await fetch("/api/nhap-kho-sp/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: item.id,
+            maPNK: item.maPNK,
+            ngayNhap: item.ngayNhap,
+            maSP: item.maSP,
+            soLuong: item.soLuong,
+            ghiChu: item.ghiChu,
+          }),
+        });
+        const result = await response.json();
+        if (!result.success) {
+          toast.error(result.error || `Lỗi cập nhật ${item.maSP}`);
+          return;
+        }
       }
+
+      // Delete removed items (highest ID first to avoid row shift)
+      const sortedDeleteIds = [...deletedNhapKhoIds].sort((a, b) => b - a);
+      for (const id of sortedDeleteIds) {
+        const response = await fetch(`/api/nhap-kho-sp/delete?id=${id}`, { method: "DELETE" });
+        const result = await response.json();
+        if (!result.success) {
+          toast.error(result.error || "Lỗi khi xóa sản phẩm");
+          return;
+        }
+      }
+
+      toast.success("Cập nhật phiếu nhập kho thành công");
+      setShowEditNhapKhoModal(false);
+      setEditNhapKhoGroup(null);
+      fetchNhapKho();
     } catch (error) {
       console.error("Error updating nhập kho:", error);
       toast.error("Lỗi kết nối server");
@@ -1050,7 +1076,7 @@ export default function QuanLyKhoTab() {
                           <td className="px-3 py-3 text-gray-700">{userThucHien}</td>
                           <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => handleEditXuatKho(first)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Sửa"><Edit size={16} /></button>
+                              <button onClick={() => handleEditXuatKho(group)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Sửa"><Edit size={16} /></button>
                               <button onClick={() => handleDeleteXuatKho(first)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded" title="Xóa"><Trash2 size={16} /></button>
                             </div>
                           </td>
@@ -1070,7 +1096,7 @@ export default function QuanLyKhoTab() {
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-white">Bảng kê nhập kho SP ({filteredNhapKho.length} dòng)</h4>
+                <h4 className="font-semibold text-white">Bảng kê nhập kho SP ({groupedNhapKho.length} phiếu)</h4>
                 <button onClick={openAddNhapKhoModal} className="bg-white text-purple-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-50 transition-colors flex items-center gap-2">
                   <Plus size={16} />Thêm phiếu nhập
                 </button>
@@ -1098,34 +1124,43 @@ export default function QuanLyKhoTab() {
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">STT</th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Mã PNK</th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ngày nhập</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Mã SP</th>
-                    <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Số lượng</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Số SP</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Tổng SL</th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ghi chú</th>
-                    <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Tồn cuối</th>
                     <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {currentItemsNhapKho.length === 0 ? (
-                    <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-500">Không có dữ liệu nhập kho</td></tr>
+                  {currentGroupsNhapKho.length === 0 ? (
+                    <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-500">Không có dữ liệu nhập kho</td></tr>
                   ) : (
-                    currentItemsNhapKho.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-3 py-3 text-gray-600">{startIndexNhapKho + index + 1}</td>
-                        <td className="px-3 py-3 font-medium text-purple-600">{item.maPNK}</td>
-                        <td className="px-3 py-3 text-gray-700">{item.ngayNhap}</td>
-                        <td className="px-3 py-3 font-medium text-gray-900">{item.maSP}</td>
-                        <td className="px-3 py-3 text-right text-gray-700">{item.soLuong.toLocaleString()}</td>
-                        <td className="px-3 py-3 text-gray-700">{item.ghiChu}</td>
-                        <td className={`px-3 py-3 text-right font-medium ${item.tonCuoi < 0 ? "text-red-600" : item.tonCuoi === 0 ? "text-gray-500" : "text-green-600"}`}>{item.tonCuoi.toLocaleString()}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <button onClick={() => handleEditNhapKho(item)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Sửa"><Edit size={16} /></button>
-                            <button onClick={() => handleDeleteNhapKho(item)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded" title="Xóa"><Trash2 size={16} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                    currentGroupsNhapKho.map((group, groupIndex) => {
+                      const totalSL = group.items.reduce((sum, i) => sum + i.soLuong, 0);
+                      const first = group.items[0];
+                      const ghiChu = group.items.find((i) => i.ghiChu)?.ghiChu || "";
+                      return (
+                        <tr
+                          key={group.maPNK}
+                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => setViewPhieuNhapKho(group)}
+                        >
+                          <td className="px-3 py-3 text-gray-600">{startIndexNhapKho + groupIndex + 1}</td>
+                          <td className="px-3 py-3 font-medium text-purple-600">{group.maPNK}</td>
+                          <td className="px-3 py-3 text-gray-700">{first.ngayNhap}</td>
+                          <td className="px-3 py-3 text-center">
+                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">{group.items.length}</span>
+                          </td>
+                          <td className="px-3 py-3 text-center font-medium text-gray-900">{totalSL.toLocaleString()}</td>
+                          <td className="px-3 py-3 text-gray-700">{ghiChu}</td>
+                          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={() => handleEditNhapKho(group)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Sửa"><Edit size={16} /></button>
+                              <button onClick={() => handleDeleteNhapKho(first)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded" title="Xóa"><Trash2 size={16} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1323,64 +1358,98 @@ export default function QuanLyKhoTab() {
         </Portal>
       )}
 
-      {/* Modal sửa */}
-      {showEditModal && selectedXuatKho && (
+      {/* Modal sửa phiếu xuất kho */}
+      {showEditModal && editXuatKhoGroup && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowEditModal(false)} />
-          <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-[60] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowEditModal(false)} />
+          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-orange-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Sửa dòng xuất kho</h3>
-                <p className="text-sm text-gray-500">{selectedXuatKho.maSP}</p>
+                <h3 className="text-xl font-semibold text-gray-900">Chỉnh sửa phiếu xuất kho</h3>
+                <p className="text-sm text-gray-500">Mã PXK: {editXuatKhoGroup.maPXK}</p>
               </div>
-              <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors"><X size={24} /></button>
+              <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã PXK</label>
-                    <input type="text" value={editForm.maPXK} onChange={(e) => setEditForm({ ...editForm, maPXK: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày tháng</label>
-                    <input type="text" value={editForm.ngayThang} onChange={(e) => setEditForm({ ...editForm, ngayThang: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã SP</label>
-                    <input type="text" value={editForm.maSP} onChange={(e) => setEditForm({ ...editForm, maSP: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
-                    <input type="number" value={editForm.soLuong} onChange={(e) => setEditForm({ ...editForm, soLuong: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
-                  </div>
+              {/* Phiếu info */}
+              <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">Mã PXK</label>
+                  <input type="text" value={editXuatKhoGroup.maPXK} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã đơn hàng</label>
-                  <input type="text" value={editForm.maDonHang} onChange={(e) => setEditForm({ ...editForm, maDonHang: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
+                  <label className="block text-sm text-gray-500 mb-1">Ngày tháng</label>
+                  <input type="text" value={editXuatKhoItems[0]?.ngayThang || ""} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Khách hàng</label>
-                  <input type="text" value={editForm.khachHang} onChange={(e) => setEditForm({ ...editForm, khachHang: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
+                  <label className="block text-sm text-gray-500 mb-1">Mã đơn hàng</label>
+                  <input type="text" value={editXuatKhoItems.find((i) => i.maDonHang)?.maDonHang || ""} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">User thực hiện</label>
-                  <input type="text" value={editForm.userThucHien} onChange={(e) => setEditForm({ ...editForm, userThucHien: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
+                  <label className="block text-sm text-gray-500 mb-1">Khách hàng</label>
+                  <input type="text" value={editXuatKhoItems.find((i) => i.khachHang)?.khachHang || ""} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm" />
                 </div>
+              </div>
+
+              {/* Products Table */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-orange-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">Danh sách sản phẩm ({editXuatKhoItems.length})</h4>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-10"></th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã SP</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-24">Số lượng</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Tồn kho</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {editXuatKhoItems.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            onClick={() => {
+                              setDeletedXuatKhoIds((prev) => [...prev, item.id]);
+                              setEditXuatKhoItems((prev) => prev.filter((p) => p.id !== item.id));
+                            }}
+                            className="text-red-400 hover:text-red-600 transition-colors"
+                            title="Xóa sản phẩm"
+                          >
+                            <X size={16} />
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 text-gray-600">{index + 1}</td>
+                        <td className="px-3 py-2 font-medium text-gray-900">{item.maSP}</td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={item.soLuong}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              setEditXuatKhoItems((prev) =>
+                                prev.map((p) => p.id === item.id ? { ...p, soLuong: val } : p)
+                              );
+                            }}
+                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                          />
+                        </td>
+                        <td className={`px-3 py-2 text-right font-medium ${item.tonKho < 0 ? "text-red-600" : item.tonKho === 0 ? "text-gray-500" : "text-green-600"}`}>{item.tonKho.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex gap-3">
-                <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium" disabled={saving}>Hủy</button>
-                <button onClick={handleSaveEdit} disabled={saving} className="flex-1 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center justify-center gap-2">
-                  {saving && <Loader2 size={18} className="animate-spin" />}
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
-              </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <button onClick={() => setShowEditModal(false)} disabled={saving} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50">Hủy</button>
+              <button onClick={handleSaveEdit} disabled={saving} className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2">
+                {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Đang lưu...</> : <><Edit size={18} />Lưu thay đổi</>}
+              </button>
             </div>
           </div>
         </Portal>
@@ -1507,55 +1576,193 @@ export default function QuanLyKhoTab() {
         </Portal>
       )}
 
-      {/* Modal sửa nhập kho */}
-      {showEditNhapKhoModal && selectedNhapKho && (
+      {/* Modal sửa phiếu nhập kho */}
+      {showEditNhapKhoModal && editNhapKhoGroup && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowEditNhapKhoModal(false)} />
-          <div className="fixed top-0 right-0 w-full max-w-xl h-screen bg-white shadow-2xl z-[60] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowEditNhapKhoModal(false)} />
+          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-purple-50">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Sửa dòng nhập kho</h3>
-                <p className="text-sm text-gray-500">{selectedNhapKho.maSP}</p>
+                <h3 className="text-xl font-semibold text-gray-900">Chỉnh sửa phiếu nhập kho</h3>
+                <p className="text-sm text-gray-500">Mã PNK: {editNhapKhoGroup.maPNK}</p>
               </div>
-              <button onClick={() => setShowEditNhapKhoModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors"><X size={24} /></button>
+              <button onClick={() => setShowEditNhapKhoModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã PNK</label>
-                    <input type="text" value={editNhapKhoForm.maPNK} onChange={(e) => setEditNhapKhoForm({ ...editNhapKhoForm, maPNK: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày nhập</label>
-                    <input type="text" value={editNhapKhoForm.ngayNhap} onChange={(e) => setEditNhapKhoForm({ ...editNhapKhoForm, ngayNhap: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã SP</label>
-                    <input type="text" value={editNhapKhoForm.maSP} onChange={(e) => setEditNhapKhoForm({ ...editNhapKhoForm, maSP: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
-                    <input type="number" value={editNhapKhoForm.soLuong} onChange={(e) => setEditNhapKhoForm({ ...editNhapKhoForm, soLuong: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
-                  </div>
+              <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">Mã PNK</label>
+                  <input type="text" value={editNhapKhoGroup.maPNK} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <input type="text" value={editNhapKhoForm.ghiChu} onChange={(e) => setEditNhapKhoForm({ ...editNhapKhoForm, ghiChu: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                  <label className="block text-sm text-gray-500 mb-1">Ngày nhập</label>
+                  <input type="text" value={editNhapKhoItems[0]?.ngayNhap || ""} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm" />
                 </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">Ghi chú</label>
+                  <input type="text" value={editNhapKhoItems.find((i) => i.ghiChu)?.ghiChu || ""} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm" />
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-purple-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">Danh sách sản phẩm ({editNhapKhoItems.length})</h4>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-10"></th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã SP</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-24">Số lượng</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Ghi chú</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Tồn cuối</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {editNhapKhoItems.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            onClick={() => {
+                              setDeletedNhapKhoIds((prev) => [...prev, item.id]);
+                              setEditNhapKhoItems((prev) => prev.filter((p) => p.id !== item.id));
+                            }}
+                            className="text-red-400 hover:text-red-600 transition-colors"
+                            title="Xóa sản phẩm"
+                          >
+                            <X size={16} />
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 text-gray-600">{index + 1}</td>
+                        <td className="px-3 py-2 font-medium text-gray-900">{item.maSP}</td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={item.soLuong}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              setEditNhapKhoItems((prev) =>
+                                prev.map((p) => p.id === item.id ? { ...p, soLuong: val } : p)
+                              );
+                            }}
+                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="text"
+                            value={item.ghiChu || ""}
+                            onChange={(e) => {
+                              setEditNhapKhoItems((prev) =>
+                                prev.map((p) => p.id === item.id ? { ...p, ghiChu: e.target.value } : p)
+                              );
+                            }}
+                            placeholder="Ghi chú..."
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                        </td>
+                        <td className={`px-3 py-2 text-right font-medium ${item.tonCuoi < 0 ? "text-red-600" : item.tonCuoi === 0 ? "text-gray-500" : "text-green-600"}`}>{item.tonCuoi.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex gap-3">
-                <button onClick={() => setShowEditNhapKhoModal(false)} className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium" disabled={saving}>Hủy</button>
-                <button onClick={handleSaveEditNhapKho} disabled={saving} className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2">
-                  {saving && <Loader2 size={18} className="animate-spin" />}
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <button onClick={() => setShowEditNhapKhoModal(false)} disabled={saving} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50">Hủy</button>
+              <button onClick={handleSaveEditNhapKho} disabled={saving} className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2">
+                {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Đang lưu...</> : <><Edit size={18} />Lưu thay đổi</>}
+              </button>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal chi tiết phiếu nhập kho */}
+      {viewPhieuNhapKho && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-50 bg-black/30"
+            onClick={() => setViewPhieuNhapKho(null)}
+          />
+          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-purple-50">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Chi tiết phiếu nhập kho</h3>
+                <p className="text-sm text-gray-500">Mã PNK: {viewPhieuNhapKho.maPNK}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <PrintDownloadButton
+                  targetRef={phieuNhapKhoPrintRef}
+                  fileName={`PhieuNhapKho_${viewPhieuNhapKho.maPNK}`}
+                  title={`Phiếu nhập kho - ${viewPhieuNhapKho.maPNK}`}
+                />
+                <button
+                  onClick={() => setViewPhieuNhapKho(null)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X size={24} />
                 </button>
+              </div>
+            </div>
+            <div ref={phieuNhapKhoPrintRef} className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <span className="text-sm text-gray-500">Mã PNK:</span>
+                  <p className="font-medium text-purple-600">{viewPhieuNhapKho.maPNK}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">Ngày nhập:</span>
+                  <p className="font-medium">{viewPhieuNhapKho.items[0]?.ngayNhap}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">Ghi chú:</span>
+                  <p className="font-medium">{viewPhieuNhapKho.items.find((i) => i.ghiChu)?.ghiChu || "-"}</p>
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-purple-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">
+                    Danh sách sản phẩm ({viewPhieuNhapKho.items.length}) - Tổng: {viewPhieuNhapKho.items.reduce((s, i) => s + i.soLuong, 0).toLocaleString()} SP
+                  </h4>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 w-12">STT</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Mã SP</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Số lượng</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Ghi chú</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Tồn cuối</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {viewPhieuNhapKho.items.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-gray-600">{index + 1}</td>
+                        <td className="px-4 py-2 font-medium text-gray-900">{item.maSP}</td>
+                        <td className="px-4 py-2 text-right text-gray-700">{item.soLuong.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-gray-700">{item.ghiChu || "-"}</td>
+                        <td className={`px-4 py-2 text-right font-medium ${item.tonCuoi < 0 ? "text-red-600" : item.tonCuoi === 0 ? "text-gray-500" : "text-green-600"}`}>
+                          {item.tonCuoi.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-100">
+                    <tr>
+                      <td colSpan={2} className="px-4 py-2 text-sm font-medium text-right">Tổng:</td>
+                      <td className="px-4 py-2 text-sm text-right font-semibold text-purple-600">
+                        {viewPhieuNhapKho.items.reduce((s, i) => s + i.soLuong, 0).toLocaleString()}
+                      </td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           </div>
@@ -1575,14 +1782,21 @@ export default function QuanLyKhoTab() {
                 <h3 className="text-xl font-semibold text-gray-900">Chi tiết phiếu xuất kho</h3>
                 <p className="text-sm text-gray-500">Mã PXK: {viewPhieuXuatKho.maPXK}</p>
               </div>
-              <button
-                onClick={() => setViewPhieuXuatKho(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                <PrintDownloadButton
+                  targetRef={phieuXuatKhoPrintRef}
+                  fileName={`PhieuXuatKho_${viewPhieuXuatKho.maPXK}`}
+                  title={`Phiếu xuất kho - ${viewPhieuXuatKho.maPXK}`}
+                />
+                <button
+                  onClick={() => setViewPhieuXuatKho(null)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div ref={phieuXuatKhoPrintRef} className="flex-1 overflow-y-auto p-6">
               {/* Phiếu Info */}
               <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                 <div>

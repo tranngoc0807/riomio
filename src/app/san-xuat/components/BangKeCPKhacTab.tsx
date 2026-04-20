@@ -17,6 +17,7 @@ import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
 import ConfirmModal from "@/components/ConfirmModal";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 interface ChiPhiKhacItem {
   id: number;
@@ -312,6 +313,7 @@ function ChiPhiKhacView({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ChiPhiKhacItem | null>(null);
+  const detailPrintRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ChiPhiKhacItem | null>(null);
@@ -978,14 +980,21 @@ function ChiPhiKhacView({
                 <h2 className="text-xl font-semibold text-gray-900">
                   Chi tiết chi phí khác
                 </h2>
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <X size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <PrintDownloadButton
+                    targetRef={detailPrintRef}
+                    fileName={`PhieuCPKhac_${selectedItem.id}`}
+                    title={`Phiếu chi phí khác - ${selectedItem.ngay || ""}`}
+                  />
+                  <button
+                    onClick={() => setShowViewModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
-              <div className="p-6 space-y-4">
+              <div ref={detailPrintRef} className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-500">

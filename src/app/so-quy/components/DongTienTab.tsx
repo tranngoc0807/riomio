@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Loader2,
   Plus,
@@ -16,6 +16,7 @@ import { DongTien } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
 import * as XLSX from "xlsx";
 import ConfirmModal from "@/components/ConfirmModal";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 export default function DongTienTab() {
   const [dongTienList, setDongTienList] = useState<DongTien[]>([]);
@@ -25,6 +26,7 @@ export default function DongTienTab() {
   const [editingItem, setEditingItem] = useState<DongTien | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingItem, setViewingItem] = useState<DongTien | null>(null);
+  const detailPrintRef = useRef<HTMLDivElement>(null);
 
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1320,16 +1322,23 @@ export default function DongTienTab() {
               <h3 className="text-xl font-semibold text-gray-900">
                 Chi tiết dòng tiền
               </h3>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <PrintDownloadButton
+                  targetRef={detailPrintRef}
+                  fileName={`DongTien_${viewingItem.maPhieuThu || viewingItem.maPhieuChi || viewingItem.id}`}
+                  title={`Chi tiết dòng tiền - ${viewingItem.maPhieuThu || viewingItem.maPhieuChi || ""}`}
+                />
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-6">
+            <div ref={detailPrintRef} className="p-6 space-y-6">
               {/* Thông tin cơ bản */}
               <div className="grid grid-cols-2 gap-6">
                 <div>

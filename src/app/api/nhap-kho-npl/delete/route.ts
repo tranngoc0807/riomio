@@ -3,14 +3,23 @@ import { deleteNhapKhoNPLFromSheet } from "@/lib/googleSheets";
 
 /**
  * DELETE /api/nhap-kho-npl/delete
- * Xoá nhập kho NPL
+ * Xoá nhập kho NPL. Accepts ?rowIndex=N (0-based) or ?id=N (1-based).
  */
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const rowIndex = searchParams.get("rowIndex");
+    const rowIndexParam = searchParams.get("rowIndex");
+    const idParam = searchParams.get("id");
 
-    if (rowIndex === null || parseInt(rowIndex) < 0) {
+    let effectiveRowIndex: number | null = null;
+    if (rowIndexParam !== null) {
+      effectiveRowIndex = parseInt(rowIndexParam);
+    } else if (idParam !== null) {
+      const id = parseInt(idParam);
+      if (!isNaN(id)) effectiveRowIndex = id - 1;
+    }
+
+    if (effectiveRowIndex === null || isNaN(effectiveRowIndex) || effectiveRowIndex < 0) {
       return NextResponse.json(
         {
           success: false,
@@ -20,7 +29,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteNhapKhoNPLFromSheet(parseInt(rowIndex));
+    await deleteNhapKhoNPLFromSheet(effectiveRowIndex);
 
     return NextResponse.json({
       success: true,

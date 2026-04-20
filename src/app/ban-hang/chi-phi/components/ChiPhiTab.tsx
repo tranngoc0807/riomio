@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Plus, Edit2, Trash2, X, FileDown, FileSpreadsheet, Eye, ImageIcon } from "lucide-react";
+import { Loader2, Plus, Edit2, Trash2, X, FileDown, FileSpreadsheet, Eye } from "lucide-react";
 import { ChiPhiBanHang } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
 import * as XLSX from "xlsx";
-import html2canvas from "html2canvas";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 export default function ChiPhiTab() {
   const [chiPhiList, setChiPhiList] = useState<ChiPhiBanHang[]>([]);
@@ -236,21 +236,6 @@ export default function ChiPhiTab() {
     setTimeout(() => printWindow.print(), 300);
   };
 
-  // Export phiếu đơn lẻ ảnh
-  const handleExportPhieuImage = async () => {
-    if (!phieuRef.current || !viewingItem) return;
-    try {
-      const canvas = await html2canvas(phieuRef.current, { backgroundColor: "#ffffff", scale: 2 });
-      const link = document.createElement("a");
-      link.download = `${viewingItem.maPhieuChi}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-      toast.success("Đã tải ảnh phiếu");
-    } catch (err) {
-      console.error("Error exporting image:", err);
-      toast.error("Lỗi khi xuất ảnh");
-    }
-  };
 
   if (isLoading && chiPhiList.length === 0) {
     return (
@@ -357,7 +342,11 @@ export default function ChiPhiTab() {
             </div>
             <div className="flex items-center justify-end gap-2 p-6 border-t border-gray-200">
               <button onClick={() => handleExportPhieuPDF(viewingItem)} className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"><FileDown size={16} /> PDF</button>
-              <button onClick={handleExportPhieuImage} className="flex items-center gap-2 px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-sm"><ImageIcon size={16} /> Ảnh</button>
+              <PrintDownloadButton
+                targetRef={phieuRef}
+                fileName={viewingItem.maPhieuChi || "PhieuChi"}
+                title={`Phiếu chi - ${viewingItem.maPhieuChi}`}
+              />
               <button onClick={() => setShowViewModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Đóng</button>
             </div>
           </div>

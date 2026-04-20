@@ -15,6 +15,7 @@ import {
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Portal from "@/components/Portal";
+import PrintDownloadButton from "@/components/PrintDownloadButton";
 import toast from "react-hot-toast";
 import type { NhapKhoNPL, Material, TonKhoNPLThang } from "@/lib/googleSheets";
 import { useAuth } from "@/context/AuthContext";
@@ -23,6 +24,7 @@ import * as XLSX from "xlsx";
 // Interface for selected NPL in the form
 interface SelectedNPL {
   id: string;
+  existingId?: number; // if set, this is an existing item being edited (use update API)
   maNPL: string;
   ncc: string;
   dvt: string;
@@ -31,6 +33,20 @@ interface SelectedNPL {
   thanhTien: number;
   ghiChu: string;
 }
+
+// Convert dd/mm/yyyy or similar date string to yyyy-mm-dd for date input
+const toISODate = (dateStr: string): string => {
+  if (!dateStr) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const parts = dateStr.split(/[/\-]/);
+  if (parts.length === 3) {
+    const [d, m, y] = parts;
+    if (y.length === 4) {
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+  }
+  return "";
+};
 
 // Interface for grouped phieu nhap kho
 interface GroupedPhieuNhap {
@@ -76,6 +92,7 @@ export default function NhapKhoNPLTab() {
     useState<GroupedPhieuNhap | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isAppendingMode, setIsAppendingMode] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [phieuToDelete, setPhieuToDelete] = useState<string | null>(null);
@@ -85,6 +102,7 @@ export default function NhapKhoNPLTab() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedItemDetail, setSelectedItemDetail] =
     useState<NhapKhoNPL | null>(null);
+  const detailPrintRef = useRef<HTMLDivElement>(null);
 
   // Edit item state
   const [showEditItemModal, setShowEditItemModal] = useState(false);
@@ -313,6 +331,31 @@ export default function NhapKhoNPLTab() {
     );
     setFormNoiDung("");
     setSelectedNPLs([]);
+    setIsAppendingMode(false);
+    setShowAddModal(true);
+  };
+
+  const handleOpenAppendMode = (group?: GroupedPhieuNhap) => {
+    const target = group || viewGroupedPhieu;
+    if (!target) return;
+    setFormMaPhieu(target.maPhieu);
+    setFormNgayThang(toISODate(target.ngayThang));
+    setFormNguoiNhap(target.nguoiNhap || "");
+    setFormNoiDung(target.noiDung || "");
+    setSelectedNPLs(
+      target.items.map((item) => ({
+        id: `existing-${item.id}`,
+        existingId: item.id,
+        maNPL: item.maNPL,
+        ncc: item.ncc || "",
+        dvt: item.dvt || "",
+        soLuong: item.soLuong,
+        donGiaSauThue: item.donGiaSauThue,
+        thanhTien: item.thanhTien,
+        ghiChu: item.ghiChu || "",
+      })),
+    );
+    setIsAppendingMode(true);
     setShowAddModal(true);
   };
 
@@ -437,6 +480,31 @@ export default function NhapKhoNPLTab() {
       setIsAdding(true);
 
       for (const npl of selectedNPLs) {
+        if (npl.existingId) {
+          try {
+            const response = await fetch("/api/nhap-kho-npl/update", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: npl.existingId,
+                soLuong: npl.soLuong,
+                donGiaSauThue: npl.donGiaSauThue,
+                thanhTien: npl.soLuong * npl.donGiaSauThue,
+                ghiChu: npl.ghiChu,
+              }),
+            });
+            const result = await response.json();
+            if (!result.success) {
+              console.error("Update failed:", result);
+              toast.error(`Lỗi cập nhật ${npl.maNPL}: ${result.error || "unknown"}`);
+            }
+          } catch (err: any) {
+            console.error("Update request failed:", err);
+            toast.error(`Lỗi cập nhật ${npl.maNPL}: ${err?.message || "network"}`);
+          }
+          continue;
+        }
+
         const phieuData = {
           maPNKNPL: formMaPhieu,
           ngayThang: formNgayThang,
@@ -466,9 +534,14 @@ export default function NhapKhoNPLTab() {
 
       await fetchData();
       setShowAddModal(false);
+      const newCount = selectedNPLs.filter((n) => !n.existingId).length;
+      const updateCount = selectedNPLs.filter((n) => n.existingId).length;
       toast.success(
-        `Thêm phiếu nhập kho ${formMaPhieu} thành công (${selectedNPLs.length} mã NPL)`,
+        isAppendingMode
+          ? `Đã lưu phiếu ${formMaPhieu} (${updateCount} cập nhật, ${newCount} thêm mới)`
+          : `Thêm phiếu nhập kho ${formMaPhieu} thành công (${selectedNPLs.length} mã NPL)`,
       );
+      setIsAppendingMode(false);
     } catch (error) {
       console.error("Error adding phieu nhap:", error);
       toast.error("Lỗi khi thêm phiếu nhập kho");
@@ -901,6 +974,16 @@ export default function NhapKhoNPLTab() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          handleOpenAppendMode(group);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                        title="Sửa"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleDeleteGrouped(group.maPhieu);
                         }}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
@@ -959,6 +1042,18 @@ export default function NhapKhoNPLTab() {
               <div className="flex items-center gap-2">
                 <button onClick={() => handleExportDetailPDF(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors font-medium"><FileDown size={16} /> PDF</button>
                 <button onClick={() => handleExportDetailExcel(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-medium"><FileSpreadsheet size={16} /> Excel</button>
+                <PrintDownloadButton
+                  targetRef={detailPrintRef}
+                  fileName={`PhieuNhapKho_${viewGroupedPhieu.maPhieu}`}
+                  title={`Phiếu nhập kho - ${viewGroupedPhieu.maPhieu}`}
+                />
+                <button
+                  onClick={() => handleOpenAppendMode()}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  <Plus size={20} />
+                  Thêm NPL
+                </button>
                 <button
                   onClick={handleOpenReturnModal}
                   className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium"
@@ -971,7 +1066,7 @@ export default function NhapKhoNPLTab() {
           </div>
 
           {/* Page Content */}
-          <div className="p-8">
+          <div ref={detailPrintRef} className="p-8">
             {/* Header Info */}
             <div className="grid grid-cols-4 gap-6 mb-6 p-5 bg-white rounded-xl shadow-sm">
               <div>
@@ -1094,28 +1189,16 @@ export default function NhapKhoNPLTab() {
                           {item.ghiChu || "-"}
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenEditItem(item);
-                              }}
-                              className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
-                              title="Sửa"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteItem(item.id.toString());
-                              }}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                              title="Xóa"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteItem(item.id.toString());
+                            }}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                            title="Xóa"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1253,7 +1336,7 @@ export default function NhapKhoNPLTab() {
               <div className="fixed inset-4 lg:inset-8 bg-white/80 z-70 flex flex-col items-center justify-center rounded-xl">
                 <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
                 <p className="text-gray-700 font-medium">
-                  Đang tạo phiếu nhập kho...
+                  {isAppendingMode ? "Đang thêm NPL vào phiếu..." : "Đang tạo phiếu nhập kho..."}
                 </p>
               </div>
             )}
@@ -1262,7 +1345,7 @@ export default function NhapKhoNPLTab() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  Tạo phiếu nhập kho mới
+                  {isAppendingMode ? "Thêm NPL vào phiếu" : "Tạo phiếu nhập kho mới"}
                 </h3>
                 <p className="text-sm text-gray-500">Mã phiếu: {formMaPhieu}</p>
               </div>
@@ -1298,7 +1381,8 @@ export default function NhapKhoNPLTab() {
                     type="date"
                     value={formNgayThang}
                     onChange={(e) => setFormNgayThang(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    readOnly={isAppendingMode}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm ${isAppendingMode ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed" : "border-gray-300 focus:ring-2 focus:ring-blue-500"}`}
                   />
                 </div>
                 <div>
@@ -1309,7 +1393,8 @@ export default function NhapKhoNPLTab() {
                     type="text"
                     value={formNguoiNhap}
                     onChange={(e) => setFormNguoiNhap(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    readOnly={isAppendingMode}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm ${isAppendingMode ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed" : "border-gray-300 focus:ring-2 focus:ring-blue-500"}`}
                   />
                 </div>
                 <div>
@@ -1321,7 +1406,8 @@ export default function NhapKhoNPLTab() {
                     value={formNoiDung}
                     onChange={(e) => setFormNoiDung(e.target.value)}
                     placeholder="Nhập NPL..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    readOnly={isAppendingMode}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm ${isAppendingMode ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed" : "border-gray-300 focus:ring-2 focus:ring-blue-500"}`}
                   />
                 </div>
               </div>
@@ -1561,12 +1647,14 @@ export default function NhapKhoNPLTab() {
                 {isAdding ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Đang tạo...
+                    {isAppendingMode ? "Đang thêm..." : "Đang tạo..."}
                   </>
                 ) : (
                   <>
                     <Plus size={18} />
-                    Tạo phiếu nhập kho ({selectedNPLs.length} mã NPL)
+                    {isAppendingMode
+                      ? `Thêm vào phiếu (${selectedNPLs.length} mã NPL)`
+                      : `Tạo phiếu nhập kho (${selectedNPLs.length} mã NPL)`}
                   </>
                 )}
               </button>

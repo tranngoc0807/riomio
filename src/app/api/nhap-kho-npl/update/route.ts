@@ -8,9 +8,13 @@ import { updateNhapKhoNPLInSheet } from "@/lib/googleSheets";
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { rowIndex, ...data } = body;
+    const { rowIndex, id, ...data } = body;
 
-    if (rowIndex === undefined || rowIndex < 0) {
+    // Accept either rowIndex (0-based) or id (1-based)
+    const effectiveRowIndex =
+      typeof rowIndex === "number" ? rowIndex : typeof id === "number" ? id - 1 : undefined;
+
+    if (effectiveRowIndex === undefined || effectiveRowIndex < 0) {
       return NextResponse.json(
         {
           success: false,
@@ -20,7 +24,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    await updateNhapKhoNPLInSheet(rowIndex, data);
+    await updateNhapKhoNPLInSheet(effectiveRowIndex, data);
 
     return NextResponse.json({
       success: true,
