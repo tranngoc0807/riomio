@@ -7748,6 +7748,17 @@ export async function deleteXuatKhoNPLFromSheet(id: number): Promise<void> {
     // Row number in sheet (header ở dòng 5, data từ dòng 6)
     const rowNumber = id + 5;
 
+    // Resolve sheetId theo tên sheet thay vì hardcode 0
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+    });
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameXuatKhoNPL
+    );
+    if (!sheet || sheet.properties?.sheetId === undefined || sheet.properties?.sheetId === null) {
+      throw new Error(`Cannot find sheet named "${sheetNameXuatKhoNPL}" to delete row`);
+    }
+
     // Delete the row
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: spreadsheetIdSanXuat,
@@ -7756,7 +7767,7 @@ export async function deleteXuatKhoNPLFromSheet(id: number): Promise<void> {
           {
             deleteDimension: {
               range: {
-                sheetId: 0, // Adjust if needed
+                sheetId: sheet.properties.sheetId,
                 dimension: "ROWS",
                 startIndex: rowNumber - 1,
                 endIndex: rowNumber,
@@ -7770,6 +7781,89 @@ export async function deleteXuatKhoNPLFromSheet(id: number): Promise<void> {
     console.log(`Xuất kho NPL deleted at row ${rowNumber}`);
   } catch (error) {
     console.error("Error deleting xuat kho NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xoá toàn bộ các dòng có maPhieu khớp trong 1 batchUpdate.
+ * Deletes được sắp xếp từ dưới lên để không bị shift row.
+ */
+export async function deleteXuatKhoNPLByMaPhieuFromSheet(
+  maPhieu: string
+): Promise<number> {
+  try {
+    if (!maPhieu || !maPhieu.trim()) {
+      throw new Error("maPhieu is required");
+    }
+
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+      range: `'${sheetNameXuatKhoNPL}'!A6:O`,
+    });
+
+    const rows = response.data.values || [];
+
+    // Tìm tất cả index (0-based trong vùng A6:O) có maPhieu khớp
+    const matchedIndices: number[] = [];
+    rows.forEach((row, index) => {
+      const cell = (row?.[0] || "").toString().trim();
+      if (cell === maPhieu.trim()) {
+        matchedIndices.push(index);
+      }
+    });
+
+    if (matchedIndices.length === 0) {
+      return 0;
+    }
+
+    // Resolve sheetId theo tên
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdSanXuat,
+    });
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameXuatKhoNPL
+    );
+    if (!sheet || sheet.properties?.sheetId === undefined || sheet.properties?.sheetId === null) {
+      throw new Error(`Cannot find sheet named "${sheetNameXuatKhoNPL}"`);
+    }
+    const sheetId = sheet.properties.sheetId;
+
+    // Xây dựng requests xoá theo thứ tự GIẢM DẦN (từ dưới lên)
+    // để index của các request phía sau không bị dịch chuyển.
+    const requests = matchedIndices
+      .slice()
+      .sort((a, b) => b - a)
+      .map((idx) => {
+        const rowNumber = idx + 6; // A6:O → index 0 = row 6
+        return {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: rowNumber - 1,
+              endIndex: rowNumber,
+            },
+          },
+        };
+      });
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdSanXuat,
+      requestBody: { requests },
+    });
+
+    console.log(
+      `Deleted ${matchedIndices.length} rows of maPhieu=${maPhieu} from Xuất kho NPL`
+    );
+    return matchedIndices.length;
+  } catch (error) {
+    console.error(
+      "Error deleting xuat kho NPL by maPhieu from Google Sheets:",
+      error
+    );
     throw error;
   }
 }

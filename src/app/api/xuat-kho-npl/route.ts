@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getXuatKhoNPLFromSheet } from "@/lib/googleSheets";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * GET /api/xuat-kho-npl
  * Lấy danh sách xuất kho NPL từ Google Sheets

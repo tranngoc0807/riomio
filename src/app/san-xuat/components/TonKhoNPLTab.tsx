@@ -1,10 +1,11 @@
 "use client";
 
-import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Factory, Pencil } from "lucide-react";
+import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Factory, Pencil, Printer, FileSpreadsheet } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import DatePicker from "@/components/DatePicker";
 import type { TonKhoNPLThang, TonKhoNPLNgay, TonKhoNPLXuongSX } from "@/lib/googleSheets";
+import * as XLSX from "xlsx";
 
 export default function TonKhoNPLTab() {
   const [tonKhoThang, setTonKhoThang] = useState<TonKhoNPLThang[]>([]);
@@ -157,6 +158,230 @@ export default function TonKhoNPLTab() {
   // Calculate totals for tonKhoXuongSX
   const totalThanhTienXuongSX = filteredXuongSX.reduce((sum, item) => sum + item.thanhTien, 0);
 
+  const fmt = (v: number) => (v || 0).toLocaleString("vi-VN");
+
+  // ===== Export Excel =====
+  const handleExportExcelThang = () => {
+    if (filteredThang.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+    const sheetData = filteredThang.map((item, i) => ({
+      "STT": i + 1,
+      "Mã NPL": item.maNPL,
+      "Tồn đầu": item.tonDau,
+      "Nhập kho": item.nhapKho,
+      "Xuất kho": item.xuatKho,
+      "Tồn cuối": item.tonCuoi,
+      "Đơn giá sau thuế": item.donGiaSauThue,
+      "Giá trị tồn": item.giaTriTon,
+    }));
+    sheetData.push({
+      "STT": "" as any,
+      "Mã NPL": "TỔNG CỘNG" as any,
+      "Tồn đầu": "" as any,
+      "Nhập kho": "" as any,
+      "Xuất kho": "" as any,
+      "Tồn cuối": "" as any,
+      "Đơn giá sau thuế": "" as any,
+      "Giá trị tồn": totalGiaTriTon,
+    });
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ton kho theo thang");
+    XLSX.writeFile(wb, `Ton-kho-NPL-thang-${thangNam}.xlsx`);
+    toast.success("Đã xuất Excel");
+  };
+
+  const handleExportExcelNgay = () => {
+    if (filteredNgay.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+    const sheetData = filteredNgay.map((item, i) => ({
+      "STT": i + 1,
+      "Mã SP": item.maSP,
+      "Số lượng": item.soLuong,
+    }));
+    sheetData.push({
+      "STT": "" as any,
+      "Mã SP": "TỔNG CỘNG" as any,
+      "Số lượng": totalSoLuongNgay,
+    });
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ton kho den ngay");
+    XLSX.writeFile(wb, `Ton-kho-NPL-den-ngay-${denNgay}.xlsx`);
+    toast.success("Đã xuất Excel");
+  };
+
+  const handleExportExcelXuongSX = () => {
+    if (filteredXuongSX.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+    const sheetData = filteredXuongSX.map((item, i) => ({
+      "STT": i + 1,
+      "Ngày tháng": item.ngayThang,
+      "Xưởng SX thừa NPL": item.xuongSX,
+      "Tên NPL": item.tenNPL,
+      "ĐVT": item.dvt,
+      "Số lượng": item.soLuong,
+      "Đơn giá": item.donGia,
+      "Thành tiền": item.thanhTien,
+    }));
+    sheetData.push({
+      "STT": "" as any,
+      "Ngày tháng": "" as any,
+      "Xưởng SX thừa NPL": "" as any,
+      "Tên NPL": "" as any,
+      "ĐVT": "" as any,
+      "Số lượng": "" as any,
+      "Đơn giá": "TỔNG CỘNG" as any,
+      "Thành tiền": totalThanhTienXuongSX,
+    });
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ton kho xuong SX");
+    XLSX.writeFile(wb, `Ton-kho-NPL-xuong-SX-${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Đã xuất Excel");
+  };
+
+  // ===== Print =====
+  const openPrintWindow = (title: string, bodyHtml: string) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Không mở được cửa sổ in. Vui lòng cho phép popup.");
+      return;
+    }
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:Arial,sans-serif;padding:24px;color:#333;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+        h1{font-size:18px;margin-bottom:6px;text-align:center;text-transform:uppercase;}
+        .meta{text-align:center;font-size:12px;margin-bottom:14px;color:#555;}
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        th,td{padding:6px 8px;border:1px solid #ccc;}
+        th{background:#f3f4f6;font-weight:600;text-align:left;}
+        .text-right{text-align:right;}
+        .text-center{text-align:center;}
+        .total{background:#f9fafb;font-weight:600;}
+        @media print{body{padding:10px;}}
+      </style></head><body>${bodyHtml}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  };
+
+  const handlePrintThang = () => {
+    if (filteredThang.length === 0) {
+      toast.error("Không có dữ liệu để in");
+      return;
+    }
+    const rows = filteredThang.map((item, i) => `
+      <tr>
+        <td class="text-center">${i + 1}</td>
+        <td>${item.maNPL}</td>
+        <td class="text-right">${item.tonDau > 0 ? fmt(item.tonDau) : "-"}</td>
+        <td class="text-right">${item.nhapKho > 0 ? fmt(item.nhapKho) : "-"}</td>
+        <td class="text-right">${item.xuatKho > 0 ? fmt(item.xuatKho) : "-"}</td>
+        <td class="text-right">${fmt(item.tonCuoi)}</td>
+        <td class="text-right">${item.donGiaSauThue > 0 ? fmt(item.donGiaSauThue) : "-"}</td>
+        <td class="text-right">${item.giaTriTon > 0 ? fmt(item.giaTriTon) : "-"}</td>
+      </tr>`).join("");
+    const body = `
+      <h1>Tồn kho NPL kho công ty</h1>
+      <div class="meta">Tháng ${thangNam} · ${filteredThang.length} mục</div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px;" class="text-center">STT</th>
+            <th>Mã nguyên phụ liệu</th>
+            <th class="text-right">Tồn đầu</th>
+            <th class="text-right">Nhập kho</th>
+            <th class="text-right">Xuất kho</th>
+            <th class="text-right">Tồn cuối</th>
+            <th class="text-right">Đơn giá sau thuế</th>
+            <th class="text-right">Giá trị tồn</th>
+          </tr>
+        </thead>
+        <tbody>${rows}
+          <tr class="total"><td colspan="7" class="text-right">Tổng giá trị tồn:</td><td class="text-right">${fmt(totalGiaTriTon)}đ</td></tr>
+        </tbody>
+      </table>`;
+    openPrintWindow(`Ton kho NPL thang ${thangNam}`, body);
+  };
+
+  const handlePrintNgay = () => {
+    if (filteredNgay.length === 0) {
+      toast.error("Không có dữ liệu để in");
+      return;
+    }
+    const rows = filteredNgay.map((item, i) => `
+      <tr>
+        <td class="text-center">${i + 1}</td>
+        <td>${item.maSP}</td>
+        <td class="text-right">${fmt(item.soLuong)}</td>
+      </tr>`).join("");
+    const body = `
+      <h1>Tồn kho NPL đến ngày</h1>
+      <div class="meta">Đến ngày ${denNgay} · ${filteredNgay.length} mục</div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px;" class="text-center">STT</th>
+            <th>Mã SP</th>
+            <th class="text-right">Số lượng</th>
+          </tr>
+        </thead>
+        <tbody>${rows}
+          <tr class="total"><td colspan="2" class="text-right">Tổng số lượng:</td><td class="text-right">${fmt(totalSoLuongNgay)}</td></tr>
+        </tbody>
+      </table>`;
+    openPrintWindow(`Ton kho NPL den ngay ${denNgay}`, body);
+  };
+
+  const handlePrintXuongSX = () => {
+    if (filteredXuongSX.length === 0) {
+      toast.error("Không có dữ liệu để in");
+      return;
+    }
+    const rows = filteredXuongSX.map((item, i) => `
+      <tr>
+        <td class="text-center">${i + 1}</td>
+        <td>${item.ngayThang}</td>
+        <td>${item.xuongSX}</td>
+        <td>${item.tenNPL}</td>
+        <td class="text-center">${item.dvt}</td>
+        <td class="text-right">${item.soLuong > 0 ? fmt(item.soLuong) : "-"}</td>
+        <td class="text-right">${item.donGia > 0 ? fmt(item.donGia) : "-"}</td>
+        <td class="text-right">${item.thanhTien > 0 ? fmt(item.thanhTien) : "-"}</td>
+      </tr>`).join("");
+    const body = `
+      <h1>Tồn kho NPL xưởng sản xuất</h1>
+      <div class="meta">${filteredXuongSX.length} mục</div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px;" class="text-center">STT</th>
+            <th>Ngày tháng</th>
+            <th>Xưởng SX thừa NPL</th>
+            <th>Tên NPL</th>
+            <th class="text-center">ĐVT</th>
+            <th class="text-right">Số lượng</th>
+            <th class="text-right">Đơn giá</th>
+            <th class="text-right">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>${rows}
+          <tr class="total"><td colspan="7" class="text-right">Tổng thành tiền:</td><td class="text-right">${fmt(totalThanhTienXuongSX)}đ</td></tr>
+        </tbody>
+      </table>`;
+    openPrintWindow("Ton kho NPL xuong SX", body);
+  };
+
   // Pagination component
   const PaginationControls = ({
     currentPage,
@@ -306,6 +531,22 @@ export default function TonKhoNPLTab() {
                   {isLoading && <Loader2 size={14} className="animate-spin" />}
                   Xác nhận
                 </button>
+                <button
+                  onClick={handlePrintThang}
+                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                  title="In bảng tồn kho theo tháng"
+                >
+                  <Printer size={14} />
+                  In
+                </button>
+                <button
+                  onClick={handleExportExcelThang}
+                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                  title="Tải xuống Excel"
+                >
+                  <FileSpreadsheet size={14} />
+                  Tải Excel
+                </button>
               </div>
             </div>
           </div>
@@ -437,6 +678,22 @@ export default function TonKhoNPLTab() {
                   {isLoading && <Loader2 size={14} className="animate-spin" />}
                   Xác nhận
                 </button>
+                <button
+                  onClick={handlePrintNgay}
+                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                  title="In bảng tồn kho đến ngày"
+                >
+                  <Printer size={14} />
+                  In
+                </button>
+                <button
+                  onClick={handleExportExcelNgay}
+                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                  title="Tải xuống Excel"
+                >
+                  <FileSpreadsheet size={14} />
+                  Tải Excel
+                </button>
               </div>
             </div>
           </div>
@@ -546,6 +803,24 @@ export default function TonKhoNPLTab() {
               <h4 className="font-semibold text-white">
                 Tồn kho NPL xưởng sản xuất ({filteredXuongSX.length} mục)
               </h4>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrintXuongSX}
+                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                  title="In bảng tồn kho xưởng SX"
+                >
+                  <Printer size={14} />
+                  In
+                </button>
+                <button
+                  onClick={handleExportExcelXuongSX}
+                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                  title="Tải xuống Excel"
+                >
+                  <FileSpreadsheet size={14} />
+                  Tải Excel
+                </button>
+              </div>
             </div>
           </div>
 

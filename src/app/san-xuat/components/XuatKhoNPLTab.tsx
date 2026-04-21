@@ -318,7 +318,7 @@ export default function XuatKhoNPLTab() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/xuat-kho-npl");
+      const response = await fetch("/api/xuat-kho-npl", { cache: "no-store" });
       const result = await response.json();
       if (result.success) {
         setData(result.data);
@@ -789,16 +789,17 @@ export default function XuatKhoNPLTab() {
     try {
       setIsDeleting(true);
 
-      const itemsToDelete = data.filter((item) => item.maPhieu === phieuToDelete);
+      // Xoá toàn bộ các dòng của phiếu trong 1 batchUpdate ở server
+      // để tránh tình trạng row index bị shift giữa các request.
+      const response = await fetch(
+        `/api/xuat-kho-npl/delete-phieu?maPhieu=${encodeURIComponent(phieuToDelete)}`,
+        { method: "DELETE" }
+      );
+      const result = await response.json();
 
-      for (const item of itemsToDelete) {
-        const response = await fetch(`/api/xuat-kho-npl/delete?id=${item.id}`, {
-          method: "DELETE",
-        });
-        const result = await response.json();
-        if (!result.success) {
-          toast.error(`Lỗi khi xóa item ${item.id}`);
-        }
+      if (!result.success) {
+        toast.error(result.error || "Lỗi khi xóa phiếu xuất kho");
+        return;
       }
 
       await fetchData();
@@ -811,7 +812,7 @@ export default function XuatKhoNPLTab() {
       }
 
       toast.success(
-        `Xóa phiếu xuất kho ${phieuToDelete} thành công (${itemsToDelete.length} mã NPL)`
+        `Xóa phiếu xuất kho ${phieuToDelete} thành công (${result.deletedCount} mã NPL)`
       );
     } catch (error) {
       console.error("Error deleting phieu xuat:", error);
