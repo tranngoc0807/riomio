@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pencil, Trash2, X, Check, Eye } from "lucide-react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pencil, Trash2, X, Check, Eye, Copy } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
@@ -120,6 +120,7 @@ export default function BangKeYCXKTab() {
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isCopyMode, setIsCopyMode] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -415,6 +416,33 @@ export default function BangKeYCXKTab() {
     setCurrentNPLItem(emptyNPLItem);
     setNplSearch("");
     setSpSearch("");
+    setIsCopyMode(false);
+    setShowAddModal(true);
+  };
+
+  // Open add modal in copy mode — pre-fill header + items from source group
+  const handleCopyPhieu = (group: GroupedPhieuYC) => {
+    setFormData(emptyFormData);
+    const nextMaPhieu = generateNextMaPhieuYC();
+    setAddHeaderData({ ngayThang: group.ngayThang || "", maPhieuYC: nextMaPhieu });
+    setNplItems(
+      group.items.map((item, i) => ({
+        id: `copy-${Date.now()}-${i}`,
+        maNPL: item.maNPL,
+        dvt: item.dvt,
+        dinhMuc: item.dinhMuc,
+        tyLeHaoHut: item.tyLeHaoHut || 0.03,
+        slKHSX: item.slKHSX,
+        slCanDung: item.slCanDung,
+        maSPSuDung: item.maSPSuDung,
+        mauSac: item.mauSac,
+        xuongSX: item.xuongSX,
+      })),
+    );
+    setCurrentNPLItem(emptyNPLItem);
+    setNplSearch("");
+    setSpSearch("");
+    setIsCopyMode(true);
     setShowAddModal(true);
   };
 
@@ -500,8 +528,13 @@ export default function BangKeYCXKTab() {
       const allSuccess = results.every((r) => r.ok);
 
       if (allSuccess) {
-        toast.success(`Thêm ${nplItems.length} mã NPL thành công`);
+        toast.success(
+          isCopyMode
+            ? `Sao chép sang phiếu ${addHeaderData.maPhieuYC} thành công (${nplItems.length} mã NPL)`
+            : `Thêm ${nplItems.length} mã NPL thành công`,
+        );
         setShowAddModal(false);
+        setIsCopyMode(false);
         fetchData();
       } else {
         toast.error("Có lỗi khi thêm một số mã NPL");
@@ -894,6 +927,13 @@ export default function BangKeYCXKTab() {
                       <Eye size={16} />
                     </button>
                     <button
+                      onClick={() => handleCopyPhieu(group)}
+                      className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                      title="Sao chép phiếu"
+                    >
+                      <Copy size={16} />
+                    </button>
+                    <button
                       onClick={() => handleDeleteGrouped(group.maPhieuYC)}
                       className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Xóa phiếu"
@@ -970,8 +1010,10 @@ export default function BangKeYCXKTab() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold">Thêm yêu cầu xuất kho NPL</h3>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <h3 className="text-lg font-semibold">
+                {isCopyMode ? "Sao chép yêu cầu xuất kho NPL" : "Thêm yêu cầu xuất kho NPL"}
+              </h3>
+              <button onClick={() => { setShowAddModal(false); setIsCopyMode(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X size={20} />
               </button>
             </div>
@@ -1242,7 +1284,7 @@ export default function BangKeYCXKTab() {
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => { setShowAddModal(false); setIsCopyMode(false); }}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Hủy
@@ -1253,7 +1295,7 @@ export default function BangKeYCXKTab() {
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                Tạo phiếu ({nplItems.length} mã)
+                {isCopyMode ? `Xác nhận sao chép (${nplItems.length} mã)` : `Tạo phiếu (${nplItems.length} mã)`}
               </button>
             </div>
           </div>

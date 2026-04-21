@@ -11,6 +11,7 @@ import {
   FileDown,
   FileSpreadsheet,
   Pencil,
+  Copy,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -93,6 +94,7 @@ export default function NhapKhoNPLTab() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [isAppendingMode, setIsAppendingMode] = useState(false);
+  const [isCopyMode, setIsCopyMode] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [phieuToDelete, setPhieuToDelete] = useState<string | null>(null);
@@ -332,6 +334,30 @@ export default function NhapKhoNPLTab() {
     setFormNoiDung("");
     setSelectedNPLs([]);
     setIsAppendingMode(false);
+    setIsCopyMode(false);
+    setShowAddModal(true);
+  };
+
+  const handleCopyPhieu = (group: GroupedPhieuNhap) => {
+    const nextCode = generateNextMaPhieu("PNKNPL");
+    setFormMaPhieu(nextCode);
+    setFormNgayThang(toISODate(group.ngayThang) || new Date().toISOString().split("T")[0]);
+    setFormNguoiNhap(group.nguoiNhap || "");
+    setFormNoiDung(group.noiDung || "");
+    setSelectedNPLs(
+      group.items.map((item, i) => ({
+        id: `copy-${Date.now()}-${i}`,
+        maNPL: item.maNPL,
+        ncc: item.ncc || "",
+        dvt: item.dvt || "",
+        soLuong: item.soLuong,
+        donGiaSauThue: item.donGiaSauThue,
+        thanhTien: item.thanhTien,
+        ghiChu: item.ghiChu || "",
+      })),
+    );
+    setIsAppendingMode(false);
+    setIsCopyMode(true);
     setShowAddModal(true);
   };
 
@@ -356,6 +382,7 @@ export default function NhapKhoNPLTab() {
       })),
     );
     setIsAppendingMode(true);
+    setIsCopyMode(false);
     setShowAddModal(true);
   };
 
@@ -539,9 +566,12 @@ export default function NhapKhoNPLTab() {
       toast.success(
         isAppendingMode
           ? `Đã lưu phiếu ${formMaPhieu} (${updateCount} cập nhật, ${newCount} thêm mới)`
-          : `Thêm phiếu nhập kho ${formMaPhieu} thành công (${selectedNPLs.length} mã NPL)`,
+          : isCopyMode
+            ? `Sao chép sang phiếu ${formMaPhieu} thành công (${selectedNPLs.length} mã NPL)`
+            : `Thêm phiếu nhập kho ${formMaPhieu} thành công (${selectedNPLs.length} mã NPL)`,
       );
       setIsAppendingMode(false);
+      setIsCopyMode(false);
     } catch (error) {
       console.error("Error adding phieu nhap:", error);
       toast.error("Lỗi khi thêm phiếu nhập kho");
@@ -984,6 +1014,16 @@ export default function NhapKhoNPLTab() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          handleCopyPhieu(group);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded"
+                        title="Sao chép phiếu"
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleDeleteGrouped(group.maPhieu);
                         }}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
@@ -1345,7 +1385,7 @@ export default function NhapKhoNPLTab() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  {isAppendingMode ? "Thêm NPL vào phiếu" : "Tạo phiếu nhập kho mới"}
+                  {isAppendingMode ? "Thêm NPL vào phiếu" : isCopyMode ? "Sao chép phiếu nhập kho" : "Tạo phiếu nhập kho mới"}
                 </h3>
                 <p className="text-sm text-gray-500">Mã phiếu: {formMaPhieu}</p>
               </div>
@@ -1654,7 +1694,9 @@ export default function NhapKhoNPLTab() {
                     <Plus size={18} />
                     {isAppendingMode
                       ? `Thêm vào phiếu (${selectedNPLs.length} mã NPL)`
-                      : `Tạo phiếu nhập kho (${selectedNPLs.length} mã NPL)`}
+                      : isCopyMode
+                        ? `Xác nhận sao chép (${selectedNPLs.length} mã NPL)`
+                        : `Tạo phiếu nhập kho (${selectedNPLs.length} mã NPL)`}
                   </>
                 )}
               </button>

@@ -20,7 +20,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
-import { FileDown, FileSpreadsheet } from "lucide-react";
+import { FileDown, FileSpreadsheet, Copy } from "lucide-react";
 
 interface Order {
   id: number;
@@ -169,6 +169,7 @@ export default function OrdersTab() {
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isCopyMode, setIsCopyMode] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -502,6 +503,7 @@ export default function OrdersTab() {
     setSelectedCustomer(null);
     setCustomerSearchTerm("");
     setFormOrderCode("");
+    setIsCopyMode(false);
 
     // Show modal immediately with loading state
     setShowAddModal(true);
@@ -515,6 +517,56 @@ export default function OrdersTab() {
     if (result.success) {
       const nextCode = generateNextOrderCode(result.data);
       setFormOrderCode(nextCode);
+    }
+  };
+
+  const handleCopyOrder = async (group: GroupedOrder) => {
+    setFormDate(new Date().toISOString().split("T")[0]);
+    setSelectedProducts(
+      group.products.map((p, i) => ({
+        id: `copy-${Date.now()}-${i}`,
+        productCode: p.productCode,
+        productName: "",
+        image: p.image,
+        items: p.items,
+        productPrice: p.productPrice,
+        subtotal: p.subtotal,
+        salesProgram: p.salesProgram,
+        discount: p.discount,
+        priceAfterDiscount: p.priceAfterDiscount,
+        subtotalAfterDiscount: p.subtotalAfterDiscount,
+        paymentDiscount: p.paymentDiscount,
+        total: p.total,
+        notes: p.notes,
+      })),
+    );
+    setCustomerSearchTerm(group.customer || "");
+    setSelectedCustomer(null);
+    setFormOrderCode("");
+    setIsCopyMode(true);
+    setShowAddModal(true);
+
+    await fetchDropdownData();
+
+    const response = await fetch("/api/orders");
+    const result = await response.json();
+    if (result.success) {
+      const nextCode = generateNextOrderCode(result.data);
+      setFormOrderCode(nextCode);
+    }
+
+    // Resolve customer from the fresh fetch so we don't depend on state timing
+    const customersRes = await fetch("/api/customers");
+    const customersResult = await customersRes.json();
+    if (customersResult.success) {
+      const matched = customersResult.data.find((c: any) => c.name === group.customer);
+      if (matched) {
+        setSelectedCustomer({
+          id: matched.id,
+          name: matched.name,
+          category: matched.category || "",
+        });
+      }
     }
   };
 
@@ -727,8 +779,11 @@ export default function OrdersTab() {
       await fetchOrders();
       setShowAddModal(false);
       toast.success(
-        `Thêm đơn hàng ${formOrderCode} thành công (${selectedProducts.length} sản phẩm)`,
+        isCopyMode
+          ? `Sao chép sang đơn hàng ${formOrderCode} thành công (${selectedProducts.length} sản phẩm)`
+          : `Thêm đơn hàng ${formOrderCode} thành công (${selectedProducts.length} sản phẩm)`,
       );
+      setIsCopyMode(false);
     } catch (error) {
       console.error("Error adding order:", error);
       toast.error("Lỗi khi thêm đơn hàng");
@@ -1074,6 +1129,13 @@ export default function OrdersTab() {
                         title="Sửa"
                       >
                         <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleCopyOrder(group)}
+                        className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded"
+                        title="Sao chép đơn hàng"
+                      >
+                        <Copy size={16} />
                       </button>
                       <button
                         onClick={() => handleDeleteGrouped(group.orderCode)}
@@ -2041,7 +2103,7 @@ export default function OrdersTab() {
               <div className="fixed inset-4 lg:inset-8 bg-white/80 z-70 flex flex-col items-center justify-center rounded-xl">
                 <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
                 <p className="text-gray-700 font-medium">
-                  Đang tạo đơn hàng...
+                  {isCopyMode ? "Đang sao chép đơn hàng..." : "Đang tạo đơn hàng..."}
                 </p>
                 <p className="text-gray-500 text-sm mt-1">
                   Vui lòng đợi trong giây lát
@@ -2053,7 +2115,7 @@ export default function OrdersTab() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  Tạo đơn hàng mới
+                  {isCopyMode ? "Sao chép đơn hàng" : "Tạo đơn hàng mới"}
                 </h3>
                 <p className="text-sm text-gray-500">Mã ĐH: {formOrderCode}</p>
               </div>
@@ -2598,12 +2660,14 @@ export default function OrdersTab() {
                   {isAdding ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Đang tạo...
+                      {isCopyMode ? "Đang sao chép..." : "Đang tạo..."}
                     </>
                   ) : (
                     <>
                       <Plus size={18} />
-                      Tạo đơn hàng ({selectedProducts.length} SP)
+                      {isCopyMode
+                        ? `Xác nhận sao chép (${selectedProducts.length} SP)`
+                        : `Tạo đơn hàng (${selectedProducts.length} SP)`}
                     </>
                   )}
                 </button>
