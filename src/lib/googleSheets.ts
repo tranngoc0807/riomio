@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { translateApiError } from "./apiError";
 
 // Kiểm tra các biến môi trường cần thiết
 const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
@@ -12,20 +13,91 @@ if (!privateKey || !clientEmail || !spreadsheetId) {
   );
 }
 
+/**
+ * Monkey-patch từng method API mà chúng ta hay dùng trên sheets client
+ * để mỗi khi Promise reject, lỗi sẽ được dịch sang tiếng Việt thân thiện
+ * (quota exceeded, 403, timeout, v.v.) rồi mới throw tiếp.
+ *
+ * Làm trực tiếp trên instance mới tạo — không phá invariant của Proxy
+ * và không ảnh hưởng các instance khác (mỗi lần gọi getGoogleSheetsClient
+ * sinh ra instance mới).
+ */
+function patchMethodWithErrorTranslation(obj: any, methodName: string) {
+  if (!obj || typeof obj[methodName] !== "function") return;
+  const original = obj[methodName];
+  try {
+    obj[methodName] = function (...args: any[]) {
+      try {
+        const result = original.apply(this, args);
+        if (result && typeof result.then === "function") {
+          return result.catch((err: any) => {
+            throw new Error(translateApiError(err));
+          });
+        }
+        return result;
+      } catch (err) {
+        throw new Error(translateApiError(err));
+      }
+    };
+  } catch {
+    // Nếu thuộc tính là read-only thì bỏ qua, không crash
+  }
+}
+
+function patchSheetsForErrorTranslation(sheets: any) {
+  try {
+    const values = sheets?.spreadsheets?.values;
+    if (values) {
+      for (const m of [
+        "get",
+        "update",
+        "append",
+        "clear",
+        "batchGet",
+        "batchUpdate",
+        "batchClear",
+        "batchGetByDataFilter",
+        "batchUpdateByDataFilter",
+        "batchClearByDataFilter",
+      ]) {
+        patchMethodWithErrorTranslation(values, m);
+      }
+    }
+    const spreadsheets = sheets?.spreadsheets;
+    if (spreadsheets) {
+      for (const m of [
+        "get",
+        "getByDataFilter",
+        "batchUpdate",
+        "create",
+      ]) {
+        patchMethodWithErrorTranslation(spreadsheets, m);
+      }
+    }
+  } catch {
+    // Không muốn việc patch gây crash ngay khi khởi tạo client
+  }
+}
+
 // Tạo Google Sheets client
 export async function getGoogleSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: clientEmail,
-      private_key: privateKey!.replace(/\\n/g, "\n"), // Convert \n to actual newlines
-    },
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
+  try {
+    const auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: clientEmail,
+        private_key: privateKey!.replace(/\\n/g, "\n"), // Convert \n to actual newlines
+      },
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
 
-  const authClient = await auth.getClient();
-  const sheets = google.sheets({ version: "v4", auth: authClient as any });
+    const authClient = await auth.getClient();
+    const sheets = google.sheets({ version: "v4", auth: authClient as any });
 
-  return sheets;
+    patchSheetsForErrorTranslation(sheets);
+    return sheets;
+  } catch (err) {
+    throw new Error(translateApiError(err));
+  }
 }
 
 // Constants cho nhân viên lương
@@ -1466,7 +1538,7 @@ export async function deleteTaiKhoanFromSheet(rowIndex: number): Promise<void> {
 // SALES PROGRAM MANAGEMENT (Quản lý chương trình bán hàng)
 // ============================================
 
-const spreadsheetIdCTBanHang = process.env.GOOGLE_SPREADSHEET_ID_TAI_KHOAN || spreadsheetId;
+const spreadsheetIdCTBanHang = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG || spreadsheetId;
 const sheetNameCTBanHang = process.env.GOOGLE_SHEET_NAME_CHUONG_TRINH_BAN_HANG || "CTBanHang";
 
 // Interface cho chương trình bán hàng

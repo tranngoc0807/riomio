@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Package, Loader2, AlertCircle, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, Search, ChevronDown, FileDown, FileSpreadsheet } from "lucide-react";
+import { Package, Loader2, AlertCircle, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, Search, ChevronDown, FileDown, FileSpreadsheet, Printer, Download } from "lucide-react";
 import { TonKhoSP, TonDauSP, XuatKhoSP, Customer, SanPhamCatalog, TonKhoItem, NhapKhoSP } from "@/lib/googleSheets";
 import DatePicker from "@/components/DatePicker";
 import Portal from "@/components/Portal";
 import PrintDownloadButton from "@/components/PrintDownloadButton";
 import toast, { Toaster } from "react-hot-toast";
+import html2canvas from "html2canvas";
 import { useAuth } from "@/context/AuthContext";
+import { useCompanyConfig } from "@/context/CompanyConfigContext";
 import * as XLSX from "xlsx";
 
 type TabType = "ton-kho" | "ton-dau" | "xuat-kho" | "nhap-kho";
@@ -29,6 +31,7 @@ interface NhapKhoProductLine {
 
 export default function QuanLyKhoTab() {
   const { profile } = useAuth();
+  const { config: companyConfig } = useCompanyConfig();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -421,6 +424,132 @@ export default function QuanLyKhoTab() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Ton kho");
     XLSX.writeFile(wb, `Ton_kho_hang_hoa_${thangNam}.xlsx`);
+  };
+
+  // ===== In / Tải JPG mẫu phiếu nhập kho hàng hóa (có logo + header công ty) =====
+  const phieuNhapKhoPrintStyles = `
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:Arial,'Helvetica Neue',sans-serif;color:#222;padding:24px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .sheet{max-width:900px;margin:0 auto;}
+    .company{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+    .company .logo{width:64px;height:64px;object-fit:contain;}
+    .company-name{font-size:16px;font-weight:700;color:#16a34a;letter-spacing:0.3px;}
+    .company-addr{font-size:12px;color:#374151;margin-top:2px;}
+    .title{font-size:20px;font-weight:800;text-align:center;margin:8px 0 16px;letter-spacing:0.5px;}
+    .meta{font-size:13px;margin-bottom:12px;}
+    .meta-row{display:flex;gap:40px;padding:4px 0;}
+    .meta-row > div{flex:1;}
+    .label{color:#6b7280;margin-right:6px;font-weight:600;}
+    .blue{color:#2563eb;font-weight:700;}
+    table.items{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
+    table.items th,table.items td{border:1px solid #9ca3af;padding:6px 8px;}
+    table.items th{background:#86efac;font-weight:700;text-align:center;color:#111;}
+    table.items td{vertical-align:middle;}
+    table.items td.c{text-align:center;}
+    table.items td.r{text-align:right;}
+    table.items tr.total-row td{background:#f3f4f6;}
+    @media print{body{padding:0;}}
+  `;
+
+  const buildPhieuNhapKhoHTML = (phieu: { maPNK: string; items: NhapKhoSP[] }): string => {
+    const fmt = (v: number) => (v || 0).toLocaleString("vi-VN");
+    // Logo local ở /public/logo_riomio.jpg — dùng absolute URL để cả cửa sổ in
+    // lẫn html2canvas (render offscreen) đều tải được.
+    const logoSrc = `${window.location.origin}/logo_riomio.jpg`;
+    const companyName = (companyConfig.name || "").toUpperCase();
+    const companyAddress = companyConfig.address || "";
+    const ngayNhap = phieu.items[0]?.ngayNhap || "";
+    const totalSL = phieu.items.reduce((s, i) => s + (i.soLuong || 0), 0);
+
+    const rows = phieu.items.map((item, i) => `
+      <tr>
+        <td class="c">${i + 1}</td>
+        <td>${item.maSP || ""}</td>
+        <td class="c">${fmt(item.soLuong)}</td>
+        <td class="c">${item.ghiChu || ""}</td>
+        <td></td>
+      </tr>`).join("");
+
+    return `
+      <div class="sheet">
+        <div class="company">
+          ${logoSrc ? `<img src="${logoSrc}" class="logo" crossorigin="anonymous" />` : ""}
+          <div class="company-info">
+            <div class="company-name">${companyName}</div>
+            <div class="company-addr">${companyAddress}</div>
+          </div>
+        </div>
+
+        <h1 class="title">PHIẾU NHẬP KHO HÀNG HÓA</h1>
+
+        <div class="meta">
+          <div class="meta-row">
+            <div><span class="label">Mã PNK:</span> <b class="blue">${phieu.maPNK}</b></div>
+            <div><span class="label">Ngày NK:</span> <b>${ngayNhap}</b></div>
+          </div>
+          <div class="meta-row">
+            <div><span class="label">Tổng SL:</span> <b>${fmt(totalSL)}</b></div>
+            <div></div>
+          </div>
+        </div>
+
+        <table class="items">
+          <thead>
+            <tr>
+              <th style="width:50px;">STT</th>
+              <th>Mã SP</th>
+              <th style="width:90px;">Số lượng</th>
+              <th style="width:200px;">Xưởng SX/Khách hàng</th>
+              <th style="width:160px;">Vị trí để hàng</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  const handlePrintPhieuNhapKho = (phieu: { maPNK: string; items: NhapKhoSP[] } | null) => {
+    if (!phieu) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Không mở được cửa sổ in. Vui lòng cho phép popup.");
+      return;
+    }
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Phiếu nhập kho - ${phieu.maPNK}</title>
+      <style>${phieuNhapKhoPrintStyles}</style></head><body>${buildPhieuNhapKhoHTML(phieu)}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 400);
+  };
+
+  const handleDownloadPhieuNhapKhoJPG = async (phieu: { maPNK: string; items: NhapKhoSP[] } | null) => {
+    if (!phieu) return;
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "-10000px";
+    container.style.top = "0";
+    container.style.width = "960px";
+    container.style.background = "#fff";
+    container.innerHTML = `<style>${phieuNhapKhoPrintStyles}</style>${buildPhieuNhapKhoHTML(phieu)}`;
+    document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const link = document.createElement("a");
+      link.download = `PhieuNhapKho_${phieu.maPNK}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+    } catch (error) {
+      console.error("Error exporting JPG:", error);
+      toast.error("Lỗi khi xuất ảnh");
+    } finally {
+      document.body.removeChild(container);
+    }
   };
 
   // Add product line
@@ -1695,11 +1824,20 @@ export default function QuanLyKhoTab() {
                 <p className="text-sm text-gray-500">Mã PNK: {viewPhieuNhapKho.maPNK}</p>
               </div>
               <div className="flex items-center gap-2">
-                <PrintDownloadButton
-                  targetRef={phieuNhapKhoPrintRef}
-                  fileName={`PhieuNhapKho_${viewPhieuNhapKho.maPNK}`}
-                  title={`Phiếu nhập kho - ${viewPhieuNhapKho.maPNK}`}
-                />
+                <button
+                  onClick={() => handleDownloadPhieuNhapKhoJPG(viewPhieuNhapKho)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors font-medium"
+                  title="Tải xuống ảnh JPG"
+                >
+                  <Download size={16} /> Tải JPG
+                </button>
+                <button
+                  onClick={() => handlePrintPhieuNhapKho(viewPhieuNhapKho)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors font-medium"
+                  title="In phiếu nhập kho"
+                >
+                  <Printer size={16} /> In
+                </button>
                 <button
                   onClick={() => setViewPhieuNhapKho(null)}
                   className="p-2 hover:bg-gray-100 rounded-lg"

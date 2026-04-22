@@ -923,6 +923,7 @@ export default function XuatKhoNPLTab() {
       <!DOCTYPE html>
       <html>
         <head>
+          <base href="${window.location.origin}/" />
           <title>Phiếu xuất kho - ${viewGroupedPhieu.maPhieu}</title>
           <style>
             * {
@@ -952,10 +953,11 @@ export default function XuatKhoNPLTab() {
     printWindow.document.close();
     printWindow.focus();
 
+    // Đợi logo load xong mới in (tránh in ra bản thiếu ảnh)
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 250);
+    }, 600);
   };
 
   // Calculate totals
@@ -1985,18 +1987,15 @@ export default function XuatKhoNPLTab() {
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div
-                      style={{
-                        width: "50px",
-                        height: "50px",
-                        borderRadius: "50%",
-                        background: "linear-gradient(135deg, #ef4444 50%, #000 50%)",
-                        flexShrink: 0,
-                      }}
+                    <img
+                      src="/logo_riomio.jpg"
+                      alt="Logo"
+                      crossOrigin="anonymous"
+                      style={{ width: "50px", height: "50px", objectFit: "contain", flexShrink: 0 }}
                     />
                     <div>
                       <div style={{ fontWeight: "bold", fontSize: "14px" }}>CÔNG TY CỔ PHẦN RIOMIO</div>
-                      <div style={{ fontSize: "10px", color: "#666", marginTop: "2px" }}>B12 T17 Nguyễn Sơn Hà, KĐT Văn Quán, Phúc La, Hà Đông, Hà Nội</div>
+                      <div style={{ fontSize: "10px", color: "#666", marginTop: "2px" }}>B12 TT7 Nguyễn Sơn Hà, KĐT Văn Quán, Phúc La, Hà Đông, Hà Nội</div>
                     </div>
                   </div>
                 </div>

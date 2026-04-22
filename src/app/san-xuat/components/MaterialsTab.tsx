@@ -236,10 +236,35 @@ export default function MaterialsTab() {
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold">
-          Danh sách nguyên phụ liệu ({materials.length})
-        </h3>
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <h3 className="text-lg font-semibold whitespace-nowrap">
+            Danh sách nguyên phụ liệu ({filteredList.length}
+            {searchTerm ? `/${materials.length}` : ""})
+          </h3>
+          <div className="relative flex-1 max-w-md">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Tìm theo mã hoặc tên NPL..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-9 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded"
+                title="Xoá tìm kiếm"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
         <button
           onClick={() => {
             setNewItem(INITIAL_MATERIAL);
@@ -247,7 +272,7 @@ export default function MaterialsTab() {
             setShowSupplierDropdown(false);
             setShowAddModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shrink-0"
         >
           <Plus size={20} />
           Thêm NPL

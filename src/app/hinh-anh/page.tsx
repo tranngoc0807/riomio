@@ -16,19 +16,9 @@ const TABS = [
 ];
 
 const FOLDER_CONFIG: Record<TabType, { id: string; label: string }[]> = {
-  "san-pham": [
-    { id: "", label: "Tất cả" },
-    { id: "san-pham", label: "Sản phẩm" },
-    { id: "ke-hoach-sx", label: "Kế hoạch SX" },
-  ],
-  "nguyen-phu-lieu": [
-    { id: "", label: "Tất cả" },
-    { id: "nguyen-phu-lieu", label: "Nguyên phụ liệu" },
-  ],
-  "hinh-in": [
-    { id: "", label: "Tất cả" },
-    { id: "hinh-in", label: "Hình in" },
-  ],
+  "san-pham": [{ id: "san-pham", label: "Sản phẩm" }],
+  "nguyen-phu-lieu": [{ id: "nguyen-phu-lieu", label: "Nguyên phụ liệu" }],
+  "hinh-in": [{ id: "hinh-in", label: "Hình in" }],
 };
 
 const DEFAULT_FOLDER: Record<TabType, string> = {

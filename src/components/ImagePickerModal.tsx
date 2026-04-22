@@ -28,9 +28,9 @@ interface ImagePickerModalProps {
 }
 
 const FOLDERS = [
-  { id: "", label: "Thư mục gốc" },
   { id: "san-pham", label: "Sản phẩm" },
-  { id: "ke-hoach-sx", label: "Kế hoạch SX" },
+  { id: "hinh-in", label: "Hình in" },
+  { id: "nguyen-phu-lieu", label: "Nguyên phụ liệu" },
 ];
 
 const ITEMS_PER_PAGE = 24;
@@ -45,7 +45,7 @@ export default function ImagePickerModal({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedFolder, setSelectedFolder] = useState("");
+  const [selectedFolder, setSelectedFolder] = useState("san-pham");
   const [selectedImage, setSelectedImage] = useState<string | null>(
     currentImage || null,
   );

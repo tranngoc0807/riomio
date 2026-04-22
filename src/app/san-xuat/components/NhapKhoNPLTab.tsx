@@ -12,14 +12,17 @@ import {
   FileSpreadsheet,
   Pencil,
   Copy,
+  Printer,
+  Download,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Portal from "@/components/Portal";
-import PrintDownloadButton from "@/components/PrintDownloadButton";
 import toast from "react-hot-toast";
+import html2canvas from "html2canvas";
 import type { NhapKhoNPL, Material, TonKhoNPLThang } from "@/lib/googleSheets";
 import { useAuth } from "@/context/AuthContext";
+import { useCompanyConfig } from "@/context/CompanyConfigContext";
 import * as XLSX from "xlsx";
 
 // Interface for selected NPL in the form
@@ -81,6 +84,7 @@ type ViewType = "list" | "detail";
 
 export default function NhapKhoNPLTab() {
   const { profile } = useAuth();
+  const { config: companyConfig } = useCompanyConfig();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<NhapKhoNPL[]>([]);
@@ -109,7 +113,11 @@ export default function NhapKhoNPLTab() {
   // Edit item state
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState<NhapKhoNPL | null>(null);
-  const [editForm, setEditForm] = useState({ soLuong: 0, donGiaSauThue: 0, ghiChu: "" });
+  const [editForm, setEditForm] = useState({
+    soLuong: 0,
+    donGiaSauThue: 0,
+    ghiChu: "",
+  });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Materials list for dropdown
@@ -193,8 +201,8 @@ export default function NhapKhoNPLTab() {
       const parseDate = (d: string) => {
         if (!d) return 0;
         // DD/MM/YYYY
-        if (d.includes('/')) {
-          const [dd, mm, yyyy] = d.split('/');
+        if (d.includes("/")) {
+          const [dd, mm, yyyy] = d.split("/");
           return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
         }
         // YYYY-MM-DD
@@ -341,7 +349,9 @@ export default function NhapKhoNPLTab() {
   const handleCopyPhieu = (group: GroupedPhieuNhap) => {
     const nextCode = generateNextMaPhieu("PNKNPL");
     setFormMaPhieu(nextCode);
-    setFormNgayThang(toISODate(group.ngayThang) || new Date().toISOString().split("T")[0]);
+    setFormNgayThang(
+      toISODate(group.ngayThang) || new Date().toISOString().split("T")[0],
+    );
     setFormNguoiNhap(group.nguoiNhap || "");
     setFormNoiDung(group.noiDung || "");
     setSelectedNPLs(
@@ -523,11 +533,15 @@ export default function NhapKhoNPLTab() {
             const result = await response.json();
             if (!result.success) {
               console.error("Update failed:", result);
-              toast.error(`Lỗi cập nhật ${npl.maNPL}: ${result.error || "unknown"}`);
+              toast.error(
+                `Lỗi cập nhật ${npl.maNPL}: ${result.error || "unknown"}`,
+              );
             }
           } catch (err: any) {
             console.error("Update request failed:", err);
-            toast.error(`Lỗi cập nhật ${npl.maNPL}: ${err?.message || "network"}`);
+            toast.error(
+              `Lỗi cập nhật ${npl.maNPL}: ${err?.message || "network"}`,
+            );
           }
           continue;
         }
@@ -646,7 +660,9 @@ export default function NhapKhoNPLTab() {
     // Only update URL, let useEffect handle state changes
     const params = new URLSearchParams(searchParams.toString());
     params.delete("phieu");
-    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    const newUrl = params.toString()
+      ? `?${params.toString()}`
+      : window.location.pathname;
     router.push(newUrl, { scroll: false });
   };
 
@@ -814,7 +830,9 @@ export default function NhapKhoNPLTab() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const fmt = (v: number) => v.toLocaleString("vi-VN");
-    const rows = filteredGroupedPhieu.map((g, i) => `<tr>
+    const rows = filteredGroupedPhieu
+      .map(
+        (g, i) => `<tr>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;font-weight:600;color:#2563eb;">${g.maPhieu}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${g.ngayThang}</td>
@@ -823,8 +841,11 @@ export default function NhapKhoNPLTab() {
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${g.totalItems}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(g.totalSoLuong)}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;font-weight:600;">${fmt(g.totalThanhTien)}</td>
-    </tr>`).join("");
-    printWindow.document.write(`<html><head><title>Danh sách phiếu nhập kho NPL</title>
+    </tr>`,
+      )
+      .join("");
+    printWindow.document
+      .write(`<html><head><title>Danh sách phiếu nhập kho NPL</title>
       <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
       <h1>DANH SÁCH PHIẾU NHẬP KHO NPL</h1>
       <table><thead><tr><th style="width:30px;">STT</th><th>Mã phiếu</th><th>Ngày</th><th>NCC</th><th>Nội dung</th><th>Số mã</th><th style="text-align:right;">Tổng SL</th><th style="text-align:right;">Thành tiền</th></tr></thead><tbody>${rows}
@@ -837,9 +858,15 @@ export default function NhapKhoNPLTab() {
   const handleExportListExcel = () => {
     if (filteredGroupedPhieu.length === 0) return;
     const sheetData = filteredGroupedPhieu.map((g, i) => ({
-      "STT": i + 1, "Mã phiếu": g.maPhieu, "Ngày tháng": g.ngayThang, "NCC": g.ncc,
-      "Nội dung": g.noiDung, "Người nhập": g.nguoiNhap, "Số mã NPL": g.totalItems,
-      "Tổng SL": g.totalSoLuong, "Thành tiền": g.totalThanhTien,
+      STT: i + 1,
+      "Mã phiếu": g.maPhieu,
+      "Ngày tháng": g.ngayThang,
+      NCC: g.ncc,
+      "Nội dung": g.noiDung,
+      "Người nhập": g.nguoiNhap,
+      "Số mã NPL": g.totalItems,
+      "Tổng SL": g.totalSoLuong,
+      "Thành tiền": g.totalThanhTien,
     }));
     const ws = XLSX.utils.json_to_sheet(sheetData);
     const wb = XLSX.utils.book_new();
@@ -853,7 +880,9 @@ export default function NhapKhoNPLTab() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const fmt = (v: number) => v.toLocaleString("vi-VN");
-    const rows = phieu.items.map((item, i) => `<tr>
+    const rows = phieu.items
+      .map(
+        (item, i) => `<tr>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.maNPL}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.ncc || "-"}</td>
@@ -862,7 +891,9 @@ export default function NhapKhoNPLTab() {
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.donGiaSauThue > 0 ? fmt(item.donGiaSauThue) : "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.thanhTien > 0 ? fmt(item.thanhTien) : "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.ghiChu || "-"}</td>
-    </tr>`).join("");
+    </tr>`,
+      )
+      .join("");
     const title = `Phiếu nhập kho NPL - ${phieu.maPhieu}`;
     printWindow.document.write(`<html><head><title>${title}</title>
       <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:5px; text-align:center; } .info { text-align:center; color:#666; margin-bottom:15px; font-size:13px; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
@@ -878,13 +909,170 @@ export default function NhapKhoNPLTab() {
   const handleExportDetailExcel = (phieu: GroupedPhieuNhap | null) => {
     if (!phieu) return;
     const sheetData = phieu.items.map((item, i) => ({
-      "STT": i + 1, "Mã NPL": item.maNPL, "NCC": item.ncc, "ĐVT": item.dvt,
-      "SL": item.soLuong, "Đơn giá": item.donGiaSauThue, "Thành tiền": item.thanhTien, "Ghi chú": item.ghiChu,
+      STT: i + 1,
+      "Mã NPL": item.maNPL,
+      NCC: item.ncc,
+      ĐVT: item.dvt,
+      SL: item.soLuong,
+      "Đơn giá": item.donGiaSauThue,
+      "Thành tiền": item.thanhTien,
+      "Ghi chú": item.ghiChu,
     }));
     const ws = XLSX.utils.json_to_sheet(sheetData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Chi tiet");
     XLSX.writeFile(wb, `${phieu.maPhieu}.xlsx`);
+  };
+
+  // Build HTML mẫu phiếu nhập kho chuẩn (có logo, header, chữ ký) cho In + Tải JPG
+  const buildPhieuNhapHTML = (phieu: GroupedPhieuNhap): string => {
+    const fmt = (v: number) => (v || 0).toLocaleString("vi-VN");
+    // Logo local ở /public/logo_riomio.jpg — dùng absolute URL để cả cửa sổ in
+    // lẫn html2canvas (render offscreen) đều tải được.
+    const logoSrc = `${window.location.origin}/logo_riomio.jpg`;
+    const companyName = (companyConfig.name || "").toUpperCase();
+    const companyAddress = companyConfig.address || "";
+
+    const rows = phieu.items
+      .map(
+        (item, i) => `
+      <tr>
+        <td class="c">${i + 1}</td>
+        <td>${item.maNPL || ""}</td>
+        <td class="c">${item.dvt || ""}</td>
+        <td class="r">${fmt(item.soLuong)}</td>
+        <td class="r">${item.donGiaSauThue > 0 ? fmt(item.donGiaSauThue) : ""}</td>
+        <td class="r">${item.thanhTien > 0 ? fmt(item.thanhTien) : ""}</td>
+        <td>${item.ghiChu || ""}</td>
+      </tr>`,
+      )
+      .join("");
+
+    return `
+      <div class="sheet">
+        <div class="company">
+          ${logoSrc ? `<img src="${logoSrc}" class="logo" crossorigin="anonymous" />` : ""}
+          <div class="company-info">
+            <div class="company-name">${companyName}</div>
+            <div class="company-addr">${companyAddress}</div>
+          </div>
+        </div>
+
+        <h1 class="title">PHIẾU NHẬP KHO NGUYÊN PHỤ LIỆU</h1>
+
+        <div class="meta">
+          <div class="meta-row">
+            <div><span class="label">Mã phiếu:</span> <b class="blue">${phieu.maPhieu}</b></div>
+            <div><span class="label">Nhà cung cấp:</span> <b>${phieu.ncc || "-"}</b></div>
+          </div>
+          <div class="meta-row">
+            <div><span class="label">Ngày NK:</span> <b>${phieu.ngayThang}</b></div>
+            <div><span class="label">Người nhập:</span> <b>${phieu.nguoiNhap || "-"}</b></div>
+          </div>
+          ${phieu.noiDung ? `<div class="meta-row"><div><span class="label">Nội dung:</span> ${phieu.noiDung}</div></div>` : ""}
+        </div>
+
+        <table class="items">
+          <thead>
+            <tr>
+              <th style="width:40px;">STT</th>
+              <th>Mã nguyên phụ liệu</th>
+              <th style="width:60px;">ĐVT</th>
+              <th style="width:90px;">Số lượng</th>
+              <th style="width:90px;">Đơn giá</th>
+              <th style="width:110px;">Thành tiền</th>
+              <th style="width:140px;">Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+            <tr class="total-row">
+              <td colspan="5" class="r"><b>Tổng cộng</b></td>
+              <td class="r"><b>${fmt(phieu.totalThanhTien)}</b></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="signatures">
+          <div class="sig"><div class="sig-title">Người mua hàng</div><div class="sig-note">(Ký, ghi rõ họ tên)</div></div>
+          <div class="sig"><div class="sig-title">Thủ kho</div><div class="sig-note">(Ký, ghi rõ họ tên)</div></div>
+          <div class="sig"><div class="sig-title">Kế toán</div><div class="sig-note">(Ký, ghi rõ họ tên)</div></div>
+        </div>
+      </div>
+    `;
+  };
+
+  const phieuNhapPrintStyles = `
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:Arial,'Helvetica Neue',sans-serif;color:#222;padding:24px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .sheet{max-width:900px;margin:0 auto;}
+    .company{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+    .company .logo{width:64px;height:64px;object-fit:contain;}
+    .company-name{font-size:16px;font-weight:700;color:#16a34a;letter-spacing:0.3px;}
+    .company-addr{font-size:12px;color:#374151;margin-top:2px;}
+    .title{font-size:20px;font-weight:800;text-align:center;margin:8px 0 16px;letter-spacing:0.5px;}
+    .meta{font-size:13px;margin-bottom:12px;}
+    .meta-row{display:flex;justify-content:space-between;gap:24px;padding:4px 0;}
+    .meta-row > div{flex:1;}
+    .label{color:#6b7280;margin-right:6px;}
+    .blue{color:#2563eb;}
+    table.items{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
+    table.items th,table.items td{border:1px solid #9ca3af;padding:6px 8px;}
+    table.items th{background:#86efac;font-weight:700;text-align:center;color:#111;}
+    table.items td{vertical-align:middle;}
+    table.items td.c{text-align:center;}
+    table.items td.r{text-align:right;}
+    table.items tr.total-row td{background:#f3f4f6;}
+    .signatures{display:flex;justify-content:space-around;margin-top:36px;padding:0 20px;}
+    .sig{text-align:center;}
+    .sig-title{font-weight:700;color:#dc2626;text-transform:capitalize;}
+    .sig-note{font-size:11px;color:#6b7280;font-style:italic;margin-top:2px;}
+    @media print{body{padding:0;}}
+  `;
+
+  const handlePrintPhieuNhap = (phieu: GroupedPhieuNhap | null) => {
+    if (!phieu) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Không mở được cửa sổ in. Vui lòng cho phép popup.");
+      return;
+    }
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>Phiếu nhập kho - ${phieu.maPhieu}</title>
+      <style>${phieuNhapPrintStyles}</style></head><body>${buildPhieuNhapHTML(phieu)}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 400);
+  };
+
+  const handleDownloadPhieuNhapJPG = async (phieu: GroupedPhieuNhap | null) => {
+    if (!phieu) return;
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "-10000px";
+    container.style.top = "0";
+    container.style.width = "960px";
+    container.style.background = "#fff";
+    container.innerHTML = `<style>${phieuNhapPrintStyles}</style>${buildPhieuNhapHTML(phieu)}`;
+    document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const link = document.createElement("a");
+      link.download = `PhieuNhapKho_${phieu.maPhieu}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+    } catch (error) {
+      console.error("Error exporting JPG:", error);
+      toast.error("Lỗi khi xuất ảnh");
+    } finally {
+      document.body.removeChild(container);
+    }
   };
 
   // Render List View
@@ -911,8 +1099,18 @@ export default function NhapKhoNPLTab() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
-          <button onClick={handleExportListExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
+          <button
+            onClick={handleExportListPDF}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+          >
+            <FileDown size={14} /> PDF
+          </button>
+          <button
+            onClick={handleExportListExcel}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            <FileSpreadsheet size={14} /> Excel
+          </button>
           <button
             onClick={handleOpenAddModal}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -1080,13 +1278,26 @@ export default function NhapKhoNPLTab() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleExportDetailPDF(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors font-medium"><FileDown size={16} /> PDF</button>
-                <button onClick={() => handleExportDetailExcel(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-medium"><FileSpreadsheet size={16} /> Excel</button>
-                <PrintDownloadButton
-                  targetRef={detailPrintRef}
-                  fileName={`PhieuNhapKho_${viewGroupedPhieu.maPhieu}`}
-                  title={`Phiếu nhập kho - ${viewGroupedPhieu.maPhieu}`}
-                />
+                <button
+                  onClick={() => handleExportDetailExcel(viewGroupedPhieu)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-medium"
+                >
+                  <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button
+                  onClick={() => handleDownloadPhieuNhapJPG(viewGroupedPhieu)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors font-medium"
+                  title="Tải xuống ảnh JPG"
+                >
+                  <Download size={16} /> Tải JPG
+                </button>
+                <button
+                  onClick={() => handlePrintPhieuNhap(viewGroupedPhieu)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors font-medium"
+                  title="In phiếu nhập kho"
+                >
+                  <Printer size={16} /> In
+                </button>
                 <button
                   onClick={() => handleOpenAppendMode()}
                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
@@ -1376,7 +1587,9 @@ export default function NhapKhoNPLTab() {
               <div className="fixed inset-4 lg:inset-8 bg-white/80 z-70 flex flex-col items-center justify-center rounded-xl">
                 <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
                 <p className="text-gray-700 font-medium">
-                  {isAppendingMode ? "Đang thêm NPL vào phiếu..." : "Đang tạo phiếu nhập kho..."}
+                  {isAppendingMode
+                    ? "Đang thêm NPL vào phiếu..."
+                    : "Đang tạo phiếu nhập kho..."}
                 </p>
               </div>
             )}
@@ -1385,7 +1598,11 @@ export default function NhapKhoNPLTab() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  {isAppendingMode ? "Thêm NPL vào phiếu" : isCopyMode ? "Sao chép phiếu nhập kho" : "Tạo phiếu nhập kho mới"}
+                  {isAppendingMode
+                    ? "Thêm NPL vào phiếu"
+                    : isCopyMode
+                      ? "Sao chép phiếu nhập kho"
+                      : "Tạo phiếu nhập kho mới"}
                 </h3>
                 <p className="text-sm text-gray-500">Mã phiếu: {formMaPhieu}</p>
               </div>
@@ -2067,29 +2284,84 @@ export default function NhapKhoNPLTab() {
                   <h3 className="text-lg font-semibold">Sửa mã NPL</h3>
                   <p className="text-sm text-gray-500">{editingItem.maNPL}</p>
                 </div>
-                <button onClick={() => setShowEditItemModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+                <button
+                  onClick={() => setShowEditItemModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X size={20} />
+                </button>
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
-                  <input type="number" value={editForm.soLuong} onChange={(e) => setEditForm({ ...editForm, soLuong: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Số lượng
+                  </label>
+                  <input
+                    type="number"
+                    value={editForm.soLuong}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        soLuong: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Đơn giá sau thuế</label>
-                  <input type="number" value={editForm.donGiaSauThue} onChange={(e) => setEditForm({ ...editForm, donGiaSauThue: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đơn giá sau thuế
+                  </label>
+                  <input
+                    type="number"
+                    value={editForm.donGiaSauThue}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        donGiaSauThue: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <span className="text-sm text-gray-500">Thành tiền: </span>
-                  <span className="font-semibold text-green-600">{(editForm.soLuong * editForm.donGiaSauThue).toLocaleString("vi-VN")}đ</span>
+                  <span className="font-semibold text-green-600">
+                    {(editForm.soLuong * editForm.donGiaSauThue).toLocaleString(
+                      "vi-VN",
+                    )}
+                    đ
+                  </span>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <input type="text" value={editForm.ghiChu} onChange={(e) => setEditForm({ ...editForm, ghiChu: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Ghi chú..." />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.ghiChu}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, ghiChu: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ghi chú..."
+                  />
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t">
-                  <button onClick={() => setShowEditItemModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Hủy</button>
-                  <button onClick={handleSaveEditItem} disabled={isSavingEdit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                    {isSavingEdit && <Loader2 className="animate-spin" size={16} />}
+                  <button
+                    onClick={() => setShowEditItemModal(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleSaveEditItem}
+                    disabled={isSavingEdit}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isSavingEdit && (
+                      <Loader2 className="animate-spin" size={16} />
+                    )}
                     Cập nhật
                   </button>
                 </div>
