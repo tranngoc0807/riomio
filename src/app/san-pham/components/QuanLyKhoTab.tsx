@@ -141,7 +141,7 @@ export default function QuanLyKhoTab() {
     maPNK: "",
     ngayNhap: currentDate.toISOString().split('T')[0],
   });
-  const [nhapKhoProductLines, setNhapKhoProductLines] = useState<NhapKhoProductLine[]>([{ maSP: "", soLuong: 1, ghiChu: "", tonCuoi: 0 }]);
+  const [nhapKhoProductLines, setNhapKhoProductLines] = useState<NhapKhoProductLine[]>([]);
 
 
   // Dropdown states for nhập kho add form
@@ -699,16 +699,9 @@ export default function QuanLyKhoTab() {
 
   // ===================== NHẬP KHO FUNCTIONS =====================
 
-  // Add nhập kho product line
-  const addNhapKhoProductLine = () => {
-    setNhapKhoProductLines([...nhapKhoProductLines, { maSP: "", soLuong: 1, ghiChu: "", tonCuoi: 0 }]);
-  };
-
   // Remove nhập kho product line
   const removeNhapKhoProductLine = (index: number) => {
-    if (nhapKhoProductLines.length > 1) {
-      setNhapKhoProductLines(nhapKhoProductLines.filter((_, i) => i !== index));
-    }
+    setNhapKhoProductLines(nhapKhoProductLines.filter((_, i) => i !== index));
   };
 
   // Update nhập kho product line
@@ -724,16 +717,21 @@ export default function QuanLyKhoTab() {
     setNhapKhoProductLines(updated);
   };
 
-  // Select product for nhập kho
-  const handleSelectNhapKhoProduct = (index: number, productFullCode: string) => {
-    const updated = [...nhapKhoProductLines];
-    updated[index] = {
-      ...updated[index],
-      maSP: productFullCode,
-      tonCuoi: getTonKhoByMaSP(productFullCode),
-    };
-    setNhapKhoProductLines(updated);
-    setNhapKhoProductDropdownIndex(null);
+  // Click a product in dropdown → append as new line (OrdersTab-style auto-add)
+  const handleAddNhapKhoProductToList = (productFullCode: string) => {
+    if (nhapKhoProductLines.some((l) => l.maSP === productFullCode)) {
+      toast.error("Sản phẩm đã có trong danh sách");
+      return;
+    }
+    setNhapKhoProductLines([
+      ...nhapKhoProductLines,
+      {
+        maSP: productFullCode,
+        soLuong: 1,
+        ghiChu: "",
+        tonCuoi: getTonKhoByMaSP(productFullCode),
+      },
+    ]);
     setNhapKhoProductSearch("");
   };
 
@@ -748,8 +746,8 @@ export default function QuanLyKhoTab() {
       toast.error("Vui lòng nhập mã PNK");
       return;
     }
-    if (nhapKhoProductLines.some(p => !p.maSP)) {
-      toast.error("Vui lòng nhập đầy đủ mã sản phẩm");
+    if (nhapKhoProductLines.length === 0) {
+      toast.error("Vui lòng chọn ít nhất 1 sản phẩm");
       return;
     }
 
@@ -787,17 +785,39 @@ export default function QuanLyKhoTab() {
     setEditNhapKhoGroup(group);
     setEditNhapKhoItems(group.items.map((i) => ({ ...i })));
     setDeletedNhapKhoIds([]);
+    setNhapKhoProductSearch("");
     setShowEditNhapKhoModal(true);
   };
 
-  // Handle save edit nhập kho - update all items then delete removed
+  // Append a new product row to edit list (id=0 marks it as new → will be created on save)
+  const handleAddProductToEditList = (productFullCode: string) => {
+    if (!editNhapKhoGroup) return;
+    if (editNhapKhoItems.some((it) => it.maSP === productFullCode)) {
+      toast.error("Sản phẩm đã có trong phiếu");
+      return;
+    }
+    const ngayNhap = editNhapKhoItems[0]?.ngayNhap || new Date().toISOString().split("T")[0];
+    const newItem: NhapKhoSP = {
+      id: 0,
+      maPNK: editNhapKhoGroup.maPNK,
+      ngayNhap,
+      maSP: productFullCode,
+      soLuong: 1,
+      ghiChu: "",
+      tonCuoi: getTonKhoByMaSP(productFullCode),
+    };
+    setEditNhapKhoItems((prev) => [...prev, newItem]);
+    setNhapKhoProductSearch("");
+  };
+
+  // Handle save edit nhập kho - update existing, add new, delete removed
   const handleSaveEditNhapKho = async () => {
     if (!editNhapKhoGroup) return;
 
     setSaving(true);
     try {
-      // Update existing items first
-      for (const item of editNhapKhoItems) {
+      // 1. Update existing items (id > 0)
+      for (const item of editNhapKhoItems.filter((i) => i.id > 0)) {
         const response = await fetch("/api/nhap-kho-sp/update", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -817,7 +837,31 @@ export default function QuanLyKhoTab() {
         }
       }
 
-      // Delete removed items (highest ID first to avoid row shift)
+      // 2. Add new items (id === 0) to this phieu
+      const newItems = editNhapKhoItems.filter((i) => i.id === 0);
+      if (newItems.length > 0) {
+        const response = await fetch("/api/nhap-kho-sp/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            maPNK: editNhapKhoGroup.maPNK,
+            ngayNhap: newItems[0].ngayNhap,
+            products: newItems.map((it) => ({
+              maSP: it.maSP,
+              soLuong: it.soLuong,
+              ghiChu: it.ghiChu,
+              tonCuoi: it.tonCuoi,
+            })),
+          }),
+        });
+        const result = await response.json();
+        if (!result.success) {
+          toast.error(result.error || "Lỗi khi thêm sản phẩm mới");
+          return;
+        }
+      }
+
+      // 3. Delete removed items (highest ID first to avoid row shift)
       const sortedDeleteIds = [...deletedNhapKhoIds].sort((a, b) => b - a);
       for (const id of sortedDeleteIds) {
         const response = await fetch(`/api/nhap-kho-sp/delete?id=${id}`, { method: "DELETE" });
@@ -905,7 +949,8 @@ export default function QuanLyKhoTab() {
       maPNK: generateNextMaPNK(),
       ngayNhap: currentDate.toISOString().split('T')[0],
     });
-    setNhapKhoProductLines([{ maSP: "", soLuong: 1, ghiChu: "", tonCuoi: 0 }]);
+    setNhapKhoProductLines([]);
+    setNhapKhoProductSearch("");
   };
 
   // Open add nhập kho modal
@@ -914,7 +959,8 @@ export default function QuanLyKhoTab() {
       maPNK: generateNextMaPNK(),
       ngayNhap: currentDate.toISOString().split('T')[0],
     });
-    setNhapKhoProductLines([{ maSP: "", soLuong: 1, ghiChu: "", tonCuoi: 0 }]);
+    setNhapKhoProductLines([]);
+    setNhapKhoProductSearch("");
     setShowAddNhapKhoModal(true);
   };
 
@@ -1584,138 +1630,191 @@ export default function QuanLyKhoTab() {
         </Portal>
       )}
 
-      {/* Modal thêm phiếu nhập kho */}
+      {/* Modal thêm phiếu nhập kho - full-screen OrdersTab style */}
       {showAddNhapKhoModal && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowAddNhapKhoModal(false)} />
-          <div className="fixed top-0 right-0 w-full max-w-2xl h-screen bg-white shadow-2xl z-[60] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-purple-700">
+          <div
+            className="fixed inset-0 z-50 bg-black/30"
+            onClick={() => !saving && setShowAddNhapKhoModal(false)}
+          />
+          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-purple-50">
               <div>
-                <h3 className="text-lg font-semibold text-white">Thêm phiếu nhập kho</h3>
-                <p className="text-purple-100 text-sm">Có thể thêm nhiều sản phẩm trong 1 phiếu</p>
+                <h3 className="text-xl font-semibold text-gray-900">Thêm phiếu nhập kho</h3>
+                <p className="text-sm text-gray-500">Mã PNK: {newNhapKhoPhieu.maPNK}</p>
               </div>
-              <button onClick={() => setShowAddNhapKhoModal(false)} className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"><X size={24} /></button>
+              <button
+                onClick={() => setShowAddNhapKhoModal(false)}
+                disabled={saving}
+                className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              >
+                <X size={24} />
+              </button>
             </div>
 
+            {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã PNK * (tự động)</label>
-                    <input type="text" value={newNhapKhoPhieu.maPNK} onChange={(e) => setNewNhapKhoPhieu({ ...newNhapKhoPhieu, maPNK: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-gray-50" readOnly />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày nhập</label>
-                    <input type="date" value={newNhapKhoPhieu.ngayNhap} onChange={(e) => setNewNhapKhoPhieu({ ...newNhapKhoPhieu, ngayNhap: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
-                  </div>
+              {/* Phiếu info */}
+              <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã PNK</label>
+                  <input
+                    type="text"
+                    value={newNhapKhoPhieu.maPNK}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
+                  />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày nhập</label>
+                  <input
+                    type="date"
+                    value={newNhapKhoPhieu.ngayNhap}
+                    onChange={(e) => setNewNhapKhoPhieu({ ...newNhapKhoPhieu, ngayNhap: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                  />
+                </div>
+              </div>
 
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-gray-900">Danh sách sản phẩm nhập</h4>
-                    <button onClick={addNhapKhoProductLine} className="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center gap-1">
-                      <Plus size={16} />Thêm dòng
-                    </button>
+              {/* Add Product Section - click product → auto-add to list */}
+              <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="relative" ref={nhapKhoProductDropdownRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thêm sản phẩm</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={nhapKhoProductSearch}
+                      onChange={(e) => {
+                        setNhapKhoProductSearch(e.target.value);
+                        setNhapKhoProductDropdownIndex(0);
+                      }}
+                      onFocus={() => setNhapKhoProductDropdownIndex(0)}
+                      placeholder="Tìm theo mã SP đầy đủ..."
+                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                   </div>
-
-                  <div className="space-y-3">
-                    {nhapKhoProductLines.map((line, index) => (
-                      <div key={index} className="flex items-start gap-3 bg-gray-50 p-3 rounded-lg">
-                        {/* Mã SP đầy đủ - Searchable dropdown */}
-                        <div className="flex-1 relative" ref={nhapKhoProductDropdownIndex === index ? nhapKhoProductDropdownRef : null}>
-                          <label className="block text-xs text-gray-500 mb-1">Mã SP đầy đủ *</label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNhapKhoProductDropdownIndex(nhapKhoProductDropdownIndex === index ? null : index);
-                              setNhapKhoProductSearch("");
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-left flex items-center justify-between focus:ring-2 focus:ring-purple-500 text-sm"
+                  {nhapKhoProductDropdownIndex === 0 && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredNhapKhoProducts.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy sản phẩm</div>
+                      ) : (
+                        filteredNhapKhoProducts.slice(0, 50).map((product) => (
+                          <div
+                            key={product.id}
+                            onClick={() => handleAddNhapKhoProductToList(product.name)}
+                            className="px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm"
                           >
-                            <span className={line.maSP ? "text-gray-900" : "text-gray-500"}>
-                              {line.maSP || "Chọn mã SP đầy đủ..."}
-                            </span>
-                            <ChevronDown size={16} className={`text-gray-400 transition-transform ${nhapKhoProductDropdownIndex === index ? "rotate-180" : ""}`} />
-                          </button>
-                          {nhapKhoProductDropdownIndex === index && (
-                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-                              <div className="p-2 border-b border-gray-200">
-                                <div className="relative">
-                                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                  <input
-                                    type="text"
-                                    value={nhapKhoProductSearch}
-                                    onChange={(e) => setNhapKhoProductSearch(e.target.value)}
-                                    placeholder="Tìm mã SP đầy đủ..."
-                                    className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500"
-                                    autoFocus
-                                  />
-                                </div>
-                              </div>
-                              <ul className="max-h-40 overflow-y-auto">
-                                {filteredNhapKhoProducts.length === 0 ? (
-                                  <li className="px-4 py-2 text-sm text-gray-500 text-center">Không tìm thấy</li>
-                                ) : (
-                                  filteredNhapKhoProducts.slice(0, 50).map((product) => (
-                                    <li
-                                      key={product.id}
-                                      onClick={() => handleSelectNhapKhoProduct(index, product.name)}
-                                      className={`px-3 py-1.5 text-sm cursor-pointer hover:bg-purple-50 ${line.maSP === product.name ? "bg-purple-100 text-purple-700 font-medium" : "text-gray-700"}`}
-                                    >
-                                      <span className="font-medium">{product.name}</span>
-                                    </li>
-                                  ))
-                                )}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                        <div className="w-24">
-                          <label className="block text-xs text-gray-500 mb-1">Số lượng</label>
-                          <input type="number" value={line.soLuong} onChange={(e) => updateNhapKhoProductLine(index, "soLuong", parseInt(e.target.value) || 0)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" min="1" />
-                        </div>
-                        <div className="w-32">
-                          <label className="block text-xs text-gray-500 mb-1">Ghi chú</label>
-                          <input type="text" value={line.ghiChu} onChange={(e) => updateNhapKhoProductLine(index, "ghiChu", e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm" placeholder="Ghi chú..." />
-                        </div>
-                        <div className="w-24">
-                          <label className="block text-xs text-gray-500 mb-1">Tồn cuối</label>
-                          <input type="text" value={line.tonCuoi.toLocaleString()} className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-600" readOnly />
-                        </div>
-                        {nhapKhoProductLines.length > 1 && (
-                          <button onClick={() => removeNhapKhoProductLine(index)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18} /></button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                            <span className="font-medium text-purple-700">{product.name}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Products Table */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-purple-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">Danh sách sản phẩm ({nhapKhoProductLines.length})</h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-3 py-2 w-10"></th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã SP</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-24">Số lượng</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Ghi chú</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-28">Tồn cuối</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {nhapKhoProductLines.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-3 py-8 text-center text-gray-500">
+                            Chưa có sản phẩm nào. Tìm và chọn SP ở khung phía trên để thêm.
+                          </td>
+                        </tr>
+                      )}
+                      {nhapKhoProductLines.map((line, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              onClick={() => removeNhapKhoProductLine(index)}
+                              className="text-red-400 hover:text-red-600 transition-colors"
+                              title="Xóa sản phẩm"
+                            >
+                              <X size={16} />
+                            </button>
+                          </td>
+                          <td className="px-3 py-2 text-gray-600">{index + 1}</td>
+                          <td className="px-3 py-2 font-medium text-gray-900">{line.maSP}</td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              value={line.soLuong}
+                              onChange={(e) => updateNhapKhoProductLine(index, "soLuong", parseInt(e.target.value) || 0)}
+                              min="1"
+                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={line.ghiChu}
+                              onChange={(e) => updateNhapKhoProductLine(index, "ghiChu", e.target.value)}
+                              placeholder="Ghi chú..."
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className={`px-3 py-2 text-right font-medium ${line.tonCuoi < 0 ? "text-red-600" : line.tonCuoi === 0 ? "text-gray-500" : "text-green-600"}`}>
+                            {line.tonCuoi.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex gap-3">
-                <button onClick={() => setShowAddNhapKhoModal(false)} className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium" disabled={saving}>Hủy</button>
-                <button onClick={handleAddNhapKhoPhieu} disabled={saving} className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2">
-                  {saving && <Loader2 size={18} className="animate-spin" />}
-                  {saving ? "Đang lưu..." : "Thêm phiếu nhập"}
-                </button>
-              </div>
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowAddNhapKhoModal(false)}
+                disabled={saving}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 font-medium"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAddNhapKhoPhieu}
+                disabled={saving || nhapKhoProductLines.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-medium"
+              >
+                {saving ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                {saving ? "Đang lưu..." : `Thêm phiếu (${nhapKhoProductLines.length})`}
+              </button>
             </div>
           </div>
         </Portal>
       )}
 
-      {/* Modal sửa phiếu nhập kho */}
+      {/* Modal sửa phiếu nhập kho - full-screen OrdersTab style với dropdown thêm SP */}
       {showEditNhapKhoModal && editNhapKhoGroup && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowEditNhapKhoModal(false)} />
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => !saving && setShowEditNhapKhoModal(false)} />
           <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-purple-50">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">Chỉnh sửa phiếu nhập kho</h3>
                 <p className="text-sm text-gray-500">Mã PNK: {editNhapKhoGroup.maPNK}</p>
               </div>
-              <button onClick={() => setShowEditNhapKhoModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
+              <button onClick={() => setShowEditNhapKhoModal(false)} disabled={saving} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"><X size={24} /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
@@ -1731,6 +1830,44 @@ export default function QuanLyKhoTab() {
                 <div>
                   <label className="block text-sm text-gray-500 mb-1">Ghi chú</label>
                   <input type="text" value={editNhapKhoItems.find((i) => i.ghiChu)?.ghiChu || ""} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm" />
+                </div>
+              </div>
+
+              {/* Add Product Section - click product → auto-add to list */}
+              <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="relative" ref={nhapKhoProductDropdownRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thêm sản phẩm vào phiếu</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={nhapKhoProductSearch}
+                      onChange={(e) => {
+                        setNhapKhoProductSearch(e.target.value);
+                        setNhapKhoProductDropdownIndex(0);
+                      }}
+                      onFocus={() => setNhapKhoProductDropdownIndex(0)}
+                      placeholder="Tìm theo mã SP đầy đủ..."
+                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  </div>
+                  {nhapKhoProductDropdownIndex === 0 && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredNhapKhoProducts.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy sản phẩm</div>
+                      ) : (
+                        filteredNhapKhoProducts.slice(0, 50).map((product) => (
+                          <div
+                            key={product.id}
+                            onClick={() => handleAddProductToEditList(product.name)}
+                            className="px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm"
+                          >
+                            <span className="font-medium text-purple-700">{product.name}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1750,51 +1887,64 @@ export default function QuanLyKhoTab() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {editNhapKhoItems.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-center">
-                          <button
-                            onClick={() => {
-                              setDeletedNhapKhoIds((prev) => [...prev, item.id]);
-                              setEditNhapKhoItems((prev) => prev.filter((p) => p.id !== item.id));
-                            }}
-                            className="text-red-400 hover:text-red-600 transition-colors"
-                            title="Xóa sản phẩm"
-                          >
-                            <X size={16} />
-                          </button>
+                    {editNhapKhoItems.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-8 text-center text-gray-500">
+                          Phiếu không có sản phẩm. Dùng khung phía trên để thêm SP vào phiếu.
                         </td>
-                        <td className="px-3 py-2 text-gray-600">{index + 1}</td>
-                        <td className="px-3 py-2 font-medium text-gray-900">{item.maSP}</td>
-                        <td className="px-3 py-2">
-                          <input
-                            type="number"
-                            value={item.soLuong}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value) || 0;
-                              setEditNhapKhoItems((prev) =>
-                                prev.map((p) => p.id === item.id ? { ...p, soLuong: val } : p)
-                              );
-                            }}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input
-                            type="text"
-                            value={item.ghiChu || ""}
-                            onChange={(e) => {
-                              setEditNhapKhoItems((prev) =>
-                                prev.map((p) => p.id === item.id ? { ...p, ghiChu: e.target.value } : p)
-                              );
-                            }}
-                            placeholder="Ghi chú..."
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        </td>
-                        <td className={`px-3 py-2 text-right font-medium ${item.tonCuoi < 0 ? "text-red-600" : item.tonCuoi === 0 ? "text-gray-500" : "text-green-600"}`}>{item.tonCuoi.toLocaleString()}</td>
                       </tr>
-                    ))}
+                    )}
+                    {editNhapKhoItems.map((item, index) => {
+                      const isNew = item.id === 0;
+                      const rowKey = isNew ? `new-${index}` : `db-${item.id}`;
+                      return (
+                        <tr key={rowKey} className={`hover:bg-gray-50 ${isNew ? "bg-green-50/40" : ""}`}>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              onClick={() => {
+                                if (!isNew) {
+                                  setDeletedNhapKhoIds((prev) => [...prev, item.id]);
+                                }
+                                setEditNhapKhoItems((prev) => prev.filter((_, i) => i !== index));
+                              }}
+                              className="text-red-400 hover:text-red-600 transition-colors"
+                              title="Xóa sản phẩm"
+                            >
+                              <X size={16} />
+                            </button>
+                          </td>
+                          <td className="px-3 py-2 text-gray-600">{index + 1}{isNew ? " *" : ""}</td>
+                          <td className="px-3 py-2 font-medium text-gray-900">{item.maSP}</td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              value={item.soLuong}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                setEditNhapKhoItems((prev) =>
+                                  prev.map((p, i) => (i === index ? { ...p, soLuong: val } : p))
+                                );
+                              }}
+                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={item.ghiChu || ""}
+                              onChange={(e) => {
+                                setEditNhapKhoItems((prev) =>
+                                  prev.map((p, i) => (i === index ? { ...p, ghiChu: e.target.value } : p))
+                                );
+                              }}
+                              placeholder="Ghi chú..."
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className={`px-3 py-2 text-right font-medium ${item.tonCuoi < 0 ? "text-red-600" : item.tonCuoi === 0 ? "text-gray-500" : "text-green-600"}`}>{item.tonCuoi.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

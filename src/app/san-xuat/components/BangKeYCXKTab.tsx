@@ -1,9 +1,10 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pencil, Trash2, X, Check, Eye, Copy } from "lucide-react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pencil, Trash2, X, Check, Eye, Copy, Printer, FileDown, FileSpreadsheet } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
+import * as XLSX from "xlsx";
 
 interface YeuCauXuatKhoNPL {
   id: number;
@@ -150,6 +151,20 @@ export default function BangKeYCXKTab() {
   const [nplItems, setNplItems] = useState<NPLItem[]>([]);
   const [currentNPLItem, setCurrentNPLItem] = useState<Omit<NPLItem, "id">>(emptyNPLItem);
 
+  // Group edit modal state (edit entire phieu with multiple items, like OrdersTab)
+  const [showGroupEditModal, setShowGroupEditModal] = useState(false);
+  const [editHeaderData, setEditHeaderData] = useState({ ngayThang: "", maPhieuYC: "" });
+  const [editItems, setEditItems] = useState<(YeuCauXuatKhoNPL & { _localId?: string })[]>([]);
+  const [deletedItemIds, setDeletedItemIds] = useState<number[]>([]);
+  const [editCurrentNPLItem, setEditCurrentNPLItem] = useState<Omit<NPLItem, "id">>(emptyNPLItem);
+  const [editNplSearch, setEditNplSearch] = useState("");
+  const [editSpSearch, setEditSpSearch] = useState("");
+  const [showEditNplDropdown, setShowEditNplDropdown] = useState(false);
+  const [showEditSpDropdown, setShowEditSpDropdown] = useState(false);
+  const editNplDropdownRef = useRef<HTMLDivElement>(null);
+  const editSpDropdownRef = useRef<HTMLDivElement>(null);
+  const [isSavingGroupEdit, setIsSavingGroupEdit] = useState(false);
+
   // Filtered data - sorted by ID descending (newest first)
   const filteredList = data
     .filter(
@@ -269,6 +284,12 @@ export default function BangKeYCXKTab() {
       }
       if (spDropdownRef.current && !spDropdownRef.current.contains(event.target as Node)) {
         setShowSpDropdown(false);
+      }
+      if (editNplDropdownRef.current && !editNplDropdownRef.current.contains(event.target as Node)) {
+        setShowEditNplDropdown(false);
+      }
+      if (editSpDropdownRef.current && !editSpDropdownRef.current.contains(event.target as Node)) {
+        setShowEditSpDropdown(false);
       }
     };
 
@@ -404,6 +425,20 @@ export default function BangKeYCXKTab() {
       sp.tenSP.toLowerCase().includes(spSearch.toLowerCase())
   );
 
+  // Filter materials for group edit modal
+  const filteredEditMaterials = materials.filter(
+    (m) =>
+      m.code.toLowerCase().includes(editNplSearch.toLowerCase()) ||
+      m.name.toLowerCase().includes(editNplSearch.toLowerCase())
+  );
+
+  // Filter Ma SP for group edit modal
+  const filteredEditMaSP = maSPList.filter(
+    (sp) =>
+      sp.maSP.toLowerCase().includes(editSpSearch.toLowerCase()) ||
+      sp.tenSP.toLowerCase().includes(editSpSearch.toLowerCase())
+  );
+
   // Open add modal
   const openAddModal = () => {
     setFormData(emptyFormData);
@@ -493,6 +528,189 @@ export default function BangKeYCXKTab() {
   const openDeleteModal = (item: YeuCauXuatKhoNPL) => {
     setDeletingItem(item);
     setShowDeleteModal(true);
+  };
+
+  // Open group edit modal (edit entire phieu with multiple items)
+  const openGroupEditModal = (group: GroupedPhieuYC) => {
+    setEditHeaderData({ ngayThang: group.ngayThang, maPhieuYC: group.maPhieuYC });
+    setEditItems(group.items.map((item) => ({ ...item })));
+    setDeletedItemIds([]);
+    setEditCurrentNPLItem(emptyNPLItem);
+    setEditNplSearch("");
+    setEditSpSearch("");
+    setShowGroupEditModal(true);
+  };
+
+  // Handle NPL select for group edit form
+  const handleEditNPLSelect = (material: Material) => {
+    const nameOnly = material.name.trim();
+    const tyLeHaoHut = material.unit?.toLowerCase() === "mét" ? 0.01 : 0.03;
+    setEditCurrentNPLItem((prev) => ({
+      ...prev,
+      maNPL: nameOnly,
+      dvt: material.unit,
+      slCanDung: prev.dinhMuc * prev.slKHSX * (1 + tyLeHaoHut),
+    }));
+    setEditNplSearch(nameOnly);
+    setShowEditNplDropdown(false);
+  };
+
+  // Handle Ma SP select for group edit form
+  const handleEditMaSPSelect = (sp: MaSP) => {
+    setEditCurrentNPLItem((prev) => ({
+      ...prev,
+      maSPSuDung: sp.maSP,
+      xuongSX: sp.xuongSX,
+    }));
+    setEditSpSearch(sp.maSP);
+    setShowEditSpDropdown(false);
+  };
+
+  // Add a new NPL item to the edit list
+  const addNPLToEditList = () => {
+    if (!editCurrentNPLItem.maNPL.trim()) {
+      toast.error("Vui lòng chọn mã NPL");
+      return;
+    }
+    const newItem: YeuCauXuatKhoNPL & { _localId?: string } = {
+      id: 0, // new item
+      _localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ngayThang: editHeaderData.ngayThang,
+      maPhieuYC: editHeaderData.maPhieuYC,
+      maNPL: editCurrentNPLItem.maNPL,
+      dvt: editCurrentNPLItem.dvt,
+      dinhMuc: editCurrentNPLItem.dinhMuc,
+      tyLeHaoHut: editCurrentNPLItem.tyLeHaoHut,
+      slKHSX: editCurrentNPLItem.slKHSX,
+      slCanDung: editCurrentNPLItem.slCanDung,
+      maSPSuDung: editCurrentNPLItem.maSPSuDung,
+      mauSac: editCurrentNPLItem.mauSac,
+      xuongSX: editCurrentNPLItem.xuongSX,
+    };
+    setEditItems((prev) => [...prev, newItem]);
+    setEditCurrentNPLItem(emptyNPLItem);
+    setEditNplSearch("");
+    setEditSpSearch("");
+  };
+
+  // Remove an item from edit list (track deletion for existing items)
+  const removeFromEditList = (item: YeuCauXuatKhoNPL & { _localId?: string }) => {
+    if (item.id > 0) {
+      setDeletedItemIds((prev) => [...prev, item.id]);
+    }
+    setEditItems((prev) => prev.filter((i) => (i._localId || i.id) !== (item._localId || item.id)));
+  };
+
+  // Update a field on an edit row (recalculate slCanDung for quantity/rate fields)
+  const updateEditItemField = (
+    key: string | number,
+    field: keyof YeuCauXuatKhoNPL,
+    value: any
+  ) => {
+    setEditItems((prev) =>
+      prev.map((it) => {
+        if ((it._localId || it.id) !== key) return it;
+        const next = { ...it, [field]: value } as YeuCauXuatKhoNPL & { _localId?: string };
+        if (field === "dinhMuc" || field === "slKHSX") {
+          const tyLeHaoHut = next.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
+          next.slCanDung = (next.dinhMuc || 0) * (next.slKHSX || 0) * (1 + tyLeHaoHut);
+        }
+        return next;
+      })
+    );
+  };
+
+  // Save all changes from group edit modal
+  const handleSaveGroupEdit = async () => {
+    if (editItems.length === 0 && deletedItemIds.length === 0) {
+      toast.error("Không có thay đổi nào");
+      return;
+    }
+    if (editItems.length === 0) {
+      toast.error("Phiếu phải có ít nhất 1 mã NPL");
+      return;
+    }
+
+    try {
+      setIsSavingGroupEdit(true);
+
+      // 1. Delete removed items (sort desc by id to avoid row-shift issues in Google Sheets)
+      const sortedDeleteIds = [...deletedItemIds].sort((a, b) => b - a);
+      for (const id of sortedDeleteIds) {
+        const res = await fetch("/api/yeu-cau-xuat-kho-npl/delete", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        const r = await res.json();
+        if (!r.success) throw new Error(r.error || `Lỗi xóa mục ${id}`);
+      }
+
+      // 2. Update existing items (id > 0)
+      const updatePromises = editItems
+        .filter((it) => it.id > 0)
+        .map((it) =>
+          fetch("/api/yeu-cau-xuat-kho-npl/update", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: it.id,
+              ngayThang: editHeaderData.ngayThang,
+              maPhieuYC: editHeaderData.maPhieuYC,
+              maNPL: it.maNPL,
+              dvt: it.dvt,
+              dinhMuc: it.dinhMuc,
+              tyLeHaoHut: it.tyLeHaoHut,
+              slKHSX: it.slKHSX,
+              slCanDung: it.slCanDung,
+              maSPSuDung: it.maSPSuDung,
+              mauSac: it.mauSac,
+              xuongSX: it.xuongSX,
+            }),
+          }).then((r) => r.json())
+        );
+      const updateResults = await Promise.all(updatePromises);
+      if (updateResults.some((r) => !r.success)) {
+        throw new Error("Có lỗi khi cập nhật một số mục");
+      }
+
+      // 3. Add new items (id === 0)
+      const addPromises = editItems
+        .filter((it) => it.id === 0)
+        .map((it) =>
+          fetch("/api/yeu-cau-xuat-kho-npl/add", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ngayThang: editHeaderData.ngayThang,
+              maPhieuYC: editHeaderData.maPhieuYC,
+              maNPL: it.maNPL,
+              dvt: it.dvt,
+              dinhMuc: it.dinhMuc,
+              slKHSX: it.slKHSX,
+              maSPSuDung: it.maSPSuDung,
+              mauSac: it.mauSac,
+              xuongSX: it.xuongSX,
+            }),
+          }).then((r) => r.json())
+        );
+      const addResults = await Promise.all(addPromises);
+      if (addResults.some((r) => !r.success)) {
+        throw new Error("Có lỗi khi thêm mục mới");
+      }
+
+      toast.success("Cập nhật phiếu thành công");
+      setShowGroupEditModal(false);
+      setShowViewModal(false);
+      setViewGroupedPhieu(null);
+      fetchData();
+    } catch (error: any) {
+      console.error("Error saving group edit:", error);
+      toast.error(error.message || "Lỗi khi lưu thay đổi");
+      fetchData();
+    } finally {
+      setIsSavingGroupEdit(false);
+    }
   };
 
   // Handle add (multi-item)
@@ -811,6 +1029,105 @@ export default function BangKeYCXKTab() {
     </div>
   );
 
+  // Export danh sách PDF (in trình duyệt)
+  const handleExportListPDF = () => {
+    if (groupedPhieuYC.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+    const rows = groupedPhieuYC.map((g, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;font-weight:600;color:#2563eb;">${g.maPhieuYC || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.ngayThang || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${g.itemCount}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;font-weight:600;">${fmt(g.totalSLKHSX)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:#ea580c;font-weight:600;">${fmt(g.totalSlCanDung)}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${g.xuongSX || "-"}</td>
+    </tr>`).join("");
+    printWindow.document.write(`<html><head><title>Bảng kê Yêu cầu xuất kho NPL</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:20px; text-align:center; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>BẢNG KÊ YÊU CẦU XUẤT KHO NPL</h1>
+      <table><thead><tr><th style="width:30px;">STT</th><th>Mã phiếu YC</th><th>Ngày tháng</th><th>Số NPL</th><th style="text-align:right;">Tổng SL KH SX</th><th style="text-align:right;">Tổng SL cần dùng</th><th>Xưởng SX</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="4" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(totalSLKHSX)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:#ea580c;">${fmt(totalSlCanDung)}</td><td></td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  // Export danh sách Excel
+  const handleExportListExcel = () => {
+    if (groupedPhieuYC.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+    const sheetData = groupedPhieuYC.map((g, i) => ({
+      "STT": i + 1,
+      "Mã phiếu YC": g.maPhieuYC,
+      "Ngày tháng": g.ngayThang,
+      "Số NPL": g.itemCount,
+      "Tổng SL KH SX": g.totalSLKHSX,
+      "Tổng SL cần dùng": g.totalSlCanDung,
+      "Xưởng SX": g.xuongSX,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bang ke YCXK NPL");
+    XLSX.writeFile(wb, "Bang_ke_YCXK_NPL.xlsx");
+  };
+
+  // Export chi tiết 1 phiếu - PDF
+  const handleExportDetailPDF = (phieu: GroupedPhieuYC | null) => {
+    if (!phieu) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => v.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+    const rows = phieu.items.map((item, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.maNPL || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.dvt || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.dinhMuc > 0 ? fmt(item.dinhMuc) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${item.dvt?.toLowerCase() === "mét" ? "1%" : "3%"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.slKHSX > 0 ? fmt(item.slKHSX) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.slCanDung > 0 ? fmt(item.slCanDung) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.maSPSuDung || "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;">${item.mauSac || "-"}</td>
+    </tr>`).join("");
+    const title = `Phiếu yêu cầu xuất kho NPL - ${phieu.maPhieuYC}`;
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:5px; text-align:center; } .info { text-align:center; color:#666; margin-bottom:15px; font-size:13px; } table { width:100%; border-collapse:collapse; font-size:12px; } th { padding:6px 8px; border:1px solid #ddd; background:#f5f5f5; font-weight:600; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <p class="info">Ngày: ${phieu.ngayThang || "-"} | Xưởng: ${phieu.xuongSX || "-"} | Số NPL: ${phieu.itemCount}</p>
+      <table><thead><tr><th style="width:30px;">STT</th><th>Mã NPL</th><th>ĐVT</th><th style="text-align:right;">Định mức</th><th>Hao hụt</th><th style="text-align:right;">SL KH SX</th><th style="text-align:right;">SL cần dùng</th><th>Mã SP sử dụng</th><th>Màu sắc</th></tr></thead><tbody>${rows}
+        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="5" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(phieu.totalSLKHSX)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:#ea580c;">${fmt(phieu.totalSlCanDung)}</td><td colspan="2"></td></tr>
+      </tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
+  // Export chi tiết 1 phiếu - Excel
+  const handleExportDetailExcel = (phieu: GroupedPhieuYC | null) => {
+    if (!phieu) return;
+    const sheetData = phieu.items.map((item, i) => ({
+      "STT": i + 1,
+      "Mã NPL": item.maNPL,
+      "ĐVT": item.dvt,
+      "Định mức": item.dinhMuc,
+      "Hao hụt": item.dvt?.toLowerCase() === "mét" ? "1%" : "3%",
+      "SL KH SX": item.slKHSX,
+      "SL cần dùng": item.slCanDung,
+      "Mã SP sử dụng": item.maSPSuDung,
+      "Màu sắc": item.mauSac,
+      "Xưởng SX": item.xuongSX,
+    }));
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Chi tiet");
+    XLSX.writeFile(wb, `${phieu.maPhieuYC || "Phieu_YCXK"}.xlsx`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -838,6 +1155,20 @@ export default function BangKeYCXKTab() {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-72"
             />
           </div>
+          <button
+            onClick={handleExportListPDF}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+            title="Xuất/In PDF"
+          >
+            <FileDown size={14} /> PDF
+          </button>
+          <button
+            onClick={handleExportListExcel}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+            title="Xuất Excel"
+          >
+            <FileSpreadsheet size={14} /> Excel
+          </button>
           <button
             onClick={openAddModal}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -1426,12 +1757,35 @@ export default function BangKeYCXKTab() {
                 <h3 className="text-xl font-semibold text-gray-900">Chi tiết phiếu yêu cầu xuất kho NPL</h3>
                 <p className="text-sm text-gray-500">Mã phiếu: <strong className="text-blue-600">{viewGroupedPhieu.maPhieuYC}</strong> | Ngày: {viewGroupedPhieu.ngayThang} | Xưởng: {viewGroupedPhieu.xuongSX || "-"}</p>
               </div>
-              <button
-                onClick={() => { setShowViewModal(false); setViewGroupedPhieu(null); }}
-                className="p-2 hover:bg-gray-200 rounded-lg"
-              >
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleExportDetailPDF(viewGroupedPhieu)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
+                  title="In phiếu"
+                >
+                  <Printer size={16} /> In
+                </button>
+                <button
+                  onClick={() => handleExportDetailPDF(viewGroupedPhieu)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors font-medium"
+                  title="Xuất PDF"
+                >
+                  <FileDown size={16} /> PDF
+                </button>
+                <button
+                  onClick={() => handleExportDetailExcel(viewGroupedPhieu)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors font-medium"
+                  title="Xuất Excel"
+                >
+                  <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button
+                  onClick={() => { setShowViewModal(false); setViewGroupedPhieu(null); }}
+                  className="p-2 hover:bg-gray-200 rounded-lg"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
 
             {/* Summary */}
@@ -1490,13 +1844,9 @@ export default function BangKeYCXKTab() {
                       <td className="px-3 py-2.5">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => {
-                              setShowViewModal(false);
-                              setViewGroupedPhieu(null);
-                              openEditModal(item);
-                            }}
+                            onClick={() => viewGroupedPhieu && openGroupEditModal(viewGroupedPhieu)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Sửa"
+                            title="Sửa phiếu"
                           >
                             <Pencil size={16} />
                           </button>
@@ -1538,6 +1888,381 @@ export default function BangKeYCXKTab() {
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Group Edit Modal - Edit entire phieu (header + all NPL items) */}
+      {showGroupEditModal && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-50 bg-black/30"
+            onClick={() => !isSavingGroupEdit && setShowGroupEditModal(false)}
+          />
+          <div className="fixed inset-4 lg:inset-8 z-60 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Chỉnh sửa phiếu yêu cầu xuất kho NPL</h3>
+                <p className="text-sm text-gray-500">
+                  Mã phiếu: <strong className="text-blue-600">{editHeaderData.maPhieuYC}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowGroupEditModal(false)}
+                disabled={isSavingGroupEdit}
+                className="p-2 hover:bg-gray-200 rounded-lg disabled:opacity-50"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Header info - editable */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày tháng</label>
+                  <input
+                    type="date"
+                    value={convertToInputDate(editHeaderData.ngayThang)}
+                    onChange={(e) => setEditHeaderData({ ...editHeaderData, ngayThang: convertToSheetDate(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã phiếu YC</label>
+                  <input
+                    type="text"
+                    value={editHeaderData.maPhieuYC}
+                    onChange={(e) => setEditHeaderData({ ...editHeaderData, maPhieuYC: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Add new NPL form */}
+              <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <h4 className="font-medium text-gray-700 mb-3">Thêm mã NPL vào phiếu</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Mã NPL */}
+                  <div className="relative" ref={editNplDropdownRef}>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Mã NPL <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={editNplSearch}
+                      onChange={(e) => {
+                        setEditNplSearch(e.target.value);
+                        setEditCurrentNPLItem({ ...editCurrentNPLItem, maNPL: e.target.value });
+                        setShowEditNplDropdown(true);
+                      }}
+                      onFocus={() => setShowEditNplDropdown(true)}
+                      placeholder="Tìm mã NPL..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    {showEditNplDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {isLoadingMaterials ? (
+                          <div className="px-3 py-2 text-gray-500 flex items-center gap-2 text-sm">
+                            <Loader2 size={14} className="animate-spin" /> Đang tải...
+                          </div>
+                        ) : filteredEditMaterials.length === 0 ? (
+                          <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy</div>
+                        ) : (
+                          filteredEditMaterials.slice(0, 50).map((m) => (
+                            <div
+                              key={m.id}
+                              onClick={() => handleEditNPLSelect(m)}
+                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+                            >
+                              <div className="font-medium text-blue-600 text-sm">{m.code}</div>
+                              <div className="text-xs text-gray-500 truncate">{m.name}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ĐVT */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">ĐVT</label>
+                    <input
+                      type="text"
+                      value={editCurrentNPLItem.dvt}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  {/* Định mức */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Định mức</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editCurrentNPLItem.dinhMuc || ""}
+                      onChange={(e) => {
+                        const dinhMuc = parseFloat(e.target.value) || 0;
+                        const tyLeHaoHut = editCurrentNPLItem.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
+                        setEditCurrentNPLItem({
+                          ...editCurrentNPLItem,
+                          dinhMuc,
+                          slCanDung: dinhMuc * editCurrentNPLItem.slKHSX * (1 + tyLeHaoHut),
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Hao hụt */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tỷ lệ hao hụt</label>
+                    <input
+                      type="text"
+                      value={editCurrentNPLItem.dvt ? (editCurrentNPLItem.dvt.toLowerCase() === "mét" ? "1%" : "3%") : ""}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  {/* SL KH SX */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">SL KH SX</label>
+                    <input
+                      type="number"
+                      value={editCurrentNPLItem.slKHSX || ""}
+                      onChange={(e) => {
+                        const slKHSX = parseFloat(e.target.value) || 0;
+                        const tyLeHaoHut = editCurrentNPLItem.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
+                        setEditCurrentNPLItem({
+                          ...editCurrentNPLItem,
+                          slKHSX,
+                          slCanDung: editCurrentNPLItem.dinhMuc * slKHSX * (1 + tyLeHaoHut),
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  {/* SL cần dùng */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">SL cần dùng</label>
+                    <input
+                      type="text"
+                      value={editCurrentNPLItem.slCanDung ? editCurrentNPLItem.slCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "0"}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  {/* Mã SP sử dụng */}
+                  <div className="relative" ref={editSpDropdownRef}>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Mã SP sử dụng</label>
+                    <input
+                      type="text"
+                      value={editSpSearch}
+                      onChange={(e) => {
+                        setEditSpSearch(e.target.value);
+                        setEditCurrentNPLItem({ ...editCurrentNPLItem, maSPSuDung: e.target.value });
+                        setShowEditSpDropdown(true);
+                      }}
+                      onFocus={() => setShowEditSpDropdown(true)}
+                      placeholder="Tìm mã SP..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    {showEditSpDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {isLoadingMaSP ? (
+                          <div className="px-3 py-2 text-gray-500 flex items-center gap-2 text-sm">
+                            <Loader2 size={14} className="animate-spin" /> Đang tải...
+                          </div>
+                        ) : filteredEditMaSP.length === 0 ? (
+                          <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy</div>
+                        ) : (
+                          filteredEditMaSP.slice(0, 50).map((sp) => (
+                            <div
+                              key={sp.id}
+                              onClick={() => handleEditMaSPSelect(sp)}
+                              className="px-3 py-2 hover:bg-green-50 cursor-pointer border-b border-gray-100 last:border-0"
+                            >
+                              <div className="font-medium text-green-600 text-sm">{sp.maSP}</div>
+                              <div className="text-xs text-gray-500 truncate">{sp.tenSP}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Màu sắc */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Màu sắc</label>
+                    <input
+                      type="text"
+                      value={editCurrentNPLItem.mauSac}
+                      onChange={(e) => setEditCurrentNPLItem({ ...editCurrentNPLItem, mauSac: e.target.value })}
+                      placeholder="Nhập màu sắc..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Xưởng SX */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Xưởng SX</label>
+                    <input
+                      type="text"
+                      value={editCurrentNPLItem.xuongSX}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={addNPLToEditList}
+                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                >
+                  <Plus size={16} />
+                  Thêm vào danh sách
+                </button>
+              </div>
+
+              {/* Items table - inline editable */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-green-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">
+                    Danh sách mã NPL ({editItems.length})
+                  </h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-3 py-2 w-10"></th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 min-w-[240px]">Mã NPL</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">ĐVT</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-24">Định mức</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-16">Hao hụt</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-24">SL KH SX</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-24">SL cần dùng</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-32">Mã SP</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-28">Màu sắc</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {editItems.length === 0 && (
+                        <tr>
+                          <td colSpan={10} className="px-3 py-6 text-center text-gray-500">
+                            Chưa có mã NPL nào. Thêm bằng form phía trên.
+                          </td>
+                        </tr>
+                      )}
+                      {editItems.map((item, index) => {
+                        const key = item._localId || item.id;
+                        const isNew = item.id === 0;
+                        return (
+                          <tr key={key} className={`hover:bg-gray-50 ${isNew ? "bg-green-50/40" : ""}`}>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => removeFromEditList(item)}
+                                className="text-red-400 hover:text-red-600 transition-colors"
+                                title="Xóa khỏi phiếu"
+                              >
+                                <X size={16} />
+                              </button>
+                            </td>
+                            <td className="px-3 py-2 text-gray-600">{index + 1}{isNew ? " *" : ""}</td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={item.maNPL}
+                                onChange={(e) => updateEditItemField(key, "maNPL", e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-blue-600 font-medium"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={item.dvt}
+                                onChange={(e) => updateEditItemField(key, "dvt", e.target.value)}
+                                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.dinhMuc || ""}
+                                onChange={(e) => updateEditItemField(key, "dinhMuc", parseFloat(e.target.value) || 0)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-center text-gray-600 text-xs">
+                              {item.dvt?.toLowerCase() === "mét" ? "1%" : "3%"}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                value={item.slKHSX || ""}
+                                onChange={(e) => updateEditItemField(key, "slKHSX", parseFloat(e.target.value) || 0)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-right font-medium text-orange-600">
+                              {item.slCanDung > 0 ? item.slCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={item.maSPSuDung}
+                                onChange={(e) => updateEditItemField(key, "maSPSuDung", e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={item.mauSac}
+                                onChange={(e) => updateEditItemField(key, "mauSac", e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {deletedItemIds.length > 0 && (
+                <p className="text-xs text-gray-500 italic">
+                  Sẽ xóa {deletedItemIds.length} mục khi lưu.
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-gray-50 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowGroupEditModal(false)}
+                disabled={isSavingGroupEdit}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveGroupEdit}
+                disabled={isSavingGroupEdit || editItems.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {isSavingGroupEdit ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+                Lưu thay đổi
               </button>
             </div>
           </div>
