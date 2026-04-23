@@ -57,10 +57,10 @@ export async function POST(request: Request) {
       ghiChu,
     } = body;
 
-    // Validate required dropdown fields
-    if (!tenTK || !nccNPL || !chiVanChuyen || !thuTienHang || !phanLoaiThuChi) {
+    // Validate required dropdown fields (chỉ Tên TK và Phân loại thu chi)
+    if (!tenTK || !phanLoaiThuChi) {
       return NextResponse.json(
-        { success: false, error: "Các trường dropdown là bắt buộc" },
+        { success: false, error: "Tên TK và Phân loại thu chi là bắt buộc" },
         { status: 400 }
       );
     }
@@ -68,10 +68,10 @@ export async function POST(request: Request) {
     await addDongTienToSheet({
       ngayThang: ngayThang || "",
       tenTK,
-      nccNPL,
+      nccNPL: nccNPL || "",
       xuongSX: xuongSX || "",
-      chiVanChuyen,
-      thuTienHang,
+      chiVanChuyen: chiVanChuyen || "",
+      thuTienHang: thuTienHang || "",
       thuKhac: thuKhac || "",
       chiKhac: chiKhac || "",
       maPhieuThu: maPhieuThu || "",
@@ -139,10 +139,10 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Validate required dropdown fields
-    if (!tenTK || !nccNPL || !chiVanChuyen || !thuTienHang || !phanLoaiThuChi) {
+    // Validate required dropdown fields (chỉ Tên TK và Phân loại thu chi)
+    if (!tenTK || !phanLoaiThuChi) {
       return NextResponse.json(
-        { success: false, error: "Các trường dropdown là bắt buộc" },
+        { success: false, error: "Tên TK và Phân loại thu chi là bắt buộc" },
         { status: 400 }
       );
     }
@@ -150,10 +150,10 @@ export async function PUT(request: Request) {
     await updateDongTienInSheet(parseInt(rowIndex), {
       ngayThang: ngayThang || "",
       tenTK,
-      nccNPL,
+      nccNPL: nccNPL || "",
       xuongSX: xuongSX || "",
-      chiVanChuyen,
-      thuTienHang,
+      chiVanChuyen: chiVanChuyen || "",
+      thuTienHang: thuTienHang || "",
       thuKhac: thuKhac || "",
       chiKhac: chiKhac || "",
       maPhieuThu: maPhieuThu || "",

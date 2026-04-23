@@ -733,6 +733,7 @@ export default function QuanLyKhoTab() {
       },
     ]);
     setNhapKhoProductSearch("");
+    setNhapKhoProductDropdownIndex(null);
   };
 
   // Filter products for nhập kho dropdown
@@ -808,6 +809,7 @@ export default function QuanLyKhoTab() {
     };
     setEditNhapKhoItems((prev) => [...prev, newItem]);
     setNhapKhoProductSearch("");
+    setNhapKhoProductDropdownIndex(null);
   };
 
   // Handle save edit nhập kho - update existing, add new, delete removed

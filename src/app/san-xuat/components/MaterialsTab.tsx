@@ -460,9 +460,12 @@ export default function MaterialsTab() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Thuế (%)</label>
                     <input
                       type="number"
+                      min={0}
+                      max={100}
                       value={newItem.taxRate || ""}
                       onChange={(e) => {
-                        const tax = Number(e.target.value) || 0;
+                        const raw = Number(e.target.value) || 0;
+                        const tax = Math.min(100, Math.max(0, raw));
                         setNewItem({
                           ...newItem,
                           taxRate: tax,
@@ -746,9 +749,12 @@ export default function MaterialsTab() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Thuế (%)</label>
                     <input
                       type="number"
+                      min={0}
+                      max={100}
                       value={editItem.taxRate || ""}
                       onChange={(e) => {
-                        const tax = Number(e.target.value) || 0;
+                        const raw = Number(e.target.value) || 0;
+                        const tax = Math.min(100, Math.max(0, raw));
                         setEditItem({
                           ...editItem,
                           taxRate: tax,

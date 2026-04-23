@@ -2575,6 +2575,7 @@ export async function addMaterialToSheet(material: Material): Promise<void> {
     const sttNumber = materialRows.length + 1;
 
     // Ghi cả STT (cột A) và dữ liệu (cột B-K)
+    // taxRate ghi dưới dạng "8%" để Sheets parse đúng bất kể cột có format % hay không
     const values = [
       [
         sttNumber,
@@ -2584,7 +2585,7 @@ export async function addMaterialToSheet(material: Material): Promise<void> {
         material.info,
         material.unit,
         material.priceBeforeTax,
-        material.taxRate,
+        `${material.taxRate}%`,
         material.priceWithTax,
         material.image,
         material.note,
@@ -2625,7 +2626,7 @@ export async function updateMaterialInSheet(material: Material): Promise<void> {
         material.info,
         material.unit,
         material.priceBeforeTax,
-        material.taxRate,
+        `${material.taxRate}%`,
         material.priceWithTax,
         material.image,
         material.note,
