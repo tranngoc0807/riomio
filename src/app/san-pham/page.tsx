@@ -18,7 +18,7 @@ import {
   Warehouse,
   DollarSign,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Portal from "@/components/Portal";
 import ImagePickerModal from "@/components/ImagePickerModal";
@@ -52,31 +52,38 @@ interface SanPham {
   image: string; // Hình ảnh (Cột U)
 }
 
-// Types - khớp với Google Sheets SanPham (Danh mục sản phẩm)
+// Types - khớp với Google Sheets sheet "SanPham"
+// A=STT, B=Mã SP, C=Hình in, D=Size, E=Màu sắc, F=Mã SP đầy đủ (formula), G=Hình ảnh,
+// H=Giá sỉ, I=Giá lẻ, J=Dòng size, K=Tồn kho
 interface SanPhamCatalog {
   id: number;
-  name: string; // Tên SP (B)
-  sizeChart: string; // Bảng size sản xuất (C)
-  image: string; // Hình ảnh (D)
-  color: string; // Màu sắc sản xuất (E)
-  retailPrice: number; // Giá bán lẻ (F)
-  wholesalePrice: number; // Giá bán sỉ (G)
-  costPrice: number; // Giá vốn (H)
-  mainFabric: string; // Vải chính (I)
-  accentFabric: string; // Vải phối (J)
-  otherMaterials: string; // Phụ liệu khác (K)
-  mainFabricQuota: string; // Định mức vải chính (L)
-  accentFabricQuota: string; // Định mức vải phối 1 (M)
-  materialsQuota: string; // Định mức phụ liệu 2 (N)
-  accessoriesQuota: string; // Định mức phụ kiện (O)
-  otherQuota: string; // Định mức khác (P)
-  plannedQuantity: number; // Số lượng kế hoạch (Q)
-  cutQuantity: number; // Số lượng cắt (R)
-  warehouseQuantity: number; // Số lượng nhập kho (S)
-  finalStatus: string; // CĐ Final (T)
-  nplSyncStatus: string; // CĐ đồng bộ NPL (U)
-  productionStatus: string; // CĐ sản xuất (V)
-  warehouseEntry: string; // Nhập kho (W)
+  code: string;           // B - Mã SP
+  printPattern: string;   // C - Hình in
+  size: string;           // D - Size
+  color: string;          // E - Màu sắc
+  name: string;           // F - Mã SP đầy đủ
+  image: string;          // G - Hình ảnh
+  wholesalePrice: number; // H - Giá sỉ
+  retailPrice: number;    // I - Giá lẻ
+  sizeChart: string;      // J - Dòng size
+  tonKho: number;         // K - Tồn kho
+  // legacy fields kept for backward compat
+  costPrice: number;
+  mainFabric: string;
+  accentFabric: string;
+  otherMaterials: string;
+  mainFabricQuota: string;
+  accentFabricQuota: string;
+  materialsQuota: string;
+  accessoriesQuota: string;
+  otherQuota: string;
+  plannedQuantity: number;
+  cutQuantity: number;
+  warehouseQuantity: number;
+  finalStatus: string;
+  nplSyncStatus: string;
+  productionStatus: string;
+  warehouseEntry: string;
 }
 
 // Xưởng sản xuất sẽ được load từ API
@@ -300,6 +307,27 @@ export default function SanPhamPage() {
   const [editCatalogProduct, setEditCatalogProduct] =
     useState<SanPhamCatalog | null>(null);
 
+  // Mã SP list dùng cho dropdown trong modal Add Catalog
+  // Lấy từ sheet "Mã SP" (RIOMIO_SAN_XUAT) — A:Mã SP, B:Tên SP, C:Size, D:Xưởng SX, E:Giá sỉ, F:Giá lẻ, G:Hình ảnh
+  type MaSPListItem = {
+    code: string;
+    name: string;
+    size: string;
+    color: string;
+    workshop: string;
+    wholesalePrice: number;
+    retailPrice: number;
+    image: string;
+    sizeChart: string;
+    tonKho: number;
+  };
+  const [maSPList, setMaSPList] = useState<MaSPListItem[]>([]);
+  const [colorOptions, setColorOptions] = useState<string[]>([]);
+  const [sizeOptions, setSizeOptions] = useState<string[]>([]);
+  const [showMaSPDropdown, setShowMaSPDropdown] = useState(false);
+  const [maSPSearch, setMaSPSearch] = useState("");
+  const maSPDropdownRef = useRef<HTMLDivElement>(null);
+
   // Delete confirmation state for CatalogProduct
   const [showCatalogDeleteConfirm, setShowCatalogDeleteConfirm] = useState(false);
   const [deletingCatalogProductId, setDeletingCatalogProductId] = useState<number | null>(null);
@@ -329,6 +357,68 @@ export default function SanPhamPage() {
     fetchProducts();
     fetchCatalogProducts();
   }, []);
+
+  // Fetch danh sách Mã SP cho dropdown khi mở modal Add Catalog
+  useEffect(() => {
+    if (!showCatalogAddModal || maSPList.length > 0) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/ma-sp-list");
+        const result = await res.json();
+        if (result.success) {
+          setMaSPList(result.data);
+          setColorOptions(result.colors || []);
+          setSizeOptions(result.sizes || []);
+        }
+      } catch (err) {
+        console.error("Error loading Mã SP list:", err);
+      }
+    })();
+  }, [showCatalogAddModal, maSPList.length]);
+
+  // Close Mã SP dropdown when clicking outside
+  useEffect(() => {
+    if (!showMaSPDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        maSPDropdownRef.current &&
+        !maSPDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowMaSPDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMaSPDropdown]);
+
+  // Reset maSPSearch khi đóng modal Add Catalog
+  useEffect(() => {
+    if (!showCatalogAddModal) {
+      setMaSPSearch("");
+      setShowMaSPDropdown(false);
+    }
+  }, [showCatalogAddModal]);
+
+  // Auto-compute Mã SP đầy đủ = code + hình in + size + màu
+  useEffect(() => {
+    const parts = [
+      newCatalogProduct.code || "",
+      newCatalogProduct.printPattern || "",
+      newCatalogProduct.size || "",
+      newCatalogProduct.color || "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    if (parts !== (newCatalogProduct.name || "")) {
+      setNewCatalogProduct((prev) => ({ ...prev, name: parts }));
+    }
+  }, [
+    newCatalogProduct.code,
+    newCatalogProduct.printPattern,
+    newCatalogProduct.size,
+    newCatalogProduct.color,
+    newCatalogProduct.name,
+  ]);
 
   useEffect(() => {
     if (showEditModal || showCatalogEditModal) {
@@ -593,12 +683,17 @@ export default function SanPhamPage() {
   };
 
   const filteredCatalogProducts = catalogProducts
-    .filter(
-      (p) =>
-        p.name.toLowerCase().includes(catalogSearchTerm.toLowerCase()) ||
-        p.color.toLowerCase().includes(catalogSearchTerm.toLowerCase()) ||
-        p.mainFabric.toLowerCase().includes(catalogSearchTerm.toLowerCase()),
-    )
+    .filter((p) => {
+      const q = catalogSearchTerm.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        p.code.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q) ||
+        p.color.toLowerCase().includes(q) ||
+        p.printPattern.toLowerCase().includes(q) ||
+        p.size.toLowerCase().includes(q)
+      );
+    })
     .sort((a, b) => {
       switch (catalogSortOption) {
         case "name_asc":
@@ -673,8 +768,8 @@ export default function SanPhamPage() {
   };
 
   const handleAddCatalogProduct = async () => {
-    if (!newCatalogProduct.name) {
-      toast.error("Vui lòng điền Tên sản phẩm");
+    if (!newCatalogProduct.code) {
+      toast.error("Vui lòng điền Mã SP");
       return;
     }
 
@@ -691,29 +786,18 @@ export default function SanPhamPage() {
         toast.success("Đã thêm sản phẩm thành công");
         setShowCatalogAddModal(false);
         setNewCatalogProduct({
-          name: "",
-          sizeChart: "",
-          image: "",
+          code: "",
+          printPattern: "",
+          size: "",
           color: "",
-          retailPrice: 0,
+          name: "",
+          image: "",
           wholesalePrice: 0,
-          costPrice: 0,
-          mainFabric: "",
-          accentFabric: "",
-          otherMaterials: "",
-          mainFabricQuota: "",
-          accentFabricQuota: "",
-          materialsQuota: "",
-          accessoriesQuota: "",
-          otherQuota: "",
-          plannedQuantity: 0,
-          cutQuantity: 0,
-          warehouseQuantity: 0,
-          finalStatus: "",
-          nplSyncStatus: "",
-          productionStatus: "",
-          warehouseEntry: "",
+          retailPrice: 0,
+          sizeChart: "",
+          tonKho: 0,
         });
+        setMaSPSearch("");
         fetchCatalogProducts();
       } else {
         toast.error(result.error || "Không thể thêm sản phẩm");
@@ -1153,7 +1237,7 @@ export default function SanPhamPage() {
                     />
                     <input
                       type="text"
-                      placeholder="Tìm kiếm tên SP, màu sắc, vải chính..."
+                      placeholder="Tìm theo Mã SP, Hình in, Size, Màu sắc..."
                       value={catalogSearchTerm}
                       onChange={(e) =>
                         handleCatalogSearchChange(e.target.value)
@@ -1186,6 +1270,13 @@ export default function SanPhamPage() {
                   </div>
                 </div>
 
+                <button
+                  onClick={() => setShowCatalogAddModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors whitespace-nowrap"
+                >
+                  <Plus size={20} />
+                  Thêm sản phẩm
+                </button>
               </div>
 
               {/* Loading state */}
@@ -1203,34 +1294,24 @@ export default function SanPhamPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gray-50">
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                            STT
-                          </th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[200px]">
-                            Tên SP
-                          </th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                            Bảng size
-                          </th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                            Màu sắc
-                          </th>
-                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
-                            Giá lẻ
-                          </th>
-                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
-                            Giá sỉ
-                          </th>
-                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                            Thao tác
-                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">STT</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hình ảnh</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Mã SP</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hình in</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Size</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Màu sắc</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[200px]">Mã SP đầy đủ</th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá sỉ</th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá lẻ</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Dòng size</th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Tồn kho</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {paginatedCatalogProducts.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={7}
+                              colSpan={11}
                               className="px-3 py-8 text-center text-gray-500"
                             >
                               {catalogSearchTerm
@@ -1245,71 +1326,33 @@ export default function SanPhamPage() {
                               className="hover:bg-gray-50 cursor-pointer"
                               onClick={() => handleViewCatalogProduct(product)}
                             >
-                              <td className="px-3 py-3 text-sm text-gray-500">
-                                {catalogStartIndex + index + 1}
-                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-500">{catalogStartIndex + index + 1}</td>
                               <td className="px-3 py-3">
-                                <div className="flex items-center gap-2">
-                                  {product.image ? (
-                                    <img
-                                      src={product.image}
-                                      alt={product.name}
-                                      className="w-10 h-10 rounded object-cover"
-                                      onError={(e) => {
-                                        (
-                                          e.target as HTMLImageElement
-                                        ).style.display = "none";
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
-                                      <ImageIcon
-                                        size={16}
-                                        className="text-gray-400"
-                                      />
-                                    </div>
-                                  )}
-                                  <span className="text-sm font-medium text-gray-900">
-                                    {product.name || "-"}
-                                  </span>
-                                </div>
+                                {product.image ? (
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-10 h-10 rounded object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = "none";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
+                                    <ImageIcon size={16} className="text-gray-400" />
+                                  </div>
+                                )}
                               </td>
-                              <td className="px-3 py-3 text-sm text-gray-600">
-                                {product.sizeChart || "-"}
-                              </td>
-                              <td className="px-3 py-3 text-sm text-gray-600">
-                                {product.color || "-"}
-                              </td>
-                              <td className="px-3 py-3 text-sm text-right font-medium text-green-600">
-                                {formatPrice(product.retailPrice)}
-                              </td>
-                              <td className="px-3 py-3 text-sm text-right text-gray-600">
-                                {formatPrice(product.wholesalePrice)}
-                              </td>
-                              <td
-                                className="px-3 py-3"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() =>
-                                      handleEditCatalogProduct(product)
-                                    }
-                                    className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
-                                    title="Sửa"
-                                  >
-                                    <Edit size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteCatalogProduct(product.id)
-                                    }
-                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                                    title="Xóa"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
+                              <td className="px-3 py-3 text-sm font-medium text-blue-600">{product.code || "-"}</td>
+                              <td className="px-3 py-3 text-sm text-gray-600">{product.printPattern || "-"}</td>
+                              <td className="px-3 py-3 text-sm text-gray-600">{product.size || "-"}</td>
+                              <td className="px-3 py-3 text-sm text-gray-600">{product.color || "-"}</td>
+                              <td className="px-3 py-3 text-sm font-medium text-gray-900">{product.name || "-"}</td>
+                              <td className="px-3 py-3 text-sm text-right text-gray-600">{formatPrice(product.wholesalePrice)}</td>
+                              <td className="px-3 py-3 text-sm text-right font-medium text-green-600">{formatPrice(product.retailPrice)}</td>
+                              <td className="px-3 py-3 text-sm text-gray-600">{product.sizeChart || "-"}</td>
+                              <td className={`px-3 py-3 text-sm text-right font-medium ${product.tonKho > 0 ? "text-gray-900" : "text-gray-400"}`}>
+                                {product.tonKho ? product.tonKho.toLocaleString("vi-VN") : "0"}
                               </td>
                             </tr>
                           ))
@@ -2292,439 +2335,326 @@ export default function SanPhamPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-6">
-                {/* Thông tin cơ bản */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Thông tin cơ bản
-                  </h4>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tên sản phẩm *
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.name || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            name: e.target.value,
-                          })
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      STT{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự tăng)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={catalogProducts.length + 1}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã SP đầy đủ{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự ghép)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newCatalogProduct.name || ""}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="Sẽ tự sinh khi điền các trường dưới..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative" ref={maSPDropdownRef}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã SP <span className="text-red-500">*</span>{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        ({maSPList.length} mã)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newCatalogProduct.code || maSPSearch}
+                      onChange={(e) => {
+                        const typed = e.target.value;
+                        const norm = typed.toLowerCase().replace(/\s+/g, "");
+                        setMaSPSearch(typed);
+                        setShowMaSPDropdown(true);
+
+                        const exact = maSPList.find(
+                          (m) =>
+                            m.code.toLowerCase().replace(/\s+/g, "") === norm,
+                        );
+                        console.log("[Mã SP onChange] typed:", typed, "norm:", norm, "exact:", exact, "list size:", maSPList.length);
+                        if (exact) {
+                          setNewCatalogProduct((prev) => ({
+                            ...prev,
+                            code: exact.code,
+                            wholesalePrice: exact.wholesalePrice,
+                            retailPrice: exact.retailPrice,
+                            image: exact.image,
+                            sizeChart: exact.sizeChart,
+                            tonKho: exact.tonKho || 0,
+                          }));
+                          setMaSPSearch("");
+                        } else {
+                          setNewCatalogProduct((prev) => ({
+                            ...prev,
+                            code: "",
+                            wholesalePrice: 0,
+                            retailPrice: 0,
+                            image: "",
+                            sizeChart: "",
+                            tonKho: 0,
+                          }));
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder="Nhập tên sản phẩm"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Bảng size
-                        </label>
-                        <input
-                          type="text"
-                          value={newCatalogProduct.sizeChart || ""}
-                          onChange={(e) =>
-                            setNewCatalogProduct({
-                              ...newCatalogProduct,
-                              sizeChart: e.target.value,
-                            })
+                      }}
+                      onBlur={() => {
+                        // Khi rời input, thử match lại lần nữa (delay để dropdown click có cơ hội fire trước)
+                        setTimeout(() => {
+                          const typed = (
+                            newCatalogProduct.code || maSPSearch
+                          ).toString();
+                          if (!typed.trim() || newCatalogProduct.code) return;
+                          const norm = typed.toLowerCase().replace(/\s+/g, "");
+                          const exact = maSPList.find(
+                            (m) =>
+                              m.code.toLowerCase().replace(/\s+/g, "") === norm,
+                          );
+                          console.log("[Mã SP onBlur] typed:", typed, "found:", exact?.code, "list size:", maSPList.length);
+                          if (exact) {
+                            setNewCatalogProduct((prev) => ({
+                              ...prev,
+                              code: exact.code,
+                              wholesalePrice: exact.wholesalePrice,
+                              retailPrice: exact.retailPrice,
+                              image: exact.image,
+                              sizeChart: exact.sizeChart,
+                              tonKho: exact.tonKho || 0,
+                            }));
+                            setMaSPSearch("");
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                          placeholder="VD: S, M, L, XL"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Màu sắc
-                        </label>
-                        <input
-                          type="text"
-                          value={newCatalogProduct.color || ""}
-                          onChange={(e) =>
-                            setNewCatalogProduct({
-                              ...newCatalogProduct,
-                              color: e.target.value,
+                        }, 200);
+                      }}
+                      onFocus={() => setShowMaSPDropdown(true)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="Tìm/chọn Mã SP..."
+                    />
+                    {showMaSPDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {maSPList.length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-gray-500">
+                            Đang tải hoặc không có dữ liệu...
+                          </div>
+                        ) : (
+                          maSPList
+                            .filter((m) => {
+                              const q = (maSPSearch || newCatalogProduct.code || "").toLowerCase().trim();
+                              if (!q) return true;
+                              return (
+                                m.code.toLowerCase().includes(q) ||
+                                m.name.toLowerCase().includes(q)
+                              );
                             })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                          placeholder="VD: Đỏ, Xanh, Trắng"
-                        />
+                            .slice(0, 80)
+                            .map((m) => (
+                              <div
+                                key={m.code}
+                                onClick={() => {
+                                  setNewCatalogProduct({
+                                    ...newCatalogProduct,
+                                    code: m.code,
+                                    wholesalePrice: m.wholesalePrice,
+                                    retailPrice: m.retailPrice,
+                                    image: m.image,
+                                    sizeChart: m.sizeChart,
+                                    tonKho: m.tonKho || 0,
+                                  });
+                                  setMaSPSearch("");
+                                  setShowMaSPDropdown(false);
+                                }}
+                                className="px-3 py-2 hover:bg-purple-50 cursor-pointer border-b border-gray-100 last:border-0"
+                              >
+                                <div className="font-medium text-sm text-purple-700">
+                                  {m.code}
+                                </div>
+                                {m.name && (
+                                  <div className="text-xs text-gray-500 truncate">
+                                    {m.name}
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                        )}
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Link hình ảnh
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newCatalogProduct.image || ""}
-                          onChange={(e) =>
-                            setNewCatalogProduct({
-                              ...newCatalogProduct,
-                              image: e.target.value,
-                            })
-                          }
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                          placeholder="https://..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setImagePickerTarget("newCatalog");
-                            setShowImagePicker(true);
-                          }}
-                          className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
-                        >
-                          <ImageIcon size={16} />
-                          Chọn ảnh
-                        </button>
+                    )}
+                    {newCatalogProduct.code ? (
+                      <div className="text-xs text-green-600 mt-1">
+                        ✓ Đã chọn: <b>{newCatalogProduct.code}</b>
                       </div>
-                      {newCatalogProduct.image && (
-                        <div className="mt-2">
-                          <img src={newCatalogProduct.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
-                        </div>
-                      )}
-                    </div>
+                    ) : maSPSearch.trim() ? (
+                      <div className="text-xs text-orange-600 mt-1">
+                        Chưa chọn mã — click vào item trong dropdown phía trên
+                      </div>
+                    ) : null}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Hình in</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={newCatalogProduct.printPattern || ""}
+                      onChange={(e) => {
+                        const digitsOnly = e.target.value.replace(/\D/g, "");
+                        setNewCatalogProduct({
+                          ...newCatalogProduct,
+                          printPattern: digitsOnly,
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="VD: 676"
+                    />
                   </div>
                 </div>
 
-                {/* Giá cả */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Giá cả
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Giá bán lẻ
-                      </label>
-                      <input
-                        type="number"
-                        value={newCatalogProduct.retailPrice || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            retailPrice: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Giá bán sỉ
-                      </label>
-                      <input
-                        type="number"
-                        value={newCatalogProduct.wholesalePrice || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            wholesalePrice: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Giá vốn
-                      </label>
-                      <input
-                        type="number"
-                        value={newCatalogProduct.costPrice || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            costPrice: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder="0"
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Size{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        ({sizeOptions.length} lựa chọn)
+                      </span>
+                    </label>
+                    <select
+                      value={newCatalogProduct.size || ""}
+                      onChange={(e) =>
+                        setNewCatalogProduct({
+                          ...newCatalogProduct,
+                          size: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
+                    >
+                      <option value="">-- Chọn size --</option>
+                      {sizeOptions.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Màu sắc{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        ({colorOptions.length} lựa chọn)
+                      </span>
+                    </label>
+                    <select
+                      value={newCatalogProduct.color || ""}
+                      onChange={(e) =>
+                        setNewCatalogProduct({
+                          ...newCatalogProduct,
+                          color: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
+                    >
+                      <option value="">-- Chọn màu --</option>
+                      {colorOptions.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                {/* Nguyên vật liệu */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Nguyên vật liệu
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Vải chính
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.mainFabric || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            mainFabric: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Hình ảnh <span className="text-xs text-gray-500 font-normal">(tự lấy theo Mã SP)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newCatalogProduct.image || ""}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-600"
+                    placeholder="Chọn Mã SP để tự điền..."
+                  />
+                  {newCatalogProduct.image && (
+                    <div className="mt-2">
+                      <img src={newCatalogProduct.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Vải phối
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.accentFabric || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            accentFabric: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phụ liệu khác
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.otherMaterials || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            otherMaterials: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Giá sỉ <span className="text-xs text-gray-500 font-normal">(tự lấy theo Mã SP)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newCatalogProduct.wholesalePrice ? newCatalogProduct.wholesalePrice.toLocaleString("vi-VN") : ""}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Giá lẻ <span className="text-xs text-gray-500 font-normal">(tự lấy theo Mã SP)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newCatalogProduct.retailPrice ? newCatalogProduct.retailPrice.toLocaleString("vi-VN") : ""}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="0"
+                    />
                   </div>
                 </div>
 
-                {/* Định mức */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Định mức
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM vải chính
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.mainFabricQuota || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            mainFabricQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM vải phối
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.accentFabricQuota || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            accentFabricQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM phụ liệu
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.materialsQuota || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            materialsQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM phụ kiện
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.accessoriesQuota || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            accessoriesQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM khác
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.otherQuota || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            otherQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Dòng size{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự lấy theo Mã SP)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newCatalogProduct.sizeChart || ""}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="Chọn Mã SP để tự điền..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tồn kho{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (lấy từ sheet Tồn kho SP)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={(newCatalogProduct.tonKho ?? 0).toLocaleString("vi-VN")}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="0"
+                    />
                   </div>
                 </div>
 
-                {/* Số lượng */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Số lượng
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        SL kế hoạch
-                      </label>
-                      <input
-                        type="number"
-                        value={newCatalogProduct.plannedQuantity || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            plannedQuantity: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        SL cắt
-                      </label>
-                      <input
-                        type="number"
-                        value={newCatalogProduct.cutQuantity || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            cutQuantity: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        SL nhập kho
-                      </label>
-                      <input
-                        type="number"
-                        value={newCatalogProduct.warehouseQuantity || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            warehouseQuantity: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Trạng thái */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Trạng thái
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CĐ Final
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.finalStatus || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            finalStatus: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CĐ đồng bộ NPL
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.nplSyncStatus || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            nplSyncStatus: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CĐ sản xuất
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.productionStatus || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            productionStatus: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nhập kho
-                      </label>
-                      <input
-                        type="text"
-                        value={newCatalogProduct.warehouseEntry || ""}
-                        onChange={(e) =>
-                          setNewCatalogProduct({
-                            ...newCatalogProduct,
-                            warehouseEntry: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <p className="text-xs text-gray-500 italic pt-2">
+                  Cột "Mã SP đầy đủ" do công thức trên Google Sheet tự sinh, không cần điền.
+                </p>
               </div>
             </div>
 
@@ -2803,21 +2733,39 @@ export default function SanPhamPage() {
                   </h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Tên SP:</span>
+                      <span className="text-gray-500">Mã SP:</span>
                       <span className="font-medium">
-                        {selectedCatalogProduct.name || "-"}
+                        {selectedCatalogProduct.code || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Bảng size:</span>
+                      <span className="text-gray-500">Hình in:</span>
                       <span className="font-medium">
-                        {selectedCatalogProduct.sizeChart || "-"}
+                        {selectedCatalogProduct.printPattern || "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Size:</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.size || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Màu sắc:</span>
                       <span className="font-medium">
                         {selectedCatalogProduct.color || "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Dòng size:</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.sizeChart || "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Tồn kho:</span>
+                      <span className="font-medium">
+                        {selectedCatalogProduct.tonKho?.toLocaleString("vi-VN") ?? 0}
                       </span>
                     </div>
                   </div>
@@ -2828,13 +2776,7 @@ export default function SanPhamPage() {
                   <h4 className="text-sm font-semibold text-green-900 mb-3">
                     Giá cả
                   </h4>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="text-center">
-                      <p className="text-gray-500 mb-1">Giá lẻ</p>
-                      <p className="font-bold text-green-600 text-lg">
-                        {formatPrice(selectedCatalogProduct.retailPrice)}
-                      </p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="text-center">
                       <p className="text-gray-500 mb-1">Giá sỉ</p>
                       <p className="font-bold text-blue-600 text-lg">
@@ -2842,136 +2784,10 @@ export default function SanPhamPage() {
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className="text-gray-500 mb-1">Giá vốn</p>
-                      <p className="font-bold text-orange-600 text-lg">
-                        {formatPrice(selectedCatalogProduct.costPrice)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Nguyên vật liệu */}
-                <div className="bg-orange-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-orange-900 mb-3">
-                    Nguyên vật liệu
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Vải chính:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.mainFabric || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Vải phối:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.accentFabric || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Phụ liệu khác:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.otherMaterials || "-"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Định mức */}
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-blue-900 mb-3">
-                    Định mức
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">ĐM vải chính:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.mainFabricQuota || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">ĐM vải phối:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.accentFabricQuota || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">ĐM phụ liệu:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.materialsQuota || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">ĐM phụ kiện:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.accessoriesQuota || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between col-span-2">
-                      <span className="text-gray-500">ĐM khác:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.otherQuota || "-"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Số lượng */}
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-purple-900 mb-3">
-                    Số lượng
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4 text-sm text-center">
-                    <div>
-                      <p className="text-gray-500 mb-1">SL kế hoạch</p>
-                      <p className="font-bold text-purple-600 text-lg">
-                        {selectedCatalogProduct.plannedQuantity || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">SL cắt</p>
-                      <p className="font-bold text-blue-600 text-lg">
-                        {selectedCatalogProduct.cutQuantity || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">SL nhập kho</p>
+                      <p className="text-gray-500 mb-1">Giá lẻ</p>
                       <p className="font-bold text-green-600 text-lg">
-                        {selectedCatalogProduct.warehouseQuantity || 0}
+                        {formatPrice(selectedCatalogProduct.retailPrice)}
                       </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Trạng thái */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Trạng thái
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">CĐ Final:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.finalStatus || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">CĐ đồng bộ NPL:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.nplSyncStatus || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">CĐ sản xuất:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.productionStatus || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Nhập kho:</span>
-                      <span className="font-medium">
-                        {selectedCatalogProduct.warehouseEntry || "-"}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -2991,13 +2807,14 @@ export default function SanPhamPage() {
                 </button>
                 <button
                   onClick={() => {
+                    handleDeleteCatalogProduct(selectedCatalogProduct.id);
                     setShowCatalogViewModal(false);
-                    handleEditCatalogProduct(selectedCatalogProduct);
+                    setSelectedCatalogProduct(null);
                   }}
-                  className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
                 >
-                  <Edit size={18} />
-                  Chỉnh sửa
+                  <Trash2 size={18} />
+                  Xóa sản phẩm
                 </button>
               </div>
             </div>

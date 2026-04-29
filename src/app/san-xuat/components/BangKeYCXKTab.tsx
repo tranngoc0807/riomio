@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pencil, Trash2, X, Check, Eye, Copy, Printer, FileDown, FileSpreadsheet } from "lucide-react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pencil, Trash2, X, Check, Copy, Printer, FileDown, FileSpreadsheet } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
@@ -541,17 +541,27 @@ export default function BangKeYCXKTab() {
     setShowGroupEditModal(true);
   };
 
-  // Handle NPL select for group edit form
+  // Handle NPL select: add new row directly to the items table (OrdersTab-style)
   const handleEditNPLSelect = (material: Material) => {
     const nameOnly = material.name.trim();
     const tyLeHaoHut = material.unit?.toLowerCase() === "mét" ? 0.01 : 0.03;
-    setEditCurrentNPLItem((prev) => ({
-      ...prev,
+    const newItem: YeuCauXuatKhoNPL & { _localId?: string } = {
+      id: 0,
+      _localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ngayThang: editHeaderData.ngayThang,
+      maPhieuYC: editHeaderData.maPhieuYC,
       maNPL: nameOnly,
       dvt: material.unit,
-      slCanDung: prev.dinhMuc * prev.slKHSX * (1 + tyLeHaoHut),
-    }));
-    setEditNplSearch(nameOnly);
+      dinhMuc: 0,
+      tyLeHaoHut,
+      slKHSX: 0,
+      slCanDung: 0,
+      maSPSuDung: "",
+      mauSac: "",
+      xuongSX: "",
+    };
+    setEditItems((prev) => [...prev, newItem]);
+    setEditNplSearch("");
     setShowEditNplDropdown(false);
   };
 
@@ -1251,11 +1261,11 @@ export default function BangKeYCXKTab() {
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-center gap-1">
                     <button
-                      onClick={() => handleViewGrouped(group)}
-                      className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Xem chi tiết"
+                      onClick={() => openGroupEditModal(group)}
+                      className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      title="Sửa phiếu"
                     >
-                      <Eye size={16} />
+                      <Pencil size={16} />
                     </button>
                     <button
                       onClick={() => handleCopyPhieu(group)}
@@ -1943,192 +1953,48 @@ export default function BangKeYCXKTab() {
                 </div>
               </div>
 
-              {/* Add new NPL form */}
+              {/* Add NPL: chọn mã NPL → tự thêm row vào bảng dưới, sửa các field còn lại inline */}
               <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <h4 className="font-medium text-gray-700 mb-3">Thêm mã NPL vào phiếu</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* Mã NPL */}
-                  <div className="relative" ref={editNplDropdownRef}>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Mã NPL <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      value={editNplSearch}
-                      onChange={(e) => {
-                        setEditNplSearch(e.target.value);
-                        setEditCurrentNPLItem({ ...editCurrentNPLItem, maNPL: e.target.value });
-                        setShowEditNplDropdown(true);
-                      }}
-                      onFocus={() => setShowEditNplDropdown(true)}
-                      placeholder="Tìm mã NPL..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                    {showEditNplDropdown && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {isLoadingMaterials ? (
-                          <div className="px-3 py-2 text-gray-500 flex items-center gap-2 text-sm">
-                            <Loader2 size={14} className="animate-spin" /> Đang tải...
+                <div className="relative" ref={editNplDropdownRef}>
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    value={editNplSearch}
+                    onChange={(e) => {
+                      setEditNplSearch(e.target.value);
+                      setShowEditNplDropdown(true);
+                    }}
+                    onFocus={() => setShowEditNplDropdown(true)}
+                    placeholder="Tìm mã NPL... (chọn để thêm vào danh sách)"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  {showEditNplDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {isLoadingMaterials ? (
+                        <div className="px-3 py-2 text-gray-500 flex items-center gap-2 text-sm">
+                          <Loader2 size={14} className="animate-spin" /> Đang tải...
+                        </div>
+                      ) : filteredEditMaterials.length === 0 ? (
+                        <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy</div>
+                      ) : (
+                        filteredEditMaterials.slice(0, 50).map((m) => (
+                          <div
+                            key={m.id}
+                            onClick={() => handleEditNPLSelect(m)}
+                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+                          >
+                            <div className="font-medium text-blue-600 text-sm">{m.code}</div>
+                            <div className="text-xs text-gray-500 truncate">{m.name}</div>
                           </div>
-                        ) : filteredEditMaterials.length === 0 ? (
-                          <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy</div>
-                        ) : (
-                          filteredEditMaterials.slice(0, 50).map((m) => (
-                            <div
-                              key={m.id}
-                              onClick={() => handleEditNPLSelect(m)}
-                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
-                            >
-                              <div className="font-medium text-blue-600 text-sm">{m.code}</div>
-                              <div className="text-xs text-gray-500 truncate">{m.name}</div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ĐVT */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">ĐVT</label>
-                    <input
-                      type="text"
-                      value={editCurrentNPLItem.dvt}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
-                    />
-                  </div>
-
-                  {/* Định mức */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Định mức</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editCurrentNPLItem.dinhMuc || ""}
-                      onChange={(e) => {
-                        const dinhMuc = parseFloat(e.target.value) || 0;
-                        const tyLeHaoHut = editCurrentNPLItem.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
-                        setEditCurrentNPLItem({
-                          ...editCurrentNPLItem,
-                          dinhMuc,
-                          slCanDung: dinhMuc * editCurrentNPLItem.slKHSX * (1 + tyLeHaoHut),
-                        });
-                      }}
-                      placeholder="0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-
-                  {/* Hao hụt */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Tỷ lệ hao hụt</label>
-                    <input
-                      type="text"
-                      value={editCurrentNPLItem.dvt ? (editCurrentNPLItem.dvt.toLowerCase() === "mét" ? "1%" : "3%") : ""}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
-                    />
-                  </div>
-
-                  {/* SL KH SX */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">SL KH SX</label>
-                    <input
-                      type="number"
-                      value={editCurrentNPLItem.slKHSX || ""}
-                      onChange={(e) => {
-                        const slKHSX = parseFloat(e.target.value) || 0;
-                        const tyLeHaoHut = editCurrentNPLItem.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
-                        setEditCurrentNPLItem({
-                          ...editCurrentNPLItem,
-                          slKHSX,
-                          slCanDung: editCurrentNPLItem.dinhMuc * slKHSX * (1 + tyLeHaoHut),
-                        });
-                      }}
-                      placeholder="0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-
-                  {/* SL cần dùng */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">SL cần dùng</label>
-                    <input
-                      type="text"
-                      value={editCurrentNPLItem.slCanDung ? editCurrentNPLItem.slCanDung.toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "0"}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
-                    />
-                  </div>
-
-                  {/* Mã SP sử dụng */}
-                  <div className="relative" ref={editSpDropdownRef}>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Mã SP sử dụng</label>
-                    <input
-                      type="text"
-                      value={editSpSearch}
-                      onChange={(e) => {
-                        setEditSpSearch(e.target.value);
-                        setEditCurrentNPLItem({ ...editCurrentNPLItem, maSPSuDung: e.target.value });
-                        setShowEditSpDropdown(true);
-                      }}
-                      onFocus={() => setShowEditSpDropdown(true)}
-                      placeholder="Tìm mã SP..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                    {showEditSpDropdown && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {isLoadingMaSP ? (
-                          <div className="px-3 py-2 text-gray-500 flex items-center gap-2 text-sm">
-                            <Loader2 size={14} className="animate-spin" /> Đang tải...
-                          </div>
-                        ) : filteredEditMaSP.length === 0 ? (
-                          <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy</div>
-                        ) : (
-                          filteredEditMaSP.slice(0, 50).map((sp) => (
-                            <div
-                              key={sp.id}
-                              onClick={() => handleEditMaSPSelect(sp)}
-                              className="px-3 py-2 hover:bg-green-50 cursor-pointer border-b border-gray-100 last:border-0"
-                            >
-                              <div className="font-medium text-green-600 text-sm">{sp.maSP}</div>
-                              <div className="text-xs text-gray-500 truncate">{sp.tenSP}</div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Màu sắc */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Màu sắc</label>
-                    <input
-                      type="text"
-                      value={editCurrentNPLItem.mauSac}
-                      onChange={(e) => setEditCurrentNPLItem({ ...editCurrentNPLItem, mauSac: e.target.value })}
-                      placeholder="Nhập màu sắc..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-
-                  {/* Xưởng SX */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Xưởng SX</label>
-                    <input
-                      type="text"
-                      value={editCurrentNPLItem.xuongSX}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-sm"
-                    />
-                  </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={addNPLToEditList}
-                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                >
-                  <Plus size={16} />
-                  Thêm vào danh sách
-                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Mẹo: chọn mã NPL ở trên để thêm vào danh sách dưới, sau đó điền Định mức, SL KH SX, Mã SP, Màu sắc trực tiếp ở từng dòng.
+                </p>
               </div>
 
               {/* Items table - inline editable */}

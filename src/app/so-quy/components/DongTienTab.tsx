@@ -11,14 +11,94 @@ import {
   ChevronRight,
   FileDown,
   FileSpreadsheet,
+  Printer,
+  Download,
 } from "lucide-react";
 import { DongTien } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
 import * as XLSX from "xlsx";
+import html2canvas from "html2canvas";
 import ConfirmModal from "@/components/ConfirmModal";
-import PrintDownloadButton from "@/components/PrintDownloadButton";
+import { useCompanyConfig } from "@/context/CompanyConfigContext";
+
+const formatNumberInput = (value: string): string => {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const parseNumberInput = (value: string): string =>
+  String(value ?? "").replace(/\D/g, "");
+
+const docSoTienVN = (n: number): string => {
+  if (!n || n <= 0) return "Không đồng";
+  const dv = ["", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+
+  const readBlock = (num: number, fullForm: boolean): string => {
+    const tram = Math.floor(num / 100);
+    const chuc = Math.floor((num % 100) / 10);
+    const dvi = num % 10;
+    let s = "";
+    if (fullForm || tram > 0) {
+      s += dv[tram] + " trăm";
+      if (chuc === 0 && dvi > 0) s += " linh";
+    }
+    if (chuc > 1) {
+      s += " " + dv[chuc] + " mươi";
+      if (dvi === 1) s += " mốt";
+      else if (dvi === 5) s += " lăm";
+      else if (dvi > 0) s += " " + dv[dvi];
+    } else if (chuc === 1) {
+      s += " mười";
+      if (dvi === 5) s += " lăm";
+      else if (dvi > 0) s += " " + dv[dvi];
+    } else if (dvi > 0) {
+      s += (fullForm || tram > 0 ? " " : "") + dv[dvi];
+    }
+    return s.trim();
+  };
+
+  const ty = Math.floor(n / 1_000_000_000);
+  const trieu = Math.floor((n / 1_000_000) % 1000);
+  const nghin = Math.floor((n / 1000) % 1000);
+  const donVi = n % 1000;
+
+  const parts: string[] = [];
+  if (ty > 0) parts.push(readBlock(ty, false) + " tỷ");
+  if (trieu > 0) parts.push(readBlock(trieu, ty > 0) + " triệu");
+  if (nghin > 0) parts.push(readBlock(nghin, ty > 0 || trieu > 0) + " nghìn");
+  if (donVi > 0)
+    parts.push(readBlock(donVi, ty > 0 || trieu > 0 || nghin > 0));
+
+  const result = parts.join(" ").replace(/\s+/g, " ").trim() + " đồng";
+  return result.charAt(0).toUpperCase() + result.slice(1);
+};
+
+const phieuThuChiPrintStyles = `
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:Arial,'Helvetica Neue',sans-serif;color:#111;padding:32px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sheet{max-width:780px;margin:0 auto;border:1px solid #d1d5db;}
+  .sheet table{width:100%;border-collapse:collapse;}
+  .sheet td{border:1px solid #d1d5db;padding:8px 12px;vertical-align:middle;font-size:14px;}
+  .header-row td{background:#fff;text-align:left;padding:14px 16px;}
+  .logo{display:block;max-width:90px;max-height:90px;object-fit:contain;margin-bottom:8px;}
+  .company-name{font-weight:700;font-size:16px;}
+  .company-addr{font-size:13px;margin-top:2px;color:#1f2937;}
+  .title-cell{text-align:center;font-size:22px;font-weight:700;letter-spacing:1px;padding:14px 12px;}
+  .label{width:230px;color:#111;}
+  .label-right{text-align:left;}
+  .value-strong{font-weight:700;}
+  .so-tien{font-weight:700;font-size:15px;}
+  .viet-bang-chu{font-style:italic;}
+  .signatures{margin-top:0;}
+  .signatures td{height:120px;text-align:center;vertical-align:top;padding-top:10px;}
+  .sig-title{font-weight:700;font-size:14px;}
+  .sig-note{font-style:italic;font-size:12px;color:#374151;margin-top:2px;}
+  @media print{body{padding:0;}}
+`;
 
 export default function DongTienTab() {
+  const { config: companyConfig } = useCompanyConfig();
   const [dongTienList, setDongTienList] = useState<DongTien[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showPhieuThuModal, setShowPhieuThuModal] = useState(false);
@@ -396,6 +476,126 @@ export default function DongTienTab() {
     setShowPhieuThuModal(false);
     setShowPhieuChiModal(false);
     resetForm();
+  };
+
+  const buildPhieuThuChiHTML = (item: DongTien): string => {
+    const fmt = (v: number) => (v || 0).toLocaleString("vi-VN");
+    const isPhieuThu = !!item.maPhieuThu;
+    const maPhieu = item.maPhieuThu || item.maPhieuChi || "";
+    const tieuDe = isPhieuThu ? "PHIẾU THU" : "PHIẾU CHI";
+    const labelNguoi = isPhieuThu
+      ? "Họ và tên người nộp tiền:"
+      : "Họ và tên người nhận tiền:";
+    const labelLyDo = isPhieuThu ? "Lý do nộp:" : "Lý do chi:";
+    const labelSig = isPhieuThu ? "Người nộp tiền" : "Người nhận tiền";
+    const soTien = isPhieuThu ? item.tongThu : item.tongChi;
+    const logoSrc =
+      companyConfig.logo && companyConfig.logo.trim() !== ""
+        ? companyConfig.logo
+        : `${window.location.origin}/logo_riomio.jpg`;
+    const companyName = (companyConfig.name || "").toUpperCase();
+    const companyAddress = companyConfig.address || "";
+    const nguoiNopNhan = item.doiTuong || item.thuTienHang || item.nccNPL || "";
+    const lyDo = item.noiDung || "";
+
+    return `
+      <div class="sheet">
+        <table>
+          <tr class="header-row">
+            <td colspan="4">
+              <img src="${logoSrc}" class="logo" crossorigin="anonymous" />
+              <div class="company-name">${companyName}</div>
+              <div class="company-addr">${companyAddress}</div>
+            </td>
+          </tr>
+          <tr><td colspan="4" class="title-cell">${tieuDe}</td></tr>
+          <tr>
+            <td class="label">Số phiếu:</td>
+            <td class="value-strong">${maPhieu}</td>
+            <td colspan="2">Quỹ: ${item.tenTK || ""}</td>
+          </tr>
+          <tr>
+            <td class="label">Ngày tháng:</td>
+            <td colspan="3">${item.ngayThang || ""}</td>
+          </tr>
+          <tr>
+            <td class="label">${labelNguoi}</td>
+            <td colspan="3" class="value-strong">${nguoiNopNhan}</td>
+          </tr>
+          <tr>
+            <td class="label">Địa chỉ:</td>
+            <td colspan="3"></td>
+          </tr>
+          <tr>
+            <td class="label">${labelLyDo}</td>
+            <td colspan="3">${lyDo}</td>
+          </tr>
+          <tr>
+            <td class="label">Số tiền:</td>
+            <td colspan="3" class="so-tien">${fmt(soTien)} đ</td>
+          </tr>
+          <tr>
+            <td class="label">Viết bằng chữ:</td>
+            <td colspan="3" class="viet-bang-chu">${docSoTienVN(soTien)}</td>
+          </tr>
+        </table>
+        <table class="signatures">
+          <tr>
+            <td><div class="sig-title">Giám đốc</div><div class="sig-note">(Kí, họ tên)</div></td>
+            <td><div class="sig-title">Kế toán trưởng</div><div class="sig-note">(Kí, họ tên)</div></td>
+            <td><div class="sig-title">Thủ quỹ</div><div class="sig-note">(Kí, họ tên)</div></td>
+            <td><div class="sig-title">${labelSig}</div><div class="sig-note">(Kí, họ tên)</div></td>
+          </tr>
+        </table>
+      </div>
+    `;
+  };
+
+  const handlePrintPhieu = (item: DongTien) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Không mở được cửa sổ in. Vui lòng cho phép popup.");
+      return;
+    }
+    const maPhieu = item.maPhieuThu || item.maPhieuChi || "";
+    const tieuDe = item.maPhieuThu ? "PHIẾU THU" : "PHIẾU CHI";
+    printWindow.document.write(
+      `<!DOCTYPE html><html><head><title>${tieuDe} - ${maPhieu}</title>
+       <style>${phieuThuChiPrintStyles}</style></head>
+       <body>${buildPhieuThuChiHTML(item)}</body></html>`,
+    );
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 400);
+  };
+
+  const handleDownloadPhieuJPG = async (item: DongTien) => {
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "-10000px";
+    container.style.top = "0";
+    container.style.width = "860px";
+    container.style.background = "#fff";
+    container.innerHTML = `<style>${phieuThuChiPrintStyles}</style>${buildPhieuThuChiHTML(item)}`;
+    document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const link = document.createElement("a");
+      const maPhieu = item.maPhieuThu || item.maPhieuChi || "phieu";
+      link.download = `${maPhieu}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+    } catch (error) {
+      console.error("Error exporting JPG:", error);
+      toast.error("Lỗi khi xuất ảnh");
+    } finally {
+      document.body.removeChild(container);
+    }
   };
 
   if (isLoading && dongTienList.length === 0) {
@@ -905,9 +1105,13 @@ export default function DongTienTab() {
                 </label>
                 <input
                   type="text"
-                  value={formData.thuKhac}
+                  inputMode="numeric"
+                  value={formatNumberInput(formData.thuKhac)}
                   onChange={(e) =>
-                    setFormData({ ...formData, thuKhac: e.target.value })
+                    setFormData({
+                      ...formData,
+                      thuKhac: parseNumberInput(e.target.value),
+                    })
                   }
                   disabled={!formData.phanLoaiThuChi.toLowerCase().includes('thu khác')}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
@@ -917,7 +1121,7 @@ export default function DongTienTab() {
                   }`}
                   placeholder={
                     formData.phanLoaiThuChi.toLowerCase().includes('thu khác')
-                      ? "Nhập số tiền hoặc ghi chú"
+                      ? "Nhập số tiền"
                       : ""
                   }
                 />
@@ -970,27 +1174,31 @@ export default function DongTienTab() {
                 </label>
                 <input
                   type="text"
-                  value={formData.tongThu}
+                  inputMode="numeric"
+                  value={formatNumberInput(formData.tongThu)}
                   onChange={(e) =>
-                    setFormData({ ...formData, tongThu: e.target.value })
+                    setFormData({
+                      ...formData,
+                      tongThu: parseNumberInput(e.target.value),
+                    })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập số tiền hoặc ghi chú"
+                  placeholder="Nhập số tiền"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ghi chú
+                  Nội dung
                 </label>
                 <textarea
-                  value={formData.ghiChu}
+                  value={formData.noiDung}
                   onChange={(e) =>
-                    setFormData({ ...formData, ghiChu: e.target.value })
+                    setFormData({ ...formData, noiDung: e.target.value })
                   }
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập ghi chú (nếu có)"
+                  placeholder="Nhập nội dung (nếu có)"
                 />
               </div>
 
@@ -1201,9 +1409,13 @@ export default function DongTienTab() {
                 </label>
                 <input
                   type="text"
-                  value={formData.chiKhac}
+                  inputMode="numeric"
+                  value={formatNumberInput(formData.chiKhac)}
                   onChange={(e) =>
-                    setFormData({ ...formData, chiKhac: e.target.value })
+                    setFormData({
+                      ...formData,
+                      chiKhac: parseNumberInput(e.target.value),
+                    })
                   }
                   disabled={!formData.phanLoaiThuChi.toLowerCase().includes('chi khác')}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
@@ -1213,7 +1425,7 @@ export default function DongTienTab() {
                   }`}
                   placeholder={
                     formData.phanLoaiThuChi.toLowerCase().includes('chi khác')
-                      ? "Nhập số tiền hoặc ghi chú"
+                      ? "Nhập số tiền"
                       : "Chỉ khi chọn 'Chi khác'"
                   }
                 />
@@ -1266,27 +1478,31 @@ export default function DongTienTab() {
                 </label>
                 <input
                   type="text"
-                  value={formData.tongChi}
+                  inputMode="numeric"
+                  value={formatNumberInput(formData.tongChi)}
                   onChange={(e) =>
-                    setFormData({ ...formData, tongChi: e.target.value })
+                    setFormData({
+                      ...formData,
+                      tongChi: parseNumberInput(e.target.value),
+                    })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập số tiền hoặc ghi chú"
+                  placeholder="Nhập số tiền"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ghi chú
+                  Nội dung
                 </label>
                 <textarea
-                  value={formData.ghiChu}
+                  value={formData.noiDung}
                   onChange={(e) =>
-                    setFormData({ ...formData, ghiChu: e.target.value })
+                    setFormData({ ...formData, noiDung: e.target.value })
                   }
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập ghi chú (nếu có)"
+                  placeholder="Nhập nội dung (nếu có)"
                 />
               </div>
 
@@ -1320,14 +1536,24 @@ export default function DongTienTab() {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">
-                Chi tiết dòng tiền
+                {viewingItem.maPhieuThu ? "Phiếu thu" : "Phiếu chi"} -{" "}
+                {viewingItem.maPhieuThu || viewingItem.maPhieuChi}
               </h3>
               <div className="flex items-center gap-2">
-                <PrintDownloadButton
-                  targetRef={detailPrintRef}
-                  fileName={`DongTien_${viewingItem.maPhieuThu || viewingItem.maPhieuChi || viewingItem.id}`}
-                  title={`Chi tiết dòng tiền - ${viewingItem.maPhieuThu || viewingItem.maPhieuChi || ""}`}
-                />
+                <button
+                  onClick={() => handlePrintPhieu(viewingItem)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <Printer size={16} />
+                  In
+                </button>
+                <button
+                  onClick={() => handleDownloadPhieuJPG(viewingItem)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                >
+                  <Download size={16} />
+                  Tải JPG
+                </button>
                 <button
                   onClick={() => setShowViewModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1531,65 +1757,6 @@ export default function DongTienTab() {
 
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  const item = viewingItem;
-                  if (!item) return;
-                  const printWindow = window.open("", "_blank");
-                  if (!printWindow) return;
-                  const fmt = (v: number) => v.toLocaleString("vi-VN");
-                  const isPhieuThu = !!item.maPhieuThu;
-                  const maPhieu = item.maPhieuThu || item.maPhieuChi || "";
-                  const loai = isPhieuThu ? "PHIẾU THU" : "PHIẾU CHI";
-                  const color = isPhieuThu ? "#16a34a" : "#dc2626";
-
-                  printWindow.document.write(`<html><head><title>${loai} - ${maPhieu}</title>
-                    <style>
-                      * { margin:0; padding:0; box-sizing:border-box; }
-                      body { font-family:Arial,sans-serif; padding:40px; color:#333; max-width:800px; margin:0 auto; }
-                      h1 { font-size:24px; text-align:center; color:${color}; margin-bottom:8px; }
-                      .ma-phieu { text-align:center; font-size:16px; color:#666; margin-bottom:25px; }
-                      .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 30px; margin-bottom:20px; }
-                      .info-item label { display:block; font-size:12px; color:#666; margin-bottom:2px; }
-                      .info-item p { font-size:14px; color:#111; }
-                      .full-width { grid-column: 1 / -1; }
-                      .summary { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:20px 0; padding:15px 0; border-top:2px solid #eee; border-bottom:2px solid #eee; }
-                      .summary-box { padding:15px; border-radius:8px; text-align:center; }
-                      .summary-box.thu { background:#f0fdf4; }
-                      .summary-box.chi { background:#fef2f2; }
-                      .summary-box label { display:block; font-size:12px; color:#666; margin-bottom:5px; }
-                      .summary-box .amount { font-size:22px; font-weight:700; }
-                      .amount-thu { color:#16a34a; }
-                      .amount-chi { color:#dc2626; }
-                      @media print { body { padding:20px; } }
-                    </style></head><body>
-                    <h1>${loai}</h1>
-                    <p class="ma-phieu">Mã: ${maPhieu}</p>
-                    <div class="info-grid">
-                      <div class="info-item"><label>Ngày tháng</label><p>${item.ngayThang}</p></div>
-                      <div class="info-item"><label>Tên TK</label><p>${item.tenTK || "-"}</p></div>
-                      <div class="info-item"><label>NCC NPL</label><p>${item.nccNPL || "-"}</p></div>
-                      <div class="info-item"><label>Xưởng SX</label><p>${item.xuongSX || "-"}</p></div>
-                      <div class="info-item"><label>Chi vận chuyển</label><p>${item.chiVanChuyen || "-"}</p></div>
-                      <div class="info-item"><label>Thu tiền hàng</label><p>${item.thuTienHang || "-"}</p></div>
-                      <div class="info-item"><label>Đối tượng</label><p>${item.doiTuong || "-"}</p></div>
-                      <div class="info-item"><label>Phân loại thu chi</label><p>${item.phanLoaiThuChi || "-"}</p></div>
-                      <div class="info-item full-width"><label>Nội dung</label><p>${item.noiDung || "-"}</p></div>
-                    </div>
-                    <div class="summary">
-                      <div class="summary-box thu"><label>Tổng thu</label><div class="amount amount-thu">${fmt(item.tongThu)} đ</div></div>
-                      <div class="summary-box chi"><label>Tổng chi</label><div class="amount amount-chi">${fmt(item.tongChi)} đ</div></div>
-                    </div>
-                    ${item.ghiChu ? `<div class="info-item" style="margin-top:15px;"><label>Ghi chú</label><p>${item.ghiChu}</p></div>` : ""}
-                  </body></html>`);
-                  printWindow.document.close();
-                  setTimeout(() => printWindow.print(), 300);
-                }}
-                className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-              >
-                <FileDown size={16} />
-                Xuất PDF
-              </button>
               <button
                 onClick={() => setShowViewModal(false)}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"

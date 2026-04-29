@@ -2812,7 +2812,7 @@ export default function OrdersTab() {
                                 : product.retailPrice;
 
                               const newOrder: Order = {
-                                id: 0, // Will be assigned by server
+                                id: -(Date.now() + Math.floor(Math.random() * 1000)), // unique negative id; server assigns real id on save
                                 code: editGroupedOrder!.orderCode,
                                 date: editGroupedOrder!.date,
                                 customer: editGroupedOrder!.customer,
@@ -3270,7 +3270,7 @@ export default function OrdersTab() {
                       (p) => p.id > 0,
                     );
                     const newProducts = preparedProducts.filter(
-                      (p) => p.id === 0,
+                      (p) => p.id <= 0,
                     );
 
                     // Batch update existing products FIRST (before delete to avoid row shift)

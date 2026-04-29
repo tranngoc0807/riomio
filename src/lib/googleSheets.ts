@@ -1070,7 +1070,7 @@ export async function addDongTienToSheet(dongTien: Omit<DongTien, 'id' | 'rowInd
     await sheets.spreadsheets.values.append({
       spreadsheetId: spreadsheetIdDongTien,
       range: `'${sheetNameDongTien}'!A6:Q`,
-      valueInputOption: "RAW",
+      valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
       },
@@ -1122,7 +1122,7 @@ export async function updateDongTienInSheet(rowIndex: number, dongTien: Omit<Don
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdDongTien,
       range: `'${sheetNameDongTien}'!A${rowIndex}:Q${rowIndex}`,
-      valueInputOption: "RAW",
+      valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
       },
@@ -3935,6 +3935,195 @@ export async function getSanPhamFromSheet(): Promise<SanPham[]> {
 }
 
 // ============================================
+// MA SP LIST FOR CATALOG DROPDOWN
+// Đọc sheet "Mã SP" trong spreadsheet RIOMIO_BAN_HANG (chứa Giá sỉ / Giá lẻ / Hình ảnh).
+// ============================================
+// Spreadsheet & sheet name dùng riêng cho dropdown này
+const spreadsheetIdMaSPDropdown =
+  process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG ||
+  "1bIXymFQLB6BJgYDS5qJYQl0SRUu7TtL_4XzzO0LPSis";
+const sheetNameMaSPDropdown = process.env.GOOGLE_SHEET_NAME_MA_SP || "Mã SP";
+
+/**
+ * Đọc reference list Màu sắc (cột O) và Size (cột P) trong sheet "Danh mục SP"
+ * (RIOMIO_BAN_HANG). Trả về 2 array unique values.
+ */
+export async function getColorSizeListsFromSheet(): Promise<{
+  colors: string[];
+  sizes: string[];
+}> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const spreadsheetId =
+      process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG ||
+      "1bIXymFQLB6BJgYDS5qJYQl0SRUu7TtL_4XzzO0LPSis";
+    const sheetName =
+      process.env.GOOGLE_SHEET_NAME_DANH_MUC_SP_RIOMIO || "Danh mục SP";
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'!O1:P`,
+    });
+
+    const rows = response.data.values || [];
+    const colors = new Set<string>();
+    const sizes = new Set<string>();
+
+    for (const row of rows) {
+      const c = String(row[0] || "").trim();
+      const s = String(row[1] || "").trim();
+      // Bỏ header / blank
+      if (
+        c &&
+        c.toLowerCase() !== "màu sắc" &&
+        c.toLowerCase() !== "mau sac"
+      )
+        colors.add(c);
+      if (s && s.toLowerCase() !== "size") sizes.add(s);
+    }
+
+    const result = {
+      colors: Array.from(colors),
+      sizes: Array.from(sizes),
+    };
+    console.log(
+      `[getColorSizeListsFromSheet] sheet="${sheetName}", colors=${result.colors.length}, sizes=${result.sizes.length}`,
+    );
+    return result;
+  } catch (error) {
+    console.error("Error reading Color/Size lists:", error);
+    return { colors: [], sizes: [] };
+  }
+}
+
+export interface MaSPListItem {
+  code: string;
+  name: string;
+  size: string;
+  color: string;
+  workshop: string;
+  wholesalePrice: number;
+  retailPrice: number;
+  image: string;
+  sizeChart: string;
+}
+
+export async function getMaSPListFromSheet(): Promise<MaSPListItem[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdMaSPDropdown,
+      range: `'${sheetNameMaSPDropdown}'!A1:Z`,
+    });
+
+    const rows = response.data.values;
+    console.log(
+      `[getMaSPListFromSheet] read ${rows?.length || 0} rows from sheet "${sheetNameMaSPDropdown}" (spreadsheet: ${spreadsheetIdMaSPDropdown.slice(0, 12)}...)`,
+    );
+    if (!rows || rows.length === 0) return [];
+
+    const parsePrice = (v: any): number => {
+      if (v === null || v === undefined || v === "") return 0;
+      const cleaned = String(v).replace(/[^\d.-]/g, "").replace(/\.(?=\d{3})/g, "");
+      const n = parseFloat(cleaned);
+      return isNaN(n) ? 0 : n;
+    };
+
+    const norm = (s: any) =>
+      String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+    // Tìm header row: row đầu tiên có cell chứa "mã sp"
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(rows.length, 20); i++) {
+      const rowNormalized = (rows[i] || []).map(norm);
+      if (rowNormalized.some((c) => c === "mã sp" || c === "ma sp")) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+    if (headerRowIdx === -1) {
+      console.warn(`[getMaSPListFromSheet] Cannot find header row in sheet "${sheetNameSanPham}"`);
+      return [];
+    }
+
+    const header = (rows[headerRowIdx] || []).map(norm);
+    console.log(
+      `[getMaSPListFromSheet] FULL HEADER (row ${headerRowIdx + 1}):`,
+      header.map((h, i) => `${String.fromCharCode(65 + i)}=${JSON.stringify(h)}`).join(", "),
+    );
+
+    const findCol = (...candidates: string[]) => {
+      for (const c of candidates) {
+        const idx = header.findIndex((h) => h === norm(c));
+        if (idx !== -1) return idx;
+      }
+      // Fallback: contains check
+      for (const c of candidates) {
+        const idx = header.findIndex((h) => h.includes(norm(c)));
+        if (idx !== -1) return idx;
+      }
+      return -1;
+    };
+
+    const colCode = findCol("mã sp", "ma sp");
+    const colName = findCol("tên sp", "ten sp", "tên sản phẩm");
+    const colColor = findCol("màu sắc", "mau sac", "màu");
+    const colWorkshop = findCol("xưởng sx", "xuong sx", "xưởng");
+    const colWholesale = findCol("giá sỉ", "gia si", "giá bán sỉ", "giá nhập sỉ", "sỉ");
+    const colRetail = findCol("giá lẻ", "gia le", "giá bán lẻ", "giá nhập lẻ", "lẻ");
+    const colImage = findCol("hình ảnh", "hinh anh", "ảnh", "image");
+    // Trong sheet "Mã SP" master, cột header "Size" chứa dòng size (vd "6/7-10/11"),
+    // chính là Dòng size sẽ auto-fill ở modal danh mục SP.
+    const colSizeChart = findCol(
+      "dòng size",
+      "dong size",
+      "size chart",
+      "size",
+      "kích thước",
+    );
+    const colSize = -1; // sheet master không có cột Size riêng
+
+    console.log(
+      `[getMaSPListFromSheet] header row=${headerRowIdx + 1}, cols: code=${colCode}, name=${colName}, color=${colColor}, workshop=${colWorkshop}, wholesale=${colWholesale}, retail=${colRetail}, image=${colImage}, sizeChart=${colSizeChart}`,
+    );
+
+    if (colCode === -1) {
+      console.warn(`[getMaSPListFromSheet] Header has no Mã SP column`);
+      return [];
+    }
+
+    const result: MaSPListItem[] = [];
+    for (let i = headerRowIdx + 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const code = String(row[colCode] || "").trim();
+      if (!code || code.includes(" ") || norm(code) === "mã sp") continue;
+
+      result.push({
+        code,
+        name: colName !== -1 ? String(row[colName] || "").trim() : "",
+        size: colSize !== -1 ? String(row[colSize] || "").trim() : "",
+        color: colColor !== -1 ? String(row[colColor] || "").trim() : "",
+        workshop: colWorkshop !== -1 ? String(row[colWorkshop] || "").trim() : "",
+        wholesalePrice: colWholesale !== -1 ? parsePrice(row[colWholesale]) : 0,
+        retailPrice: colRetail !== -1 ? parsePrice(row[colRetail]) : 0,
+        image: colImage !== -1 ? String(row[colImage] || "").trim() : "",
+        sizeChart: colSizeChart !== -1 ? String(row[colSizeChart] || "").trim() : "",
+      });
+    }
+
+    console.log(
+      `[getMaSPListFromSheet] returning ${result.length} items, sample:`,
+      result.slice(0, 2),
+    );
+    return result;
+  } catch (error) {
+    console.error("Error reading Mã SP list from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // SAN PHAM BAN HANG (Sản phẩm bán hàng - PhatTrienSanPhamBanHang)
 // ============================================
 
@@ -4895,30 +5084,37 @@ const spreadsheetIdSanPhamCatalog = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN
 const sheetNameSanPhamCatalog = process.env.GOOGLE_SHEET_NAME_DANH_MUC_SP_RIOMIO || "SanPham";
 
 // Interface cho danh mục sản phẩm
+// Sheet "SanPham": A=STT, B=Mã SP, C=Hình in, D=Size, E=Màu sắc, F=Mã SP đầy đủ (formula),
+// G=Hình ảnh, H=Giá sỉ, I=Giá lẻ, J=Dòng size, K=Tồn kho
 export interface SanPhamCatalog {
   id: number;
-  name: string;              // Tên SP (B)
-  sizeChart: string;         // Bảng size sản xuất (C)
-  image: string;             // Hình ảnh (D)
-  color: string;             // Màu sắc sản xuất (E)
-  retailPrice: number;       // Giá bán lẻ (F)
-  wholesalePrice: number;    // Giá bán sỉ (G)
-  costPrice: number;         // Giá vốn (H)
-  mainFabric: string;        // Vải chính (I)
-  accentFabric: string;      // Vải phối (J)
-  otherMaterials: string;    // Phụ liệu khác (K)
-  mainFabricQuota: string;   // Định mức vải chính (L)
-  accentFabricQuota: string; // Định mức vải phối 1 (M)
-  materialsQuota: string;    // Định mức phụ liệu 2 (N)
-  accessoriesQuota: string;  // Định mức phụ kiện (O)
-  otherQuota: string;        // Định mức khác (P)
-  plannedQuantity: number;   // Số lượng kế hoạch (Q)
-  cutQuantity: number;       // Số lượng cắt (R)
-  warehouseQuantity: number; // Số lượng nhập kho (S)
-  finalStatus: string;       // CĐ Final (T)
-  nplSyncStatus: string;     // CĐ đồng bộ NPL (U)
-  productionStatus: string;  // CĐ sản xuất (V)
-  warehouseEntry: string;    // Nhập kho (W)
+  code: string;              // B - Mã SP (RBT1151)
+  printPattern: string;      // C - Hình in (676)
+  size: string;              // D - Size (3/4)
+  color: string;             // E - Màu sắc (Xanh ghi)
+  name: string;              // F - Mã SP đầy đủ (RBT1151 676 3/4 Xanh ghi)
+  image: string;             // G - Hình ảnh
+  wholesalePrice: number;    // H - Giá sỉ
+  retailPrice: number;       // I - Giá lẻ
+  sizeChart: string;         // J - Dòng size (3/4-10/11)
+  tonKho: number;            // K - Tồn kho
+  // Legacy fields retained for backward compat with downstream consumers:
+  costPrice: number;
+  mainFabric: string;
+  accentFabric: string;
+  otherMaterials: string;
+  mainFabricQuota: string;
+  accentFabricQuota: string;
+  materialsQuota: string;
+  accessoriesQuota: string;
+  otherQuota: string;
+  plannedQuantity: number;
+  cutQuantity: number;
+  warehouseQuantity: number;
+  finalStatus: string;
+  nplSyncStatus: string;
+  productionStatus: string;
+  warehouseEntry: string;
 }
 
 // Helper to parse price from Vietnamese format
@@ -4938,7 +5134,7 @@ export async function getSanPhamCatalogFromSheet(): Promise<SanPhamCatalog[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanPhamCatalog,
-      range: `'${sheetNameSanPhamCatalog}'!B6:J`, // Đọc từ cột B đến J, dòng 6 (header ở dòng 5)
+      range: `'${sheetNameSanPhamCatalog}'!B6:K`, // B → K, dòng data từ row 6 (header ở row 5)
     });
 
     const rows = response.data.values;
@@ -4951,13 +5147,17 @@ export async function getSanPhamCatalogFromSheet(): Promise<SanPhamCatalog[]> {
     const products: SanPhamCatalog[] = rows
       .map((row, index) => ({
         id: index + 1,
-        name: (row[4] || "").toString().trim(),    // F - Mã SP đầy đủ (RAD1337 Đỏ BB)
-        color: (row[3] || "").toString().trim(),   // E - Màu sắc (Đỏ)
-        sizeChart: row[8] || "",                   // J - Dòng size (3/4-10/11)
-        image: row[5] || "",                       // G - Hình ảnh
-        wholesalePrice: parsePriceCatalog(row[6]), // H - Giá sỉ (150,000)
-        retailPrice: parsePriceCatalog(row[7]),    // I - Giá lẻ (299,000)
-        costPrice: 0,                              // Không có trong sheet mới
+        code: (row[0] || "").toString().trim(),         // B - Mã SP
+        printPattern: (row[1] || "").toString().trim(), // C - Hình in
+        size: (row[2] || "").toString().trim(),         // D - Size
+        color: (row[3] || "").toString().trim(),        // E - Màu sắc
+        name: (row[4] || "").toString().trim(),         // F - Mã SP đầy đủ
+        image: row[5] || "",                            // G - Hình ảnh
+        wholesalePrice: parsePriceCatalog(row[6]),      // H - Giá sỉ
+        retailPrice: parsePriceCatalog(row[7]),         // I - Giá lẻ
+        sizeChart: row[8] || "",                        // J - Dòng size
+        tonKho: parsePriceCatalog(row[9]),              // K - Tồn kho
+        costPrice: 0,
         mainFabric: "",
         accentFabric: "",
         otherMaterials: "",
@@ -4974,7 +5174,7 @@ export async function getSanPhamCatalogFromSheet(): Promise<SanPhamCatalog[]> {
         productionStatus: "",
         warehouseEntry: "",
       }))
-      .filter((p) => p.name !== "");
+      .filter((p) => p.name !== "" || p.code !== "");
 
     return products;
   } catch (error) {
@@ -5015,27 +5215,42 @@ export async function addSanPhamCatalogToSheet(product: SanPhamCatalog): Promise
     );
     const sttNumber = productRows.length + 1;
 
-    const values = [
-      [
-        sttNumber,                                                              // A - STT
-        product.name,                                                           // B - Mã SP
-        "",                                                                     // C - Hình in
-        "",                                                                     // D - Size
-        product.color,                                                          // E - Màu sắc
-        "",                                                                     // F - Mã SP đầy đủ (tự tạo)
-        product.image,                                                          // G - Hình ảnh
-        product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "", // H - Giá sỉ
-        product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",     // I - Giá lẻ
-        product.sizeChart,                                                      // J - Dòng size
-      ],
-    ];
+    // Size dạng "5/6" sẽ bị USER_ENTERED parse thành ngày → prefix "'" để force text
+    const sizeValue = product.size && product.size.includes("/")
+      ? `'${product.size}`
+      : product.size;
+    // Dòng size dạng "6/7-10/11" cũng cần force text
+    const sizeChartValue = product.sizeChart && product.sizeChart.includes("/")
+      ? `'${product.sizeChart}`
+      : product.sizeChart;
 
-    await sheets.spreadsheets.values.update({
+    // Bỏ qua cột F (Mã SP đầy đủ) vì là ARRAYFORMULA — ghi vào sẽ chặn formula
+    await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: spreadsheetIdSanPhamCatalog,
-      range: `${sheetNameSanPhamCatalog}!A${nextRow}:J${nextRow}`,
-      valueInputOption: "USER_ENTERED",
       requestBody: {
-        values,
+        valueInputOption: "USER_ENTERED",
+        data: [
+          {
+            range: `${sheetNameSanPhamCatalog}!A${nextRow}:E${nextRow}`,
+            values: [[
+              sttNumber,            // A - STT
+              product.code,         // B - Mã SP
+              product.printPattern, // C - Hình in
+              sizeValue,            // D - Size
+              product.color,        // E - Màu sắc
+            ]],
+          },
+          {
+            range: `${sheetNameSanPhamCatalog}!G${nextRow}:K${nextRow}`,
+            values: [[
+              product.image,                                                          // G - Hình ảnh
+              product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "", // H - Giá sỉ
+              product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",     // I - Giá lẻ
+              sizeChartValue,                                                         // J - Dòng size
+              product.tonKho ?? 0,                                                    // K - Tồn kho (luôn gửi, kể cả 0)
+            ]],
+          },
+        ],
       },
     });
 
@@ -5053,7 +5268,8 @@ export async function updateSanPhamCatalogInSheet(product: SanPhamCatalog): Prom
   try {
     const sheets = await getGoogleSheetsClient();
 
-    const rowNumber = product.id + 1; // ID 1 = dòng 2
+    // Data đọc từ B6 (header row 5), id=1 → row 6 → rowNumber = id + 5
+    const rowNumber = product.id + 5;
 
     // Cập nhật từng cột riêng để không ghi đè cột có công thức (C, D, F, K)
     const data = [
@@ -5098,7 +5314,8 @@ export async function deleteSanPhamCatalogFromSheet(productId: number): Promise<
   try {
     const sheets = await getGoogleSheetsClient();
 
-    const rowNumber = productId + 1;
+    // Data đọc từ B6 (header row 5), id=1 → row 6 → rowNumber = id + 5
+    const rowNumber = productId + 5;
 
     const sheetMetadata = await sheets.spreadsheets.get({
       spreadsheetId: spreadsheetIdSanPhamCatalog,

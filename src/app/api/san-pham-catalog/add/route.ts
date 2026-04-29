@@ -9,12 +9,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate - cần có tên sản phẩm
-    if (!body.name) {
+    // Validate - cần có Mã SP
+    if (!body.code) {
       return NextResponse.json(
         {
           success: false,
-          error: "Thiếu tên sản phẩm",
+          error: "Thiếu Mã SP",
         },
         { status: 400 }
       );
@@ -22,28 +22,32 @@ export async function POST(request: NextRequest) {
 
     const product: SanPhamCatalog = {
       id: 0,
-      name: body.name || "",
-      sizeChart: body.sizeChart || "",
-      image: body.image || "",
+      code: body.code || "",
+      printPattern: body.printPattern || "",
+      size: body.size || "",
       color: body.color || "",
-      retailPrice: body.retailPrice || 0,
+      name: body.name || "",
+      image: body.image || "",
       wholesalePrice: body.wholesalePrice || 0,
-      costPrice: body.costPrice || 0,
-      mainFabric: body.mainFabric || "",
-      accentFabric: body.accentFabric || "",
-      otherMaterials: body.otherMaterials || "",
-      mainFabricQuota: body.mainFabricQuota || "",
-      accentFabricQuota: body.accentFabricQuota || "",
-      materialsQuota: body.materialsQuota || "",
-      accessoriesQuota: body.accessoriesQuota || "",
-      otherQuota: body.otherQuota || "",
-      plannedQuantity: body.plannedQuantity || 0,
-      cutQuantity: body.cutQuantity || 0,
-      warehouseQuantity: body.warehouseQuantity || 0,
-      finalStatus: body.finalStatus || "",
-      nplSyncStatus: body.nplSyncStatus || "",
-      productionStatus: body.productionStatus || "",
-      warehouseEntry: body.warehouseEntry || "",
+      retailPrice: body.retailPrice || 0,
+      sizeChart: body.sizeChart || "",
+      tonKho: body.tonKho || 0,
+      costPrice: 0,
+      mainFabric: "",
+      accentFabric: "",
+      otherMaterials: "",
+      mainFabricQuota: "",
+      accentFabricQuota: "",
+      materialsQuota: "",
+      accessoriesQuota: "",
+      otherQuota: "",
+      plannedQuantity: 0,
+      cutQuantity: 0,
+      warehouseQuantity: 0,
+      finalStatus: "",
+      nplSyncStatus: "",
+      productionStatus: "",
+      warehouseEntry: "",
     };
 
     await addSanPhamCatalogToSheet(product);

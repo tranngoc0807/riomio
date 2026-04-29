@@ -81,6 +81,9 @@ export default function QuanLyKhoTab() {
     currentDate.toISOString().split('T')[0]
   );
 
+  // Search for Tồn kho hàng hóa
+  const [searchTonKho, setSearchTonKho] = useState("");
+
   // Search for Xuất kho
   const [searchXuatKho, setSearchXuatKho] = useState("");
 
@@ -347,11 +350,16 @@ export default function QuanLyKhoTab() {
     item.ghiChu.toLowerCase().includes(searchNhapKho.toLowerCase())
   );
 
+  // Filter tồn kho theo mã SP
+  const filteredTonKho = tonKhoList.filter((item) =>
+    item.code.toLowerCase().includes(searchTonKho.toLowerCase().trim()),
+  );
+
   // Pagination calculations
-  const totalPagesBang1 = Math.ceil(tonKhoList.length / itemsPerPage);
+  const totalPagesBang1 = Math.ceil(filteredTonKho.length / itemsPerPage);
   const startIndexBang1 = (currentPageBang1 - 1) * itemsPerPage;
   const endIndexBang1 = startIndexBang1 + itemsPerPage;
-  const currentItemsBang1 = tonKhoList.slice(startIndexBang1, endIndexBang1);
+  const currentItemsBang1 = filteredTonKho.slice(startIndexBang1, endIndexBang1);
 
   const totalPagesBang2 = Math.ceil(tonDauList.length / itemsPerPage);
   const startIndexBang2 = (currentPageBang2 - 1) * itemsPerPage;
@@ -1101,13 +1109,25 @@ export default function QuanLyKhoTab() {
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-white">Tồn kho hàng hóa ({tonKhoList.length} sản phẩm)</h4>
+                <h4 className="font-semibold text-white">Tồn kho hàng hóa ({filteredTonKho.length} sản phẩm)</h4>
                 <div className="flex items-center gap-2">
                   <DatePicker value={thangNam} onChange={setThangNam} type="month" className="bg-white/20 text-white placeholder-white/70 border-none outline-none px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer min-w-45" />
                   <button onClick={() => fetchTonKho(true, "ton-kho")} className="bg-white text-blue-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors">Xác nhận</button>
                   <button onClick={handleExportTonKhoPDF} className="flex items-center gap-1 bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"><FileDown size={14} /> PDF</button>
                   <button onClick={handleExportTonKhoExcel} className="flex items-center gap-1 bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"><FileSpreadsheet size={14} /> Excel</button>
                 </div>
+              </div>
+            </div>
+            <div className="p-4 border-b border-gray-200">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Tìm theo mã SP..."
+                  value={searchTonKho}
+                  onChange={(e) => { setSearchTonKho(e.target.value); setCurrentPageBang1(1); }}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
             </div>
             <div className="overflow-x-auto">
