@@ -64,6 +64,7 @@ export async function PUT(request: NextRequest) {
       sizeM: body.sizeM || 0,
       sizeL: body.sizeL || 0,
       sizeXL: body.sizeXL || 0,
+      sizeXXL: body.sizeXXL || 0,
       totalQuantity: body.totalQuantity || 0,
       note: body.note || "",
     };

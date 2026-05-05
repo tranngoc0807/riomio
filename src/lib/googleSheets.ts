@@ -3061,14 +3061,15 @@ export interface KeHoachSX {
   size12_13: number;      // 12/13
   size13_14: number;      // 13/14
   size14_15: number;      // 14/15
-  // Sizes cho người lớn (Cột Z-AD)
+  // Sizes cho người lớn (Cột Z-AE)
   sizeXS: number;
   sizeS: number;
   sizeM: number;
   sizeL: number;
   sizeXL: number;
-  totalQuantity: number;  // Tổng SL (Cột AE)
-  note: string;           // Ghi chú (Cột AF)
+  sizeXXL: number;
+  totalQuantity: number;  // Tổng SL (Cột AF)
+  note: string;           // Ghi chú (Cột AG)
 }
 
 // Helper function to parse quantity values
@@ -3077,6 +3078,20 @@ const parseQuantity = (value: any): number => {
   const cleaned = value.toString().replace(/[,.\s]/g, '');
   const parsed = parseInt(cleaned, 10);
   return isNaN(parsed) ? 0 : parsed;
+};
+
+// Helper: chuẩn hoá date về dd/MM/yyyy để ghi xuống sheet (locale Việt Nam)
+const formatDateForSheet = (value: string): string => {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  // yyyy-MM-dd → dd/MM/yyyy
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  }
+  // Đã ở dạng d/M/yyyy hoặc dd/MM/yyyy → giữ nguyên
+  return trimmed;
 };
 
 /**
@@ -3088,7 +3103,7 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `'${sheetNameKeHoachSX}'!A6:AF`, // Đọc từ dòng 6 đến cột AF (header ở dòng 5)
+      range: `'${sheetNameKeHoachSX}'!A6:AG`, // Đọc từ dòng 6 đến cột AG (header ở dòng 5)
       valueRenderOption: "FORMATTED_VALUE", // Get evaluated value instead of formula
     });
 
@@ -3101,7 +3116,7 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
 
     const keHoachList: KeHoachSX[] = rows
       .map((row, index) => {
-        // Parse all sizes - Sheet mới: K=0/1, L=1/2, ..., AD=XL, AE=Tổng SL, AF=Ghi chú
+        // Parse all sizes - Sheet mới: K=0/1, L=1/2, ..., AD=XL, AE=XXL, AF=Tổng SL, AG=Ghi chú
         const size0_1 = parseQuantity(row[10]);  // K
         const size1_2 = parseQuantity(row[11]);  // L
         const size2_3 = parseQuantity(row[12]);  // M
@@ -3122,12 +3137,13 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
         const sizeM = parseQuantity(row[27]);    // AB
         const sizeL = parseQuantity(row[28]);    // AC
         const sizeXL = parseQuantity(row[29]);   // AD
+        const sizeXXL = parseQuantity(row[30]);  // AE
 
         // Calculate total from all sizes
         const calculatedTotal = size0_1 + size1_2 + size2_3 + size3_4 +
           size4_5 + size5_6 + size6_7 + size7_8 + size8_9 + size9_10 +
           size10_11 + size11_12 + size12_13 + size13_14 + size14_15 +
-          sizeXS + sizeS + sizeM + sizeL + sizeXL;
+          sizeXS + sizeS + sizeM + sizeL + sizeXL + sizeXXL;
 
         return {
           id: index + 1,
@@ -3157,15 +3173,16 @@ export async function getKeHoachSXFromSheet(): Promise<KeHoachSX[]> {
           size12_13,
           size13_14,
           size14_15,
-          // Sizes cho người lớn (Z-AD)
+          // Sizes cho người lớn (Z-AE)
           sizeXS,
           sizeS,
           sizeM,
           sizeL,
           sizeXL,
-          // AE: Tổng SL, AF: Ghi chú
-          totalQuantity: parseQuantity(row[30]) || calculatedTotal,
-          note: row[31] || "",
+          sizeXXL,
+          // AF: Tổng SL, AG: Ghi chú
+          totalQuantity: parseQuantity(row[31]) || calculatedTotal,
+          note: row[32] || "",
         };
       })
       .filter((item) =>
@@ -3192,7 +3209,7 @@ export async function addKeHoachSXToSheet(keHoach: KeHoachSX): Promise<void> {
     // Đọc toàn bộ dữ liệu để tìm dòng cuối
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `'${sheetNameKeHoachSX}'!A:AF`,
+      range: `'${sheetNameKeHoachSX}'!A:AG`,
     });
 
     const allRows = response.data.values || [];
@@ -3212,8 +3229,8 @@ export async function addKeHoachSXToSheet(keHoach: KeHoachSX): Promise<void> {
       [
         keHoach.lsxCode,        // A: LSX số
         keHoach.workshop,        // B: Xưởng SX
-        keHoach.orderDate,       // C: Ngày gửi lệnh
-        keHoach.completionDate,  // D: Ngày hoàn thành
+        formatDateForSheet(keHoach.orderDate),       // C: Ngày gửi lệnh
+        formatDateForSheet(keHoach.completionDate),  // D: Ngày hoàn thành
         keHoach.productCode,     // E: Mã SP
         keHoach.productName,     // F: Tên SP
         keHoach.size,            // G: Size
@@ -3236,20 +3253,21 @@ export async function addKeHoachSXToSheet(keHoach: KeHoachSX): Promise<void> {
         keHoach.size12_13 || "", // W: 12/13
         keHoach.size13_14 || "", // X: 13/14
         keHoach.size14_15 || "", // Y: 14/15
-        // Sizes cho người lớn (Z-AD)
+        // Sizes cho người lớn (Z-AE)
         keHoach.sizeXS || "",    // Z: XS
         keHoach.sizeS || "",     // AA: S
         keHoach.sizeM || "",     // AB: M
         keHoach.sizeL || "",     // AC: L
         keHoach.sizeXL || "",    // AD: XL
-        keHoach.totalQuantity || "", // AE: Tổng SL
-        keHoach.note,            // AF: Ghi chú
+        keHoach.sizeXXL || "",   // AE: XXL
+        keHoach.totalQuantity || "", // AF: Tổng SL
+        keHoach.note,            // AG: Ghi chú
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `'${sheetNameKeHoachSX}'!A${nextRow}:AF${nextRow}`,
+      range: `'${sheetNameKeHoachSX}'!A${nextRow}:AG${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -3270,14 +3288,14 @@ export async function updateKeHoachSXInSheet(keHoach: KeHoachSX): Promise<void> 
   try {
     const sheets = await getGoogleSheetsClient();
 
-    const rowNumber = keHoach.id + 1; // ID 1 = dòng 2
+    const rowNumber = keHoach.id + 5; // Data bắt đầu từ dòng 6 (header dòng 5), ID 1 = dòng 6
 
     const values = [
       [
         keHoach.lsxCode,        // A: LSX số
         keHoach.workshop,        // B: Xưởng SX
-        keHoach.orderDate,       // C: Ngày gửi lệnh
-        keHoach.completionDate,  // D: Ngày hoàn thành
+        formatDateForSheet(keHoach.orderDate),       // C: Ngày gửi lệnh
+        formatDateForSheet(keHoach.completionDate),  // D: Ngày hoàn thành
         keHoach.productCode,     // E: Mã SP
         keHoach.productName,     // F: Tên SP
         keHoach.size,            // G: Size
@@ -3300,20 +3318,21 @@ export async function updateKeHoachSXInSheet(keHoach: KeHoachSX): Promise<void> 
         keHoach.size12_13 || "", // W: 12/13
         keHoach.size13_14 || "", // X: 13/14
         keHoach.size14_15 || "", // Y: 14/15
-        // Sizes cho người lớn (Z-AD)
+        // Sizes cho người lớn (Z-AE)
         keHoach.sizeXS || "",    // Z: XS
         keHoach.sizeS || "",     // AA: S
         keHoach.sizeM || "",     // AB: M
         keHoach.sizeL || "",     // AC: L
         keHoach.sizeXL || "",    // AD: XL
-        keHoach.totalQuantity || "", // AE: Tổng SL
-        keHoach.note,            // AF: Ghi chú
+        keHoach.sizeXXL || "",   // AE: XXL
+        keHoach.totalQuantity || "", // AF: Tổng SL
+        keHoach.note,            // AG: Ghi chú
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdKeHoachSX,
-      range: `'${sheetNameKeHoachSX}'!A${rowNumber}:AF${rowNumber}`,
+      range: `'${sheetNameKeHoachSX}'!A${rowNumber}:AG${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -3334,7 +3353,7 @@ export async function deleteKeHoachSXFromSheet(keHoachId: number): Promise<void>
   try {
     const sheets = await getGoogleSheetsClient();
 
-    const rowNumber = keHoachId + 1;
+    const rowNumber = keHoachId + 5; // Data bắt đầu từ dòng 6, ID 1 = dòng 6
 
     const sheetMetadata = await sheets.spreadsheets.get({
       spreadsheetId: spreadsheetIdKeHoachSX,
@@ -11573,7 +11592,7 @@ export async function getBangKeLSXFromSheet(): Promise<BangKeLSX[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameBangKeLSX}'!E6:AF`, // E=Mã SP, AE=Tổng SL, AF=Ghi chú
+      range: `'${sheetNameBangKeLSX}'!E6:AG`, // E=Mã SP, AF=Tổng SL, AG=Ghi chú
     });
 
     const rows = response.data.values;
@@ -11593,11 +11612,11 @@ export async function getBangKeLSXFromSheet(): Promise<BangKeLSX[]> {
 
     const data: BangKeLSX[] = rows
       .map((row, index) => {
-        // E6:AF range, so:
+        // E6:AG range, so:
         // row[0] = Cột E (Mã SP)
-        // row[1-25] = Các cột size và thông tin khác
-        // row[26] = Cột AE (Tổng SL) - từ E đến AE là 26 cột (E=0, F=1, ..., AE=26)
-        // row[27] = Cột AF (Ghi chú)
+        // row[1-26] = Các cột size và thông tin khác
+        // row[27] = Cột AF (Tổng SL) - từ E đến AF là 27 cột (E=0, F=1, ..., AF=27)
+        // row[28] = Cột AG (Ghi chú)
 
         return {
           id: index + 1,
@@ -11607,8 +11626,8 @@ export async function getBangKeLSXFromSheet(): Promise<BangKeLSX[]> {
           m: parseNumberVN(row[21]),  // Cột M
           l: parseNumberVN(row[22]),  // Cột L
           xl: parseNumberVN(row[23]), // Cột XL
-          tongSL: parseNumberVN(row[26]), // Cột AE (Tổng SL)
-          ghiChu: row[27] || "", // Cột AF (Ghi chú)
+          tongSL: parseNumberVN(row[27]), // Cột AF (Tổng SL)
+          ghiChu: row[28] || "", // Cột AG (Ghi chú)
         };
       })
       .filter((item) => item.maSP.trim() !== "");

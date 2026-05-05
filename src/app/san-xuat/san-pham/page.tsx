@@ -16,14 +16,11 @@ type TabType = "phat-trien" | "ma-san-pham" | "chi-tiet-ma-sp" | "hinh-anh";
 
 const TABS = [
   { id: "phat-trien" as TabType, label: "Phát triển sản phẩm", icon: List },
-  // { id: "ma-san-pham" as TabType, label: "Mã sản phẩm", icon: Tag },
   {
     id: "chi-tiet-ma-sp" as TabType,
     label: "Chi tiết mã sản phẩm",
     icon: FileText,
   },
-  // Đã chuyển sang mục Hình ảnh (/hinh-anh)
-  // { id: "hinh-anh" as TabType, label: "Hình ảnh sản phẩm", icon: Image },
 ];
 
 export default function SanPhamSX() {

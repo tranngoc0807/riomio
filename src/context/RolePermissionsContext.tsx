@@ -28,49 +28,54 @@ export function RolePermissionsProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPermissions = useCallback(async (role: string) => {
-    // Check cache first
+  // Fetch permissions cho 1 role (có cache)
+  const fetchOneRole = async (role: string): Promise<string[]> => {
     const cached = permissionsCache[role];
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      setPermissions(cached.permissions);
+      return cached.permissions;
+    }
+    try {
+      const response = await fetch(`/api/role-permissions?role=${role}`);
+      const result = await response.json();
+      const perms: string[] = result.success && result.data ? result.data.permissions || [] : [];
+      permissionsCache[role] = { permissions: perms, timestamp: Date.now() };
+      return perms;
+    } catch (error) {
+      console.error(`Error fetching permissions for role "${role}":`, error);
+      return [];
+    }
+  };
+
+  // Fetch + gộp (union) permissions từ tất cả roles của user
+  const fetchPermissions = useCallback(async (roles: string[]) => {
+    if (roles.length === 0) {
+      setPermissions([]);
       setLoading(false);
       return;
     }
-
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/role-permissions?role=${role}`);
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        const perms = result.data.permissions || [];
-        setPermissions(perms);
-        // Cache the result
-        permissionsCache[role] = {
-          permissions: perms,
-          timestamp: Date.now(),
-        };
-      } else {
-        // If no permissions found, set empty array
-        setPermissions([]);
-      }
-    } catch (error) {
-      console.error("Error fetching role permissions:", error);
-      setPermissions([]);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const results = await Promise.all(roles.map(fetchOneRole));
+    const merged = Array.from(new Set(results.flat()));
+    setPermissions(merged);
+    setLoading(false);
   }, []);
 
+  // Key ổn định để useEffect chỉ chạy khi danh sách roles đổi
+  const rolesKey = profile?.roles ? [...profile.roles].sort().join("|") : "";
+
   useEffect(() => {
-    if (initialized && profile?.role) {
-      fetchPermissions(profile.role);
-    } else if (initialized && !profile) {
-      // Not logged in, clear permissions
+    if (!initialized) return;
+    // Có roles → fetch; không thì coi như rỗng (không kẹt loading)
+    if (profile?.roles?.length) {
+      fetchPermissions(profile.roles);
+    } else if (profile?.role) {
+      // Fallback: profile cache cũ chưa có roles[], dùng role string
+      fetchPermissions([profile.role]);
+    } else {
       setPermissions([]);
       setLoading(false);
     }
-  }, [initialized, profile?.role, fetchPermissions]);
+  }, [initialized, rolesKey, fetchPermissions, profile]);
 
   // Check if user has access to a specific menu
   const hasAccess = useCallback((menuId: string): boolean => {
@@ -79,8 +84,8 @@ export function RolePermissionsProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    // Admin always has access
-    if (profile.role === "admin") {
+    // Admin always has access (kiểm tra bất kỳ role nào là admin)
+    if (profile.roles?.includes("admin") || profile.role === "admin") {
       return true;
     }
 
@@ -103,12 +108,12 @@ export function RolePermissionsProvider({ children }: { children: ReactNode }) {
 
   // Refetch permissions (useful after admin updates)
   const refetchPermissions = useCallback(async () => {
-    if (profile?.role) {
-      // Clear cache for this role
-      delete permissionsCache[profile.role];
-      await fetchPermissions(profile.role);
+    if (profile?.roles?.length) {
+      // Clear cache cho mọi role của user
+      profile.roles.forEach((r) => delete permissionsCache[r]);
+      await fetchPermissions(profile.roles);
     }
-  }, [profile?.role, fetchPermissions]);
+  }, [profile?.roles, fetchPermissions]);
 
   return (
     <RolePermissionsContext.Provider

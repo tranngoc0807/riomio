@@ -17,9 +17,21 @@ interface Profile {
   id: string;
   email: string;
   full_name: string;
-  role: UserRole;
+  role: UserRole;       // Legacy: role chính, giữ để backward-compat
+  roles: UserRole[];    // Multi-role (luôn là mảng sau khi normalize)
   created_at: string;
 }
+
+// Normalize: đảm bảo roles luôn là mảng. Nếu DB chưa có roles thì fallback từ role.
+const normalizeProfile = (raw: any): Profile => {
+  const roles: string[] =
+    Array.isArray(raw.roles) && raw.roles.length > 0
+      ? raw.roles
+      : raw.role
+        ? [raw.role]
+        : [];
+  return { ...raw, roles, role: roles[0] || raw.role || "" };
+};
 
 interface AuthContextType {
   user: User | null;
@@ -66,7 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const isExpired = Date.now() - timestamp >= PROFILE_CACHE_EXPIRY;
           if (!isExpired || ignoreExpiry) {
             console.log(`📋 fetchProfile: Using cached profile (expired: ${isExpired})`);
-            return cachedProfile;
+            // Normalize để đảm bảo cache cũ chưa có roles[] vẫn dùng được
+            return normalizeProfile(cachedProfile);
           }
         }
       }
@@ -121,12 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select("*")
         .eq("id", userId)
         .single()
-        .then((response: { data: Profile | null; error: Error | null }) => {
+        .then((response: { data: any; error: Error | null }) => {
           if (response.error) {
             console.error("📋 fetchProfile: Error:", response.error);
             return null;
           }
-          return response.data;
+          return response.data ? normalizeProfile(response.data) : null;
         });
 
       const result = await Promise.race([fetchPromise, timeoutPromise]);
@@ -304,6 +317,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: email,
         full_name: fullName,
         role: role,
+        roles: [role],
       });
 
       if (profileError) {
@@ -353,7 +367,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = (requiredRoles: UserRole[]) => {
     if (!profile) return false;
-    return requiredRoles.includes(profile.role);
+    // User có quyền nếu BẤT KỲ role nào của họ nằm trong requiredRoles
+    return profile.roles.some((r) => requiredRoles.includes(r));
   };
 
   return (

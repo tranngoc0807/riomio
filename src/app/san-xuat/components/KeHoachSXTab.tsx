@@ -48,6 +48,7 @@ interface SelectedProduct {
   sizeM: number;
   sizeL: number;
   sizeXL: number;
+  sizeXXL: number;
   totalQuantity: number;
 }
 
@@ -77,7 +78,7 @@ const INITIAL_KE_HOACH: Omit<KeHoachSX, "id"> = {
   size0_1: 0, size1_2: 0, size2_3: 0, size3_4: 0,
   size4_5: 0, size5_6: 0, size6_7: 0, size7_8: 0, size8_9: 0, size9_10: 0,
   size10_11: 0, size11_12: 0, size12_13: 0, size13_14: 0, size14_15: 0,
-  sizeXS: 0, sizeS: 0, sizeM: 0, sizeL: 0, sizeXL: 0,
+  sizeXS: 0, sizeS: 0, sizeM: 0, sizeL: 0, sizeXL: 0, sizeXXL: 0,
   totalQuantity: 0,
   note: "",
 };
@@ -104,13 +105,14 @@ const TABLE_SIZES = [
   { key: "sizeM", label: "M" },
   { key: "sizeL", label: "L" },
   { key: "sizeXL", label: "XL" },
+  { key: "sizeXXL", label: "XXL" },
 ];
 
 const SIZE_KEYS = [
   "size0_1", "size1_2", "size2_3", "size3_4",
   "size4_5", "size5_6", "size6_7", "size7_8", "size8_9", "size9_10",
   "size10_11", "size11_12", "size12_13", "size13_14", "size14_15",
-  "sizeXS", "sizeS", "sizeM", "sizeL", "sizeXL",
+  "sizeXS", "sizeS", "sizeM", "sizeL", "sizeXL", "sizeXXL",
 ];
 
 
@@ -431,7 +433,7 @@ export default function KeHoachSXTab() {
       size4_5: 0, size5_6: 0, size6_7: 0, size7_8: 0,
       size8_9: 0, size9_10: 0, size10_11: 0, size11_12: 0,
       size12_13: 0, size13_14: 0, size14_15: 0,
-      sizeXS: 0, sizeS: 0, sizeM: 0, sizeL: 0, sizeXL: 0,
+      sizeXS: 0, sizeS: 0, sizeM: 0, sizeL: 0, sizeXL: 0, sizeXXL: 0,
       totalQuantity: 0,
     };
 
@@ -567,6 +569,7 @@ export default function KeHoachSXTab() {
           sizeM: product.sizeM,
           sizeL: product.sizeL,
           sizeXL: product.sizeXL,
+          sizeXXL: product.sizeXXL,
           totalQuantity: product.totalQuantity,
           note: formNote,
         };
@@ -714,10 +717,13 @@ export default function KeHoachSXTab() {
     try {
       setIsDeleting(true);
 
-      // Find all items with the same LSX code
-      const itemsToDelete = keHoachList.filter(k => k.lsxCode === itemToDelete);
+      // Find all items with the same LSX code, sort by id desc để xóa row dưới trước
+      // (tránh row shift làm sai vị trí các row còn lại)
+      const itemsToDelete = keHoachList
+        .filter(k => k.lsxCode === itemToDelete)
+        .sort((a, b) => b.id - a.id);
 
-      // Delete all items with the same LSX code sequentially
+      // Delete sequentially from highest id to lowest
       for (const item of itemsToDelete) {
         const response = await fetch(`/api/ke-hoach-sx/delete?id=${item.id}`, {
           method: "DELETE",
@@ -1026,7 +1032,7 @@ export default function KeHoachSXTab() {
                     )}
                   </h4>
                 </div>
-                <div className="divide-y divide-gray-200 max-h-[400px] overflow-y-auto">
+                <div className="divide-y divide-gray-200">
                   {selectedProducts.length === 0 ? (
                     <div className="px-4 py-8 text-center text-gray-400">
                       Chưa có sản phẩm nào. Tìm kiếm và chọn sản phẩm ở trên.
@@ -1223,7 +1229,7 @@ export default function KeHoachSXTab() {
                     <span className="ml-2 text-blue-600">- Tổng: {selectedGroupedLSX.totalQuantity.toLocaleString("vi-VN")} sản phẩm</span>
                   </h4>
                 </div>
-                <div className="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
+                <div className="divide-y divide-gray-200">
                   {selectedGroupedLSX.products.map((product, index) => (
                     <div key={product.id} className="p-4 hover:bg-gray-50">
                       {/* Product Info Row */}
@@ -1399,7 +1405,7 @@ export default function KeHoachSXTab() {
                     <span className="ml-2 text-green-600">- Tổng: {editProducts.reduce((sum, p) => sum + (p.totalQuantity || 0), 0).toLocaleString("vi-VN")} sản phẩm</span>
                   </h4>
                 </div>
-                <div className="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
+                <div className="divide-y divide-gray-200">
                   {editProducts.map((product, index) => (
                     <div key={product.id} className="p-4 hover:bg-gray-50">
                       {/* Product Info Row */}

@@ -381,6 +381,20 @@ export default function OrdersTab() {
     return `MIO${maxNumber + 1}`;
   };
 
+  // Generate next TL (trả lại) code — pad 2 chữ số: TL00, TL01, TL02...
+  const generateNextTLCode = (existingOrders: Order[]): string => {
+    const codeNumbers = existingOrders
+      .map((order) => {
+        const match = order.code.match(/^TL(\d+)$/i);
+        return match ? parseInt(match[1], 10) : -1;
+      })
+      .filter((n) => n >= 0);
+
+    if (codeNumbers.length === 0) return "TL00";
+    const maxNumber = Math.max(...codeNumbers);
+    return `TL${(maxNumber + 1).toString().padStart(2, "0")}`;
+  };
+
   const fetchDropdownData = async () => {
     try {
       setIsLoadingDropdownData(true);
@@ -496,7 +510,8 @@ export default function OrdersTab() {
   // ============ MULTI-PRODUCT HANDLERS ============
 
   // Open Add modal - Initialize form
-  const handleOpenAddModal = async () => {
+  // mode: "MIO" (đơn bán bình thường) hoặc "TL" (đơn trả lại)
+  const handleOpenAddModal = async (mode: "MIO" | "TL" = "MIO") => {
     // Reset form first
     setFormDate(new Date().toISOString().split("T")[0]);
     setSelectedProducts([]);
@@ -511,11 +526,14 @@ export default function OrdersTab() {
     // Then fetch data (modal will show loading spinner)
     await fetchDropdownData();
 
-    // Get next order code
+    // Get next order code theo mode
     const response = await fetch("/api/orders");
     const result = await response.json();
     if (result.success) {
-      const nextCode = generateNextOrderCode(result.data);
+      const nextCode =
+        mode === "TL"
+          ? generateNextTLCode(result.data)
+          : generateNextOrderCode(result.data);
       setFormOrderCode(nextCode);
     }
   };
@@ -1012,7 +1030,16 @@ export default function OrdersTab() {
           <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
           <button onClick={handleExportListExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
           <button
-            onClick={handleOpenAddModal}
+            onClick={() => handleOpenAddModal("TL")}
+            disabled={isLoadingDropdownData}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+            title="Tạo đơn trả lại (TL)"
+          >
+            <Plus size={20} />
+            Tạo đơn TL
+          </button>
+          <button
+            onClick={() => handleOpenAddModal("MIO")}
             disabled={isLoadingDropdownData}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
           >
@@ -1531,7 +1558,7 @@ export default function OrdersTab() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
+                  <div style={{ textAlign: "right", minWidth: "240px" }}>
                     <div style={{ fontSize: "12px", color: "#666" }}>
                       Ngày đặt:
                     </div>
@@ -1540,10 +1567,105 @@ export default function OrdersTab() {
                         fontSize: "16px",
                         fontWeight: "bold",
                         color: "#dc2626",
+                        marginBottom: "8px",
                       }}
                     >
                       {viewGroupedOrder.date}
                     </div>
+                    {/* Info box: CK TT trước / Khách phải trả / Nợ cũ / Tổng công nợ */}
+                    <table
+                      style={{
+                        marginLeft: "auto",
+                        borderCollapse: "collapse",
+                        fontSize: "11px",
+                      }}
+                    >
+                      <tbody>
+                        <tr>
+                          <td
+                            style={{
+                              border: "1px solid #d1d5db",
+                              padding: "4px 8px",
+                              fontWeight: "500",
+                            }}
+                          >
+                            CK thanh toán trước:
+                          </td>
+                          <td
+                            style={{
+                              border: "1px solid #d1d5db",
+                              padding: "4px 8px",
+                              textAlign: "right",
+                              minWidth: "90px",
+                            }}
+                          >
+                            0
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            style={{
+                              border: "1px solid #d1d5db",
+                              padding: "4px 8px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            Khách phải trả:
+                          </td>
+                          <td
+                            style={{
+                              border: "1px solid #d1d5db",
+                              padding: "4px 8px",
+                              textAlign: "right",
+                              fontWeight: "bold",
+                              color: "#16a34a",
+                            }}
+                          >
+                            {viewGroupedOrder.total.toLocaleString("vi-VN")}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            style={{
+                              border: "1px solid #d1d5db",
+                              padding: "4px 8px",
+                            }}
+                          >
+                            Nợ cũ:
+                          </td>
+                          <td
+                            style={{
+                              border: "1px solid #d1d5db",
+                              padding: "4px 8px",
+                              textAlign: "right",
+                            }}
+                          >
+                            0
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            style={{
+                              border: "1px solid #d1d5db",
+                              padding: "4px 8px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            Tổng công nợ:
+                          </td>
+                          <td
+                            style={{
+                              border: "1px solid #d1d5db",
+                              padding: "4px 8px",
+                              textAlign: "right",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {viewGroupedOrder.total.toLocaleString("vi-VN")}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
@@ -1552,7 +1674,7 @@ export default function OrdersTab() {
                   <h1
                     style={{ fontSize: "22px", fontWeight: "bold", margin: 0 }}
                   >
-                    ĐƠN ĐẶT HÀNG
+                    ĐƠN HÀNG KIÊM PHIẾU XUẤT KHO
                   </h1>
                 </div>
 
@@ -1586,11 +1708,15 @@ export default function OrdersTab() {
                     </div>
                     <div style={{ marginBottom: "6px" }}>
                       <span style={{ fontWeight: "bold", fontSize: "11px" }}>
-                        User BH:{" "}
+                        Điện thoại:{" "}
                       </span>
-                      <span style={{ fontSize: "12px" }}>
-                        {viewGroupedOrder.salesUser || "-"}
+                      <span style={{ fontSize: "12px" }}></span>
+                    </div>
+                    <div style={{ marginBottom: "6px" }}>
+                      <span style={{ fontWeight: "bold", fontSize: "11px" }}>
+                        Địa chỉ:{" "}
                       </span>
+                      <span style={{ fontSize: "12px" }}></span>
                     </div>
                   </div>
 
@@ -1623,7 +1749,7 @@ export default function OrdersTab() {
                         marginBottom: "4px",
                       }}
                     >
-                      <span>Tiền hàng trước CK:</span>
+                      <span>Tiền hàng trước CK SP:</span>
                       <span>
                         {viewGroupedOrder.products
                           .reduce((sum, p) => sum + p.subtotal, 0)
@@ -1659,33 +1785,11 @@ export default function OrdersTab() {
                         marginBottom: "4px",
                       }}
                     >
-                      <span>Tiền hàng sau CK:</span>
+                      <span>Tiền hàng sau CK SP:</span>
                       <span>
                         {viewGroupedOrder.products
                           .reduce((sum, p) => sum + p.subtotalAfterDiscount, 0)
                           .toLocaleString("vi-VN")}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginTop: "8px",
-                        paddingTop: "8px",
-                        borderTop: "1px solid #d1d5db",
-                      }}
-                    >
-                      <span style={{ fontWeight: "bold" }}>
-                        Tổng khách phải trả:
-                      </span>
-                      <span
-                        style={{
-                          fontWeight: "bold",
-                          color: "#16a34a",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {viewGroupedOrder.total.toLocaleString("vi-VN")}
                       </span>
                     </div>
                   </div>
@@ -1726,7 +1830,7 @@ export default function OrdersTab() {
                           border: "1px solid #86efac",
                           padding: "4px",
                           textAlign: "center",
-                          width: "40px",
+                          width: "60px",
                         }}
                       >
                         Hình ảnh
@@ -1782,26 +1886,6 @@ export default function OrdersTab() {
                         style={{
                           border: "1px solid #86efac",
                           padding: "4px",
-                          textAlign: "right",
-                          backgroundColor: "#fed7aa",
-                        }}
-                      >
-                        CK TT
-                      </th>
-                      <th
-                        style={{
-                          border: "1px solid #86efac",
-                          padding: "4px",
-                          textAlign: "right",
-                          backgroundColor: "#bbf7d0",
-                        }}
-                      >
-                        Khách trả
-                      </th>
-                      <th
-                        style={{
-                          border: "1px solid #86efac",
-                          padding: "4px",
                           textAlign: "left",
                         }}
                       >
@@ -1843,8 +1927,8 @@ export default function OrdersTab() {
                               src={product.image}
                               alt={product.productCode}
                               style={{
-                                width: "35px",
-                                height: "35px",
+                                width: "50px",
+                                height: "50px",
                                 objectFit: "cover",
                                 borderRadius: "4px",
                               }}
@@ -1906,31 +1990,6 @@ export default function OrdersTab() {
                           style={{
                             border: "1px solid #d1d5db",
                             padding: "4px",
-                            textAlign: "right",
-                            color: "#ea580c",
-                            backgroundColor: "#fff7ed",
-                          }}
-                        >
-                          {product.paymentDiscount || "-"}
-                        </td>
-                        <td
-                          style={{
-                            border: "1px solid #d1d5db",
-                            padding: "4px",
-                            textAlign: "right",
-                            fontWeight: "600",
-                            color: "#16a34a",
-                            backgroundColor: "#f0fdf4",
-                          }}
-                        >
-                          {product.total
-                            ? product.total.toLocaleString("vi-VN")
-                            : "-"}
-                        </td>
-                        <td
-                          style={{
-                            border: "1px solid #d1d5db",
-                            padding: "4px",
                             fontSize: "8px",
                             color: "#666",
                           }}
@@ -1943,7 +2002,7 @@ export default function OrdersTab() {
                   <tfoot>
                     <tr style={{ backgroundColor: "#f0fdf4" }}>
                       <td
-                        colSpan={7}
+                        colSpan={3}
                         style={{
                           border: "1px solid #d1d5db",
                           padding: "6px",
@@ -1958,6 +2017,21 @@ export default function OrdersTab() {
                         style={{
                           border: "1px solid #d1d5db",
                           padding: "6px",
+                          textAlign: "center",
+                          fontWeight: "bold",
+                          fontSize: "10px",
+                        }}
+                      >
+                        {viewGroupedOrder.totalItems}
+                      </td>
+                      <td
+                        colSpan={3}
+                        style={{ border: "1px solid #d1d5db", padding: "6px" }}
+                      ></td>
+                      <td
+                        style={{
+                          border: "1px solid #d1d5db",
+                          padding: "6px",
                           textAlign: "right",
                           fontWeight: "bold",
                           fontSize: "10px",
@@ -1967,40 +2041,61 @@ export default function OrdersTab() {
                           .reduce((sum, p) => sum + p.subtotalAfterDiscount, 0)
                           .toLocaleString("vi-VN")}
                       </td>
-                      <td
-                        style={{ border: "1px solid #d1d5db", padding: "6px" }}
-                      ></td>
-                      <td
-                        style={{
-                          border: "1px solid #d1d5db",
-                          padding: "6px",
-                          textAlign: "right",
-                          fontWeight: "bold",
-                          fontSize: "11px",
-                          color: "#16a34a",
-                        }}
-                      >
-                        {viewGroupedOrder.total.toLocaleString("vi-VN")}đ
-                      </td>
                       <td style={{ border: "1px solid #d1d5db" }}></td>
                     </tr>
                   </tfoot>
                 </table>
 
-                {/* Footer */}
+                {/* Footer chữ ký */}
+                <div
+                  style={{
+                    marginTop: "30px",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: "12px",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
+                >
+                  <div>
+                    <div>Người bán hàng</div>
+                    <div style={{ fontSize: "9px", fontWeight: "normal", fontStyle: "italic", color: "#666", marginTop: "2px" }}>
+                      (Ký, ghi rõ họ tên)
+                    </div>
+                    <div style={{ height: "60px" }}></div>
+                  </div>
+                  <div>
+                    <div>Thủ kho</div>
+                    <div style={{ fontSize: "9px", fontWeight: "normal", fontStyle: "italic", color: "#666", marginTop: "2px" }}>
+                      (Ký, ghi rõ họ tên)
+                    </div>
+                    <div style={{ height: "60px" }}></div>
+                  </div>
+                  <div>
+                    <div>Kế toán</div>
+                    <div style={{ fontSize: "9px", fontWeight: "normal", fontStyle: "italic", color: "#666", marginTop: "2px" }}>
+                      (Ký, ghi rõ họ tên)
+                    </div>
+                    <div style={{ height: "60px" }}></div>
+                  </div>
+                  <div>
+                    <div>Người mua hàng</div>
+                    <div style={{ fontSize: "9px", fontWeight: "normal", fontStyle: "italic", color: "#666", marginTop: "2px" }}>
+                      (Ký, ghi rõ họ tên)
+                    </div>
+                    <div style={{ height: "60px" }}></div>
+                  </div>
+                </div>
                 <div
                   style={{
                     marginTop: "15px",
-                    display: "flex",
-                    justifyContent: "space-between",
+                    textAlign: "right",
                     fontSize: "9px",
                     color: "#666",
-                    borderTop: "1px solid #e5e7eb",
-                    paddingTop: "10px",
                   }}
                 >
-                  <div>In ngày: {new Date().toLocaleDateString("vi-VN")}</div>
-                  <div>RIOMIO - Thời trang trẻ em</div>
+                  RIOMIO - Thời trang trẻ em
                 </div>
               </div>
             </div>

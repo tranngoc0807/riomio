@@ -126,12 +126,9 @@ const MENU_STRUCTURE: MenuItemDef[] = [
         icon: ClipboardList,
         tabs: [
           { id: "san-xuat/ke-hoach/bang-ke-lsx", name: "Bảng kê LSX", icon: FileSpreadsheet },
-          { id: "san-xuat/ke-hoach/dinh-muc", name: "Định mức SX", icon: ListChecks },
-          { id: "san-xuat/ke-hoach/phieu-dinh-muc", name: "Phiếu định mức SX", icon: FileText },
-          { id: "san-xuat/ke-hoach/bang-ke-yc-xk", name: "Bảng kê YC xuất kho", icon: FileOutput },
-          { id: "san-xuat/ke-hoach/phieu-yc-xk", name: "Phiếu YC XK NPL", icon: PackageOpen },
+          { id: "san-xuat/ke-hoach/dinh-muc", name: "Định mức sản xuất", icon: ListChecks },
+          { id: "san-xuat/ke-hoach/bang-ke-yc-xk", name: "Bảng kê Yêu cầu xuất kho NPL", icon: FileOutput },
           { id: "san-xuat/ke-hoach/so-luong-cat", name: "Số lượng cắt", icon: Scissors },
-          { id: "san-xuat/ke-hoach/phieu-cat", name: "Phiếu báo SL cắt", icon: ClipboardCheck },
         ],
       },
       {
@@ -162,9 +159,8 @@ const MENU_STRUCTURE: MenuItemDef[] = [
         name: "Sản phẩm",
         icon: PackageSearch,
         tabs: [
-          { id: "san-xuat/san-pham/phat-trien", name: "Phát triển SP", icon: List },
-          { id: "san-xuat/san-pham/chi-tiet-ma-sp", name: "Chi tiết mã SP", icon: FileText },
-          { id: "san-xuat/san-pham/hinh-anh", name: "Hình ảnh SP", icon: Image },
+          { id: "san-xuat/san-pham/phat-trien", name: "Phát triển sản phẩm", icon: List },
+          { id: "san-xuat/san-pham/chi-tiet-ma-sp", name: "Chi tiết mã sản phẩm", icon: FileText },
         ],
       },
       {
@@ -185,6 +181,16 @@ const MENU_STRUCTURE: MenuItemDef[] = [
     tabs: [
       { id: "san-pham/danh-muc", name: "Danh mục sản phẩm", icon: ShoppingBag },
       { id: "san-pham/quan-ly-kho", name: "Quản lý kho", icon: Warehouse },
+    ],
+  },
+  {
+    id: "hinh-anh",
+    name: "Hình ảnh",
+    icon: Image,
+    tabs: [
+      { id: "hinh-anh/san-pham", name: "Sản phẩm", icon: Package },
+      { id: "hinh-anh/nguyen-phu-lieu", name: "Nguyên phụ liệu", icon: Boxes },
+      { id: "hinh-anh/hinh-in", name: "Hình in", icon: Image },
     ],
   },
   {

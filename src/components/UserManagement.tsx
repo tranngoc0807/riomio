@@ -27,9 +27,16 @@ interface UserProfile {
   id: string;
   email: string;
   full_name: string;
-  role: string;
+  role: string;       // legacy
+  roles: string[];    // multi-role
   created_at: string;
 }
+
+// Trả về danh sách roles của user, fallback từ role nếu DB chưa migrate
+const getUserRoles = (u: { role?: string; roles?: string[] | null }): string[] => {
+  if (Array.isArray(u.roles) && u.roles.length > 0) return u.roles;
+  return u.role ? [u.role] : [];
+};
 
 export default function UserManagement() {
   const { profile: currentUser } = useAuth();
@@ -44,20 +51,31 @@ export default function UserManagement() {
   const supabase = createClient();
 
   // New user form
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<{
+    email: string;
+    password: string;
+    fullName: string;
+    roles: string[];
+  }>({
     email: "",
     password: "",
     fullName: "",
-    role: "tong_hop",
+    roles: ["tong_hop"],
   });
   const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
 
   // Edit user form
-  const [editUser, setEditUser] = useState({
+  const [editUser, setEditUser] = useState<{ fullName: string; roles: string[] }>({
     fullName: "",
-    role: "tong_hop",
+    roles: ["tong_hop"],
   });
+
+  // Toggle 1 role trong mảng (chọn/bỏ chọn)
+  const toggleRole = (current: string[], roleId: string): string[] =>
+    current.includes(roleId)
+      ? current.filter((r) => r !== roleId)
+      : [...current, roleId];
   const [updatingUser, setUpdatingUser] = useState(false);
 
   // Delete confirmation state
@@ -108,6 +126,12 @@ export default function UserManagement() {
       return;
     }
 
+    if (newUser.roles.length === 0) {
+      setError("Vui lòng chọn ít nhất 1 vai trò");
+      setAddingUser(false);
+      return;
+    }
+
     try {
       // Get current session for authorization
       const { data: { session } } = await supabase.auth.getSession();
@@ -129,7 +153,8 @@ export default function UserManagement() {
           email: newUser.email,
           password: newUser.password,
           fullName: newUser.fullName,
-          role: newUser.role,
+          role: newUser.roles[0], // backward-compat
+          roles: newUser.roles,
         }),
       });
 
@@ -143,7 +168,7 @@ export default function UserManagement() {
 
       setSuccess("Tạo tài khoản thành công!");
       setShowAddModal(false);
-      setNewUser({ email: "", password: "", fullName: "", role: "tong_hop" });
+      setNewUser({ email: "", password: "", fullName: "", roles: ["tong_hop"] });
       fetchUsers();
       setAddingUser(false);
       setTimeout(() => setSuccess(""), 3000);
@@ -157,13 +182,20 @@ export default function UserManagement() {
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+
+    if (editUser.roles.length === 0) {
+      setError("Vui lòng chọn ít nhất 1 vai trò");
+      return;
+    }
+
     setUpdatingUser(true);
 
     const { error } = await supabase
       .from("profiles")
       .update({
         full_name: editUser.fullName,
-        role: editUser.role,
+        role: editUser.roles[0], // backward-compat
+        roles: editUser.roles,
       })
       .eq("id", selectedUser.id);
 
@@ -238,7 +270,7 @@ export default function UserManagement() {
     setSelectedUser(user);
     setEditUser({
       fullName: user.full_name,
-      role: user.role,
+      roles: getUserRoles(user),
     });
     setShowEditModal(true);
   };
@@ -345,12 +377,17 @@ export default function UserManagement() {
                         {user.email}
                       </td>
                       <td className="px-4 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700`}
-                        >
-                          <span className={`w-2 h-2 rounded-full ${getRoleColor(user.role)}`}></span>
-                          {getRoleLabel(user.role)}
-                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {getUserRoles(user).map((r) => (
+                            <span
+                              key={r}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700"
+                            >
+                              <span className={`w-2 h-2 rounded-full ${getRoleColor(r)}`}></span>
+                              {getRoleLabel(r)}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-600">
                         {new Date(user.created_at).toLocaleDateString("vi-VN")}
@@ -478,23 +515,29 @@ export default function UserManagement() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Shield className="inline mr-1" size={14} />
-                  Vai trò
+                  Vai trò <span className="text-gray-400 font-normal">(có thể chọn nhiều)</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {roles.map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => setNewUser({ ...newUser, role: r.id })}
-                      className={`p-2 rounded-lg border-2 transition-all text-center text-sm font-medium ${
-                        newUser.role === r.id
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      {r.display_name}
-                    </button>
-                  ))}
+                  {roles.map((r) => {
+                    const checked = newUser.roles.includes(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() =>
+                          setNewUser({ ...newUser, roles: toggleRole(newUser.roles, r.id) })
+                        }
+                        className={`p-2 rounded-lg border-2 transition-all text-center text-sm font-medium flex items-center justify-center gap-1.5 ${
+                          checked
+                            ? "border-blue-500 bg-blue-50 text-blue-700"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        {checked && <Check size={14} className="shrink-0" />}
+                        {r.display_name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="flex gap-3 pt-4">
@@ -571,25 +614,29 @@ export default function UserManagement() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Shield className="inline mr-1" size={14} />
-                  Vai trò
+                  Vai trò <span className="text-gray-400 font-normal">(có thể chọn nhiều)</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {roles.map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() =>
-                        setEditUser({ ...editUser, role: r.id })
-                      }
-                      className={`p-2 rounded-lg border-2 transition-all text-center text-sm font-medium ${
-                        editUser.role === r.id
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      {r.display_name}
-                    </button>
-                  ))}
+                  {roles.map((r) => {
+                    const checked = editUser.roles.includes(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() =>
+                          setEditUser({ ...editUser, roles: toggleRole(editUser.roles, r.id) })
+                        }
+                        className={`p-2 rounded-lg border-2 transition-all text-center text-sm font-medium flex items-center justify-center gap-1.5 ${
+                          checked
+                            ? "border-blue-500 bg-blue-50 text-blue-700"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        {checked && <Check size={14} className="shrink-0" />}
+                        {r.display_name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="flex gap-3 pt-4">

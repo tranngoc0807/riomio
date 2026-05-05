@@ -99,11 +99,17 @@ export default function ProfilePage() {
             <p className="text-blue-100 mt-1 text-lg">
               {employeeData?.position || "—"}
             </p>
-            <div className="flex items-center gap-3 mt-3">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-white/20`}>
-                <span className={`w-2 h-2 rounded-full ${profile ? getRoleColor(profile.role) : "bg-gray-400"}`}></span>
-                {profile ? getRoleLabel(profile.role) : ""}
-              </span>
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
+              {profile &&
+                (profile.roles?.length ? profile.roles : [profile.role]).map((r) => (
+                  <span
+                    key={r}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-white/20"
+                  >
+                    <span className={`w-2 h-2 rounded-full ${getRoleColor(r)}`}></span>
+                    {getRoleLabel(r)}
+                  </span>
+                ))}
               {employeeData?.employmentStatus && (
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                   employeeData.employmentStatus === "Đang làm việc"

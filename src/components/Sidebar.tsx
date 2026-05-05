@@ -534,18 +534,14 @@ export default function Sidebar() {
                 <p className="font-medium text-sm truncate">
                   {profile?.full_name || session?.user?.email || "User"}
                 </p>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   {profile ? (
-                    <>
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          getRoleColor(profile.role)
-                        }`}
-                      ></span>
-                      <span className="text-xs text-blue-300">
-                        {getRoleLabel(profile.role)}
+                    (profile.roles?.length ? profile.roles : [profile.role]).map((r) => (
+                      <span key={r} className="flex items-center gap-1">
+                        <span className={`w-2 h-2 rounded-full ${getRoleColor(r)}`}></span>
+                        <span className="text-xs text-blue-300">{getRoleLabel(r)}</span>
                       </span>
-                    </>
+                    ))
                   ) : (
                     <span className="text-xs text-blue-300">
                       {session?.user?.email}
@@ -618,15 +614,15 @@ export default function Sidebar() {
                   <h2 className="text-xl font-bold">
                     {profile?.full_name || "Người dùng"}
                   </h2>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        profile ? getRoleColor(profile.role) : "bg-gray-400"
-                      }`}
-                    ></span>
-                    <span className="text-blue-100 text-sm">
-                      {profile ? getRoleLabel(profile.role) : ""}
-                    </span>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {profile ? (
+                      (profile.roles?.length ? profile.roles : [profile.role]).map((r) => (
+                        <span key={r} className="flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${getRoleColor(r)}`}></span>
+                          <span className="text-blue-100 text-sm">{getRoleLabel(r)}</span>
+                        </span>
+                      ))
+                    ) : null}
                   </div>
                   <p className="text-blue-200 text-sm mt-1">
                     {session?.user?.email}

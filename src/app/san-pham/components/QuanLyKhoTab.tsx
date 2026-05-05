@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Package, Loader2, AlertCircle, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, Search, ChevronDown, FileDown, FileSpreadsheet, Printer, Download } from "lucide-react";
+import { Package, Loader2, AlertCircle, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, Search, ChevronDown, FileDown, FileSpreadsheet, Printer, Download, ShoppingCart } from "lucide-react";
 import { TonKhoSP, TonDauSP, XuatKhoSP, Customer, SanPhamCatalog, TonKhoItem, NhapKhoSP } from "@/lib/googleSheets";
 import DatePicker from "@/components/DatePicker";
 import Portal from "@/components/Portal";
@@ -93,7 +93,7 @@ export default function QuanLyKhoTab() {
   // Dropdown states for add form
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
-  const [productDropdownIndex, setProductDropdownIndex] = useState<number | null>(null);
+  const [productDropdownOpen, setProductDropdownOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
 
   // Refs for dropdowns
@@ -137,7 +137,7 @@ export default function QuanLyKhoTab() {
     khachHang: "",
     userThucHien: "",
   });
-  const [productLines, setProductLines] = useState<ProductLine[]>([{ maSP: "", soLuong: 1, tonKho: 0 }]);
+  const [productLines, setProductLines] = useState<ProductLine[]>([]);
 
   // Form state for adding nhập kho
   const [newNhapKhoPhieu, setNewNhapKhoPhieu] = useState({
@@ -166,7 +166,7 @@ export default function QuanLyKhoTab() {
         setCustomerSearch("");
       }
       if (productDropdownRef.current && !productDropdownRef.current.contains(event.target as Node)) {
-        setProductDropdownIndex(null);
+        setProductDropdownOpen(false);
         setProductSearch("");
       }
       if (nhapKhoProductDropdownRef.current && !nhapKhoProductDropdownRef.current.contains(event.target as Node)) {
@@ -560,16 +560,9 @@ export default function QuanLyKhoTab() {
     }
   };
 
-  // Add product line
-  const addProductLine = () => {
-    setProductLines([...productLines, { maSP: "", soLuong: 1, tonKho: 0 }]);
-  };
-
   // Remove product line
   const removeProductLine = (index: number) => {
-    if (productLines.length > 1) {
-      setProductLines(productLines.filter((_, i) => i !== index));
-    }
+    setProductLines(productLines.filter((_, i) => i !== index));
   };
 
   // Update product line
@@ -585,16 +578,28 @@ export default function QuanLyKhoTab() {
     setProductLines(updated);
   };
 
-  // Select product from dropdown (using "Mã SP đầy đủ" from Danh mục SP)
-  const handleSelectProduct = (index: number, productFullCode: string) => {
-    const updated = [...productLines];
-    updated[index] = {
-      ...updated[index],
-      maSP: productFullCode,
-      tonKho: getTonKhoByMaSP(productFullCode),
-    };
-    setProductLines(updated);
-    setProductDropdownIndex(null);
+  // Add product to list - if exists, increment quantity; else append new line
+  const handleAddProductToList = (productFullCode: string) => {
+    setProductLines((prev) => {
+      const existingIndex = prev.findIndex((p) => p.maSP === productFullCode);
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          soLuong: updated[existingIndex].soLuong + 1,
+        };
+        return updated;
+      }
+      return [
+        ...prev,
+        {
+          maSP: productFullCode,
+          soLuong: 1,
+          tonKho: getTonKhoByMaSP(productFullCode),
+        },
+      ];
+    });
+    setProductDropdownOpen(false);
     setProductSearch("");
   };
 
@@ -604,8 +609,16 @@ export default function QuanLyKhoTab() {
       toast.error("Vui lòng nhập mã PXK");
       return;
     }
+    if (productLines.length === 0) {
+      toast.error("Vui lòng thêm ít nhất 1 sản phẩm");
+      return;
+    }
     if (productLines.some(p => !p.maSP)) {
       toast.error("Vui lòng nhập đầy đủ mã sản phẩm");
+      return;
+    }
+    if (productLines.some(p => !p.soLuong || p.soLuong < 1)) {
+      toast.error("Số lượng phải lớn hơn 0");
       return;
     }
 
@@ -983,7 +996,9 @@ export default function QuanLyKhoTab() {
       khachHang: "",
       userThucHien: profile?.full_name || "",
     });
-    setProductLines([{ maSP: "", soLuong: 1, tonKho: 0 }]);
+    setProductLines([]);
+    setProductSearch("");
+    setCustomerSearch("");
   };
 
   // Open add modal with auto-filled data
@@ -995,7 +1010,9 @@ export default function QuanLyKhoTab() {
       khachHang: "",
       userThucHien: profile?.full_name || "",
     });
-    setProductLines([{ maSP: "", soLuong: 1, tonKho: 0 }]);
+    setProductLines([]);
+    setProductSearch("");
+    setCustomerSearch("");
     setShowAddModal(true);
   };
 
@@ -1370,184 +1387,236 @@ export default function QuanLyKhoTab() {
       {/* Modal thêm phiếu xuất kho */}
       {showAddModal && (
         <Portal>
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowAddModal(false)} />
-          <div className="fixed top-0 right-0 w-full max-w-2xl h-screen bg-white shadow-2xl z-[60] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-600 to-orange-700">
-              <div>
-                <h3 className="text-lg font-semibold text-white">Thêm phiếu xuất kho</h3>
-                <p className="text-orange-100 text-sm">Có thể thêm nhiều sản phẩm trong 1 phiếu</p>
+          <div className="fixed inset-0 z-50 bg-black/30" onClick={() => { if (!saving) { setShowAddModal(false); resetAddForm(); } }} />
+          <div className="fixed inset-4 lg:inset-8 z-[60] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Loading Overlay */}
+            {saving && (
+              <div className="fixed inset-4 lg:inset-8 bg-white/80 z-[70] flex flex-col items-center justify-center rounded-xl">
+                <Loader2 className="w-12 h-12 animate-spin text-orange-600 mb-4" />
+                <p className="text-gray-700 font-medium">Đang tạo phiếu xuất...</p>
+                <p className="text-gray-500 text-sm mt-1">Vui lòng đợi trong giây lát</p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"><X size={24} /></button>
+            )}
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-orange-50">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Thêm phiếu xuất kho</h3>
+                <p className="text-sm text-gray-500">Mã PXK: {newPhieu.maPXK}</p>
+              </div>
+              <button
+                onClick={() => { setShowAddModal(false); resetAddForm(); }}
+                disabled={saving}
+                className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              >
+                <X size={24} />
+              </button>
             </div>
 
+            {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã PXK * (tự động)</label>
-                    <input type="text" value={newPhieu.maPXK} onChange={(e) => setNewPhieu({ ...newPhieu, maPXK: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50" readOnly />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày tháng</label>
-                    <input type="date" value={newPhieu.ngayThang} onChange={(e) => setNewPhieu({ ...newPhieu, ngayThang: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
-                  </div>
+              {/* Phiếu Info */}
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã PXK</label>
+                  <input
+                    type="text"
+                    value={newPhieu.maPXK}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
+                  />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Mã đơn hàng - Text input */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã đơn hàng</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày tháng</label>
+                  <input
+                    type="date"
+                    value={newPhieu.ngayThang}
+                    onChange={(e) => setNewPhieu({ ...newPhieu, ngayThang: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã đơn hàng</label>
+                  <input
+                    type="text"
+                    value={newPhieu.maDonHang}
+                    onChange={(e) => setNewPhieu({ ...newPhieu, maDonHang: e.target.value })}
+                    placeholder="Nhập mã đơn hàng..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div className="relative" ref={customerDropdownRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Khách hàng</label>
+                  <div className="relative">
                     <input
                       type="text"
-                      value={newPhieu.maDonHang}
-                      onChange={(e) => setNewPhieu({ ...newPhieu, maDonHang: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                      placeholder="Nhập mã đơn hàng..."
+                      value={customerSearch}
+                      onChange={(e) => {
+                        setCustomerSearch(e.target.value);
+                        setCustomerDropdownOpen(true);
+                      }}
+                      onFocus={() => setCustomerDropdownOpen(true)}
+                      placeholder="Tìm khách hàng..."
+                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                    />
+                    <ChevronDown
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                      size={16}
                     />
                   </div>
-
-                  {/* Khách hàng - Searchable dropdown */}
-                  <div className="relative" ref={customerDropdownRef}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Khách hàng</label>
-                    <button
-                      type="button"
-                      onClick={() => setCustomerDropdownOpen(!customerDropdownOpen)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-left flex items-center justify-between focus:ring-2 focus:ring-orange-500"
-                    >
-                      <span className={newPhieu.khachHang ? "text-gray-900" : "text-gray-500"}>
-                        {newPhieu.khachHang || "Chọn khách hàng..."}
-                      </span>
-                      <ChevronDown size={18} className={`text-gray-400 transition-transform ${customerDropdownOpen ? "rotate-180" : ""}`} />
-                    </button>
-                    {customerDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-                        <div className="p-2 border-b border-gray-200">
-                          <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                              type="text"
-                              value={customerSearch}
-                              onChange={(e) => setCustomerSearch(e.target.value)}
-                              placeholder="Tìm khách hàng..."
-                              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-orange-500"
-                              autoFocus
-                            />
-                          </div>
-                        </div>
-                        <ul className="max-h-48 overflow-y-auto">
-                          {filteredCustomers.length === 0 ? (
-                            <li className="px-4 py-3 text-sm text-gray-500 text-center">Không tìm thấy</li>
-                          ) : (
-                            filteredCustomers.map((customer) => (
-                              <li
-                                key={customer.rowIndex}
-                                onClick={() => {
-                                  setNewPhieu({ ...newPhieu, khachHang: customer.name });
-                                  setCustomerDropdownOpen(false);
-                                  setCustomerSearch("");
-                                }}
-                                className={`px-4 py-2 text-sm cursor-pointer hover:bg-orange-50 ${newPhieu.khachHang === customer.name ? "bg-orange-100 text-orange-700 font-medium" : "text-gray-700"}`}
-                              >
-                                {customer.name}
-                                {customer.category && <span className="ml-2 text-gray-400">({customer.category})</span>}
-                              </li>
-                            ))
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">User thực hiện (tự động)</label>
-                  <input type="text" value={newPhieu.userThucHien} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50" readOnly />
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-gray-900">Danh sách sản phẩm xuất</h4>
-                    <button onClick={addProductLine} className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1">
-                      <Plus size={16} />Thêm dòng
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {productLines.map((line, index) => (
-                      <div key={index} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-                        {/* Mã SP đầy đủ - Searchable dropdown */}
-                        <div className="flex-1 relative" ref={productDropdownIndex === index ? productDropdownRef : null}>
-                          <label className="block text-xs text-gray-500 mb-1">Mã SP đầy đủ *</label>
-                          <button
-                            type="button"
+                  {customerDropdownOpen && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredCustomers.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy</div>
+                      ) : (
+                        filteredCustomers.map((customer) => (
+                          <div
+                            key={customer.rowIndex}
                             onClick={() => {
-                              setProductDropdownIndex(productDropdownIndex === index ? null : index);
-                              setProductSearch("");
+                              setNewPhieu({ ...newPhieu, khachHang: customer.name });
+                              setCustomerSearch(customer.name);
+                              setCustomerDropdownOpen(false);
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-left flex items-center justify-between focus:ring-2 focus:ring-orange-500 text-sm"
+                            className="px-3 py-2 hover:bg-orange-50 cursor-pointer flex justify-between items-center text-sm"
                           >
-                            <span className={line.maSP ? "text-gray-900" : "text-gray-500"}>
-                              {line.maSP || "Chọn mã SP đầy đủ..."}
-                            </span>
-                            <ChevronDown size={16} className={`text-gray-400 transition-transform ${productDropdownIndex === index ? "rotate-180" : ""}`} />
-                          </button>
-                          {productDropdownIndex === index && (
-                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-                              <div className="p-2 border-b border-gray-200">
-                                <div className="relative">
-                                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                  <input
-                                    type="text"
-                                    value={productSearch}
-                                    onChange={(e) => setProductSearch(e.target.value)}
-                                    placeholder="Tìm mã SP đầy đủ..."
-                                    className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-orange-500"
-                                    autoFocus
-                                  />
-                                </div>
-                              </div>
-                              <ul className="max-h-40 overflow-y-auto">
-                                {filteredProducts.length === 0 ? (
-                                  <li className="px-4 py-2 text-sm text-gray-500 text-center">Không tìm thấy</li>
-                                ) : (
-                                  filteredProducts.slice(0, 50).map((product) => (
-                                    <li
-                                      key={product.id}
-                                      onClick={() => handleSelectProduct(index, product.name)}
-                                      className={`px-3 py-1.5 text-sm cursor-pointer hover:bg-orange-50 ${line.maSP === product.name ? "bg-orange-100 text-orange-700 font-medium" : "text-gray-700"}`}
-                                    >
-                                      <span className="font-medium">{product.name}</span>
-                                    </li>
-                                  ))
-                                )}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                        <div className="w-24">
-                          <label className="block text-xs text-gray-500 mb-1">Số lượng</label>
-                          <input type="number" value={line.soLuong} onChange={(e) => updateProductLine(index, "soLuong", parseInt(e.target.value) || 0)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-sm" min="1" />
-                        </div>
-                        <div className="w-24">
-                          <label className="block text-xs text-gray-500 mb-1">Tồn kho</label>
-                          <input type="text" value={line.tonKho.toLocaleString()} className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-600" readOnly />
-                        </div>
-                        {productLines.length > 1 && (
-                          <button onClick={() => removeProductLine(index)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18} /></button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                            <span>{customer.name}</span>
+                            {customer.category && (
+                              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                {customer.category}
+                              </span>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">User thực hiện</label>
+                  <input
+                    type="text"
+                    value={newPhieu.userThucHien || "Đang tải..."}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Add Product Section */}
+              <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="relative" ref={productDropdownRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thêm sản phẩm</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={productSearch}
+                      onChange={(e) => {
+                        setProductSearch(e.target.value);
+                        setProductDropdownOpen(true);
+                      }}
+                      onFocus={() => setProductDropdownOpen(true)}
+                      placeholder="Tìm theo mã SP đầy đủ..."
+                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                  </div>
+                  {productDropdownOpen && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredProducts.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy sản phẩm</div>
+                      ) : (
+                        filteredProducts.slice(0, 50).map((product) => {
+                          const ton = getTonKhoByMaSP(product.name);
+                          return (
+                            <div
+                              key={product.id}
+                              onClick={() => handleAddProductToList(product.name)}
+                              className="px-3 py-2 hover:bg-orange-50 cursor-pointer flex justify-between items-center"
+                            >
+                              <span className="font-medium text-sm text-orange-600">{product.name}</span>
+                              <span className="text-xs text-gray-500">Tồn: {ton.toLocaleString()}</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Selected Products List */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-orange-50 px-4 py-2 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">Danh sách sản phẩm xuất ({productLines.length})</h4>
+                </div>
+                {productLines.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <ShoppingCart className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>Chưa có sản phẩm nào. Tìm và thêm sản phẩm ở trên.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-10">STT</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mã SP đầy đủ</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-28">Số lượng</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-28">Tồn kho</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-12"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {productLines.map((line, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
+                            <td className="px-3 py-2 text-sm font-medium text-orange-600">{line.maSP}</td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                value={line.soLuong}
+                                onChange={(e) => updateProductLine(index, "soLuong", parseInt(e.target.value) || 0)}
+                                min="1"
+                                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center mx-auto block"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-sm text-right text-gray-600">{line.tonKho.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => removeProductLine(index)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                title="Xóa"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
 
+            {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex gap-3">
-                <button onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium" disabled={saving}>Hủy</button>
-                <button onClick={handleAddPhieu} disabled={saving} className="flex-1 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center justify-center gap-2">
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => { setShowAddModal(false); resetAddForm(); }}
+                  disabled={saving}
+                  className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleAddPhieu}
+                  disabled={saving || productLines.length === 0}
+                  className="px-6 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {saving && <Loader2 size={18} className="animate-spin" />}
-                  {saving ? "Đang lưu..." : "Thêm phiếu xuất"}
+                  <Plus size={18} />
+                  {saving ? "Đang lưu..." : `Thêm phiếu xuất (${productLines.length} SP)`}
                 </button>
               </div>
             </div>
