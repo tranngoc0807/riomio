@@ -1,12 +1,13 @@
 "use client";
 
-import { Loader2, X, Search, Plus, Trash2, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { Loader2, X, Search, Plus, Trash2, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Printer, Download, ChevronDown } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Portal from "@/components/Portal";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import type { Workshop, DonGiaGiaCong } from "@/lib/googleSheets";
 import * as XLSX from "xlsx";
+import html2canvas from "html2canvas";
 
 interface BangKeGiaCong {
   id: number;
@@ -81,6 +82,11 @@ export default function BangKeGiaCongTab() {
   const [isAdding, setIsAdding] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Print / download phiếu
+  const printRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showPrintDropdown, setShowPrintDropdown] = useState(false);
 
   // Workshops list
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -496,6 +502,74 @@ export default function BangKeGiaCongTab() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bang ke GC");
     XLSX.writeFile(wb, "Bang_ke_gia_cong.xlsx");
+  };
+
+  // Tải xuống phiếu chi tiết dưới dạng JPG
+  const handleDownloadJPG = async () => {
+    if (!printRef.current || !viewGroupedPhieu) return;
+    setIsExporting(true);
+    setShowPrintDropdown(false);
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const link = document.createElement("a");
+      link.download = `PhieuGiaCong_${viewGroupedPhieu.maPGC}_${new Date().toISOString().split("T")[0]}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+    } catch (error) {
+      console.error("Error exporting to JPG:", error);
+      toast.error("Lỗi khi xuất ảnh");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // In phiếu qua máy in
+  const handlePrint = () => {
+    setShowPrintDropdown(false);
+    const printContent = printRef.current;
+    if (!printContent || !viewGroupedPhieu) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    // Clone node và xoá các inline style giấu offscreen (position/left/top)
+    // để khi đưa vào window print, content hiển thị bình thường ở (0,0).
+    const cloned = printContent.cloneNode(true) as HTMLElement;
+    cloned.style.position = "static";
+    cloned.style.left = "auto";
+    cloned.style.top = "auto";
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Phiếu gia công - ${viewGroupedPhieu.maPGC}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            @media print { body { padding: 0; } }
+            img { max-width: 100%; }
+          </style>
+        </head>
+        <body>${cloned.outerHTML}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    // Đợi ảnh trong template (logo) load xong mới print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   // Export chi tiết 1 phiếu
@@ -977,7 +1051,45 @@ export default function BangKeGiaCongTab() {
               <div className="flex items-center gap-2">
                 <button onClick={() => handleExportDetailPDF(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
                 <button onClick={() => handleExportDetailExcel(viewGroupedPhieu)} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
-                <button onClick={() => { setShowViewModal(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowPrintDropdown(!showPrintDropdown)}
+                    disabled={isExporting}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isExporting ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" /> Đang xuất...
+                      </>
+                    ) : (
+                      <>
+                        <Printer size={14} /> In / Tải xuống <ChevronDown size={14} />
+                      </>
+                    )}
+                  </button>
+                  {showPrintDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowPrintDropdown(false)} />
+                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                        <button
+                          onClick={handleDownloadJPG}
+                          className="flex items-center gap-2 w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors rounded-t-lg"
+                        >
+                          <Download size={16} className="text-green-600" />
+                          <span>Tải xuống JPG</span>
+                        </button>
+                        <button
+                          onClick={handlePrint}
+                          className="flex items-center gap-2 w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100"
+                        >
+                          <Printer size={16} className="text-blue-600" />
+                          <span>In qua máy in</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <button onClick={() => { setShowViewModal(false); setShowPrintDropdown(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X size={24} />
                 </button>
               </div>
@@ -1075,6 +1187,136 @@ export default function BangKeGiaCongTab() {
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Hidden print template — chỉ dùng cho html2canvas / window.print */}
+          <div
+            ref={printRef}
+            style={{
+              position: "absolute",
+              left: "-10000px",
+              top: 0,
+              width: "800px",
+              padding: "30px",
+              background: "#fff",
+              fontFamily: "Arial, sans-serif",
+              color: "#000",
+            }}
+          >
+            {/* Header công ty */}
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
+              <img
+                src="/logo_riomio.jpg"
+                alt="Riomio"
+                style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover" }}
+              />
+              <div>
+                <div style={{ fontSize: "16px", fontWeight: "bold" }}>CÔNG TY CỔ PHẦN RIOMIO</div>
+                <div style={{ fontSize: "12px" }}>
+                  B12 TT7 Nguyễn Sơn Hà, KĐT Văn Quán, Phúc La, Hà Đông, Hà Nội
+                </div>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div style={{ textAlign: "center", margin: "12px 0 20px" }}>
+              <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>PHIẾU GIA CÔNG</h1>
+            </div>
+
+            {/* Info: 2 cột */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+                marginBottom: "20px",
+                fontSize: "14px",
+              }}
+            >
+              <div>
+                <div style={{ marginBottom: "6px" }}>
+                  <span style={{ color: "#555" }}>Mã phiếu: </span>
+                  <span style={{ fontWeight: "bold" }}>{viewGroupedPhieu.maPGC}</span>
+                </div>
+                <div>
+                  <span style={{ color: "#555" }}>Ngày: </span>
+                  <span style={{ fontWeight: "500" }}>{viewGroupedPhieu.ngayThang}</span>
+                </div>
+              </div>
+              <div>
+                <div style={{ marginBottom: "6px" }}>
+                  <span style={{ color: "#555" }}>Xưởng sản xuất: </span>
+                  <span style={{ fontWeight: "bold" }}>{viewGroupedPhieu.xuongSX || "-"}</span>
+                </div>
+                <div>
+                  <span style={{ color: "#555" }}>Tổng số lượng: </span>
+                  <span style={{ fontWeight: "bold" }}>
+                    {viewGroupedPhieu.totalSoLuong.toLocaleString("vi-VN")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bảng sản phẩm */}
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: "13px",
+                marginBottom: "30px",
+              }}
+            >
+              <thead>
+                <tr style={{ backgroundColor: "#dcfce7" }}>
+                  <th style={{ border: "1px solid #555", padding: "8px", width: "50px", textAlign: "center" }}>STT</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", textAlign: "center" }}>Mã sản phẩm</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", width: "90px", textAlign: "center" }}>Số lượng</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", width: "100px", textAlign: "center" }}>Đơn giá</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", width: "120px", textAlign: "center" }}>Thành tiền</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", textAlign: "center" }}>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                {viewGroupedPhieu.items.map((item, index) => (
+                  <tr key={item.id}>
+                    <td style={{ border: "1px solid #555", padding: "8px", textAlign: "center" }}>{index + 1}</td>
+                    <td style={{ border: "1px solid #555", padding: "8px" }}>
+                      {item.maSP || item.maSPSX}
+                    </td>
+                    <td style={{ border: "1px solid #555", padding: "8px", textAlign: "right" }}>
+                      {item.soLuong.toLocaleString("vi-VN")}
+                    </td>
+                    <td style={{ border: "1px solid #555", padding: "8px", textAlign: "right" }}>
+                      {item.donGia > 0 ? item.donGia.toLocaleString("vi-VN") : ""}
+                    </td>
+                    <td style={{ border: "1px solid #555", padding: "8px", textAlign: "right" }}>
+                      {item.thanhTien > 0 ? item.thanhTien.toLocaleString("vi-VN") : ""}
+                    </td>
+                    <td style={{ border: "1px solid #555", padding: "8px", whiteSpace: "pre-wrap" }}>
+                      {item.ghiChu || ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Chữ ký */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: "12px",
+                marginTop: "40px",
+                textAlign: "center",
+                color: "#dc2626",
+                fontSize: "16px",
+                fontWeight: "bold",
+              }}
+            >
+              <div>Quản lý đơn hàng</div>
+              <div>Kế toán</div>
+              <div>Giám đốc</div>
             </div>
           </div>
         </Portal>

@@ -65,6 +65,14 @@ export default function PrintDownloadButton({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    // Clone node và reset position styles (template có thể đặt offscreen
+    // bằng position:absolute; left:-10000px — nếu không reset, print window
+    // cũng sẽ render trắng)
+    const cloned = printContent.cloneNode(true) as HTMLElement;
+    cloned.style.position = "static";
+    cloned.style.left = "auto";
+    cloned.style.top = "auto";
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -79,9 +87,10 @@ export default function PrintDownloadButton({
               print-color-adjust: exact;
             }
             @media print { body { padding: 0; } }
+            img { max-width: 100%; }
           </style>
         </head>
-        <body>${printContent.outerHTML}</body>
+        <body>${cloned.outerHTML}</body>
       </html>
     `);
 
@@ -91,7 +100,7 @@ export default function PrintDownloadButton({
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 250);
+    }, 500);
   };
 
   return (

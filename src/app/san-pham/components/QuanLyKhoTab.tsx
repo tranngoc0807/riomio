@@ -2175,7 +2175,7 @@ export default function QuanLyKhoTab() {
                 </button>
               </div>
             </div>
-            <div ref={phieuXuatKhoPrintRef} className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6">
               {/* Phiếu Info */}
               <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                 <div>
@@ -2214,17 +2214,19 @@ export default function QuanLyKhoTab() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {viewPhieuXuatKho.items.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-gray-600">{index + 1}</td>
-                        <td className="px-4 py-2 font-medium text-gray-900">{item.maSP}</td>
-                        <td className="px-4 py-2 text-right text-gray-700">{item.soLuong.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-gray-700">{item.maDonHang || "-"}</td>
-                        <td className={`px-4 py-2 text-right font-medium ${item.tonKho < 0 ? "text-red-600" : item.tonKho === 0 ? "text-gray-500" : "text-green-600"}`}>
-                          {item.tonKho.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
+                    {[...viewPhieuXuatKho.items]
+                      .sort((a, b) => b.tonKho - a.tonKho)
+                      .map((item, index) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{index + 1}</td>
+                          <td className="px-4 py-2 font-medium text-gray-900">{item.maSP}</td>
+                          <td className="px-4 py-2 text-right text-gray-700">{item.soLuong.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-gray-700">{item.maDonHang || "-"}</td>
+                          <td className={`px-4 py-2 text-right font-medium ${item.tonKho < 0 ? "text-red-600" : item.tonKho === 0 ? "text-gray-500" : "text-green-600"}`}>
+                            {item.tonKho.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                   <tfoot className="bg-gray-100">
                     <tr>
@@ -2237,6 +2239,138 @@ export default function QuanLyKhoTab() {
                   </tfoot>
                 </table>
               </div>
+            </div>
+          </div>
+
+          {/* Hidden print template — chỉ dùng cho html2canvas / window.print */}
+          <div
+            ref={phieuXuatKhoPrintRef}
+            style={{
+              position: "absolute",
+              left: "-10000px",
+              top: 0,
+              width: "800px",
+              padding: "30px",
+              background: "#fff",
+              fontFamily: "Arial, sans-serif",
+              color: "#000",
+            }}
+          >
+            {/* Header công ty */}
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
+              <img
+                src="/logo_riomio.jpg"
+                alt="Riomio"
+                style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover" }}
+              />
+              <div>
+                <div style={{ fontSize: "16px", fontWeight: "bold" }}>CÔNG TY CỔ PHẦN RIOMIO</div>
+                <div style={{ fontSize: "12px" }}>
+                  B12 TT7 Nguyễn Sơn Hà, KĐT Văn Quán, Phúc La, Hà Đông, Hà Nội
+                </div>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div style={{ textAlign: "center", margin: "12px 0 20px" }}>
+              <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>PHIẾU XUẤT KHO</h1>
+            </div>
+
+            {/* Info: 2 cột */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+                marginBottom: "20px",
+                fontSize: "14px",
+              }}
+            >
+              <div>
+                <div style={{ marginBottom: "6px" }}>
+                  <span style={{ color: "#555" }}>Mã PXK: </span>
+                  <span style={{ fontWeight: "bold" }}>{viewPhieuXuatKho.maPXK}</span>
+                </div>
+                <div>
+                  <span style={{ color: "#555" }}>Ngày tháng: </span>
+                  <span style={{ fontWeight: "500" }}>{viewPhieuXuatKho.items[0]?.ngayThang}</span>
+                </div>
+              </div>
+              <div>
+                <div style={{ marginBottom: "6px" }}>
+                  <span style={{ color: "#555" }}>Khách hàng: </span>
+                  <span style={{ fontWeight: "bold" }}>{viewPhieuXuatKho.items[0]?.khachHang || "-"}</span>
+                </div>
+                <div>
+                  <span style={{ color: "#555" }}>User thực hiện: </span>
+                  <span style={{ fontWeight: "500" }}>{viewPhieuXuatKho.items[0]?.userThucHien || "-"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bảng sản phẩm */}
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: "13px",
+                marginBottom: "30px",
+              }}
+            >
+              <thead>
+                <tr style={{ backgroundColor: "#fed7aa" }}>
+                  <th style={{ border: "1px solid #555", padding: "8px", width: "50px", textAlign: "center" }}>STT</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", textAlign: "center" }}>Mã SP</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", width: "90px", textAlign: "center" }}>Số lượng</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", textAlign: "center" }}>Mã đơn hàng</th>
+                  <th style={{ border: "1px solid #555", padding: "8px", width: "90px", textAlign: "center" }}>Tồn kho</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...viewPhieuXuatKho.items]
+                  .sort((a, b) => b.tonKho - a.tonKho)
+                  .map((item, index) => (
+                    <tr key={item.id}>
+                      <td style={{ border: "1px solid #555", padding: "8px", textAlign: "center" }}>{index + 1}</td>
+                      <td style={{ border: "1px solid #555", padding: "8px" }}>{item.maSP}</td>
+                      <td style={{ border: "1px solid #555", padding: "8px", textAlign: "right" }}>
+                        {item.soLuong.toLocaleString("vi-VN")}
+                      </td>
+                      <td style={{ border: "1px solid #555", padding: "8px" }}>{item.maDonHang || ""}</td>
+                      <td style={{ border: "1px solid #555", padding: "8px", textAlign: "right" }}>
+                        {item.tonKho.toLocaleString("vi-VN")}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={2} style={{ border: "1px solid #555", padding: "8px", textAlign: "right", fontWeight: "bold" }}>Tổng:</td>
+                  <td style={{ border: "1px solid #555", padding: "8px", textAlign: "right", fontWeight: "bold" }}>
+                    {viewPhieuXuatKho.items.reduce((s, i) => s + i.soLuong, 0).toLocaleString("vi-VN")}
+                  </td>
+                  <td colSpan={2} style={{ border: "1px solid #555", padding: "8px" }}></td>
+                </tr>
+              </tfoot>
+            </table>
+
+            {/* Chữ ký */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                gap: "12px",
+                marginTop: "40px",
+                textAlign: "center",
+                color: "#dc2626",
+                fontSize: "14px",
+                fontWeight: "bold",
+              }}
+            >
+              <div>Người bán hàng</div>
+              <div>Thủ kho</div>
+              <div>Kế toán</div>
+              <div>Người mua hàng</div>
             </div>
           </div>
         </Portal>
