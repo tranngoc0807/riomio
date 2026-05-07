@@ -350,10 +350,15 @@ export default function QuanLyKhoTab() {
     item.ghiChu.toLowerCase().includes(searchNhapKho.toLowerCase())
   );
 
-  // Filter tồn kho theo mã SP
-  const filteredTonKho = tonKhoList.filter((item) =>
-    item.code.toLowerCase().includes(searchTonKho.toLowerCase().trim()),
-  );
+  // Filter tồn kho theo mã SP (sắp xếp tồn cuối từ cao đến thấp)
+  const filteredTonKho = tonKhoList
+    .filter((item) =>
+      item.code.toLowerCase().includes(searchTonKho.toLowerCase().trim()),
+    )
+    .sort((a, b) => b.tonCuoiKy - a.tonCuoiKy);
+
+  // Sắp xếp tồn đầu từ cao đến thấp
+  const sortedTonDau = [...tonDauList].sort((a, b) => b.tonDau - a.tonDau);
 
   // Pagination calculations
   const totalPagesBang1 = Math.ceil(filteredTonKho.length / itemsPerPage);
@@ -361,10 +366,10 @@ export default function QuanLyKhoTab() {
   const endIndexBang1 = startIndexBang1 + itemsPerPage;
   const currentItemsBang1 = filteredTonKho.slice(startIndexBang1, endIndexBang1);
 
-  const totalPagesBang2 = Math.ceil(tonDauList.length / itemsPerPage);
+  const totalPagesBang2 = Math.ceil(sortedTonDau.length / itemsPerPage);
   const startIndexBang2 = (currentPageBang2 - 1) * itemsPerPage;
   const endIndexBang2 = startIndexBang2 + itemsPerPage;
-  const currentItemsBang2 = tonDauList.slice(startIndexBang2, endIndexBang2);
+  const currentItemsBang2 = sortedTonDau.slice(startIndexBang2, endIndexBang2);
 
   // Group xuất kho by maPXK
   const groupedXuatKho = (() => {

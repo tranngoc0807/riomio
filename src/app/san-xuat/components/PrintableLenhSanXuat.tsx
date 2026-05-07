@@ -41,6 +41,7 @@ const ALL_SIZES = [
   { key: "sizeM", label: "M" },
   { key: "sizeL", label: "L" },
   { key: "sizeXL", label: "XL" },
+  { key: "sizeXXL", label: "XXL" },
 ];
 
 // Get sizes that have data across all products
@@ -226,22 +227,17 @@ export default function PrintableLenhSanXuat({ data }: PrintableLenhSanXuatProps
           {/* Header */}
           <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "10px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div
+              <img
+                src="/logo_riomio.jpg"
+                alt="Riomio"
+                crossOrigin="anonymous"
                 style={{
-                  width: "40px",
-                  height: "40px",
+                  width: "45px",
+                  height: "45px",
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, #ef4444 50%, #000 50%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  fontSize: "12px",
-                  fontWeight: "bold",
+                  objectFit: "cover",
                 }}
-              >
-                R
-              </div>
+              />
               <div>
                 <div style={{ fontWeight: "bold", fontSize: "14px", color: "#ef4444" }}>RIOMIO OFFICIAL</div>
                 <div style={{ fontSize: "10px", color: "#666" }}>

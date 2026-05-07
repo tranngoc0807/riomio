@@ -38,19 +38,25 @@ export default function TonKhoNPLTab() {
   const [currentPageXuongSX, setCurrentPageXuongSX] = useState(1);
   const itemsPerPage = 100;
 
-  // Filtered data
-  const filteredThang = tonKhoThang.filter((item) =>
-    item.maNPL.toLowerCase().includes(searchTermThang.toLowerCase())
-  );
+  // Filtered data (sorted by inventory quantity descending)
+  const filteredThang = tonKhoThang
+    .filter((item) =>
+      item.maNPL.toLowerCase().includes(searchTermThang.toLowerCase())
+    )
+    .sort((a, b) => b.tonCuoi - a.tonCuoi);
 
-  const filteredNgay = tonKhoNgay.filter((item) =>
-    item.maSP.toLowerCase().includes(searchTermNgay.toLowerCase())
-  );
+  const filteredNgay = tonKhoNgay
+    .filter((item) =>
+      item.maSP.toLowerCase().includes(searchTermNgay.toLowerCase())
+    )
+    .sort((a, b) => b.soLuong - a.soLuong);
 
-  const filteredXuongSX = tonKhoXuongSX.filter((item) =>
-    item.tenNPL.toLowerCase().includes(searchTermXuongSX.toLowerCase()) ||
-    item.xuongSX.toLowerCase().includes(searchTermXuongSX.toLowerCase())
-  );
+  const filteredXuongSX = tonKhoXuongSX
+    .filter((item) =>
+      item.tenNPL.toLowerCase().includes(searchTermXuongSX.toLowerCase()) ||
+      item.xuongSX.toLowerCase().includes(searchTermXuongSX.toLowerCase())
+    )
+    .sort((a, b) => b.soLuong - a.soLuong);
 
   // Pagination calculations
   const totalPagesThang = Math.ceil(filteredThang.length / itemsPerPage);
