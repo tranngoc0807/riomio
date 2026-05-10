@@ -37,6 +37,8 @@ import {
   EyeOff,
   Loader2,
   UserCircle,
+  ShoppingBag,
+  Warehouse,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
@@ -52,6 +54,12 @@ interface MenuItem {
     name: string;
     href: string;
     icon: React.ComponentType<{ size?: number }>;
+    /**
+     * Các giá trị `tab` query param cũng coi là active cho sub-item này.
+     * Dùng cho group sub-tab — vd "Quản lý kho" trên /san-pham bao gồm
+     * cả ton-kho/ton-dau/xuat-kho/nhap-kho.
+     */
+    matchTabs?: string[];
   }[];
 }
 
@@ -108,6 +116,21 @@ const menuItems: MenuItem[] = [
     name: "Sản phẩm",
     href: "/san-pham",
     icon: Package,
+
+    subItems: [
+      {
+        name: "Danh mục sản phẩm",
+        href: "/san-pham?tab=danh-muc",
+        icon: ShoppingBag,
+        matchTabs: ["", "danh-muc"], // mặc định khi /san-pham không có tab
+      },
+      {
+        name: "Quản lý kho",
+        href: "/san-pham?tab=quan-ly-kho",
+        icon: Warehouse,
+        matchTabs: ["quan-ly-kho", "ton-kho", "ton-dau", "xuat-kho", "nhap-kho"],
+      },
+    ],
   },
   {
     name: "Hình ảnh",
@@ -320,12 +343,19 @@ export default function Sidebar() {
     }
   };
 
-  // Helper function to check if a link is active (including query params)
-  const isLinkActive = (href: string) => {
+  // Helper function to check if a link is active (including query params).
+  // Nếu truyền `matchTabs`, sub-item được coi là active khi pathname khớp và
+  // giá trị `tab` hiện tại nằm trong `matchTabs` — bỏ qua so khớp params chính xác.
+  const isLinkActive = (href: string, matchTabs?: string[]) => {
     const [hrefPath, hrefQuery] = href.split("?");
 
     // Check pathname
     if (pathname !== hrefPath) return false;
+
+    if (matchTabs && matchTabs.length > 0) {
+      const currentTab = searchParams.get("tab") || "";
+      return matchTabs.includes(currentTab);
+    }
 
     // If no query params in href, just check pathname
     if (!hrefQuery) return true;
@@ -373,7 +403,7 @@ export default function Sidebar() {
     filteredMenuItems.forEach((item) => {
       if (item.subItems) {
         const hasActiveSubItem = item.subItems.some((sub) =>
-          isLinkActive(sub.href),
+          isLinkActive(sub.href, sub.matchTabs),
         );
         if (hasActiveSubItem) {
           setExpandedMenus((prev) =>
@@ -437,7 +467,7 @@ export default function Sidebar() {
               const isActive = isLinkActive(item.href);
               const hasActiveSubItem =
                 hasSubItems &&
-                item.subItems?.some((sub) => isLinkActive(sub.href));
+                item.subItems?.some((sub) => isLinkActive(sub.href, sub.matchTabs));
 
               return (
                 <li key={item.href}>
@@ -474,7 +504,7 @@ export default function Sidebar() {
                           <ul className="ml-4 pl-4 border-l border-blue-600 space-y-1">
                             {item.subItems?.map((subItem) => {
                               const SubIcon = subItem.icon;
-                              const isSubActive = isLinkActive(subItem.href);
+                              const isSubActive = isLinkActive(subItem.href, subItem.matchTabs);
 
                               return (
                                 <li key={subItem.href}>

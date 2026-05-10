@@ -57,16 +57,16 @@ interface SanPham {
 // H=Giá sỉ, I=Giá lẻ, J=Dòng size, K=Tồn kho
 interface SanPhamCatalog {
   id: number;
-  code: string;           // B - Mã SP
-  printPattern: string;   // C - Hình in
-  size: string;           // D - Size
-  color: string;          // E - Màu sắc
-  name: string;           // F - Mã SP đầy đủ
-  image: string;          // G - Hình ảnh
+  code: string; // B - Mã SP
+  printPattern: string; // C - Hình in
+  size: string; // D - Size
+  color: string; // E - Màu sắc
+  name: string; // F - Mã SP đầy đủ
+  image: string; // G - Hình ảnh
   wholesalePrice: number; // H - Giá sỉ
-  retailPrice: number;    // I - Giá lẻ
-  sizeChart: string;      // J - Dòng size
-  tonKho: number;         // K - Tồn kho
+  retailPrice: number; // I - Giá lẻ
+  sizeChart: string; // J - Dòng size
+  tonKho: number; // K - Tồn kho
   // legacy fields kept for backward compat
   costPrice: number;
   mainFabric: string;
@@ -179,7 +179,11 @@ export default function SanPhamPage() {
   const quanLyKhoSubTabs = ["ton-kho", "ton-dau", "xuat-kho", "nhap-kho"];
   const isQuanLyKhoSubTab = tabParam && quanLyKhoSubTabs.includes(tabParam);
 
-  const getInitialMainTab = (): "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von" => {
+  const getInitialMainTab = ():
+    | "phat-trien"
+    | "danh-muc"
+    | "quan-ly-kho"
+    | "dieu-chinh-gia-von" => {
     if (isQuanLyKhoSubTab || tabParam === "quan-ly-kho") return "quan-ly-kho";
     if (tabParam === "phat-trien") return "phat-trien";
     if (tabParam === "dieu-chinh-gia-von") return "dieu-chinh-gia-von";
@@ -205,7 +209,11 @@ export default function SanPhamPage() {
   // Sync tab state when URL param changes (browser back/forward)
   useEffect(() => {
     const isSubTab = tabParam && quanLyKhoSubTabs.includes(tabParam);
-    let newTab: "phat-trien" | "danh-muc" | "quan-ly-kho" | "dieu-chinh-gia-von";
+    let newTab:
+      | "phat-trien"
+      | "danh-muc"
+      | "quan-ly-kho"
+      | "dieu-chinh-gia-von";
     if (isSubTab || tabParam === "quan-ly-kho") newTab = "quan-ly-kho";
     else if (tabParam === "phat-trien") newTab = "phat-trien";
     else if (tabParam === "dieu-chinh-gia-von") newTab = "dieu-chinh-gia-von";
@@ -257,11 +265,15 @@ export default function SanPhamPage() {
 
   // Delete confirmation state for PhatTrienSanPham
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
+  const [deletingProductId, setDeletingProductId] = useState<number | null>(
+    null,
+  );
 
   // Image picker state
   const [showImagePicker, setShowImagePicker] = useState(false);
-  const [imagePickerTarget, setImagePickerTarget] = useState<"newProduct" | "editProduct" | "newCatalog" | "editCatalog">("newProduct");
+  const [imagePickerTarget, setImagePickerTarget] = useState<
+    "newProduct" | "editProduct" | "newCatalog" | "editCatalog"
+  >("newProduct");
 
   // ======== DANH MỤC SẢN PHẨM STATE ========
   const [catalogProducts, setCatalogProducts] = useState<SanPhamCatalog[]>([]);
@@ -329,8 +341,11 @@ export default function SanPhamPage() {
   const maSPDropdownRef = useRef<HTMLDivElement>(null);
 
   // Delete confirmation state for CatalogProduct
-  const [showCatalogDeleteConfirm, setShowCatalogDeleteConfirm] = useState(false);
-  const [deletingCatalogProductId, setDeletingCatalogProductId] = useState<number | null>(null);
+  const [showCatalogDeleteConfirm, setShowCatalogDeleteConfirm] =
+    useState(false);
+  const [deletingCatalogProductId, setDeletingCatalogProductId] = useState<
+    number | null
+  >(null);
 
   // ======== PHÁT TRIỂN SẢN PHẨM FUNCTIONS ========
   const fetchProducts = async () => {
@@ -351,7 +366,6 @@ export default function SanPhamPage() {
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     fetchProducts();
@@ -492,9 +506,12 @@ export default function SanPhamPage() {
     if (deletingProductId === null) return;
 
     try {
-      const response = await fetch(`/api/san-pham/delete?id=${deletingProductId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/san-pham/delete?id=${deletingProductId}`,
+        {
+          method: "DELETE",
+        },
+      );
       const result = await response.json();
 
       if (result.success) {
@@ -747,9 +764,12 @@ export default function SanPhamPage() {
     if (deletingCatalogProductId === null) return;
 
     try {
-      const response = await fetch(`/api/san-pham-catalog/delete?id=${deletingCatalogProductId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/san-pham-catalog/delete?id=${deletingCatalogProductId}`,
+        {
+          method: "DELETE",
+        },
+      );
       const result = await response.json();
 
       if (result.success) {
@@ -863,7 +883,7 @@ export default function SanPhamPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
+      {/* <div className="border-b border-gray-200">
         <nav className="flex gap-4">
           <button
             onClick={() => handleTabChange("danh-muc")}
@@ -888,7 +908,7 @@ export default function SanPhamPage() {
             Quản lý kho
           </button>
         </nav>
-      </div>
+      </div> */}
 
       {/* ======== TAB: PHÁT TRIỂN SẢN PHẨM ======== */}
       {activeTab === "phat-trien" && (
@@ -1294,17 +1314,39 @@ export default function SanPhamPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gray-50">
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">STT</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hình ảnh</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Mã SP</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hình in</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Size</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Màu sắc</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[200px]">Mã SP đầy đủ</th>
-                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá sỉ</th>
-                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Giá lẻ</th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Dòng size</th>
-                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Tồn kho</th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            STT
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Hình ảnh
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Mã SP
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Hình in
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Size
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Màu sắc
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[200px]">
+                            Mã SP đầy đủ
+                          </th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                            Giá sỉ
+                          </th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                            Giá lẻ
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Dòng size
+                          </th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                            Tồn kho
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -1326,7 +1368,9 @@ export default function SanPhamPage() {
                               className="hover:bg-gray-50 cursor-pointer"
                               onClick={() => handleViewCatalogProduct(product)}
                             >
-                              <td className="px-3 py-3 text-sm text-gray-500">{catalogStartIndex + index + 1}</td>
+                              <td className="px-3 py-3 text-sm text-gray-500">
+                                {catalogStartIndex + index + 1}
+                              </td>
                               <td className="px-3 py-3">
                                 {product.image ? (
                                   <img
@@ -1334,25 +1378,50 @@ export default function SanPhamPage() {
                                     alt={product.name}
                                     className="w-10 h-10 rounded object-cover"
                                     onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = "none";
+                                      (
+                                        e.target as HTMLImageElement
+                                      ).style.display = "none";
                                     }}
                                   />
                                 ) : (
                                   <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
-                                    <ImageIcon size={16} className="text-gray-400" />
+                                    <ImageIcon
+                                      size={16}
+                                      className="text-gray-400"
+                                    />
                                   </div>
                                 )}
                               </td>
-                              <td className="px-3 py-3 text-sm font-medium text-blue-600">{product.code || "-"}</td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.printPattern || "-"}</td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.size || "-"}</td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.color || "-"}</td>
-                              <td className="px-3 py-3 text-sm font-medium text-gray-900">{product.name || "-"}</td>
-                              <td className="px-3 py-3 text-sm text-right text-gray-600">{formatPrice(product.wholesalePrice)}</td>
-                              <td className="px-3 py-3 text-sm text-right font-medium text-green-600">{formatPrice(product.retailPrice)}</td>
-                              <td className="px-3 py-3 text-sm text-gray-600">{product.sizeChart || "-"}</td>
-                              <td className={`px-3 py-3 text-sm text-right font-medium ${product.tonKho > 0 ? "text-gray-900" : "text-gray-400"}`}>
-                                {product.tonKho ? product.tonKho.toLocaleString("vi-VN") : "0"}
+                              <td className="px-3 py-3 text-sm font-medium text-blue-600">
+                                {product.code || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.printPattern || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.size || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.color || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm font-medium text-gray-900">
+                                {product.name || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-right text-gray-600">
+                                {formatPrice(product.wholesalePrice)}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-right font-medium text-green-600">
+                                {formatPrice(product.retailPrice)}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-600">
+                                {product.sizeChart || "-"}
+                              </td>
+                              <td
+                                className={`px-3 py-3 text-sm text-right font-medium ${product.tonKho > 0 ? "text-gray-900" : "text-gray-400"}`}
+                              >
+                                {product.tonKho
+                                  ? product.tonKho.toLocaleString("vi-VN")
+                                  : "0"}
                               </td>
                             </tr>
                           ))
@@ -1911,7 +1980,11 @@ export default function SanPhamPage() {
                   </div>
                   {newProduct.image && (
                     <div className="mt-2">
-                      <img src={newProduct.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                      <img
+                        src={newProduct.image}
+                        alt="Preview"
+                        className="h-20 w-20 object-cover rounded-lg border"
+                      />
                     </div>
                   )}
                 </div>
@@ -2389,7 +2462,16 @@ export default function SanPhamPage() {
                           (m) =>
                             m.code.toLowerCase().replace(/\s+/g, "") === norm,
                         );
-                        console.log("[Mã SP onChange] typed:", typed, "norm:", norm, "exact:", exact, "list size:", maSPList.length);
+                        console.log(
+                          "[Mã SP onChange] typed:",
+                          typed,
+                          "norm:",
+                          norm,
+                          "exact:",
+                          exact,
+                          "list size:",
+                          maSPList.length,
+                        );
                         if (exact) {
                           setNewCatalogProduct((prev) => ({
                             ...prev,
@@ -2425,7 +2507,14 @@ export default function SanPhamPage() {
                             (m) =>
                               m.code.toLowerCase().replace(/\s+/g, "") === norm,
                           );
-                          console.log("[Mã SP onBlur] typed:", typed, "found:", exact?.code, "list size:", maSPList.length);
+                          console.log(
+                            "[Mã SP onBlur] typed:",
+                            typed,
+                            "found:",
+                            exact?.code,
+                            "list size:",
+                            maSPList.length,
+                          );
                           if (exact) {
                             setNewCatalogProduct((prev) => ({
                               ...prev,
@@ -2453,7 +2542,13 @@ export default function SanPhamPage() {
                         ) : (
                           maSPList
                             .filter((m) => {
-                              const q = (maSPSearch || newCatalogProduct.code || "").toLowerCase().trim();
+                              const q = (
+                                maSPSearch ||
+                                newCatalogProduct.code ||
+                                ""
+                              )
+                                .toLowerCase()
+                                .trim();
                               if (!q) return true;
                               return (
                                 m.code.toLowerCase().includes(q) ||
@@ -2503,7 +2598,9 @@ export default function SanPhamPage() {
                     ) : null}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Hình in</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hình in
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -2576,7 +2673,10 @@ export default function SanPhamPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hình ảnh <span className="text-xs text-gray-500 font-normal">(tự lấy theo Mã SP)</span>
+                    Hình ảnh{" "}
+                    <span className="text-xs text-gray-500 font-normal">
+                      (tự lấy theo Mã SP)
+                    </span>
                   </label>
                   <input
                     type="text"
@@ -2587,7 +2687,11 @@ export default function SanPhamPage() {
                   />
                   {newCatalogProduct.image && (
                     <div className="mt-2">
-                      <img src={newCatalogProduct.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                      <img
+                        src={newCatalogProduct.image}
+                        alt="Preview"
+                        className="h-20 w-20 object-cover rounded-lg border"
+                      />
                     </div>
                   )}
                 </div>
@@ -2595,11 +2699,20 @@ export default function SanPhamPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Giá sỉ <span className="text-xs text-gray-500 font-normal">(tự lấy theo Mã SP)</span>
+                      Giá sỉ{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự lấy theo Mã SP)
+                      </span>
                     </label>
                     <input
                       type="text"
-                      value={newCatalogProduct.wholesalePrice ? newCatalogProduct.wholesalePrice.toLocaleString("vi-VN") : ""}
+                      value={
+                        newCatalogProduct.wholesalePrice
+                          ? newCatalogProduct.wholesalePrice.toLocaleString(
+                              "vi-VN",
+                            )
+                          : ""
+                      }
                       readOnly
                       className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
                       placeholder="0"
@@ -2607,11 +2720,20 @@ export default function SanPhamPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Giá lẻ <span className="text-xs text-gray-500 font-normal">(tự lấy theo Mã SP)</span>
+                      Giá lẻ{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự lấy theo Mã SP)
+                      </span>
                     </label>
                     <input
                       type="text"
-                      value={newCatalogProduct.retailPrice ? newCatalogProduct.retailPrice.toLocaleString("vi-VN") : ""}
+                      value={
+                        newCatalogProduct.retailPrice
+                          ? newCatalogProduct.retailPrice.toLocaleString(
+                              "vi-VN",
+                            )
+                          : ""
+                      }
                       readOnly
                       className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
                       placeholder="0"
@@ -2644,7 +2766,9 @@ export default function SanPhamPage() {
                     </label>
                     <input
                       type="text"
-                      value={(newCatalogProduct.tonKho ?? 0).toLocaleString("vi-VN")}
+                      value={(newCatalogProduct.tonKho ?? 0).toLocaleString(
+                        "vi-VN",
+                      )}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
                       placeholder="0"
@@ -2653,7 +2777,8 @@ export default function SanPhamPage() {
                 </div>
 
                 <p className="text-xs text-gray-500 italic pt-2">
-                  Cột "Mã SP đầy đủ" do công thức trên Google Sheet tự sinh, không cần điền.
+                  Cột "Mã SP đầy đủ" do công thức trên Google Sheet tự sinh,
+                  không cần điền.
                 </p>
               </div>
             </div>
@@ -2765,7 +2890,9 @@ export default function SanPhamPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-500">Tồn kho:</span>
                       <span className="font-medium">
-                        {selectedCatalogProduct.tonKho?.toLocaleString("vi-VN") ?? 0}
+                        {selectedCatalogProduct.tonKho?.toLocaleString(
+                          "vi-VN",
+                        ) ?? 0}
                       </span>
                     </div>
                   </div>
@@ -2941,7 +3068,11 @@ export default function SanPhamPage() {
                       </div>
                       {editCatalogProduct.image && (
                         <div className="mt-2">
-                          <img src={editCatalogProduct.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                          <img
+                            src={editCatalogProduct.image}
+                            alt="Preview"
+                            className="h-20 w-20 object-cover rounded-lg border"
+                          />
                         </div>
                       )}
                     </div>
@@ -3391,7 +3522,10 @@ export default function SanPhamPage() {
             setEditProduct({ ...editProduct, image: url });
           } else if (imagePickerTarget === "newCatalog") {
             setNewCatalogProduct({ ...newCatalogProduct, image: url });
-          } else if (imagePickerTarget === "editCatalog" && editCatalogProduct) {
+          } else if (
+            imagePickerTarget === "editCatalog" &&
+            editCatalogProduct
+          ) {
             setEditCatalogProduct({ ...editCatalogProduct, image: url });
           }
         }}
@@ -3399,10 +3533,10 @@ export default function SanPhamPage() {
           imagePickerTarget === "newProduct"
             ? newProduct.image
             : imagePickerTarget === "editProduct"
-            ? editProduct?.image
-            : imagePickerTarget === "newCatalog"
-            ? newCatalogProduct.image
-            : editCatalogProduct?.image
+              ? editProduct?.image
+              : imagePickerTarget === "newCatalog"
+                ? newCatalogProduct.image
+                : editCatalogProduct?.image
         }
       />
     </div>

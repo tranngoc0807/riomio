@@ -108,16 +108,18 @@ export default function QuanLyKhoTab() {
   const [viewPhieuNhapKho, setViewPhieuNhapKho] = useState<{ maPNK: string; items: NhapKhoSP[] } | null>(null);
   const phieuNhapKhoPrintRef = useRef<HTMLDivElement>(null);
 
-  // Modal states for Xuất kho
+  // Modal states for Xuất kho (chia sẻ giữa phiếu xuất PXK và phiếu trả lại TL)
   const [showAddModal, setShowAddModal] = useState(false);
+  const [phieuMode, setPhieuMode] = useState<"PXK" | "TL">("PXK");
   const [showEditModal, setShowEditModal] = useState(false);
   const [editXuatKhoGroup, setEditXuatKhoGroup] = useState<{ maPXK: string; items: XuatKhoSP[] } | null>(null);
   const [editXuatKhoItems, setEditXuatKhoItems] = useState<XuatKhoSP[]>([]);
   const [deletedXuatKhoIds, setDeletedXuatKhoIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Modal states for Nhập kho
+  // Modal states for Nhập kho (chia sẻ giữa phiếu nhập PNK và phiếu trả lại NCC TL)
   const [showAddNhapKhoModal, setShowAddNhapKhoModal] = useState(false);
+  const [nhapPhieuMode, setNhapPhieuMode] = useState<"PNK" | "TL">("PNK");
   const [showEditNhapKhoModal, setShowEditNhapKhoModal] = useState(false);
   const [editNhapKhoGroup, setEditNhapKhoGroup] = useState<{ maPNK: string; items: NhapKhoSP[] } | null>(null);
   const [editNhapKhoItems, setEditNhapKhoItems] = useState<NhapKhoSP[]>([]);
@@ -205,15 +207,12 @@ export default function QuanLyKhoTab() {
     }
   };
 
-  // Generate next maPXK
+  // Generate next maPXK (chỉ xét các mã bắt đầu bằng PXK, bỏ qua TL)
   const generateNextMaPXK = (): string => {
-    if (xuatKhoList.length === 0) return "PXK01";
-
-    // Find the highest number in existing maPXK
     const numbers = xuatKhoList
       .map(item => {
-        const match = item.maPXK.match(/PXK(\d+)/i);
-        return match ? parseInt(match[1]) : 0;
+        const match = item.maPXK.match(/^PXK(\d+)$/i);
+        return match ? parseInt(match[1]) : NaN;
       })
       .filter(n => !isNaN(n));
 
@@ -221,20 +220,43 @@ export default function QuanLyKhoTab() {
     return `PXK${String(maxNum + 1).padStart(2, '0')}`;
   };
 
-  // Generate next maPNK
-  const generateNextMaPNK = (): string => {
-    if (nhapKhoList.length === 0) return "PNK01";
+  // Generate next maTL (phiếu trả lại — chỉ xét các mã bắt đầu bằng TL)
+  const generateNextMaTL = (): string => {
+    const numbers = xuatKhoList
+      .map(item => {
+        const match = item.maPXK.match(/^TL(\d+)$/i);
+        return match ? parseInt(match[1]) : NaN;
+      })
+      .filter(n => !isNaN(n));
 
-    // Find the highest number in existing maPNK
+    const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
+    return `TL${String(maxNum + 1).padStart(2, '0')}`;
+  };
+
+  // Generate next maPNK (chỉ xét các mã bắt đầu bằng PNK, bỏ qua TL)
+  const generateNextMaPNK = (): string => {
     const numbers = nhapKhoList
       .map(item => {
-        const match = item.maPNK.match(/PNK(\d+)/i);
-        return match ? parseInt(match[1]) : 0;
+        const match = item.maPNK.match(/^PNK(\d+)$/i);
+        return match ? parseInt(match[1]) : NaN;
       })
       .filter(n => !isNaN(n));
 
     const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
     return `PNK${String(maxNum + 1).padStart(2, '0')}`;
+  };
+
+  // Generate next maTL trong sheet Nhập kho (phiếu trả lại NCC — chỉ xét các mã bắt đầu bằng TL)
+  const generateNextMaTLNhap = (): string => {
+    const numbers = nhapKhoList
+      .map(item => {
+        const match = item.maPNK.match(/^TL(\d+)$/i);
+        return match ? parseInt(match[1]) : NaN;
+      })
+      .filter(n => !isNaN(n));
+
+    const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
+    return `TL${String(maxNum + 1).padStart(2, '0')}`;
   };
 
   // Fetch nhập kho data
@@ -608,10 +630,13 @@ export default function QuanLyKhoTab() {
     setProductSearch("");
   };
 
-  // Handle add phieu xuat kho
+  // Handle add phiếu xuất kho / phiếu trả lại (chia sẻ flow, phân biệt qua phieuMode)
   const handleAddPhieu = async () => {
+    const labelPhieu = phieuMode === "TL" ? "phiếu trả lại" : "phiếu xuất kho";
+    const labelMa = phieuMode === "TL" ? "mã TL" : "mã PXK";
+
     if (!newPhieu.maPXK) {
-      toast.error("Vui lòng nhập mã PXK");
+      toast.error(`Vui lòng nhập ${labelMa}`);
       return;
     }
     if (productLines.length === 0) {
@@ -641,12 +666,12 @@ export default function QuanLyKhoTab() {
       const result = await response.json();
 
       if (result.success) {
-        toast.success("Thêm phiếu xuất kho thành công");
+        toast.success(`Thêm ${labelPhieu} thành công`);
         setShowAddModal(false);
         resetAddForm();
         fetchTonKho();
       } else {
-        toast.error(result.error || "Không thể thêm phiếu xuất kho");
+        toast.error(result.error || `Không thể thêm ${labelPhieu}`);
       }
     } catch (error) {
       console.error("Error adding phieu:", error);
@@ -767,10 +792,13 @@ export default function QuanLyKhoTab() {
     p.name.toLowerCase().includes(nhapKhoProductSearch.toLowerCase())
   );
 
-  // Handle add phiếu nhập kho
+  // Handle add phiếu nhập kho / phiếu trả lại NCC (chia sẻ flow, phân biệt qua nhapPhieuMode)
   const handleAddNhapKhoPhieu = async () => {
+    const labelPhieu = nhapPhieuMode === "TL" ? "phiếu trả lại NCC" : "phiếu nhập kho";
+    const labelMa = nhapPhieuMode === "TL" ? "mã TL" : "mã PNK";
+
     if (!newNhapKhoPhieu.maPNK) {
-      toast.error("Vui lòng nhập mã PNK");
+      toast.error(`Vui lòng nhập ${labelMa}`);
       return;
     }
     if (nhapKhoProductLines.length === 0) {
@@ -792,12 +820,12 @@ export default function QuanLyKhoTab() {
       const result = await response.json();
 
       if (result.success) {
-        toast.success("Thêm phiếu nhập kho thành công");
+        toast.success(`Thêm ${labelPhieu} thành công`);
         setShowAddNhapKhoModal(false);
         resetNhapKhoAddForm();
         fetchNhapKho();
       } else {
-        toast.error(result.error || "Không thể thêm phiếu nhập kho");
+        toast.error(result.error || `Không thể thêm ${labelPhieu}`);
       }
     } catch (error) {
       console.error("Error adding nhập kho:", error);
@@ -971,10 +999,10 @@ export default function QuanLyKhoTab() {
     setDeleteType(null);
   };
 
-  // Reset nhập kho add form
+  // Reset nhập kho add form (giữ nguyên nhapPhieuMode hiện tại)
   const resetNhapKhoAddForm = () => {
     setNewNhapKhoPhieu({
-      maPNK: generateNextMaPNK(),
+      maPNK: nhapPhieuMode === "TL" ? generateNextMaTLNhap() : generateNextMaPNK(),
       ngayNhap: currentDate.toISOString().split('T')[0],
     });
     setNhapKhoProductLines([]);
@@ -983,6 +1011,7 @@ export default function QuanLyKhoTab() {
 
   // Open add nhập kho modal
   const openAddNhapKhoModal = () => {
+    setNhapPhieuMode("PNK");
     setNewNhapKhoPhieu({
       maPNK: generateNextMaPNK(),
       ngayNhap: currentDate.toISOString().split('T')[0],
@@ -992,10 +1021,22 @@ export default function QuanLyKhoTab() {
     setShowAddNhapKhoModal(true);
   };
 
-  // Reset add form
+  // Open add modal phiếu trả lại NCC (TL) — dùng chung modal nhập kho, đổi prefix mã
+  const openAddNhapKhoTLModal = () => {
+    setNhapPhieuMode("TL");
+    setNewNhapKhoPhieu({
+      maPNK: generateNextMaTLNhap(),
+      ngayNhap: currentDate.toISOString().split('T')[0],
+    });
+    setNhapKhoProductLines([]);
+    setNhapKhoProductSearch("");
+    setShowAddNhapKhoModal(true);
+  };
+
+  // Reset add form (giữ nguyên phieuMode hiện tại)
   const resetAddForm = () => {
     setNewPhieu({
-      maPXK: generateNextMaPXK(),
+      maPXK: phieuMode === "TL" ? generateNextMaTL() : generateNextMaPXK(),
       ngayThang: currentDate.toISOString().split('T')[0],
       maDonHang: "",
       khachHang: "",
@@ -1006,10 +1047,27 @@ export default function QuanLyKhoTab() {
     setCustomerSearch("");
   };
 
-  // Open add modal with auto-filled data
+  // Open add modal phiếu xuất kho
   const openAddModal = () => {
+    setPhieuMode("PXK");
     setNewPhieu({
       maPXK: generateNextMaPXK(),
+      ngayThang: currentDate.toISOString().split('T')[0],
+      maDonHang: "",
+      khachHang: "",
+      userThucHien: profile?.full_name || "",
+    });
+    setProductLines([]);
+    setProductSearch("");
+    setCustomerSearch("");
+    setShowAddModal(true);
+  };
+
+  // Open add modal phiếu trả lại (TL) — dùng chung modal, đổi prefix mã
+  const openAddTLModal = () => {
+    setPhieuMode("TL");
+    setNewPhieu({
+      maPXK: generateNextMaTL(),
       ngayThang: currentDate.toISOString().split('T')[0],
       maDonHang: "",
       khachHang: "",
@@ -1232,9 +1290,14 @@ export default function QuanLyKhoTab() {
             <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-4 py-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-white">Bảng kê xuất kho SP ({groupedXuatKho.length} phiếu)</h4>
-                <button onClick={openAddModal} className="bg-white text-orange-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors flex items-center gap-2">
-                  <Plus size={16} />Thêm phiếu xuất
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={openAddTLModal} className="bg-white/15 text-white border border-white/40 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-white/25 transition-colors flex items-center gap-2">
+                    <Plus size={16} />Thêm phiếu TL
+                  </button>
+                  <button onClick={openAddModal} className="bg-white text-orange-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors flex items-center gap-2">
+                    <Plus size={16} />Thêm phiếu xuất
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1316,9 +1379,14 @@ export default function QuanLyKhoTab() {
             <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-white">Bảng kê nhập kho SP ({groupedNhapKho.length} phiếu)</h4>
-                <button onClick={openAddNhapKhoModal} className="bg-white text-purple-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-50 transition-colors flex items-center gap-2">
-                  <Plus size={16} />Thêm phiếu nhập
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={openAddNhapKhoTLModal} className="bg-white/15 text-white border border-white/40 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-white/25 transition-colors flex items-center gap-2">
+                    <Plus size={16} />Thêm phiếu TL
+                  </button>
+                  <button onClick={openAddNhapKhoModal} className="bg-white text-purple-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-50 transition-colors flex items-center gap-2">
+                    <Plus size={16} />Thêm phiếu nhập
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1398,7 +1466,7 @@ export default function QuanLyKhoTab() {
             {saving && (
               <div className="fixed inset-4 lg:inset-8 bg-white/80 z-[70] flex flex-col items-center justify-center rounded-xl">
                 <Loader2 className="w-12 h-12 animate-spin text-orange-600 mb-4" />
-                <p className="text-gray-700 font-medium">Đang tạo phiếu xuất...</p>
+                <p className="text-gray-700 font-medium">{phieuMode === "TL" ? "Đang tạo phiếu trả lại..." : "Đang tạo phiếu xuất..."}</p>
                 <p className="text-gray-500 text-sm mt-1">Vui lòng đợi trong giây lát</p>
               </div>
             )}
@@ -1406,8 +1474,8 @@ export default function QuanLyKhoTab() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-orange-50">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">Thêm phiếu xuất kho</h3>
-                <p className="text-sm text-gray-500">Mã PXK: {newPhieu.maPXK}</p>
+                <h3 className="text-xl font-semibold text-gray-900">{phieuMode === "TL" ? "Thêm phiếu trả lại" : "Thêm phiếu xuất kho"}</h3>
+                <p className="text-sm text-gray-500">{phieuMode === "TL" ? "Mã TL" : "Mã PXK"}: {newPhieu.maPXK}</p>
               </div>
               <button
                 onClick={() => { setShowAddModal(false); resetAddForm(); }}
@@ -1423,7 +1491,7 @@ export default function QuanLyKhoTab() {
               {/* Phiếu Info */}
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã PXK</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{phieuMode === "TL" ? "Mã TL" : "Mã PXK"}</label>
                   <input
                     type="text"
                     value={newPhieu.maPXK}
@@ -1552,7 +1620,7 @@ export default function QuanLyKhoTab() {
               {/* Selected Products List */}
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-orange-50 px-4 py-2 border-b border-gray-200">
-                  <h4 className="font-medium text-gray-800">Danh sách sản phẩm xuất ({productLines.length})</h4>
+                  <h4 className="font-medium text-gray-800">{phieuMode === "TL" ? `Danh sách sản phẩm trả lại (${productLines.length})` : `Danh sách sản phẩm xuất (${productLines.length})`}</h4>
                 </div>
                 {productLines.length === 0 ? (
                   <div className="p-8 text-center text-gray-500">
@@ -1621,7 +1689,7 @@ export default function QuanLyKhoTab() {
                 >
                   {saving && <Loader2 size={18} className="animate-spin" />}
                   <Plus size={18} />
-                  {saving ? "Đang lưu..." : `Thêm phiếu xuất (${productLines.length} SP)`}
+                  {saving ? "Đang lưu..." : (phieuMode === "TL" ? `Thêm phiếu trả lại (${productLines.length} SP)` : `Thêm phiếu xuất (${productLines.length} SP)`)}
                 </button>
               </div>
             </div>
@@ -1737,8 +1805,8 @@ export default function QuanLyKhoTab() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-purple-50">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">Thêm phiếu nhập kho</h3>
-                <p className="text-sm text-gray-500">Mã PNK: {newNhapKhoPhieu.maPNK}</p>
+                <h3 className="text-xl font-semibold text-gray-900">{nhapPhieuMode === "TL" ? "Thêm phiếu trả lại NCC" : "Thêm phiếu nhập kho"}</h3>
+                <p className="text-sm text-gray-500">{nhapPhieuMode === "TL" ? "Mã TL" : "Mã PNK"}: {newNhapKhoPhieu.maPNK}</p>
               </div>
               <button
                 onClick={() => setShowAddNhapKhoModal(false)}
@@ -1754,7 +1822,7 @@ export default function QuanLyKhoTab() {
               {/* Phiếu info */}
               <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mã PNK</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{nhapPhieuMode === "TL" ? "Mã TL" : "Mã PNK"}</label>
                   <input
                     type="text"
                     value={newNhapKhoPhieu.maPNK}
@@ -1763,7 +1831,7 @@ export default function QuanLyKhoTab() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày nhập</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{nhapPhieuMode === "TL" ? "Ngày trả" : "Ngày nhập"}</label>
                   <input
                     type="date"
                     value={newNhapKhoPhieu.ngayNhap}
@@ -1893,7 +1961,7 @@ export default function QuanLyKhoTab() {
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-medium"
               >
                 {saving ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                {saving ? "Đang lưu..." : `Thêm phiếu (${nhapKhoProductLines.length})`}
+                {saving ? "Đang lưu..." : (nhapPhieuMode === "TL" ? `Thêm phiếu trả lại (${nhapKhoProductLines.length})` : `Thêm phiếu (${nhapKhoProductLines.length})`)}
               </button>
             </div>
           </div>
