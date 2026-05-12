@@ -518,7 +518,7 @@ export default function XuatKhoNPLTab() {
 
     const newNPL: SelectedNPL = {
       id: `${material.code}-${Date.now()}`,
-      maNPL: material.code,
+      maNPL: material.name,
       dvt: material.unit || "",
       soLuong: 1,
       donGia: donGia,
@@ -547,7 +547,7 @@ export default function XuatKhoNPLTab() {
 
     const newNPL: SelectedNPL = {
       id: `${material.code}-${Date.now()}`,
-      maNPL: material.code,
+      maNPL: material.name,
       dvt: material.unit || "",
       soLuong: 1,
       donGia: donGia,
@@ -1322,13 +1322,8 @@ export default function XuatKhoNPLTab() {
                             key={product.id}
                             onClick={() => {
                               setFormMaSP(product.maSP);
-                              // Tự động tạo lệnh SX từ mã SP + ngày tháng
-                              const date = new Date(formNgayThang);
-                              const day = String(date.getDate()).padStart(2, '0');
-                              const month = String(date.getMonth() + 1).padStart(2, '0');
-                              const year = String(date.getFullYear()).slice(-2);
-                              const lenhSX = `${product.maSP} ${day}/${month}/${year}`;
-                              setFormLenhSX(lenhSX);
+                              // Lấy Lệnh SX từ cột G của sheet "Mã SP"
+                              setFormLenhSX(product.lenhSX || "");
                               setShowMaSPDropdown(false);
                             }}
                             className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-0"
@@ -1342,16 +1337,15 @@ export default function XuatKhoNPLTab() {
                   )}
                 </div>
 
-                {/* Lệnh SX */}
+                {/* Lệnh SX - tự động lấy từ cột G sheet "Mã SP", không cho điền */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Lệnh SX</label>
                   <input
                     type="text"
                     value={formLenhSX}
-                    onChange={(e) => setFormLenhSX(e.target.value)}
-                    placeholder="Lệnh sản xuất..."
-                    readOnly={isAppendingMode}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm ${isAppendingMode ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed" : "border-gray-300 focus:ring-2 focus:ring-blue-500"}`}
+                    placeholder="Chọn Mã SP để tự động lấy Lệnh SX..."
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-700 rounded-lg text-sm cursor-not-allowed"
                   />
                 </div>
 
