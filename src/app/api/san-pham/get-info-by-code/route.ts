@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       accentFabricQuota2: dinhMucInfo?.vaiPhoi2 || "",
       materialsQuota1: dinhMucInfo?.phuLieu1 || "",
       materialsQuota2: dinhMucInfo?.phuLieu2 || "",
-      accessoriesQuota: dinhMucInfo?.phuKien || "",
+      accessoriesQuota: dinhMucInfo?.phuKien1 || "",
       otherQuota: dinhMucInfo?.khac || "",
       plannedQuantity: plannedQuantity, // Số lượng kế hoạch từ bảng "Bảng kê LSX"
       cutQuantity: totalCutQuantity, // Tổng số lượng cắt từ bảng "Số lượng cắt"

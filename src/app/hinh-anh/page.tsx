@@ -1,30 +1,33 @@
 "use client";
 
-import { Image as ImageIcon, Package, Boxes, Printer } from "lucide-react";
+import { Image as ImageIcon, Package, Boxes, Printer, Palette } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 import { useRolePermissions } from "@/context/RolePermissionsContext";
 import HinhAnhSanPhamTab from "../san-xuat/components/HinhAnhSanPhamTab";
 
-type TabType = "san-pham" | "nguyen-phu-lieu" | "hinh-in";
+type TabType = "san-pham" | "nguyen-phu-lieu" | "hinh-in" | "thiet-ke";
 
 const TABS = [
   { id: "san-pham" as TabType, label: "Sản phẩm", icon: Package },
   { id: "nguyen-phu-lieu" as TabType, label: "Nguyên phụ liệu", icon: Boxes },
   { id: "hinh-in" as TabType, label: "Hình in", icon: Printer },
+  { id: "thiet-ke" as TabType, label: "Thiết kế hình ảnh", icon: Palette },
 ];
 
 const FOLDER_CONFIG: Record<TabType, { id: string; label: string }[]> = {
   "san-pham": [{ id: "san-pham", label: "Sản phẩm" }],
   "nguyen-phu-lieu": [{ id: "nguyen-phu-lieu", label: "Nguyên phụ liệu" }],
   "hinh-in": [{ id: "hinh-in", label: "Hình in" }],
+  "thiet-ke": [{ id: "thiet-ke", label: "Thiết kế hình ảnh" }],
 };
 
 const DEFAULT_FOLDER: Record<TabType, string> = {
   "san-pham": "san-pham",
   "nguyen-phu-lieu": "nguyen-phu-lieu",
   "hinh-in": "hinh-in",
+  "thiet-ke": "thiet-ke",
 };
 
 export default function HinhAnhPage() {
@@ -120,6 +123,12 @@ export default function HinhAnhPage() {
             <HinhAnhSanPhamTab
               folders={FOLDER_CONFIG["hinh-in"]}
               defaultFolder={DEFAULT_FOLDER["hinh-in"]}
+            />
+          )}
+          {activeTab === "thiet-ke" && (
+            <HinhAnhSanPhamTab
+              folders={FOLDER_CONFIG["thiet-ke"]}
+              defaultFolder={DEFAULT_FOLDER["thiet-ke"]}
             />
           )}
         </div>

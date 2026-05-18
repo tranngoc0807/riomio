@@ -18,6 +18,7 @@ import {
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Portal from "@/components/Portal";
+import DecimalInput from "@/components/DecimalInput";
 import toast from "react-hot-toast";
 import html2canvas from "html2canvas";
 import type { NhapKhoNPL, Material, TonKhoNPLThang } from "@/lib/googleSheets";
@@ -397,13 +398,13 @@ export default function NhapKhoNPLTab() {
   };
 
   const handleOpenReturnModal = () => {
-    const nextCode = generateNextMaPhieu("PTNPL");
+    const nextCode = generateNextMaPhieu("PTLNPLNCC");
     setReturnFormMaPhieu(nextCode);
     setReturnFormNgayThang(new Date().toISOString().split("T")[0]);
     setReturnFormNguoiNhap(
       profile?.full_name || profile?.email || getCachedProfileName() || "",
     );
-    setReturnFormNoiDung("Trả lại NPL");
+    setReturnFormNoiDung("Trả lại NPL NCC");
     setReturnSelectedNPLs([]);
     setShowReturnModal(true);
   };
@@ -639,11 +640,11 @@ export default function NhapKhoNPLTab() {
       await fetchData();
       setShowReturnModal(false);
       toast.success(
-        `Tạo phiếu trả lại NPL ${returnFormMaPhieu} thành công (${returnSelectedNPLs.length} mã NPL)`,
+        `Tạo phiếu trả lại NPL NCC ${returnFormMaPhieu} thành công (${returnSelectedNPLs.length} mã NPL)`,
       );
     } catch (error) {
       console.error("Error adding phieu tra:", error);
-      toast.error("Lỗi khi tạo phiếu trả lại NPL");
+      toast.error("Lỗi khi tạo phiếu trả lại NPL NCC");
     } finally {
       setIsAdding(false);
     }
@@ -1118,6 +1119,13 @@ export default function NhapKhoNPLTab() {
             <Plus size={20} />
             Tạo phiếu nhập kho
           </button>
+          <button
+            onClick={handleOpenReturnModal}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+          >
+            <RotateCcw size={20} />
+            Tạo phiếu trả lại
+          </button>
         </div>
       </div>
 
@@ -1310,7 +1318,7 @@ export default function NhapKhoNPLTab() {
                   className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium"
                 >
                   <RotateCcw size={20} />
-                  Trả lại NPL
+                  Trả lại NPL NCC
                 </button>
               </div>
             </div>
@@ -1801,40 +1809,20 @@ export default function NhapKhoNPLTab() {
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.soLuong || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(
-                                    /\D/g,
-                                    "",
-                                  );
-                                  handleUpdateNPL(
-                                    npl.id,
-                                    "soLuong",
-                                    parseInt(value) || 0,
-                                  );
-                                }}
+                              <DecimalInput
+                                value={npl.soLuong}
+                                onChange={(n) =>
+                                  handleUpdateNPL(npl.id, "soLuong", n)
+                                }
                                 className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                               />
                             </td>
                             <td className="px-3 py-2 text-right">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.donGiaSauThue || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(
-                                    /\D/g,
-                                    "",
-                                  );
-                                  handleUpdateNPL(
-                                    npl.id,
-                                    "donGiaSauThue",
-                                    parseInt(value) || 0,
-                                  );
-                                }}
+                              <DecimalInput
+                                value={npl.donGiaSauThue}
+                                onChange={(n) =>
+                                  handleUpdateNPL(npl.id, "donGiaSauThue", n)
+                                }
                                 className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                               />
                             </td>
@@ -1937,7 +1925,7 @@ export default function NhapKhoNPLTab() {
               <div className="fixed inset-4 lg:inset-8 bg-white/80 z-70 flex flex-col items-center justify-center rounded-xl">
                 <Loader2 className="w-12 h-12 animate-spin text-orange-600 mb-4" />
                 <p className="text-gray-700 font-medium">
-                  Đang tạo phiếu trả lại NPL...
+                  Đang tạo phiếu trả lại NPL NCC...
                 </p>
               </div>
             )}
@@ -1946,7 +1934,7 @@ export default function NhapKhoNPLTab() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-orange-50">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  Tạo phiếu trả lại NPL
+                  Tạo phiếu trả lại NPL NCC
                 </h3>
                 <p className="text-sm text-gray-500">
                   Mã phiếu: {returnFormMaPhieu}
@@ -2152,40 +2140,24 @@ export default function NhapKhoNPLTab() {
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.soLuong || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(
-                                    /\D/g,
-                                    "",
-                                  );
-                                  handleUpdateReturnNPL(
-                                    npl.id,
-                                    "soLuong",
-                                    parseInt(value) || 0,
-                                  );
-                                }}
+                              <DecimalInput
+                                value={npl.soLuong}
+                                onChange={(n) =>
+                                  handleUpdateReturnNPL(npl.id, "soLuong", n)
+                                }
                                 className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                               />
                             </td>
                             <td className="px-3 py-2 text-right">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.donGiaSauThue || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(
-                                    /\D/g,
-                                    "",
-                                  );
+                              <DecimalInput
+                                value={npl.donGiaSauThue}
+                                onChange={(n) =>
                                   handleUpdateReturnNPL(
                                     npl.id,
                                     "donGiaSauThue",
-                                    parseInt(value) || 0,
-                                  );
-                                }}
+                                    n,
+                                  )
+                                }
                                 className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                               />
                             </td>
@@ -2296,14 +2268,10 @@ export default function NhapKhoNPLTab() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Số lượng
                   </label>
-                  <input
-                    type="number"
+                  <DecimalInput
                     value={editForm.soLuong}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        soLuong: parseFloat(e.target.value) || 0,
-                      })
+                    onChange={(n) =>
+                      setEditForm({ ...editForm, soLuong: n })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
@@ -2312,14 +2280,10 @@ export default function NhapKhoNPLTab() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Đơn giá sau thuế
                   </label>
-                  <input
-                    type="number"
+                  <DecimalInput
                     value={editForm.donGiaSauThue}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        donGiaSauThue: parseFloat(e.target.value) || 0,
-                      })
+                    onChange={(n) =>
+                      setEditForm({ ...editForm, donGiaSauThue: n })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />

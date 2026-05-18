@@ -49,6 +49,7 @@ import {
   Camera,
   PieChart,
   ShoppingBag,
+  Palette,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { clearPermissionsCache } from "@/context/RolePermissionsContext";
@@ -191,6 +192,7 @@ const MENU_STRUCTURE: MenuItemDef[] = [
       { id: "hinh-anh/san-pham", name: "Sản phẩm", icon: Package },
       { id: "hinh-anh/nguyen-phu-lieu", name: "Nguyên phụ liệu", icon: Boxes },
       { id: "hinh-anh/hinh-in", name: "Hình in", icon: Image },
+      { id: "hinh-anh/thiet-ke", name: "Thiết kế hình ảnh", icon: Palette },
     ],
   },
   {

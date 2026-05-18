@@ -59,7 +59,14 @@ export async function POST(request: NextRequest) {
       vaiPhoi5: body.vaiPhoi5 || "",
       phuLieu1: body.phuLieu1 || "",
       phuLieu2: body.phuLieu2 || "",
-      phuKien: body.phuKien || "",
+      phuLieu3: body.phuLieu3 || "",
+      phuLieu4: body.phuLieu4 || "",
+      phuLieu5: body.phuLieu5 || "",
+      phuKien1: body.phuKien1 || "",
+      phuKien2: body.phuKien2 || "",
+      phuKien3: body.phuKien3 || "",
+      phuKien4: body.phuKien4 || "",
+      phuKien5: body.phuKien5 || "",
       khac: body.khac || "",
     };
 
@@ -120,7 +127,14 @@ export async function PUT(request: NextRequest) {
       vaiPhoi5: body.vaiPhoi5 || "",
       phuLieu1: body.phuLieu1 || "",
       phuLieu2: body.phuLieu2 || "",
-      phuKien: body.phuKien || "",
+      phuLieu3: body.phuLieu3 || "",
+      phuLieu4: body.phuLieu4 || "",
+      phuLieu5: body.phuLieu5 || "",
+      phuKien1: body.phuKien1 || "",
+      phuKien2: body.phuKien2 || "",
+      phuKien3: body.phuKien3 || "",
+      phuKien4: body.phuKien4 || "",
+      phuKien5: body.phuKien5 || "",
       khac: body.khac || "",
     };
 

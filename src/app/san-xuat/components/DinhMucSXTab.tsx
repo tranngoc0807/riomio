@@ -17,7 +17,14 @@ interface DinhMucSX {
   vaiPhoi5: string;
   phuLieu1: string;
   phuLieu2: string;
-  phuKien: string;
+  phuLieu3: string;
+  phuLieu4: string;
+  phuLieu5: string;
+  phuKien1: string;
+  phuKien2: string;
+  phuKien3: string;
+  phuKien4: string;
+  phuKien5: string;
   khac: string;
 }
 
@@ -37,7 +44,14 @@ const INITIAL_FORM: Omit<DinhMucSX, "id"> = {
   vaiPhoi5: "",
   phuLieu1: "",
   phuLieu2: "",
-  phuKien: "",
+  phuLieu3: "",
+  phuLieu4: "",
+  phuLieu5: "",
+  phuKien1: "",
+  phuKien2: "",
+  phuKien3: "",
+  phuKien4: "",
+  phuKien5: "",
   khac: "",
 };
 
@@ -97,7 +111,7 @@ export default function DinhMucSXTab() {
       item.vaiChinh.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.vaiPhoi1.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.phuLieu1.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.phuKien.toLowerCase().includes(searchTerm.toLowerCase())
+      item.phuKien1.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Pagination
@@ -298,6 +312,17 @@ export default function DinhMucSXTab() {
   const phuLieuColumns = [
     { key: "phuLieu1" as keyof DinhMucSX, label: "Phụ liệu 1" },
     { key: "phuLieu2" as keyof DinhMucSX, label: "Phụ liệu 2" },
+    { key: "phuLieu3" as keyof DinhMucSX, label: "Phụ liệu 3" },
+    { key: "phuLieu4" as keyof DinhMucSX, label: "Phụ liệu 4" },
+    { key: "phuLieu5" as keyof DinhMucSX, label: "Phụ liệu 5" },
+  ];
+
+  const phuKienColumns = [
+    { key: "phuKien1" as keyof DinhMucSX, label: "Phụ kiện 1" },
+    { key: "phuKien2" as keyof DinhMucSX, label: "Phụ kiện 2" },
+    { key: "phuKien3" as keyof DinhMucSX, label: "Phụ kiện 3" },
+    { key: "phuKien4" as keyof DinhMucSX, label: "Phụ kiện 4" },
+    { key: "phuKien5" as keyof DinhMucSX, label: "Phụ kiện 5" },
   ];
 
   // Form fields configuration (excluding maSP which has special dropdown)
@@ -310,7 +335,14 @@ export default function DinhMucSXTab() {
     { key: "vaiPhoi5", label: "Vải phối 5" },
     { key: "phuLieu1", label: "Phụ liệu 1" },
     { key: "phuLieu2", label: "Phụ liệu 2" },
-    { key: "phuKien", label: "Phụ kiện" },
+    { key: "phuLieu3", label: "Phụ liệu 3" },
+    { key: "phuLieu4", label: "Phụ liệu 4" },
+    { key: "phuLieu5", label: "Phụ liệu 5" },
+    { key: "phuKien1", label: "Phụ kiện 1" },
+    { key: "phuKien2", label: "Phụ kiện 2" },
+    { key: "phuKien3", label: "Phụ kiện 3" },
+    { key: "phuKien4", label: "Phụ kiện 4" },
+    { key: "phuKien5", label: "Phụ kiện 5" },
     { key: "khac", label: "Khác" },
   ];
 
@@ -374,7 +406,11 @@ export default function DinhMucSXTab() {
                   {col.label}
                 </th>
               ))}
-              <th className="px-3 py-3 text-left font-medium text-gray-600 min-w-[100px]">Phụ kiện</th>
+              {phuKienColumns.map((col) => (
+                <th key={col.key} className="px-3 py-3 text-left font-medium text-gray-600 min-w-[100px]">
+                  {col.label}
+                </th>
+              ))}
               <th className="px-3 py-3 text-left font-medium text-gray-600 min-w-[100px]">Khác</th>
               <th className="px-3 py-3 text-center font-medium text-gray-600 w-24 sticky right-0 bg-blue-50">Thao tác</th>
             </tr>
@@ -395,7 +431,11 @@ export default function DinhMucSXTab() {
                     {item[col.key] || "-"}
                   </td>
                 ))}
-                <td className="px-3 py-2.5 text-gray-600">{item.phuKien || "-"}</td>
+                {phuKienColumns.map((col) => (
+                  <td key={col.key} className="px-3 py-2.5 text-gray-600">
+                    {item[col.key] || "-"}
+                  </td>
+                ))}
                 <td className="px-3 py-2.5 text-gray-600">{item.khac || "-"}</td>
                 <td className="px-3 py-2.5 sticky right-0 bg-white">
                   <div className="flex items-center justify-center gap-1">

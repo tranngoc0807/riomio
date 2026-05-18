@@ -7,6 +7,7 @@ import { TonKhoSP, TonDauSP, XuatKhoSP, Customer, SanPhamCatalog, TonKhoItem, Nh
 import DatePicker from "@/components/DatePicker";
 import Portal from "@/components/Portal";
 import PrintDownloadButton from "@/components/PrintDownloadButton";
+import DecimalInput from "@/components/DecimalInput";
 import toast, { Toaster } from "react-hot-toast";
 import html2canvas from "html2canvas";
 import { useAuth } from "@/context/AuthContext";
@@ -606,14 +607,16 @@ export default function QuanLyKhoTab() {
   };
 
   // Add product to list - if exists, increment quantity; else append new line
+  // Phiếu trả lại (TL) dùng số âm vì là hàng trả lại
   const handleAddProductToList = (productFullCode: string) => {
+    const step = phieuMode === "TL" ? -1 : 1;
     setProductLines((prev) => {
       const existingIndex = prev.findIndex((p) => p.maSP === productFullCode);
       if (existingIndex >= 0) {
         const updated = [...prev];
         updated[existingIndex] = {
           ...updated[existingIndex],
-          soLuong: updated[existingIndex].soLuong + 1,
+          soLuong: updated[existingIndex].soLuong + step,
         };
         return updated;
       }
@@ -621,7 +624,7 @@ export default function QuanLyKhoTab() {
         ...prev,
         {
           maSP: productFullCode,
-          soLuong: 1,
+          soLuong: step,
           tonKho: getTonKhoByMaSP(productFullCode),
         },
       ];
@@ -647,9 +650,16 @@ export default function QuanLyKhoTab() {
       toast.error("Vui lòng nhập đầy đủ mã sản phẩm");
       return;
     }
-    if (productLines.some(p => !p.soLuong || p.soLuong < 1)) {
-      toast.error("Số lượng phải lớn hơn 0");
-      return;
+    if (phieuMode === "TL") {
+      if (productLines.some(p => !p.soLuong || p.soLuong >= 0)) {
+        toast.error("Số lượng phiếu trả lại phải là số âm");
+        return;
+      }
+    } else {
+      if (productLines.some(p => !p.soLuong || p.soLuong <= 0)) {
+        toast.error("Số lượng phải lớn hơn 0");
+        return;
+      }
     }
 
     setSaving(true);
@@ -769,6 +779,7 @@ export default function QuanLyKhoTab() {
   };
 
   // Click a product in dropdown → append as new line (OrdersTab-style auto-add)
+  // Phiếu trả lại NCC (TL) dùng số âm vì là hàng trả lại
   const handleAddNhapKhoProductToList = (productFullCode: string) => {
     if (nhapKhoProductLines.some((l) => l.maSP === productFullCode)) {
       toast.error("Sản phẩm đã có trong danh sách");
@@ -778,7 +789,7 @@ export default function QuanLyKhoTab() {
       ...nhapKhoProductLines,
       {
         maSP: productFullCode,
-        soLuong: 1,
+        soLuong: nhapPhieuMode === "TL" ? -1 : 1,
         ghiChu: "",
         tonCuoi: getTonKhoByMaSP(productFullCode),
       },
@@ -803,6 +814,10 @@ export default function QuanLyKhoTab() {
     }
     if (nhapKhoProductLines.length === 0) {
       toast.error("Vui lòng chọn ít nhất 1 sản phẩm");
+      return;
+    }
+    if (nhapPhieuMode === "TL" && nhapKhoProductLines.some((p) => !p.soLuong || p.soLuong >= 0)) {
+      toast.error("Số lượng phiếu trả lại NCC phải là số âm");
       return;
     }
 
@@ -852,12 +867,13 @@ export default function QuanLyKhoTab() {
       return;
     }
     const ngayNhap = editNhapKhoItems[0]?.ngayNhap || new Date().toISOString().split("T")[0];
+    const isTL = /^TL/i.test(editNhapKhoGroup.maPNK);
     const newItem: NhapKhoSP = {
       id: 0,
       maPNK: editNhapKhoGroup.maPNK,
       ngayNhap,
       maSP: productFullCode,
-      soLuong: 1,
+      soLuong: isTL ? -1 : 1,
       ghiChu: "",
       tonCuoi: getTonKhoByMaSP(productFullCode),
     };
@@ -1645,11 +1661,15 @@ export default function QuanLyKhoTab() {
                             <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
                             <td className="px-3 py-2 text-sm font-medium text-orange-600">{line.maSP}</td>
                             <td className="px-3 py-2">
-                              <input
-                                type="number"
+                              <DecimalInput
                                 value={line.soLuong}
-                                onChange={(e) => updateProductLine(index, "soLuong", parseInt(e.target.value) || 0)}
-                                min="1"
+                                onChange={(n) =>
+                                  updateProductLine(
+                                    index,
+                                    "soLuong",
+                                    phieuMode === "TL" ? -Math.abs(n) : n,
+                                  )
+                                }
                                 className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center mx-auto block"
                               />
                             </td>
@@ -1764,13 +1784,15 @@ export default function QuanLyKhoTab() {
                         <td className="px-3 py-2 text-gray-600">{index + 1}</td>
                         <td className="px-3 py-2 font-medium text-gray-900">{item.maSP}</td>
                         <td className="px-3 py-2">
-                          <input
-                            type="number"
+                          <DecimalInput
                             value={item.soLuong}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value) || 0;
+                            onChange={(val) => {
+                              const isTL = /^TL/i.test(
+                                editXuatKhoGroup?.maPXK || "",
+                              );
+                              const final = isTL ? -Math.abs(val) : val;
                               setEditXuatKhoItems((prev) =>
-                                prev.map((p) => p.id === item.id ? { ...p, soLuong: val } : p)
+                                prev.map((p) => p.id === item.id ? { ...p, soLuong: final } : p)
                               );
                             }}
                             className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
@@ -1918,11 +1940,15 @@ export default function QuanLyKhoTab() {
                           <td className="px-3 py-2 text-gray-600">{index + 1}</td>
                           <td className="px-3 py-2 font-medium text-gray-900">{line.maSP}</td>
                           <td className="px-3 py-2">
-                            <input
-                              type="number"
+                            <DecimalInput
                               value={line.soLuong}
-                              onChange={(e) => updateNhapKhoProductLine(index, "soLuong", parseInt(e.target.value) || 0)}
-                              min="1"
+                              onChange={(n) =>
+                                updateNhapKhoProductLine(
+                                  index,
+                                  "soLuong",
+                                  nhapPhieuMode === "TL" ? -Math.abs(n) : n,
+                                )
+                              }
                               className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                             />
                           </td>
@@ -2080,13 +2106,15 @@ export default function QuanLyKhoTab() {
                           <td className="px-3 py-2 text-gray-600">{index + 1}{isNew ? " *" : ""}</td>
                           <td className="px-3 py-2 font-medium text-gray-900">{item.maSP}</td>
                           <td className="px-3 py-2">
-                            <input
-                              type="number"
+                            <DecimalInput
                               value={item.soLuong}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
+                              onChange={(val) => {
+                                const isTL = /^TL/i.test(
+                                  editNhapKhoGroup?.maPNK || "",
+                                );
+                                const final = isTL ? -Math.abs(val) : val;
                                 setEditNhapKhoItems((prev) =>
-                                  prev.map((p, i) => (i === index ? { ...p, soLuong: val } : p))
+                                  prev.map((p, i) => (i === index ? { ...p, soLuong: final } : p))
                                 );
                               }}
                               className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"

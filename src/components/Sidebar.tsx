@@ -39,6 +39,7 @@ import {
   UserCircle,
   ShoppingBag,
   Warehouse,
+  Palette,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
@@ -152,6 +153,11 @@ const menuItems: MenuItem[] = [
         name: "Hình in",
         href: "/hinh-anh?tab=hinh-in",
         icon: Image,
+      },
+      {
+        name: "Thiết kế hình ảnh",
+        href: "/hinh-anh?tab=thiet-ke",
+        icon: Palette,
       },
     ],
   },

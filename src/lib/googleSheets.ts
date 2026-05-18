@@ -669,6 +669,51 @@ export async function deleteAccountFromSheet(accountId: number): Promise<void> {
 
 const spreadsheetIdKhachHang = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_BAN_HANG || "1bIXymFQLB6BJgYDS5qJYQl0SRUu7TtL_4XzzO0LPSis";
 const sheetNameKhachHang = process.env.GOOGLE_SHEET_NAME_KHACH_HANG || "DS KH";
+const sheetNameTheoDoiCongNoKH = process.env.GOOGLE_SHEET_NAME_CONG_NO_KH || "Theo dõi công nợ từng khách hàng";
+
+/**
+ * Lấy công nợ hiện tại của 1 khách hàng từ sheet "Theo dõi công nợ từng khách hàng".
+ * Cơ chế: ghi tên KH vào ô B3 (filter), rồi đọc giá trị cuối cùng của cột E (Dư cuối).
+ * Lưu ý: sheet này dùng B3 làm filter chung — không an toàn cho nhiều user concurrent.
+ */
+export async function getCustomerCurrentDebt(customerName: string): Promise<number> {
+  console.log("[customer-debt] called with:", JSON.stringify(customerName));
+  if (!customerName) return 0;
+  const sheets = await getGoogleSheetsClient();
+
+  // 1) Ghi tên KH vào B3 để filter sheet
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: spreadsheetIdKhachHang,
+    range: `'${sheetNameTheoDoiCongNoKH}'!B3`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[customerName]] },
+  });
+  console.log("[customer-debt] wrote B3 OK");
+
+  // Delay nhỏ để Google Sheets recalc các công thức tham chiếu B3
+  await new Promise((r) => setTimeout(r, 500));
+
+  // 2) Đọc cột E (Dư cuối) từ dòng 6 trở đi (UNFORMATTED_VALUE để lấy số thuần)
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: spreadsheetIdKhachHang,
+    range: `'${sheetNameTheoDoiCongNoKH}'!E6:E`,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+
+  const rows = response.data.values || [];
+  console.log("[customer-debt] read E6:E rows count:", rows.length, "last 3:", rows.slice(-3));
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const cell = rows[i]?.[0];
+    if (cell != null && String(cell).trim() !== "") {
+      const cleaned = String(cell).replace(/\./g, "").replace(/,/g, ".");
+      const num = parseFloat(cleaned);
+      console.log("[customer-debt] last non-empty cell:", JSON.stringify(cell), "→ parsed:", num);
+      return isNaN(num) ? 0 : num;
+    }
+  }
+  console.log("[customer-debt] no non-empty cell found, returning 0");
+  return 0;
+}
 
 // Interface cho khách hàng
 export interface Customer {
@@ -10656,14 +10701,22 @@ export interface DinhMucSX {
   vaiPhoi5: string;
   phuLieu1: string;
   phuLieu2: string;
-  phuKien: string;
+  phuLieu3: string;
+  phuLieu4: string;
+  phuLieu5: string;
+  phuKien1: string;
+  phuKien2: string;
+  phuKien3: string;
+  phuKien4: string;
+  phuKien5: string;
   khac: string;
 }
 
 /**
  * Lấy dữ liệu định mức sản xuất từ Google Sheets
  * Header row 5, data từ row 6
- * Columns: Mã SP (A), Vải chính (B), Vải phối 1-5 (C-G), Phụ liệu 1-2 (H-I), Phụ kiện (J), Khác (K)
+ * Columns: Mã SP (A), Vải chính (B), Vải phối 1-5 (C-G),
+ *          Phụ liệu 1-5 (H-L), Phụ kiện 1-5 (M-Q), Khác (R)
  */
 export async function getDinhMucSXFromSheet(): Promise<DinhMucSX[]> {
   try {
@@ -10671,7 +10724,7 @@ export async function getDinhMucSXFromSheet(): Promise<DinhMucSX[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameDinhMucSX}'!A6:K`,
+      range: `'${sheetNameDinhMucSX}'!A6:R`,
     });
 
     const rows = response.data.values;
@@ -10692,8 +10745,15 @@ export async function getDinhMucSXFromSheet(): Promise<DinhMucSX[]> {
         vaiPhoi5: row[6] || "",
         phuLieu1: row[7] || "",
         phuLieu2: row[8] || "",
-        phuKien: row[9] || "",
-        khac: row[10] || "",
+        phuLieu3: row[9] || "",
+        phuLieu4: row[10] || "",
+        phuLieu5: row[11] || "",
+        phuKien1: row[12] || "",
+        phuKien2: row[13] || "",
+        phuKien3: row[14] || "",
+        phuKien4: row[15] || "",
+        phuKien5: row[16] || "",
+        khac: row[17] || "",
       }))
       .filter((item) => item.maSP.trim() !== "");
 
@@ -10714,7 +10774,7 @@ export async function addDinhMucSXToSheet(dinhMuc: Omit<DinhMucSX, "id">): Promi
     // Đọc toàn bộ dữ liệu để tìm dòng cuối
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameDinhMucSX}'!A:K`,
+      range: `'${sheetNameDinhMucSX}'!A:R`,
     });
 
     const allRows = response.data.values || [];
@@ -10741,14 +10801,21 @@ export async function addDinhMucSXToSheet(dinhMuc: Omit<DinhMucSX, "id">): Promi
         dinhMuc.vaiPhoi5,
         dinhMuc.phuLieu1,
         dinhMuc.phuLieu2,
-        dinhMuc.phuKien,
+        dinhMuc.phuLieu3,
+        dinhMuc.phuLieu4,
+        dinhMuc.phuLieu5,
+        dinhMuc.phuKien1,
+        dinhMuc.phuKien2,
+        dinhMuc.phuKien3,
+        dinhMuc.phuKien4,
+        dinhMuc.phuKien5,
         dinhMuc.khac,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameDinhMucSX}'!A${nextRow}:K${nextRow}`,
+      range: `'${sheetNameDinhMucSX}'!A${nextRow}:R${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -10783,14 +10850,21 @@ export async function updateDinhMucSXInSheet(dinhMuc: DinhMucSX): Promise<void> 
         dinhMuc.vaiPhoi5,
         dinhMuc.phuLieu1,
         dinhMuc.phuLieu2,
-        dinhMuc.phuKien,
+        dinhMuc.phuLieu3,
+        dinhMuc.phuLieu4,
+        dinhMuc.phuLieu5,
+        dinhMuc.phuKien1,
+        dinhMuc.phuKien2,
+        dinhMuc.phuKien3,
+        dinhMuc.phuKien4,
+        dinhMuc.phuKien5,
         dinhMuc.khac,
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameDinhMucSX}'!A${rowNumber}:K${rowNumber}`,
+      range: `'${sheetNameDinhMucSX}'!A${rowNumber}:R${rowNumber}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -10817,7 +10891,7 @@ export async function deleteDinhMucSXFromSheet(id: number): Promise<void> {
     // Clear the row content
     await sheets.spreadsheets.values.clear({
       spreadsheetId: spreadsheetIdLSX,
-      range: `'${sheetNameDinhMucSX}'!A${rowNumber}:K${rowNumber}`,
+      range: `'${sheetNameDinhMucSX}'!A${rowNumber}:R${rowNumber}`,
     });
 
     console.log(`Successfully deleted Dinh Muc SX at row: ${rowNumber}`);

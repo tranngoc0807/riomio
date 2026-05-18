@@ -83,6 +83,8 @@ interface Customer {
   id: number;
   name: string;
   category: string; // NPP, Đại lý, Shop, etc.
+  phone: string;
+  address: string; // dùng cột G "Thông tin gửi hàng" để in lên đơn
 }
 
 interface Product {
@@ -174,6 +176,7 @@ export default function OrdersTab() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null); // Order code to delete
+  const [customerDebt, setCustomerDebt] = useState<number>(0);
   const [viewGroupedOrder, setViewGroupedOrder] = useState<GroupedOrder | null>(
     null,
   );
@@ -316,6 +319,7 @@ export default function OrdersTab() {
 
   useEffect(() => {
     fetchOrders();
+    fetchDropdownData(); // Load customers/programs/products on mount để print/lookup có data
   }, []);
 
   // Click outside handlers
@@ -424,6 +428,9 @@ export default function OrdersTab() {
             id: c.id,
             name: c.name,
             category: c.category || "",
+            phone: c.phone || "",
+            // Ưu tiên cột G "Thông tin gửi hàng" (vd ghi chú vận chuyển), nếu rỗng dùng cột F "Địa chỉ".
+            address: c.shippingInfo || c.address || "",
           })),
         );
       }
@@ -583,6 +590,8 @@ export default function OrdersTab() {
           id: matched.id,
           name: matched.name,
           category: matched.category || "",
+          phone: matched.phone || "",
+          address: matched.shippingInfo || matched.address || "",
         });
       }
     }
@@ -811,9 +820,22 @@ export default function OrdersTab() {
   };
 
   // View grouped order
-  const handleViewGrouped = (group: GroupedOrder) => {
+  const handleViewGrouped = async (group: GroupedOrder) => {
     setViewGroupedOrder(group);
+    setCustomerDebt(0); // reset trong lúc đợi fetch
     setShowViewModal(true);
+    // Lấy nợ cũ (Dư cuối hiện tại) từ sheet "Theo dõi công nợ từng khách hàng"
+    try {
+      console.log("[customer-debt fetch] customer:", group.customer);
+      const res = await fetch(
+        `/api/customer-debt?customer=${encodeURIComponent(group.customer)}`,
+      );
+      const json = await res.json();
+      console.log("[customer-debt fetch] response:", json);
+      if (json.success) setCustomerDebt(json.debt || 0);
+    } catch (err) {
+      console.error("Error fetching customer debt:", err);
+    }
   };
 
   // Download order as JPG
@@ -1640,7 +1662,7 @@ export default function OrdersTab() {
                               textAlign: "right",
                             }}
                           >
-                            0
+                            {customerDebt.toLocaleString("vi-VN")}
                           </td>
                         </tr>
                         <tr>
@@ -1661,7 +1683,7 @@ export default function OrdersTab() {
                               fontWeight: "bold",
                             }}
                           >
-                            {viewGroupedOrder.total.toLocaleString("vi-VN")}
+                            {(customerDebt + viewGroupedOrder.total).toLocaleString("vi-VN")}
                           </td>
                         </tr>
                       </tbody>
@@ -1706,18 +1728,42 @@ export default function OrdersTab() {
                         {viewGroupedOrder.customer}
                       </span>
                     </div>
-                    <div style={{ marginBottom: "6px" }}>
-                      <span style={{ fontWeight: "bold", fontSize: "11px" }}>
-                        Điện thoại:{" "}
-                      </span>
-                      <span style={{ fontSize: "12px" }}></span>
-                    </div>
-                    <div style={{ marginBottom: "6px" }}>
-                      <span style={{ fontWeight: "bold", fontSize: "11px" }}>
-                        Địa chỉ:{" "}
-                      </span>
-                      <span style={{ fontSize: "12px" }}></span>
-                    </div>
+                    {(() => {
+                      // Lookup phone/address từ customersList theo tên KH trên đơn.
+                      // Normalize NFC để chuẩn hoá dấu tiếng Việt (NFC vs NFD).
+                      const norm = (s: string) =>
+                        (s || "").normalize("NFC").trim().toLowerCase();
+                      const orderName = norm(viewGroupedOrder.customer);
+                      const matched =
+                        customersList.find(
+                          (c) => norm(c.name) === orderName,
+                        ) ||
+                        customersList.find(
+                          (c) =>
+                            orderName.includes(norm(c.name)) ||
+                            norm(c.name).includes(orderName),
+                        );
+                      return (
+                        <>
+                          <div style={{ marginBottom: "6px" }}>
+                            <span style={{ fontWeight: "bold", fontSize: "11px" }}>
+                              Điện thoại:{" "}
+                            </span>
+                            <span style={{ fontSize: "12px" }}>
+                              {matched?.phone || ""}
+                            </span>
+                          </div>
+                          <div style={{ marginBottom: "6px" }}>
+                            <span style={{ fontWeight: "bold", fontSize: "11px" }}>
+                              Địa chỉ:{" "}
+                            </span>
+                            <span style={{ fontSize: "12px" }}>
+                              {matched?.address || ""}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Right column - Summary */}

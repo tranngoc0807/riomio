@@ -19,6 +19,7 @@ import {
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Portal from "@/components/Portal";
+import DecimalInput from "@/components/DecimalInput";
 import toast from "react-hot-toast";
 import html2canvas from "html2canvas";
 import { useAuth } from "@/context/AuthContext";
@@ -168,6 +169,11 @@ export default function XuatKhoNPLTab() {
   const [maSPSearchTerm, setMaSPSearchTerm] = useState("");
   const maSPDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Mã SP dropdown cho modal trả lại (độc lập với modal xuất kho)
+  const [showReturnMaSPDropdown, setShowReturnMaSPDropdown] = useState(false);
+  const [returnMaSPSearchTerm, setReturnMaSPSearchTerm] = useState("");
+  const returnMaSPDropdownRef = useRef<HTMLDivElement>(null);
+
   // Danh sách xưởng sản xuất - lấy từ API
   const [xuongSXList, setXuongSXList] = useState<any[]>([]);
   const [showXuongDropdown, setShowXuongDropdown] = useState(false);
@@ -196,6 +202,12 @@ export default function XuatKhoNPLTab() {
   const filteredProducts = productsData.filter((p) =>
     (p.maSP && p.maSP.toLowerCase().includes(maSPSearchTerm.toLowerCase())) ||
     (p.tenSP && p.tenSP.toLowerCase().includes(maSPSearchTerm.toLowerCase()))
+  );
+
+  // Filter products cho dropdown bên modal trả lại
+  const filteredReturnProducts = productsData.filter((p) =>
+    (p.maSP && p.maSP.toLowerCase().includes(returnMaSPSearchTerm.toLowerCase())) ||
+    (p.tenSP && p.tenSP.toLowerCase().includes(returnMaSPSearchTerm.toLowerCase()))
   );
 
   // Group phieu xuat kho by maPhieu
@@ -290,6 +302,12 @@ export default function XuatKhoNPLTab() {
         !maSPDropdownRef.current.contains(event.target as Node)
       ) {
         setShowMaSPDropdown(false);
+      }
+      if (
+        returnMaSPDropdownRef.current &&
+        !returnMaSPDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowReturnMaSPDropdown(false);
       }
       if (
         returnNplDropdownRef.current &&
@@ -490,16 +508,18 @@ export default function XuatKhoNPLTab() {
   };
 
   const handleOpenReturnModal = () => {
-    const nextCode = generateNextMaPhieu("PHNPL");
+    const nextCode = generateNextMaPhieu("PTLNPLXSX");
     setReturnFormMaPhieu(nextCode);
     setReturnFormNgayThang(new Date().toISOString().split("T")[0]);
     setReturnFormNguoiNhap(
       profile?.full_name || profile?.email || getCachedProfileName() || "",
     );
-    setReturnFormNoiDung("Hoàn NPL");
+    setReturnFormNoiDung("Trả lại NPL từ xưởng SX");
     setReturnFormMaSP(viewGroupedPhieu?.maSP || "");
     setReturnFormLenhSX(viewGroupedPhieu?.lenhSX || "");
     setReturnFormXuongSX(viewGroupedPhieu?.xuongSX || "");
+    setReturnMaSPSearchTerm("");
+    setShowReturnMaSPDropdown(false);
     setReturnSelectedNPLs([]);
     setShowReturnModal(true);
   };
@@ -753,11 +773,11 @@ export default function XuatKhoNPLTab() {
       await fetchData();
       setShowReturnModal(false);
       toast.success(
-        `Tạo phiếu hoàn NPL ${returnFormMaPhieu} thành công (${returnSelectedNPLs.length} mã NPL)`,
+        `Tạo phiếu trả lại NPL ${returnFormMaPhieu} thành công (${returnSelectedNPLs.length} mã NPL)`,
       );
     } catch (error) {
       console.error("Error adding phieu hoan:", error);
-      toast.error("Lỗi khi tạo phiếu hoàn NPL");
+      toast.error("Lỗi khi tạo phiếu trả lại NPL");
     } finally {
       setIsAdding(false);
     }
@@ -1107,6 +1127,13 @@ export default function XuatKhoNPLTab() {
           >
             <Plus size={20} />
             Tạo phiếu xuất kho
+          </button>
+          <button
+            onClick={handleOpenReturnModal}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+          >
+            <RotateCcw size={20} />
+            Tạo phiếu trả lại
           </button>
         </div>
       </div>
@@ -1477,26 +1504,16 @@ export default function XuatKhoNPLTab() {
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.soLuong || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, "");
-                                  handleUpdateNPL(npl.id, "soLuong", parseInt(value) || 0);
-                                }}
+                              <DecimalInput
+                                value={npl.soLuong}
+                                onChange={(n) => handleUpdateNPL(npl.id, "soLuong", n)}
                                 className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.donGia || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, "");
-                                  handleUpdateNPL(npl.id, "donGia", parseInt(value) || 0);
-                                }}
+                              <DecimalInput
+                                value={npl.donGia}
+                                onChange={(n) => handleUpdateNPL(npl.id, "donGia", n)}
                                 className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                               />
                             </td>
@@ -1518,14 +1535,9 @@ export default function XuatKhoNPLTab() {
                               </select>
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.tonThucTe || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, "");
-                                  handleUpdateNPL(npl.id, "tonThucTe", parseInt(value) || 0);
-                                }}
+                              <DecimalInput
+                                value={npl.tonThucTe}
+                                onChange={(n) => handleUpdateNPL(npl.id, "tonThucTe", n)}
                                 className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                               />
                             </td>
@@ -1681,7 +1693,7 @@ export default function XuatKhoNPLTab() {
                     className="flex items-center gap-2 px-5 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors font-medium"
                   >
                     <RotateCcw size={20} />
-                    Phiếu hoàn NPL
+                    Trả lại NPL
                   </button>
                 </div>
               </div>
@@ -2062,11 +2074,11 @@ export default function XuatKhoNPLTab() {
               <div className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
-                  <input type="number" value={editForm.soLuong} onChange={(e) => setEditForm({ ...editForm, soLuong: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  <DecimalInput value={editForm.soLuong} onChange={(n) => setEditForm({ ...editForm, soLuong: n })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Đơn giá</label>
-                  <input type="number" value={editForm.donGia} onChange={(e) => setEditForm({ ...editForm, donGia: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  <DecimalInput value={editForm.donGia} onChange={(n) => setEditForm({ ...editForm, donGia: n })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <span className="text-sm text-gray-500">Thành tiền: </span>
@@ -2175,7 +2187,7 @@ export default function XuatKhoNPLTab() {
               <div className="fixed inset-4 lg:inset-8 bg-white/80 z-70 flex flex-col items-center justify-center rounded-xl">
                 <Loader2 className="w-12 h-12 animate-spin text-purple-600 mb-4" />
                 <p className="text-gray-700 font-medium">
-                  Đang tạo phiếu hoàn NPL...
+                  Đang tạo phiếu trả lại NPL...
                 </p>
               </div>
             )}
@@ -2184,7 +2196,7 @@ export default function XuatKhoNPLTab() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-purple-50">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  Tạo phiếu hoàn NPL
+                  Tạo phiếu trả lại NPL từ xưởng SX
                 </h3>
                 <p className="text-sm text-gray-500">
                   Mã phiếu: {returnFormMaPhieu}
@@ -2227,7 +2239,7 @@ export default function XuatKhoNPLTab() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Người hoàn
+                    Người trả
                   </label>
                   <input
                     type="text"
@@ -2244,7 +2256,7 @@ export default function XuatKhoNPLTab() {
                     type="text"
                     value={returnFormNoiDung}
                     onChange={(e) => setReturnFormNoiDung(e.target.value)}
-                    placeholder="Hoàn NPL..."
+                    placeholder="Trả lại NPL từ xưởng SX..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                 </div>
@@ -2252,17 +2264,51 @@ export default function XuatKhoNPLTab() {
 
               {/* Second row */}
               <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
+                {/* Mã SP - Dropdown with search */}
+                <div className="relative" ref={returnMaSPDropdownRef}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Mã SP
                   </label>
-                  <input
-                    type="text"
-                    value={returnFormMaSP}
-                    onChange={(e) => setReturnFormMaSP(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={returnFormMaSP}
+                      onChange={(e) => {
+                        setReturnFormMaSP(e.target.value);
+                        setReturnMaSPSearchTerm(e.target.value);
+                        setShowReturnMaSPDropdown(true);
+                      }}
+                      onFocus={() => setShowReturnMaSPDropdown(true)}
+                      placeholder="Chọn mã sản phẩm..."
+                      className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  </div>
+                  {showReturnMaSPDropdown && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredReturnProducts.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">Không tìm thấy</div>
+                      ) : (
+                        filteredReturnProducts.slice(0, 50).map((product) => (
+                          <div
+                            key={product.id}
+                            onClick={() => {
+                              setReturnFormMaSP(product.maSP);
+                              setReturnFormLenhSX(product.lenhSX || "");
+                              setShowReturnMaSPDropdown(false);
+                            }}
+                            className="px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm border-b border-gray-100 last:border-0"
+                          >
+                            <div className="font-medium text-purple-600">{product.maSP}</div>
+                            {product.tenSP && <div className="text-xs text-gray-600">{product.tenSP}</div>}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Lệnh SX - tự động lấy từ cột G sheet "Mã SP", không cho điền */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Lệnh SX
@@ -2270,8 +2316,9 @@ export default function XuatKhoNPLTab() {
                   <input
                     type="text"
                     value={returnFormLenhSX}
-                    onChange={(e) => setReturnFormLenhSX(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                    placeholder="Chọn Mã SP để tự động lấy Lệnh SX..."
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-700 rounded-lg text-sm cursor-not-allowed"
                   />
                 </div>
                 <div className="relative" ref={returnXuongDropdownRef}>
@@ -2442,40 +2489,20 @@ export default function XuatKhoNPLTab() {
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.soLuong || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(
-                                    /\D/g,
-                                    "",
-                                  );
-                                  handleUpdateReturnNPL(
-                                    npl.id,
-                                    "soLuong",
-                                    parseInt(value) || 0,
-                                  );
-                                }}
+                              <DecimalInput
+                                value={npl.soLuong}
+                                onChange={(n) =>
+                                  handleUpdateReturnNPL(npl.id, "soLuong", n)
+                                }
                                 className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                               />
                             </td>
                             <td className="px-3 py-2 text-right">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={npl.donGia || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(
-                                    /\D/g,
-                                    "",
-                                  );
-                                  handleUpdateReturnNPL(
-                                    npl.id,
-                                    "donGia",
-                                    parseInt(value) || 0,
-                                  );
-                                }}
+                              <DecimalInput
+                                value={npl.donGia}
+                                onChange={(n) =>
+                                  handleUpdateReturnNPL(npl.id, "donGia", n)
+                                }
                                 className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                               />
                             </td>
@@ -2575,7 +2602,7 @@ export default function XuatKhoNPLTab() {
                 ) : (
                   <>
                     <RotateCcw size={18} />
-                    Tạo phiếu hoàn NPL ({returnSelectedNPLs.length} mã NPL)
+                    Tạo phiếu trả lại NPL ({returnSelectedNPLs.length} mã NPL)
                   </>
                 )}
               </button>
