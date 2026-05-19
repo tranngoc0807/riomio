@@ -5387,15 +5387,24 @@ export async function updateSanPhamCatalogInSheet(product: SanPhamCatalog): Prom
     // Data đọc từ B6 (header row 5), id=1 → row 6 → rowNumber = id + 5
     const rowNumber = product.id + 5;
 
-    // Cập nhật từng cột riêng để không ghi đè cột có công thức (C, D, F, K)
+    // Size & Dòng size dạng "5/6" sẽ bị USER_ENTERED parse thành ngày → prefix "'" để force text
+    const sizeValue = product.size && product.size.includes("/")
+      ? `'${product.size}`
+      : product.size;
+    const sizeChartValue = product.sizeChart && product.sizeChart.includes("/")
+      ? `'${product.sizeChart}`
+      : product.sizeChart;
+
+    // Bỏ qua cột F (Mã SP đầy đủ) vì là ARRAYFORMULA trên sheet — formula tự ghép từ B+C+D+E
     const data = [
       {
-        range: `${sheetNameSanPhamCatalog}!B${rowNumber}`,
-        values: [[product.name]], // B - Mã SP
-      },
-      {
-        range: `${sheetNameSanPhamCatalog}!E${rowNumber}`,
-        values: [[product.color]], // E - Màu sắc
+        range: `${sheetNameSanPhamCatalog}!B${rowNumber}:E${rowNumber}`,
+        values: [[
+          product.code,         // B - Mã SP
+          product.printPattern, // C - Hình in
+          sizeValue,            // D - Size
+          product.color,        // E - Màu sắc
+        ]],
       },
       {
         range: `${sheetNameSanPhamCatalog}!G${rowNumber}:J${rowNumber}`,
@@ -5403,7 +5412,7 @@ export async function updateSanPhamCatalogInSheet(product: SanPhamCatalog): Prom
           product.image,                                                          // G - Hình ảnh
           product.wholesalePrice > 0 ? formatNumberVN(product.wholesalePrice) : "", // H - Giá sỉ
           product.retailPrice > 0 ? formatNumberVN(product.retailPrice) : "",     // I - Giá lẻ
-          product.sizeChart,                                                      // J - Dòng size
+          sizeChartValue,                                                         // J - Dòng size
         ]],
       },
     ];

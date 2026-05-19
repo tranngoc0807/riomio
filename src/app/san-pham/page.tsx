@@ -376,9 +376,10 @@ export default function SanPhamPage() {
     fetchCatalogProducts();
   }, []);
 
-  // Fetch danh sách Mã SP cho dropdown khi mở modal Add Catalog
+  // Fetch danh sách Mã SP + size/color options cho cả modal Add và Edit Catalog
   useEffect(() => {
-    if (!showCatalogAddModal || maSPList.length > 0) return;
+    const needLoad = showCatalogAddModal || showCatalogEditModal;
+    if (!needLoad || maSPList.length > 0) return;
     (async () => {
       try {
         const res = await fetch("/api/ma-sp-list");
@@ -392,7 +393,7 @@ export default function SanPhamPage() {
         console.error("Error loading Mã SP list:", err);
       }
     })();
-  }, [showCatalogAddModal, maSPList.length]);
+  }, [showCatalogAddModal, showCatalogEditModal, maSPList.length]);
 
   // Close Mã SP dropdown when clicking outside
   useEffect(() => {
@@ -440,7 +441,8 @@ export default function SanPhamPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showEditMaSPDropdown]);
 
-  // Auto-compute Mã SP đầy đủ = code + hình in + size + màu
+  // Auto-compute Mã SP đầy đủ = code + Hình in + size + màu (preview client-side,
+  // cột F trên sheet là ARRAYFORMULA tự ghép cùng pattern)
   useEffect(() => {
     const parts = [
       newCatalogProduct.code || "",
@@ -2750,18 +2752,33 @@ export default function SanPhamPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hình ảnh{" "}
-                    <span className="text-xs text-gray-500 font-normal">
-                      (tự lấy theo Mã SP)
-                    </span>
+                    Hình ảnh
                   </label>
-                  <input
-                    type="text"
-                    value={newCatalogProduct.image || ""}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-600"
-                    placeholder="Chọn Mã SP để tự điền..."
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newCatalogProduct.image || ""}
+                      onChange={(e) =>
+                        setNewCatalogProduct({
+                          ...newCatalogProduct,
+                          image: e.target.value,
+                        })
+                      }
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="Dán link ảnh hoặc bấm Chọn ảnh..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePickerTarget("newCatalog");
+                        setShowImagePicker(true);
+                      }}
+                      className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                    >
+                      <ImageIcon size={16} />
+                      Chọn ảnh
+                    </button>
+                  </div>
                   {newCatalogProduct.image && (
                     <div className="mt-2">
                       <img
@@ -3253,18 +3270,32 @@ export default function SanPhamPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hình ảnh{" "}
-                    <span className="text-xs text-gray-500 font-normal">
-                      (tự lấy theo Mã SP)
-                    </span>
+                    Hình ảnh
                   </label>
-                  <input
-                    type="text"
-                    value={editCatalogProduct.image || ""}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-600"
-                    placeholder="Chọn Mã SP để tự điền..."
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editCatalogProduct.image || ""}
+                      onChange={(e) =>
+                        setEditCatalogProduct((prev) =>
+                          prev ? { ...prev, image: e.target.value } : prev,
+                        )
+                      }
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="Dán link ảnh hoặc bấm Chọn ảnh..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePickerTarget("editCatalog");
+                        setShowImagePicker(true);
+                      }}
+                      className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
+                    >
+                      <ImageIcon size={16} />
+                      Chọn ảnh
+                    </button>
+                  </div>
                   {editCatalogProduct.image && (
                     <div className="mt-2">
                       <img
