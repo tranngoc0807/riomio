@@ -828,7 +828,7 @@ export default function OrdersTab() {
     try {
       console.log("[customer-debt fetch] customer:", group.customer);
       const res = await fetch(
-        `/api/customer-debt?customer=${encodeURIComponent(group.customer)}`,
+        `/api/customer-debt?customer=${encodeURIComponent(group.customer)}&orderCode=${encodeURIComponent(group.orderCode)}`,
       );
       const json = await res.json();
       console.log("[customer-debt fetch] response:", json);
@@ -1589,105 +1589,10 @@ export default function OrdersTab() {
                         fontSize: "16px",
                         fontWeight: "bold",
                         color: "#dc2626",
-                        marginBottom: "8px",
                       }}
                     >
                       {viewGroupedOrder.date}
                     </div>
-                    {/* Info box: CK TT trước / Khách phải trả / Nợ cũ / Tổng công nợ */}
-                    <table
-                      style={{
-                        marginLeft: "auto",
-                        borderCollapse: "collapse",
-                        fontSize: "11px",
-                      }}
-                    >
-                      <tbody>
-                        <tr>
-                          <td
-                            style={{
-                              border: "1px solid #d1d5db",
-                              padding: "4px 8px",
-                              fontWeight: "500",
-                            }}
-                          >
-                            CK thanh toán trước:
-                          </td>
-                          <td
-                            style={{
-                              border: "1px solid #d1d5db",
-                              padding: "4px 8px",
-                              textAlign: "right",
-                              minWidth: "90px",
-                            }}
-                          >
-                            0
-                          </td>
-                        </tr>
-                        <tr>
-                          <td
-                            style={{
-                              border: "1px solid #d1d5db",
-                              padding: "4px 8px",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            Khách phải trả:
-                          </td>
-                          <td
-                            style={{
-                              border: "1px solid #d1d5db",
-                              padding: "4px 8px",
-                              textAlign: "right",
-                              fontWeight: "bold",
-                              color: "#16a34a",
-                            }}
-                          >
-                            {viewGroupedOrder.total.toLocaleString("vi-VN")}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td
-                            style={{
-                              border: "1px solid #d1d5db",
-                              padding: "4px 8px",
-                            }}
-                          >
-                            Nợ cũ:
-                          </td>
-                          <td
-                            style={{
-                              border: "1px solid #d1d5db",
-                              padding: "4px 8px",
-                              textAlign: "right",
-                            }}
-                          >
-                            {customerDebt.toLocaleString("vi-VN")}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td
-                            style={{
-                              border: "1px solid #d1d5db",
-                              padding: "4px 8px",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            Tổng công nợ:
-                          </td>
-                          <td
-                            style={{
-                              border: "1px solid #d1d5db",
-                              padding: "4px 8px",
-                              textAlign: "right",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            {(customerDebt + viewGroupedOrder.total).toLocaleString("vi-VN")}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
                   </div>
                 </div>
 
@@ -1700,11 +1605,11 @@ export default function OrdersTab() {
                   </h1>
                 </div>
 
-                {/* Order Info - 2 columns */}
+                {/* Order Info - 3 columns: Customer | Summary | Payment */}
                 <div
-                  style={{ display: "flex", gap: "20px", marginBottom: "15px" }}
+                  style={{ display: "flex", gap: "12px", marginBottom: "15px" }}
                 >
-                  {/* Left column - Customer info */}
+                  {/* Col 1 - Customer info */}
                   <div style={{ flex: "1" }}>
                     <div style={{ marginBottom: "6px" }}>
                       <span style={{ fontWeight: "bold", fontSize: "11px" }}>
@@ -1766,7 +1671,7 @@ export default function OrdersTab() {
                     })()}
                   </div>
 
-                  {/* Right column - Summary */}
+                  {/* Col 2 - Tổng SL & CK SP summary */}
                   <div
                     style={{
                       flex: "1",
@@ -1836,6 +1741,68 @@ export default function OrdersTab() {
                         {viewGroupedOrder.products
                           .reduce((sum, p) => sum + p.subtotalAfterDiscount, 0)
                           .toLocaleString("vi-VN")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Col 3 - Khách phải trả & Công nợ */}
+                  <div
+                    style={{
+                      flex: "1",
+                      backgroundColor: "#f9fafb",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <span>CK thanh toán trước:</span>
+                      <span>0</span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <span style={{ fontWeight: "bold" }}>
+                        Khách phải trả:
+                      </span>
+                      <span
+                        style={{ fontWeight: "bold", color: "#16a34a" }}
+                      >
+                        {viewGroupedOrder.total.toLocaleString("vi-VN")}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <span>Nợ cũ:</span>
+                      <span>{customerDebt.toLocaleString("vi-VN")}</span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <span style={{ fontWeight: "bold" }}>Tổng công nợ:</span>
+                      <span style={{ fontWeight: "bold" }}>
+                        {(customerDebt + viewGroupedOrder.total).toLocaleString(
+                          "vi-VN",
+                        )}
                       </span>
                     </div>
                   </div>

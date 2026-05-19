@@ -339,6 +339,10 @@ export default function SanPhamPage() {
   const [showMaSPDropdown, setShowMaSPDropdown] = useState(false);
   const [maSPSearch, setMaSPSearch] = useState("");
   const maSPDropdownRef = useRef<HTMLDivElement>(null);
+  // Dropdown riêng cho Edit Catalog modal (tránh xung đột với Add modal)
+  const [showEditMaSPDropdown, setShowEditMaSPDropdown] = useState(false);
+  const [editMaSPSearch, setEditMaSPSearch] = useState("");
+  const editMaSPDropdownRef = useRef<HTMLDivElement>(null);
 
   // Delete confirmation state for CatalogProduct
   const [showCatalogDeleteConfirm, setShowCatalogDeleteConfirm] =
@@ -413,6 +417,29 @@ export default function SanPhamPage() {
     }
   }, [showCatalogAddModal]);
 
+  // Reset editMaSPSearch khi đóng modal Edit Catalog
+  useEffect(() => {
+    if (!showCatalogEditModal) {
+      setEditMaSPSearch("");
+      setShowEditMaSPDropdown(false);
+    }
+  }, [showCatalogEditModal]);
+
+  // Close Edit Mã SP dropdown when clicking outside
+  useEffect(() => {
+    if (!showEditMaSPDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        editMaSPDropdownRef.current &&
+        !editMaSPDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowEditMaSPDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showEditMaSPDropdown]);
+
   // Auto-compute Mã SP đầy đủ = code + hình in + size + màu
   useEffect(() => {
     const parts = [
@@ -432,6 +459,28 @@ export default function SanPhamPage() {
     newCatalogProduct.size,
     newCatalogProduct.color,
     newCatalogProduct.name,
+  ]);
+
+  // Auto-compute Mã SP đầy đủ cho Edit modal
+  useEffect(() => {
+    if (!editCatalogProduct) return;
+    const parts = [
+      editCatalogProduct.code || "",
+      editCatalogProduct.printPattern || "",
+      editCatalogProduct.size || "",
+      editCatalogProduct.color || "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    if (parts !== (editCatalogProduct.name || "")) {
+      setEditCatalogProduct((prev) => (prev ? { ...prev, name: parts } : prev));
+    }
+  }, [
+    editCatalogProduct?.code,
+    editCatalogProduct?.printPattern,
+    editCatalogProduct?.size,
+    editCatalogProduct?.color,
+    editCatalogProduct?.name,
   ]);
 
   useEffect(() => {
@@ -1347,13 +1396,16 @@ export default function SanPhamPage() {
                           <th className="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
                             Tồn kho
                           </th>
+                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                            Thao tác
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {paginatedCatalogProducts.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={11}
+                              colSpan={12}
                               className="px-3 py-8 text-center text-gray-500"
                             >
                               {catalogSearchTerm
@@ -1422,6 +1474,31 @@ export default function SanPhamPage() {
                                 {product.tonKho
                                   ? product.tonKho.toLocaleString("vi-VN")
                                   : "0"}
+                              </td>
+                              <td
+                                className="px-3 py-3 text-center"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() =>
+                                      handleEditCatalogProduct(product)
+                                    }
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Sửa"
+                                  >
+                                    <Edit size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteCatalogProduct(product.id)
+                                    }
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Xóa"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))
@@ -2949,7 +3026,7 @@ export default function SanPhamPage() {
         </Portal>
       )}
 
-      {/* Slide Panel sửa sản phẩm danh mục */}
+      {/* Slide Panel sửa sản phẩm danh mục — mirror Add modal */}
       {showCatalogEditModal && editCatalogProduct && (
         <Portal>
           <div
@@ -2965,9 +3042,7 @@ export default function SanPhamPage() {
                 <h3 className="text-lg font-semibold text-gray-900">
                   Chỉnh sửa sản phẩm
                 </h3>
-                <p className="text-sm text-gray-500">
-                  {editCatalogProduct.name}
-                </p>
+                <p className="text-sm text-gray-500">Danh mục sản phẩm</p>
               </div>
               <button
                 onClick={() => {
@@ -2981,434 +3056,303 @@ export default function SanPhamPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-6">
-                {/* Thông tin cơ bản */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Thông tin cơ bản
-                  </h4>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tên sản phẩm *
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.name}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            name: e.target.value,
-                          })
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      STT
+                    </label>
+                    <input
+                      type="text"
+                      value={editCatalogProduct.id}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã SP đầy đủ{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự ghép)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editCatalogProduct.name || ""}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative" ref={editMaSPDropdownRef}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã SP <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editCatalogProduct.code || editMaSPSearch}
+                      onChange={(e) => {
+                        const typed = e.target.value;
+                        const norm = typed.toLowerCase().replace(/\s+/g, "");
+                        setEditMaSPSearch(typed);
+                        setShowEditMaSPDropdown(true);
+                        const exact = maSPList.find(
+                          (m) =>
+                            m.code.toLowerCase().replace(/\s+/g, "") === norm,
+                        );
+                        if (exact) {
+                          setEditCatalogProduct((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  code: exact.code,
+                                  wholesalePrice: exact.wholesalePrice,
+                                  retailPrice: exact.retailPrice,
+                                  image: exact.image,
+                                  sizeChart: exact.sizeChart,
+                                  tonKho: exact.tonKho || 0,
+                                }
+                              : prev,
+                          );
+                          setEditMaSPSearch("");
+                        } else {
+                          setEditCatalogProduct((prev) =>
+                            prev ? { ...prev, code: "" } : prev,
+                          );
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      }}
+                      onFocus={() => setShowEditMaSPDropdown(true)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="Tìm/chọn Mã SP..."
+                    />
+                    {showEditMaSPDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {maSPList.length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-gray-500">
+                            Đang tải hoặc không có dữ liệu...
+                          </div>
+                        ) : (
+                          maSPList
+                            .filter((m) => {
+                              const q = (
+                                editMaSPSearch ||
+                                editCatalogProduct.code ||
+                                ""
+                              )
+                                .toLowerCase()
+                                .trim();
+                              if (!q) return true;
+                              return (
+                                m.code.toLowerCase().includes(q) ||
+                                m.name.toLowerCase().includes(q)
+                              );
+                            })
+                            .slice(0, 80)
+                            .map((m) => (
+                              <div
+                                key={m.code}
+                                onClick={() => {
+                                  setEditCatalogProduct((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          code: m.code,
+                                          wholesalePrice: m.wholesalePrice,
+                                          retailPrice: m.retailPrice,
+                                          image: m.image,
+                                          sizeChart: m.sizeChart,
+                                          tonKho: m.tonKho || 0,
+                                        }
+                                      : prev,
+                                  );
+                                  setEditMaSPSearch("");
+                                  setShowEditMaSPDropdown(false);
+                                }}
+                                className="px-3 py-2 hover:bg-purple-50 cursor-pointer border-b border-gray-100 last:border-0"
+                              >
+                                <div className="font-medium text-sm text-purple-700">
+                                  {m.code}
+                                </div>
+                                {m.name && (
+                                  <div className="text-xs text-gray-500 truncate">
+                                    {m.name}
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hình in
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editCatalogProduct.printPattern || ""}
+                      onChange={(e) => {
+                        const digitsOnly = e.target.value.replace(/\D/g, "");
+                        setEditCatalogProduct((prev) =>
+                          prev ? { ...prev, printPattern: digitsOnly } : prev,
+                        );
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="VD: 676"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Size
+                    </label>
+                    <select
+                      value={editCatalogProduct.size || ""}
+                      onChange={(e) =>
+                        setEditCatalogProduct((prev) =>
+                          prev ? { ...prev, size: e.target.value } : prev,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
+                    >
+                      <option value="">-- Chọn size --</option>
+                      {sizeOptions.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Màu sắc
+                    </label>
+                    <select
+                      value={editCatalogProduct.color || ""}
+                      onChange={(e) =>
+                        setEditCatalogProduct((prev) =>
+                          prev ? { ...prev, color: e.target.value } : prev,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
+                    >
+                      <option value="">-- Chọn màu --</option>
+                      {colorOptions.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Hình ảnh{" "}
+                    <span className="text-xs text-gray-500 font-normal">
+                      (tự lấy theo Mã SP)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editCatalogProduct.image || ""}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-600"
+                    placeholder="Chọn Mã SP để tự điền..."
+                  />
+                  {editCatalogProduct.image && (
+                    <div className="mt-2">
+                      <img
+                        src={editCatalogProduct.image}
+                        alt="Preview"
+                        className="h-20 w-20 object-cover rounded-lg border"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Bảng size
-                        </label>
-                        <input
-                          type="text"
-                          value={editCatalogProduct.sizeChart}
-                          onChange={(e) =>
-                            setEditCatalogProduct({
-                              ...editCatalogProduct,
-                              sizeChart: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Màu sắc
-                        </label>
-                        <input
-                          type="text"
-                          value={editCatalogProduct.color}
-                          onChange={(e) =>
-                            setEditCatalogProduct({
-                              ...editCatalogProduct,
-                              color: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Link hình ảnh
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={editCatalogProduct.image}
-                          onChange={(e) =>
-                            setEditCatalogProduct({
-                              ...editCatalogProduct,
-                              image: e.target.value,
-                            })
-                          }
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setImagePickerTarget("editCatalog");
-                            setShowImagePicker(true);
-                          }}
-                          className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center gap-1 text-sm font-medium whitespace-nowrap"
-                        >
-                          <ImageIcon size={16} />
-                          Chọn ảnh
-                        </button>
-                      </div>
-                      {editCatalogProduct.image && (
-                        <div className="mt-2">
-                          <img
-                            src={editCatalogProduct.image}
-                            alt="Preview"
-                            className="h-20 w-20 object-cover rounded-lg border"
-                          />
-                        </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Giá sỉ{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự lấy theo Mã SP)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        editCatalogProduct.wholesalePrice
+                          ? editCatalogProduct.wholesalePrice.toLocaleString(
+                              "vi-VN",
+                            )
+                          : ""
+                      }
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Giá lẻ{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự lấy theo Mã SP)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        editCatalogProduct.retailPrice
+                          ? editCatalogProduct.retailPrice.toLocaleString(
+                              "vi-VN",
+                            )
+                          : ""
+                      }
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Dòng size{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (tự lấy theo Mã SP)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editCatalogProduct.sizeChart || ""}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="Chọn Mã SP để tự điền..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tồn kho{" "}
+                      <span className="text-xs text-gray-500 font-normal">
+                        (lấy từ sheet Tồn kho SP)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={(editCatalogProduct.tonKho ?? 0).toLocaleString(
+                        "vi-VN",
                       )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Giá cả */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Giá cả
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Giá bán lẻ
-                      </label>
-                      <input
-                        type="number"
-                        value={editCatalogProduct.retailPrice}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            retailPrice: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Giá bán sỉ
-                      </label>
-                      <input
-                        type="number"
-                        value={editCatalogProduct.wholesalePrice}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            wholesalePrice: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Giá vốn
-                      </label>
-                      <input
-                        type="number"
-                        value={editCatalogProduct.costPrice}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            costPrice: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Nguyên vật liệu */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Nguyên vật liệu
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Vải chính
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.mainFabric}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            mainFabric: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Vải phối
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.accentFabric}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            accentFabric: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phụ liệu khác
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.otherMaterials}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            otherMaterials: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Định mức */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Định mức
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM vải chính
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.mainFabricQuota}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            mainFabricQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM vải phối
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.accentFabricQuota}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            accentFabricQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM phụ liệu
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.materialsQuota}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            materialsQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM phụ kiện
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.accessoriesQuota}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            accessoriesQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ĐM khác
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.otherQuota}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            otherQuota: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Số lượng */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Số lượng
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        SL kế hoạch
-                      </label>
-                      <input
-                        type="number"
-                        value={editCatalogProduct.plannedQuantity}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            plannedQuantity: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        SL cắt
-                      </label>
-                      <input
-                        type="number"
-                        value={editCatalogProduct.cutQuantity}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            cutQuantity: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        SL nhập kho
-                      </label>
-                      <input
-                        type="number"
-                        value={editCatalogProduct.warehouseQuantity}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            warehouseQuantity: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Trạng thái */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Trạng thái
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CĐ Final
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.finalStatus}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            finalStatus: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CĐ đồng bộ NPL
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.nplSyncStatus}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            nplSyncStatus: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CĐ sản xuất
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.productionStatus}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            productionStatus: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nhập kho
-                      </label>
-                      <input
-                        type="text"
-                        value={editCatalogProduct.warehouseEntry}
-                        onChange={(e) =>
-                          setEditCatalogProduct({
-                            ...editCatalogProduct,
-                            warehouseEntry: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed text-gray-700"
+                      placeholder="0"
+                    />
                   </div>
                 </div>
               </div>
@@ -3441,6 +3385,7 @@ export default function SanPhamPage() {
           </div>
         </Portal>
       )}
+
 
       {/* ======== TAB: QUẢN LÝ KHO ======== */}
       {activeTab === "quan-ly-kho" && (

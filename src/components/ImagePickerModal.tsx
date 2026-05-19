@@ -31,6 +31,7 @@ const FOLDERS = [
   { id: "san-pham", label: "Sản phẩm" },
   { id: "hinh-in", label: "Hình in" },
   { id: "nguyen-phu-lieu", label: "Nguyên phụ liệu" },
+  { id: "thiet-ke", label: "Thiết kế hình ảnh" },
 ];
 
 const ITEMS_PER_PAGE = 24;

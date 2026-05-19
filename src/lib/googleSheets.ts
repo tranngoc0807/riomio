@@ -672,12 +672,29 @@ const sheetNameKhachHang = process.env.GOOGLE_SHEET_NAME_KHACH_HANG || "DS KH";
 const sheetNameTheoDoiCongNoKH = process.env.GOOGLE_SHEET_NAME_CONG_NO_KH || "Theo dõi công nợ từng khách hàng";
 
 /**
- * Lấy công nợ hiện tại của 1 khách hàng từ sheet "Theo dõi công nợ từng khách hàng".
- * Cơ chế: ghi tên KH vào ô B3 (filter), rồi đọc giá trị cuối cùng của cột E (Dư cuối).
- * Lưu ý: sheet này dùng B3 làm filter chung — không an toàn cho nhiều user concurrent.
+ * Lấy công nợ "cũ" của 1 khách hàng — tức là dư cuối TRƯỚC khi tính đơn hiện tại.
+ *
+ * Cơ chế:
+ * 1) Ghi tên KH vào ô B3 của sheet "Theo dõi công nợ từng khách hàng" để filter.
+ * 2) Đọc cột B (Nội dung) + cột E (Dư cuối) từ dòng 6.
+ * 3) Nếu `excludeOrderCode` truyền vào và tìm thấy trong cột B → trả về Dư cuối của
+ *    dòng NGAY TRƯỚC dòng đó (= nợ cũ trước khi cộng/trừ đơn này).
+ * 4) Nếu không tìm thấy (vd đơn chưa lưu vào sheet) → fallback: trả về Dư cuối của
+ *    dòng cuối cùng có nội dung.
+ *
+ * Lưu ý: sheet này dùng B3 làm filter chung — không an toàn nếu nhiều user gọi
+ * song song cho các KH khác nhau (B3 sẽ chồng nhau).
  */
-export async function getCustomerCurrentDebt(customerName: string): Promise<number> {
-  console.log("[customer-debt] called with:", JSON.stringify(customerName));
+export async function getCustomerCurrentDebt(
+  customerName: string,
+  excludeOrderCode?: string,
+): Promise<number> {
+  console.log(
+    "[customer-debt] called with:",
+    JSON.stringify(customerName),
+    "exclude:",
+    JSON.stringify(excludeOrderCode),
+  );
   if (!customerName) return 0;
   const sheets = await getGoogleSheetsClient();
 
@@ -693,26 +710,61 @@ export async function getCustomerCurrentDebt(customerName: string): Promise<numb
   // Delay nhỏ để Google Sheets recalc các công thức tham chiếu B3
   await new Promise((r) => setTimeout(r, 500));
 
-  // 2) Đọc cột E (Dư cuối) từ dòng 6 trở đi (UNFORMATTED_VALUE để lấy số thuần)
+  // 2) Đọc cột B-E (Nội dung + Tiền hàng + Thanh toán + Dư cuối)
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: spreadsheetIdKhachHang,
-    range: `'${sheetNameTheoDoiCongNoKH}'!E6:E`,
+    range: `'${sheetNameTheoDoiCongNoKH}'!B6:E`,
     valueRenderOption: "UNFORMATTED_VALUE",
   });
 
   const rows = response.data.values || [];
-  console.log("[customer-debt] read E6:E rows count:", rows.length, "last 3:", rows.slice(-3));
-  for (let i = rows.length - 1; i >= 0; i--) {
-    const cell = rows[i]?.[0];
-    if (cell != null && String(cell).trim() !== "") {
-      const cleaned = String(cell).replace(/\./g, "").replace(/,/g, ".");
-      const num = parseFloat(cleaned);
-      console.log("[customer-debt] last non-empty cell:", JSON.stringify(cell), "→ parsed:", num);
-      return isNaN(num) ? 0 : num;
+
+  // Parse số: hỗ trợ cả raw number và format string VN
+  const parseDuCuoi = (cell: any): number => {
+    if (cell == null || String(cell).trim() === "") return 0;
+    const cleaned = String(cell).replace(/\./g, "").replace(/,/g, ".");
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? 0 : n;
+  };
+
+  // Lấy các dòng có Nội dung (cột B = row[0])
+  const validRows = rows
+    .map((row) => ({
+      noiDung: String(row?.[0] || "").trim(),
+      duCuoi: row?.[3],
+    }))
+    .filter((r) => r.noiDung !== "");
+
+  console.log(
+    "[customer-debt] valid rows:",
+    validRows.length,
+    "last 3:",
+    validRows.slice(-3),
+  );
+
+  if (validRows.length === 0) return 0;
+
+  // Nếu truyền excludeOrderCode → tìm hàng đó và lấy Dư cuối của hàng TRƯỚC nó
+  if (excludeOrderCode) {
+    const code = excludeOrderCode.trim();
+    const matchIndex = validRows.findIndex((r) => r.noiDung === code);
+    if (matchIndex > 0) {
+      const prev = validRows[matchIndex - 1];
+      const num = parseDuCuoi(prev.duCuoi);
+      console.log("[customer-debt] match index:", matchIndex, "prev duCuoi:", num);
+      return num;
     }
+    if (matchIndex === 0) {
+      console.log("[customer-debt] first entry, no debt before");
+      return 0;
+    }
+    console.log("[customer-debt] orderCode not found, fallback to last");
   }
-  console.log("[customer-debt] no non-empty cell found, returning 0");
-  return 0;
+
+  // Fallback: Dư cuối của dòng cuối cùng có nội dung
+  const last = parseDuCuoi(validRows[validRows.length - 1].duCuoi);
+  console.log("[customer-debt] fallback last duCuoi:", last);
+  return last;
 }
 
 // Interface cho khách hàng

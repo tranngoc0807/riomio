@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCustomerCurrentDebt } from "@/lib/googleSheets";
 
 /**
- * GET /api/customer-debt?customer=<name>
- * Trả về công nợ hiện tại của khách hàng (giá trị cuối cùng cột Dư cuối
- * trong sheet "Theo dõi công nợ từng khách hàng" sau khi filter theo tên).
+ * GET /api/customer-debt?customer=<name>&orderCode=<code>
+ * Trả về công nợ "cũ" của khách hàng — dư cuối TRƯỚC khi tính đơn `orderCode`.
+ * Nếu không truyền orderCode hoặc không tìm thấy trong sheet → trả về dư cuối cuối cùng.
  */
 export async function GET(request: NextRequest) {
   try {
     const customer = request.nextUrl.searchParams.get("customer");
+    const orderCode =
+      request.nextUrl.searchParams.get("orderCode") || undefined;
     if (!customer) {
       return NextResponse.json(
         { success: false, error: "Missing 'customer' query param" },
@@ -16,7 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const debt = await getCustomerCurrentDebt(customer);
+    const debt = await getCustomerCurrentDebt(customer, orderCode);
     return NextResponse.json({ success: true, debt });
   } catch (error: any) {
     console.error("Error fetching customer debt:", error);
