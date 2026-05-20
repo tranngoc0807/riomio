@@ -287,6 +287,7 @@ export default function SanPhamPage() {
   const [showCatalogEditModal, setShowCatalogEditModal] = useState(false);
   const [selectedCatalogProduct, setSelectedCatalogProduct] =
     useState<SanPhamCatalog | null>(null);
+  const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
   const [catalogSaving, setCatalogSaving] = useState(false);
 
   const [newCatalogProduct, setNewCatalogProduct] = useState<
@@ -2919,7 +2920,10 @@ export default function SanPhamPage() {
                   <img
                     src={selectedCatalogProduct.image}
                     alt={selectedCatalogProduct.name}
-                    className="w-14 h-14 rounded-lg object-cover border-2 border-white/30"
+                    className="w-14 h-14 rounded-lg object-cover border-2 border-white/30 cursor-zoom-in"
+                    onClick={() =>
+                      setZoomedImageUrl(selectedCatalogProduct.image)
+                    }
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
@@ -2945,6 +2949,33 @@ export default function SanPhamPage() {
 
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
+                {/* Hình ảnh */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Hình ảnh
+                  </h4>
+                  {selectedCatalogProduct.image ? (
+                    <div className="flex justify-center">
+                      <img
+                        src={selectedCatalogProduct.image}
+                        alt={selectedCatalogProduct.name}
+                        className="max-h-64 rounded-lg object-contain border border-gray-200 cursor-zoom-in hover:opacity-90 transition-opacity"
+                        onClick={() =>
+                          setZoomedImageUrl(selectedCatalogProduct.image)
+                        }
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                      <ImageIcon size={48} />
+                      <p className="text-sm mt-2">Chưa có hình ảnh</p>
+                    </div>
+                  )}
+                </div>
+
                 {/* Thông tin cơ bản */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">
@@ -3039,6 +3070,34 @@ export default function SanPhamPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal phóng to hình ảnh */}
+      {zoomedImageUrl && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6 cursor-zoom-out"
+            onClick={() => setZoomedImageUrl(null)}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setZoomedImageUrl(null);
+              }}
+              className="absolute top-4 right-4 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+              aria-label="Đóng"
+            >
+              <X size={28} />
+            </button>
+            <img
+              src={zoomedImageUrl}
+              alt="Phóng to"
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </Portal>
       )}
