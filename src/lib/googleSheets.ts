@@ -685,84 +685,131 @@ const sheetNameTheoDoiCongNoKH = process.env.GOOGLE_SHEET_NAME_CONG_NO_KH || "Th
  * Lưu ý: sheet này dùng B3 làm filter chung — không an toàn nếu nhiều user gọi
  * song song cho các KH khác nhau (B3 sẽ chồng nhau).
  */
-export async function getCustomerCurrentDebt(
+// Mutex để serialize các call vào getCustomerCurrentDebt — tránh nhiều request
+// đồng thời ghi đè B3 của nhau. Chỉ có hiệu lực trong 1 process Node.js
+// (1 instance Vercel). Đủ cho local dev và phần lớn case trên Vercel.
+let _customerDebtChain: Promise<any> = Promise.resolve();
+
+export function getCustomerCurrentDebt(
   customerName: string,
   excludeOrderCode?: string,
 ): Promise<number> {
-  console.log(
-    "[customer-debt] called with:",
-    JSON.stringify(customerName),
-    "exclude:",
-    JSON.stringify(excludeOrderCode),
+  // Xếp hàng: call mới chỉ chạy sau khi call trước resolve (kể cả lỗi)
+  const result = _customerDebtChain.then(
+    () => _getCustomerCurrentDebtImpl(customerName, excludeOrderCode),
+    () => _getCustomerCurrentDebtImpl(customerName, excludeOrderCode),
   );
-  if (!customerName) return 0;
+  _customerDebtChain = result.catch(() => undefined);
+  return result;
+}
+
+export type DebtHistoryRow = { noiDung: string; duCuoi: number };
+
+const parseDuCuoi = (cell: any): number => {
+  if (cell == null || String(cell).trim() === "") return 0;
+  const cleaned = String(cell).replace(/\./g, "").replace(/,/g, ".");
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+};
+
+/**
+ * Lấy TOÀN BỘ lịch sử công nợ của 1 KH (từ sheet "Theo dõi công nợ từng khách hàng").
+ * Frontend cache kết quả này → các đơn của cùng KH chỉ cần fetch 1 lần.
+ */
+export function getCustomerDebtRows(
+  customerName: string,
+): Promise<DebtHistoryRow[]> {
+  const result = _customerDebtChain.then(
+    () => _loadCustomerDebtRows(customerName),
+    () => _loadCustomerDebtRows(customerName),
+  );
+  _customerDebtChain = result.catch(() => undefined);
+  return result;
+}
+
+async function _loadCustomerDebtRows(
+  customerName: string,
+): Promise<DebtHistoryRow[]> {
+  console.log("[customer-debt] loading rows for:", JSON.stringify(customerName));
+  if (!customerName) return [];
   const sheets = await getGoogleSheetsClient();
 
-  // 1) Ghi tên KH vào B3 để filter sheet
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: spreadsheetIdKhachHang,
-    range: `'${sheetNameTheoDoiCongNoKH}'!B3`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[customerName]] },
-  });
-  console.log("[customer-debt] wrote B3 OK");
-
-  // Delay nhỏ để Google Sheets recalc các công thức tham chiếu B3
-  await new Promise((r) => setTimeout(r, 500));
-
-  // 2) Đọc cột B-E (Nội dung + Tiền hàng + Thanh toán + Dư cuối)
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: spreadsheetIdKhachHang,
-    range: `'${sheetNameTheoDoiCongNoKH}'!B6:E`,
-    valueRenderOption: "UNFORMATTED_VALUE",
-  });
-
-  const rows = response.data.values || [];
-
-  // Parse số: hỗ trợ cả raw number và format string VN
-  const parseDuCuoi = (cell: any): number => {
-    if (cell == null || String(cell).trim() === "") return 0;
-    const cleaned = String(cell).replace(/\./g, "").replace(/,/g, ".");
-    const n = parseFloat(cleaned);
-    return isNaN(n) ? 0 : n;
+  const writeB3 = async () => {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdKhachHang,
+      range: `'${sheetNameTheoDoiCongNoKH}'!B3`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [[customerName]] },
+    });
   };
 
-  // Lấy các dòng có Nội dung (cột B = row[0])
-  const validRows = rows
-    .map((row) => ({
-      noiDung: String(row?.[0] || "").trim(),
-      duCuoi: row?.[3],
-    }))
-    .filter((r) => r.noiDung !== "");
+  await writeB3();
+  console.log("[customer-debt] wrote B3 OK");
 
-  console.log(
-    "[customer-debt] valid rows:",
-    validRows.length,
-    "last 3:",
-    validRows.slice(-3),
-  );
+  const MAX_ATTEMPTS = 10;
+  const DELAY_MS = 400;
+  let rows: any[][] = [];
+  let validRows: DebtHistoryRow[] = [];
 
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    await new Promise((r) => setTimeout(r, DELAY_MS));
+
+    const batch = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: spreadsheetIdKhachHang,
+      ranges: [
+        `'${sheetNameTheoDoiCongNoKH}'!B3`,
+        `'${sheetNameTheoDoiCongNoKH}'!B6:E`,
+      ],
+      valueRenderOption: "UNFORMATTED_VALUE",
+    });
+
+    const b3Cell = batch.data.valueRanges?.[0]?.values?.[0]?.[0];
+    rows = batch.data.valueRanges?.[1]?.values || [];
+    const b3Match = String(b3Cell || "").trim() === customerName.trim();
+
+    validRows = rows
+      .map((row) => ({
+        noiDung: String(row?.[0] || "").trim(),
+        duCuoi: parseDuCuoi(row?.[3]),
+      }))
+      .filter((r) => r.noiDung !== "");
+
+    console.log(
+      `[customer-debt] attempt ${attempt}: b3="${b3Cell}" match=${b3Match} valid=${validRows.length}`,
+    );
+
+    if (b3Match && validRows.length > 0) break;
+
+    if (!b3Match) {
+      console.log("[customer-debt] B3 mismatch, re-writing");
+      await writeB3();
+    }
+  }
+
+  console.log("[customer-debt] final rows:", validRows.length);
+  return validRows;
+}
+
+async function _getCustomerCurrentDebtImpl(
+  customerName: string,
+  excludeOrderCode?: string,
+): Promise<number> {
+  const validRows = await _loadCustomerDebtRows(customerName);
   if (validRows.length === 0) return 0;
 
-  // Nếu truyền excludeOrderCode → tìm hàng đó và lấy Dư cuối của hàng TRƯỚC nó
   if (excludeOrderCode) {
     const code = excludeOrderCode.trim();
     const matchIndex = validRows.findIndex((r) => r.noiDung === code);
     if (matchIndex > 0) {
-      const prev = validRows[matchIndex - 1];
-      const num = parseDuCuoi(prev.duCuoi);
+      const num = validRows[matchIndex - 1].duCuoi;
       console.log("[customer-debt] match index:", matchIndex, "prev duCuoi:", num);
       return num;
     }
-    if (matchIndex === 0) {
-      console.log("[customer-debt] first entry, no debt before");
-      return 0;
-    }
+    if (matchIndex === 0) return 0;
     console.log("[customer-debt] orderCode not found, fallback to last");
   }
 
-  // Fallback: Dư cuối của dòng cuối cùng có nội dung
-  const last = parseDuCuoi(validRows[validRows.length - 1].duCuoi);
+  const last = validRows[validRows.length - 1].duCuoi;
   console.log("[customer-debt] fallback last duCuoi:", last);
   return last;
 }

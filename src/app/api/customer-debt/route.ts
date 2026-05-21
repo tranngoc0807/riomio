@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCustomerCurrentDebt } from "@/lib/googleSheets";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const maxDuration = 30;
+
 /**
  * GET /api/customer-debt?customer=<name>&orderCode=<code>
  * Trả về công nợ "cũ" của khách hàng — dư cuối TRƯỚC khi tính đơn `orderCode`.

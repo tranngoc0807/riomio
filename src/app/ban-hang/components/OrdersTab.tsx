@@ -177,6 +177,14 @@ export default function OrdersTab() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null); // Order code to delete
   const [customerDebt, setCustomerDebt] = useState<number>(0);
+  const [isLoadingDebt, setIsLoadingDebt] = useState(false);
+  // Cache lịch sử công nợ theo KH — fetch 1 lần, các đơn cùng KH lookup local
+  const customerDebtHistoryRef = useRef<
+    Map<string, { noiDung: string; duCuoi: number }[]>
+  >(new Map());
+  const customerDebtInflightRef = useRef<
+    Map<string, Promise<{ noiDung: string; duCuoi: number }[]>>
+  >(new Map());
   const [viewGroupedOrder, setViewGroupedOrder] = useState<GroupedOrder | null>(
     null,
   );
@@ -819,22 +827,61 @@ export default function OrdersTab() {
     }
   };
 
-  // View grouped order
+  // Fetch lịch sử công nợ của 1 KH (cache theo customer; dedup các call đồng thời)
+  const fetchDebtHistory = async (
+    customer: string,
+  ): Promise<{ noiDung: string; duCuoi: number }[]> => {
+    const cached = customerDebtHistoryRef.current.get(customer);
+    if (cached) return cached;
+    const inflight = customerDebtInflightRef.current.get(customer);
+    if (inflight) return inflight;
+
+    const promise = (async () => {
+      try {
+        const res = await fetch(
+          `/api/customer-debt-history?customer=${encodeURIComponent(customer)}&_t=${Date.now()}`,
+          { cache: "no-store" },
+        );
+        const json = await res.json();
+        const rows = json.success && Array.isArray(json.rows) ? json.rows : [];
+        customerDebtHistoryRef.current.set(customer, rows);
+        return rows;
+      } catch (err) {
+        console.error("Error fetching customer debt history:", err);
+        return [];
+      } finally {
+        customerDebtInflightRef.current.delete(customer);
+      }
+    })();
+
+    customerDebtInflightRef.current.set(customer, promise);
+    return promise;
+  };
+
+  // Tính "nợ cũ" cho 1 đơn từ lịch sử công nợ đã cache
+  const computeOldDebtFromHistory = (
+    rows: { noiDung: string; duCuoi: number }[],
+    orderCode: string,
+  ): number => {
+    if (rows.length === 0) return 0;
+    const idx = rows.findIndex((r) => r.noiDung === orderCode.trim());
+    if (idx > 0) return rows[idx - 1].duCuoi;
+    if (idx === 0) return 0;
+    // Không tìm thấy đơn → fallback dư cuối hàng cuối
+    return rows[rows.length - 1].duCuoi;
+  };
+
+  // View grouped order — fetch full history 1 lần rồi lookup local
   const handleViewGrouped = async (group: GroupedOrder) => {
     setViewGroupedOrder(group);
-    setCustomerDebt(0); // reset trong lúc đợi fetch
+    setCustomerDebt(0); // reset trong lúc đợi
     setShowViewModal(true);
-    // Lấy nợ cũ (Dư cuối hiện tại) từ sheet "Theo dõi công nợ từng khách hàng"
+    setIsLoadingDebt(true);
     try {
-      console.log("[customer-debt fetch] customer:", group.customer);
-      const res = await fetch(
-        `/api/customer-debt?customer=${encodeURIComponent(group.customer)}&orderCode=${encodeURIComponent(group.orderCode)}`,
-      );
-      const json = await res.json();
-      console.log("[customer-debt fetch] response:", json);
-      if (json.success) setCustomerDebt(json.debt || 0);
-    } catch (err) {
-      console.error("Error fetching customer debt:", err);
+      const rows = await fetchDebtHistory(group.customer);
+      setCustomerDebt(computeOldDebtFromHistory(rows, group.orderCode));
+    } finally {
+      setIsLoadingDebt(false);
     }
   };
 
@@ -887,6 +934,12 @@ export default function OrdersTab() {
     setShowPrintDropdown(false);
 
     try {
+      // Đảm bảo "Nợ cũ" đã load xong trước khi render canvas
+      const rows = await fetchDebtHistory(viewGroupedOrder.customer);
+      setCustomerDebt(computeOldDebtFromHistory(rows, viewGroupedOrder.orderCode));
+      // Đợi 1 tick để React re-render với debt mới
+      await new Promise((r) => setTimeout(r, 50));
+
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
@@ -907,11 +960,16 @@ export default function OrdersTab() {
   };
 
   // Print order
-  const handlePrint = () => {
+  const handlePrint = async () => {
     setShowPrintDropdown(false);
 
     const printContent = printRef.current;
     if (!printContent || !viewGroupedOrder) return;
+
+    // Đảm bảo "Nợ cũ" đã load xong trước khi mở cửa sổ in
+    const rows = await fetchDebtHistory(viewGroupedOrder.customer);
+    setCustomerDebt(computeOldDebtFromHistory(rows, viewGroupedOrder.orderCode));
+    await new Promise((r) => setTimeout(r, 50));
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -1789,7 +1847,11 @@ export default function OrdersTab() {
                       }}
                     >
                       <span>Nợ cũ:</span>
-                      <span>{customerDebt.toLocaleString("vi-VN")}</span>
+                      <span>
+                        {isLoadingDebt
+                          ? "Đang tải..."
+                          : customerDebt.toLocaleString("vi-VN")}
+                      </span>
                     </div>
                     <div
                       style={{
@@ -1800,9 +1862,11 @@ export default function OrdersTab() {
                     >
                       <span style={{ fontWeight: "bold" }}>Tổng công nợ:</span>
                       <span style={{ fontWeight: "bold" }}>
-                        {(customerDebt + viewGroupedOrder.total).toLocaleString(
-                          "vi-VN",
-                        )}
+                        {isLoadingDebt
+                          ? "Đang tải..."
+                          : (
+                              customerDebt + viewGroupedOrder.total
+                            ).toLocaleString("vi-VN")}
                       </span>
                     </div>
                   </div>
