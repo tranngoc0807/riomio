@@ -35,11 +35,9 @@ export async function PUT(request: NextRequest) {
       maHinhIn: body.maHinhIn || "",
       thongTinHinhIn: body.thongTinHinhIn || "",
       hinhAnh: body.hinhAnh || "",
-      donGiaChuaThue: parseFloat(body.donGiaChuaThue) || 0,
-      thueSuat: body.thueSuat || "",
-      donGiaCoThue: parseFloat(body.donGiaCoThue) || 0,
+      anhMinhHoa: body.anhMinhHoa || "",
       maSPSuDung: body.maSPSuDung || "",
-      xuongIn: body.xuongIn || "",
+      tonKho: parseFloat(body.tonKho) || 0,
     };
 
     await updateDanhMucHinhInInSheet(danhMuc);

@@ -9,33 +9,27 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate dữ liệu
     if (!body.maHinhIn) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Mã hình in là bắt buộc",
-        },
+        { success: false, error: "Mã hình in là bắt buộc" },
         { status: 400 }
       );
     }
 
     if (!body.ngayThang) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Ngày tháng là bắt buộc",
-        },
+        { success: false, error: "Ngày tháng là bắt buộc" },
         { status: 400 }
       );
     }
 
     const xuatKho = {
+      maPhieuXuat: body.maPhieuXuat || "",
       ngayThang: body.ngayThang || "",
       maHinhIn: body.maHinhIn || "",
+      hinhAnh: body.hinhAnh || "",
       soLuong: parseFloat(body.soLuong) || 0,
-      maSPSuDung: body.maSPSuDung || "",
-      maPhieuXuat: body.maPhieuXuat || "",
+      tonKho: parseFloat(body.tonKho) || 0,
       ghiChu: body.ghiChu || "",
     };
 
@@ -48,7 +42,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error adding xuat kho hinh in:", error);
-
     return NextResponse.json(
       {
         success: false,

@@ -9,32 +9,35 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate dữ liệu
     if (!body.maHinhIn) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Mã hình in là bắt buộc",
-        },
+        { success: false, error: "Mã hình in là bắt buộc" },
         { status: 400 }
       );
     }
 
     if (!body.ngayThang) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Ngày tháng là bắt buộc",
-        },
+        { success: false, error: "Ngày tháng là bắt buộc" },
         { status: 400 }
       );
     }
 
     const nhapKho = {
+      maDon: body.maDon || "",
       ngayThang: body.ngayThang || "",
+      stt: body.stt != null ? String(body.stt) : "",
       maHinhIn: body.maHinhIn || "",
+      kichThuoc: body.kichThuoc || "",
       hinhAnh: body.hinhAnh || "",
-      soLuong: parseFloat(body.soLuong) || 0,
+      datHI: parseFloat(body.datHI) || 0,
+      nhapKhoThucTe: parseFloat(body.nhapKhoThucTe) || 0,
+      maSPSuDung: body.maSPSuDung || "",
+      xuongIn: body.xuongIn || "",
+      nhapKhoMet: parseFloat(body.nhapKhoMet) || 0,
+      donGia: parseFloat(body.donGia) || 0,
+      ngayNhapKho: body.ngayNhapKho || "",
+      ghiChu: body.ghiChu || "",
     };
 
     await addNhapKhoHinhInToSheet(nhapKho);
@@ -46,7 +49,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error adding nhap kho hinh in:", error);
-
     return NextResponse.json(
       {
         success: false,

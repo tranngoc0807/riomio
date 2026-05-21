@@ -42,9 +42,13 @@ export async function PUT(request: NextRequest) {
 
     const xuatKho: XuatKhoHinhIn = {
       id: body.id,
+      maPhieuXuat: body.maPhieuXuat || "",
       ngayThang: body.ngayThang || "",
       maHinhIn: body.maHinhIn || "",
+      hinhAnh: body.hinhAnh || "",
       soLuong: parseFloat(body.soLuong) || 0,
+      tonKho: parseFloat(body.tonKho) || 0,
+      ghiChu: body.ghiChu || "",
     };
 
     await updateXuatKhoHinhInInSheet(xuatKho);

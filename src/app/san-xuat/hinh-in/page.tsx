@@ -6,6 +6,10 @@ import {
   PackagePlus,
   PackageMinus,
   Archive,
+  Building2,
+  Eye,
+  FileInput,
+  FileOutput,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,6 +22,10 @@ import NhapKhoHinhInTab from "../components/NhapKhoHinhInTab";
 import ChiPhiHinhInTab from "../components/ChiPhiHinhInTab";
 import XuatKhoHinhInTab from "../components/XuatKhoHinhInTab";
 import TonKhoHinhInTab from "../components/TonKhoHinhInTab";
+import DSNCCHinhInTab from "../components/DSNCCHinhInTab";
+import TheoDoiNCCHinhInTab from "../components/TheoDoiNCCHinhInTab";
+import PhieuNhapHinhInTab from "../components/PhieuNhapHinhInTab";
+import PhieuXuatHinhInTab from "../components/PhieuXuatHinhInTab";
 
 type TabType =
   | "danh-muc"
@@ -26,13 +34,23 @@ type TabType =
   | "chi-phi"
   | "xuat-kho"
   | "phieu-xuat"
-  | "ton-kho";
+  | "ton-kho"
+  | "ncc-hi"
+  | "theo-doi-ncc-hi";
 
 const TABS = [
   { id: "danh-muc" as TabType, label: "Danh mục HI", icon: List },
   { id: "nhap-kho" as TabType, label: "Nhập kho HI", icon: PackagePlus },
+  { id: "phieu-nhap" as TabType, label: "Phiếu nhập kho HI", icon: FileInput },
   { id: "xuat-kho" as TabType, label: "Xuất kho HI", icon: PackageMinus },
+  { id: "phieu-xuat" as TabType, label: "Phiếu xuất kho HI", icon: FileOutput },
   { id: "ton-kho" as TabType, label: "Tồn kho HI", icon: Archive },
+  { id: "ncc-hi" as TabType, label: "NCC HI", icon: Building2 },
+  {
+    id: "theo-doi-ncc-hi" as TabType,
+    label: "Theo dõi chi tiết NCC HI",
+    icon: Eye,
+  },
 ];
 
 export default function HinhIn() {
@@ -118,6 +136,10 @@ export default function HinhIn() {
           {activeTab === "chi-phi" && <ChiPhiHinhInTab />}
           {activeTab === "xuat-kho" && <XuatKhoHinhInTab />}
           {activeTab === "ton-kho" && <TonKhoHinhInTab />}
+          {activeTab === "phieu-nhap" && <PhieuNhapHinhInTab />}
+          {activeTab === "phieu-xuat" && <PhieuXuatHinhInTab />}
+          {activeTab === "ncc-hi" && <DSNCCHinhInTab />}
+          {activeTab === "theo-doi-ncc-hi" && <TheoDoiNCCHinhInTab />}
         </div>
       </div>
     </div>

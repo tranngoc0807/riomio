@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getXuatKhoHinhInFromSheet } from "@/lib/googleSheets";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * GET /api/xuat-kho-hinh-in
  * Lấy dữ liệu xuất kho hình in từ Google Sheets

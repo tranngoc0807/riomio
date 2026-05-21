@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDanhMucHinhInFromSheet } from "@/lib/googleSheets";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * GET /api/danh-muc-hinh-in
  * Lấy danh mục hình in từ Google Sheets
