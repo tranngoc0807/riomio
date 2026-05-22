@@ -15,6 +15,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import Portal from "@/components/Portal";
 import ImagePickerModal from "@/components/ImagePickerModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 
 interface DanhMucHinhIn {
@@ -354,6 +355,7 @@ export default function DanhMucHinhInTab() {
             Danh mục hình in ({filteredList.length})
           </h3>
           <div className="flex items-center gap-3">
+            <EditHistoryButton tableKey="danh-muc-hinh-in" variant="labeled" title="Danh mục hình in" />
             <button
               onClick={() => {
                 resetForm();

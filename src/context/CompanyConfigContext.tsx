@@ -26,6 +26,12 @@ export interface Announcement {
   isActive: boolean;
   startDate: string;
   endDate: string;
+  // Modal frame text (chỉ dùng cho announcement đầu tiên đang active)
+  modalHeader?: string; // "Chúc Mừng"
+  modalBigTitle?: string; // "NĂM MỚI"
+  modalYearText?: string; // "2026"
+  modalSubtitle?: string; // "An khang - Thịnh vượng - Vạn sự như ý"
+  modalButtonText?: string; // "Chúc mừng năm mới!"
 }
 
 export interface CompanyConfig {
@@ -54,6 +60,7 @@ export interface CompanyConfig {
 
   vision: string;
   mission: string;
+  coreValues: string[];
 
   businessAreas: BusinessArea[];
   quickLinks: QuickLinkSection[];
@@ -86,11 +93,20 @@ const defaultConfig: CompanyConfig = {
 
   mission: "Cung cấp các sản phẩm thời trang chất lượng cao với giá cả hợp lý. Tạo ra giá trị cho khách hàng, đối tác và cộng đồng thông qua việc phát triển bền vững, có trách nhiệm với môi trường và xã hội, đồng hành cùng sự phát triển của đất nước.",
 
+  coreValues: [
+    "Khách hàng là trung tâm",
+    "Trách nhiệm & Cam kết",
+    "Đổi mới & Sáng tạo",
+    "Hợp tác & Tôn trọng",
+  ],
+
   businessAreas: [
-    { id: "1", icon: "Factory", title: "Sản xuất", description: "Sản xuất các sản phẩm thời trang chất lượng cao", color: "from-orange-400 to-orange-500" },
-    { id: "2", icon: "ShoppingBag", title: "Bán lẻ", description: "Phân phối qua hệ thống cửa hàng và TMĐT", color: "from-orange-400 to-orange-500" },
-    { id: "3", icon: "Truck", title: "Phân phối", description: "Cung cấp dịch vụ phân phối sỉ toàn quốc", color: "from-orange-400 to-orange-500" },
-    { id: "4", icon: "Palette", title: "Thiết kế", description: "Đội ngũ thiết kế sáng tạo, cập nhật xu hướng", color: "from-orange-400 to-orange-500" },
+    { id: "1", icon: "Factory", title: "Sản xuất", description: "Quản lý quy trình sản xuất", color: "from-orange-400 to-orange-500" },
+    { id: "2", icon: "Package", title: "Sản phẩm", description: "Quản lý danh mục sản phẩm", color: "from-green-400 to-green-500" },
+    { id: "3", icon: "Users", title: "Nhân sự", description: "Quản lý thông tin nhân sự", color: "from-blue-400 to-blue-500" },
+    { id: "4", icon: "ShoppingCart", title: "Bán hàng", description: "Quản lý đơn hàng, khách hàng", color: "from-purple-400 to-purple-500" },
+    { id: "5", icon: "BarChart3", title: "Báo cáo", description: "Thống kê & phân tích", color: "from-indigo-400 to-indigo-500" },
+    { id: "6", icon: "DollarSign", title: "Dòng tiền", description: "Quản lý thu, chi, dòng tiền", color: "from-emerald-400 to-emerald-500" },
   ],
 
   quickLinks: [
@@ -159,6 +175,7 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
             aboutUs: data.about_us,
             vision: data.vision,
             mission: data.mission,
+            coreValues: data.core_values || defaultConfig.coreValues,
             businessAreas: data.business_areas || defaultConfig.businessAreas,
             quickLinks: data.quick_links || defaultConfig.quickLinks,
             announcements: data.announcements || defaultConfig.announcements,
@@ -178,7 +195,7 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
 
   const createDefaultConfig = async () => {
     try {
-      const { error } = await supabase.from("company_config").upsert({
+      const payload: Record<string, unknown> = {
         id: 1,
         name: defaultConfig.name,
         tax_code: defaultConfig.taxCode,
@@ -200,13 +217,30 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
         about_us: defaultConfig.aboutUs,
         vision: defaultConfig.vision,
         mission: defaultConfig.mission,
+        core_values: defaultConfig.coreValues,
         business_areas: defaultConfig.businessAreas,
         quick_links: defaultConfig.quickLinks,
         announcements: defaultConfig.announcements,
-      });
+      };
 
-      if (error) {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const { error } = await supabase
+          .from("company_config")
+          .upsert(payload);
+
+        if (!error) return;
+
+        if (error.code === "PGRST204") {
+          const match = error.message?.match(/'([^']+)' column/);
+          const missingCol = match?.[1];
+          if (missingCol && missingCol in payload) {
+            delete payload[missingCol];
+            continue;
+          }
+        }
+
         console.error("Error creating default config:", error);
+        return;
       }
     } catch (err) {
       console.error("Exception creating default config:", err);
@@ -215,43 +249,83 @@ export function CompanyConfigProvider({ children }: { children: ReactNode }) {
 
   const updateConfig = async (newConfig: CompanyConfig) => {
     try {
-      const { error } = await supabase
-        .from("company_config")
-        .update({
-          name: newConfig.name,
-          tax_code: newConfig.taxCode,
-          address: newConfig.address,
-          phone: newConfig.phone,
-          email: newConfig.email,
-          website: newConfig.website,
-          founded_date: newConfig.foundedDate,
-          employees: newConfig.employees,
-          capital: newConfig.capital,
-          industry: newConfig.industry,
-          representative: newConfig.representative,
-          position: newConfig.position,
-          logo: newConfig.logo,
-          hero_image: newConfig.heroImage,
-          hero_title1: newConfig.heroTitle1,
-          hero_title2: newConfig.heroTitle2,
-          hero_description: newConfig.heroDescription,
-          about_us: newConfig.aboutUs,
-          vision: newConfig.vision,
-          mission: newConfig.mission,
-          business_areas: newConfig.businessAreas,
-          quick_links: newConfig.quickLinks,
-          announcements: newConfig.announcements,
-        })
-        .eq("id", 1); // Assuming single row with id=1
+      const fullPayload: Record<string, unknown> = {
+        name: newConfig.name,
+        tax_code: newConfig.taxCode,
+        address: newConfig.address,
+        phone: newConfig.phone,
+        email: newConfig.email,
+        website: newConfig.website,
+        founded_date: newConfig.foundedDate,
+        employees: newConfig.employees,
+        capital: newConfig.capital,
+        industry: newConfig.industry,
+        representative: newConfig.representative,
+        position: newConfig.position,
+        logo: newConfig.logo,
+        hero_image: newConfig.heroImage,
+        hero_title1: newConfig.heroTitle1,
+        hero_title2: newConfig.heroTitle2,
+        hero_description: newConfig.heroDescription,
+        about_us: newConfig.aboutUs,
+        vision: newConfig.vision,
+        mission: newConfig.mission,
+        core_values: newConfig.coreValues,
+        business_areas: newConfig.businessAreas,
+        quick_links: newConfig.quickLinks,
+        announcements: newConfig.announcements,
+      };
 
-      if (error) {
-        console.error("Error updating config:", error);
-        throw error;
+      const payload = { ...fullPayload };
+      const skipped: string[] = [];
+
+      // Tự retry: nếu cột chưa tồn tại trong DB (PGRST204) thì bỏ cột đó và thử lại
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const { error } = await supabase
+          .from("company_config")
+          .update(payload)
+          .eq("id", 1);
+
+        if (!error) {
+          if (skipped.length > 0) {
+            console.warn(
+              `[CompanyConfig] Đã lưu, nhưng bỏ qua các cột chưa có trong DB: ${skipped.join(", ")}. Hãy chạy ALTER TABLE để bật các cột này.`,
+            );
+          }
+          setConfig(newConfig);
+          return;
+        }
+
+        if (error.code === "PGRST204") {
+          const match = error.message?.match(/'([^']+)' column/);
+          const missingCol = match?.[1];
+          if (missingCol && missingCol in payload) {
+            delete payload[missingCol];
+            skipped.push(missingCol);
+            continue;
+          }
+        }
+
+        console.error("Error updating config:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+        throw new Error(
+          error.message ||
+            error.details ||
+            error.hint ||
+            "Unknown Supabase error",
+        );
       }
 
-      setConfig(newConfig);
+      throw new Error("Quá nhiều lần thử lại khi lưu config");
     } catch (err) {
-      console.error("Exception updating config:", err);
+      console.error("Exception updating config:", {
+        message: err instanceof Error ? err.message : String(err),
+        raw: err,
+      });
       throw err;
     }
   };

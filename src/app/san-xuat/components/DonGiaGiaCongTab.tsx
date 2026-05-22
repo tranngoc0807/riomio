@@ -3,6 +3,7 @@
 import { Loader2, X, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Portal from "@/components/Portal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 
@@ -377,6 +378,7 @@ export default function DonGiaGiaCongTab() {
           Danh sách đơn giá gia công ({filteredList.length})
         </h3>
         <div className="flex items-center gap-3">
+          <EditHistoryButton tableKey="don-gia-gia-cong" variant="labeled" title="Đơn giá gia công" />
           <button
             onClick={() => {
               resetForm();

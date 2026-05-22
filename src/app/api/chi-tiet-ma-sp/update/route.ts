@@ -1,39 +1,25 @@
 import { NextResponse } from "next/server";
-import { updateChiTietMaSPInSheet } from "@/lib/googleSheets";
+import { updateChiTietMaSPInSheet, getChiTietMaSPFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * PUT /api/chi-tiet-ma-sp/update
- * Cập nhật chi tiết mã sản phẩm
- */
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const { maSP, ...data } = body;
-
     if (!maSP) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Mã sản phẩm không được để trống",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Mã sản phẩm không được để trống" }, { status: 400 });
     }
-
+    const before = await getChiTietMaSPFromSheet();
     await updateChiTietMaSPInSheet(maSP, data);
-
-    return NextResponse.json({
-      success: true,
-      message: "Cập nhật chi tiết mã sản phẩm thành công",
+    logSheetEdit({
+      action: "update",
+      tableKey: "chi-tiet-ma-sp",
+      sheetName: process.env.GOOGLE_SHEET_NAME_CHI_TIET_MA_SP || "Chi tiết Mã SP",
+      oldData: before as unknown as Record<string, unknown> | null,
+      newData: { maSP, ...data },
     });
+    return NextResponse.json({ success: true, message: "Cập nhật chi tiết mã sản phẩm thành công" });
   } catch (error: any) {
-    console.error("Error updating chi tiet ma sp:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể cập nhật chi tiết mã sản phẩm",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

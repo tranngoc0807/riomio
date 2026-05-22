@@ -3,6 +3,7 @@
 import { Loader2, X, Search, Plus, Trash2, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Printer, Download, ChevronDown } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import Portal from "@/components/Portal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import type { Workshop, DonGiaGiaCong } from "@/lib/googleSheets";
@@ -634,6 +635,7 @@ export default function BangKeGiaCongTab() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <EditHistoryButton tableKey="bang-ke-gia-cong" variant="labeled" title="Bảng kê gia công" />
           <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
           <button onClick={handleExportListExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
           <button

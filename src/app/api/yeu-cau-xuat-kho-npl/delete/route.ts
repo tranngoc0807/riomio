@@ -1,40 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteYeuCauXuatKhoNPLFromSheet } from "@/lib/googleSheets";
+import { deleteYeuCauXuatKhoNPLFromSheet, getYeuCauXuatKhoNPLFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * DELETE /api/yeu-cau-xuat-kho-npl/delete
- * Xóa yêu cầu xuất kho NPL từ Google Sheets
- */
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validate dữ liệu
     if (!body.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ID là bắt buộc",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "ID là bắt buộc" }, { status: 400 });
     }
-
-    await deleteYeuCauXuatKhoNPLFromSheet(parseInt(body.id));
-
-    return NextResponse.json({
-      success: true,
-      message: "Xóa yêu cầu xuất kho NPL thành công",
+    const itemId = parseInt(body.id);
+    const before = await getYeuCauXuatKhoNPLFromSheet();
+    const oldRow = before.find((r) => r.id === itemId) ?? null;
+    await deleteYeuCauXuatKhoNPLFromSheet(itemId);
+    logSheetEdit({
+      action: "delete",
+      tableKey: "yeu-cau-xuat-kho-npl",
+      sheetName: process.env.GOOGLE_SHEET_NAME_YEU_CAU_XUAT_KHO_NPL || "Yêu cầu xuất kho NPL",
+      recordId: itemId,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
     });
+    return NextResponse.json({ success: true, message: "Xóa yêu cầu xuất kho NPL thành công" });
   } catch (error: any) {
-    console.error("Error deleting yeu cau xuat kho npl:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể xóa yêu cầu xuất kho NPL",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

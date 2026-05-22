@@ -19,6 +19,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Portal from "@/components/Portal";
 import DecimalInput from "@/components/DecimalInput";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 import html2canvas from "html2canvas";
 import type { NhapKhoNPL, Material, TonKhoNPLThang } from "@/lib/googleSheets";
@@ -1100,6 +1101,7 @@ export default function NhapKhoNPLTab() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <EditHistoryButton tableKey="nhap-kho-npl" variant="labeled" title="Nhập kho NPL" />
           <button
             onClick={handleExportListPDF}
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"

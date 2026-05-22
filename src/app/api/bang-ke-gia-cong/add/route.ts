@@ -1,26 +1,15 @@
 import { NextResponse } from "next/server";
 import { addBangKeGiaCongToSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * POST /api/bang-ke-gia-cong/add
- * Thêm bảng kê gia công mới
- */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { maPGC, ngayThang, maSPSX, maSP, xuongSX, soLuong, donGia, phanLoai, doiSoat, ghiChu } = body;
-
     if (!maPGC || !maSPSX) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Mã PGC và Mã SP SX không được để trống",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Mã PGC và Mã SP SX không được để trống" }, { status: 400 });
     }
-
-    await addBangKeGiaCongToSheet({
+    const newData = {
       maPGC,
       ngayThang: ngayThang || "",
       maSPSX,
@@ -31,20 +20,16 @@ export async function POST(request: Request) {
       phanLoai: phanLoai || "",
       doiSoat: doiSoat || "",
       ghiChu: ghiChu || "",
+    };
+    await addBangKeGiaCongToSheet(newData);
+    logSheetEdit({
+      action: "add",
+      tableKey: "bang-ke-gia-cong",
+      sheetName: process.env.GOOGLE_SHEET_NAME_BANG_KE_GIA_CONG || "Bảng kê gia công",
+      newData,
     });
-
-    return NextResponse.json({
-      success: true,
-      message: "Thêm bảng kê gia công thành công",
-    });
+    return NextResponse.json({ success: true, message: "Thêm bảng kê gia công thành công" });
   } catch (error: any) {
-    console.error("Error adding bang ke gia cong:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể thêm bảng kê gia công",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

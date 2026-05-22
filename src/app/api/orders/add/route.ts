@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addOrderToSheet, Order } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * POST /api/orders/add
@@ -9,23 +10,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate dữ liệu
     if (!body.code) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Order code is required",
-        },
+        { success: false, error: "Order code is required" },
         { status: 400 }
       );
     }
 
     if (!body.customer) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Customer is required",
-        },
+        { success: false, error: "Customer is required" },
         { status: 400 }
       );
     }
@@ -52,6 +46,14 @@ export async function POST(request: NextRequest) {
 
     await addOrderToSheet(order);
 
+    logSheetEdit({
+      action: "add",
+      tableKey: "orders",
+      sheetName: process.env.GOOGLE_SHEET_NAME_BAN_HANG || "Bán hàng",
+      recordId: order.id || null,
+      newData: order as unknown as Record<string, unknown>,
+    });
+
     return NextResponse.json({
       success: true,
       message: "Order added successfully",
@@ -59,12 +61,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error adding order:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to add order to Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to add order to Google Sheets" },
       { status: 500 }
     );
   }

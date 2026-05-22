@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
 import ImagePickerModal from "@/components/ImagePickerModal";
 import ConfirmModal from "@/components/ConfirmModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 
 // Types - khớp với Google Sheets PhatTrienSanPham
@@ -357,6 +358,7 @@ export default function PhatTrienSanPhamTab() {
                 </select>
               </div>
             </div>
+            <EditHistoryButton tableKey="san-pham" variant="labeled" title="Phát triển sản phẩm" />
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"

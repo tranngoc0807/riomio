@@ -1,26 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteSupplierFromSheet } from "@/lib/googleSheets";
+import { deleteSupplierFromSheet, getSuppliersFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * DELETE /api/suppliers/delete
- * Xóa nhà cung cấp khỏi Google Sheets
- */
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Accept id from query OR body for backward compat
+    const url = new URL(request.url);
+    let id = url.searchParams.get("id");
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = body?.id ? String(body.id) : null;
+      } catch {
+        // no body
+      }
+    }
 
-    // Validate dữ liệu
-    if (!body.id) {
+    if (!id) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Supplier ID is required",
-        },
+        { success: false, error: "Supplier ID is required" },
         { status: 400 }
       );
     }
 
-    await deleteSupplierFromSheet(body.id);
+    const supplierId = parseInt(id);
+    const before = await getSuppliersFromSheet();
+    const oldRow = before.find((s) => s.id === supplierId) ?? null;
+
+    await deleteSupplierFromSheet(supplierId);
+
+    logSheetEdit({
+      action: "delete",
+      tableKey: "suppliers",
+      sheetName: "Suppliers",
+      recordId: supplierId,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+    });
 
     return NextResponse.json({
       success: true,
@@ -28,12 +43,8 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error deleting supplier:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to delete supplier from Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to delete supplier" },
       { status: 500 }
     );
   }

@@ -15,6 +15,7 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 interface XuatKhoHinhIn {
   id: number;
@@ -351,6 +352,7 @@ export default function XuatKhoHinhInTab() {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-64"
             />
           </div>
+          <EditHistoryButton tableKey="xuat-kho-hinh-in" variant="labeled" title="Xuất kho hình in" />
           <button
             onClick={handleExportPDF}
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"

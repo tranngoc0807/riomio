@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import { createPortal } from "react-dom";
 import ConfirmModal from "@/components/ConfirmModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import PrintDownloadButton from "@/components/PrintDownloadButton";
 import html2canvas from "html2canvas";
 
@@ -956,6 +957,7 @@ export default function SoLuongCatTab() {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-72"
             />
           </div>
+          <EditHistoryButton tableKey="so-luong-cat" variant="labeled" title="Số lượng cắt" />
           <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
           <button onClick={handleExportListImage} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"><ImageIcon size={14} /> JPG</button>
           <button

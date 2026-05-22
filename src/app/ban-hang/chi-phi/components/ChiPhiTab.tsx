@@ -6,6 +6,7 @@ import { ChiPhiBanHang } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
 import * as XLSX from "xlsx";
 import PrintDownloadButton from "@/components/PrintDownloadButton";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 export default function ChiPhiTab() {
   const [chiPhiList, setChiPhiList] = useState<ChiPhiBanHang[]>([]);
@@ -259,6 +260,7 @@ export default function ChiPhiTab() {
           <p className="text-sm text-gray-600">Tổng chi phí: <span className="font-semibold text-blue-600">{totalChiPhi.toLocaleString()} đ</span></p>
         </div>
         <div className="flex items-center gap-2">
+          <EditHistoryButton tableKey="chi-phi-ban-hang" variant="labeled" title="Chi phí bán hàng" />
           <button onClick={handleExportSummaryPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
           <button onClick={handleExportSummaryExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
           <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">

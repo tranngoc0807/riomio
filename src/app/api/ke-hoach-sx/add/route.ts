@@ -1,25 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addKeHoachSXToSheet, KeHoachSX } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * POST /api/ke-hoach-sx/add
- * Thêm kế hoạch sản xuất mới vào Google Sheets
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validate - chỉ yêu cầu LSX số
     if (!body.lsxCode) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Vui lòng điền LSX số",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Vui lòng điền LSX số" }, { status: 400 });
     }
-
     const keHoach: KeHoachSX = {
       id: body.id || 0,
       lsxCode: body.lsxCode,
@@ -32,7 +20,6 @@ export async function POST(request: NextRequest) {
       mainFabric: body.mainFabric || "",
       color: body.color || "",
       image: body.image || "",
-      // Sizes cho trẻ em
       size0_1: body.size0_1 || 0,
       size1_2: body.size1_2 || 0,
       size2_3: body.size2_3 || 0,
@@ -48,7 +35,6 @@ export async function POST(request: NextRequest) {
       size12_13: body.size12_13 || 0,
       size13_14: body.size13_14 || 0,
       size14_15: body.size14_15 || 0,
-      // Sizes cho người lớn
       sizeXS: body.sizeXS || 0,
       sizeS: body.sizeS || 0,
       sizeM: body.sizeM || 0,
@@ -58,23 +44,16 @@ export async function POST(request: NextRequest) {
       totalQuantity: body.totalQuantity || 0,
       note: body.note || "",
     };
-
     await addKeHoachSXToSheet(keHoach);
-
-    return NextResponse.json({
-      success: true,
-      message: "Ke hoach SX added successfully",
-      data: keHoach,
+    logSheetEdit({
+      action: "add",
+      tableKey: "ke-hoach-sx",
+      sheetName: process.env.GOOGLE_SHEET_NAME_KE_HOACH_SAN_XUAT || "LSX",
+      recordId: keHoach.id || null,
+      newData: keHoach as unknown as Record<string, unknown>,
     });
+    return NextResponse.json({ success: true, message: "Ke hoach SX added", data: keHoach });
   } catch (error: any) {
-    console.error("Error adding ke hoach SX:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to add ke hoach SX to Google Sheets",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

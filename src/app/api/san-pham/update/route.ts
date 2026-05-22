@@ -1,25 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateSanPhamInSheet, SanPham } from "@/lib/googleSheets";
+import { updateSanPhamInSheet, SanPham, getSanPhamFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * PUT /api/san-pham/update
- * Cập nhật sản phẩm trong Google Sheets
- */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validate - cần có id
     if (!body.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Thiếu ID sản phẩm",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Thiếu ID sản phẩm" }, { status: 400 });
     }
-
     const sanPham: SanPham = {
       id: body.id,
       code: body.code || "",
@@ -44,23 +32,19 @@ export async function PUT(request: NextRequest) {
       productionStage: body.productionStage || "",
       image: body.image || "",
     };
-
+    const before = await getSanPhamFromSheet();
+    const oldRow = before.find((s) => s.id === sanPham.id) ?? null;
     await updateSanPhamInSheet(sanPham);
-
-    return NextResponse.json({
-      success: true,
-      message: "San pham updated successfully",
-      data: sanPham,
+    logSheetEdit({
+      action: "update",
+      tableKey: "san-pham",
+      sheetName: process.env.GOOGLE_SHEET_NAME_SAN_PHAM_PHAT_TRIEN || "PhatTrienSanPham",
+      recordId: sanPham.id,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData: sanPham as unknown as Record<string, unknown>,
     });
+    return NextResponse.json({ success: true, message: "San pham updated", data: sanPham });
   } catch (error: any) {
-    console.error("Error updating san pham:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to update san pham in Google Sheets",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

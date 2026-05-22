@@ -1,35 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateMaterialInSheet, Material } from "@/lib/googleSheets";
+import { updateMaterialInSheet, Material, getMaterialsFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * PUT /api/materials/update
- * Cập nhật nguyên phụ liệu trong Google Sheets
- */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validate dữ liệu - chỉ yêu cầu ID và Tên NPL
     if (!body.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Material ID is required",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Material ID is required" }, { status: 400 });
     }
-
     if (!body.name) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Vui lòng điền Tên NPL",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Vui lòng điền Tên NPL" }, { status: 400 });
     }
-
     const material: Material = {
       id: body.id,
       code: body.code || "",
@@ -43,23 +24,19 @@ export async function PUT(request: NextRequest) {
       image: body.image || "",
       note: body.note || "",
     };
-
+    const before = await getMaterialsFromSheet();
+    const oldRow = before.find((m) => m.id === material.id) ?? null;
     await updateMaterialInSheet(material);
-
-    return NextResponse.json({
-      success: true,
-      message: "Material updated successfully",
-      data: material,
+    logSheetEdit({
+      action: "update",
+      tableKey: "materials",
+      sheetName: process.env.GOOGLE_SHEET_NAME_NGUYEN_PHU_LIEU_RIOMIO || "Mã NPL",
+      recordId: material.id,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData: material as unknown as Record<string, unknown>,
     });
+    return NextResponse.json({ success: true, message: "Material updated", data: material });
   } catch (error: any) {
-    console.error("Error updating material:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to update material in Google Sheets",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
 import ConfirmModal from "@/components/ConfirmModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 interface DinhMucSX {
   id: number;
@@ -364,6 +365,7 @@ export default function DinhMucSXTab() {
           Định mức sản xuất ({filteredList.length})
         </h3>
         <div className="flex items-center gap-3">
+          <EditHistoryButton tableKey="dinh-muc-sx" variant="labeled" title="Định mức sản xuất" />
           <button
             onClick={() => {
               setFormData(INITIAL_FORM);

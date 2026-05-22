@@ -1,28 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addNhapKhoHinhInToSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * POST /api/nhap-kho-hinh-in/add
- * Thêm nhập kho hình in mới vào Google Sheets
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
     if (!body.maHinhIn) {
-      return NextResponse.json(
-        { success: false, error: "Mã hình in là bắt buộc" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Mã hình in là bắt buộc" }, { status: 400 });
     }
-
     if (!body.ngayThang) {
-      return NextResponse.json(
-        { success: false, error: "Ngày tháng là bắt buộc" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Ngày tháng là bắt buộc" }, { status: 400 });
     }
-
     const nhapKho = {
       maDon: body.maDon || "",
       ngayThang: body.ngayThang || "",
@@ -39,22 +27,15 @@ export async function POST(request: NextRequest) {
       ngayNhapKho: body.ngayNhapKho || "",
       ghiChu: body.ghiChu || "",
     };
-
     await addNhapKhoHinhInToSheet(nhapKho);
-
-    return NextResponse.json({
-      success: true,
-      message: "Thêm nhập kho hình in thành công",
-      data: nhapKho,
+    logSheetEdit({
+      action: "add",
+      tableKey: "nhap-kho-hinh-in",
+      sheetName: process.env.GOOGLE_SHEET_NAME_NHAP_KHO_HINH_IN || "Nhập kho HI",
+      newData: nhapKho,
     });
+    return NextResponse.json({ success: true, message: "Thêm nhập kho hình in thành công", data: nhapKho });
   } catch (error: any) {
-    console.error("Error adding nhap kho hinh in:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể thêm nhập kho hình in",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

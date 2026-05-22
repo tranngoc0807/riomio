@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 
 interface Program {
@@ -203,6 +204,7 @@ export default function ProgramsTab() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
+        <EditHistoryButton tableKey="programs" variant="labeled" title="Chương trình BH" />
         <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"

@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addSupplierToSheet, Supplier } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * POST /api/suppliers/add
- * Thêm nhà cung cấp mới vào Google Sheets
- */
+const SHEET = "Suppliers";
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate dữ liệu
     if (!body.name) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Supplier name is required",
-        },
+        { success: false, error: "Supplier name is required" },
         { status: 400 }
       );
     }
@@ -32,6 +27,14 @@ export async function POST(request: NextRequest) {
 
     await addSupplierToSheet(supplier);
 
+    logSheetEdit({
+      action: "add",
+      tableKey: "suppliers",
+      sheetName: SHEET,
+      recordId: supplier.id || null,
+      newData: supplier as unknown as Record<string, unknown>,
+    });
+
     return NextResponse.json({
       success: true,
       message: "Supplier added successfully",
@@ -39,12 +42,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error adding supplier:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to add supplier to Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to add supplier" },
       { status: 500 }
     );
   }

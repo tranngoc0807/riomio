@@ -1,40 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteMaterialFromSheet } from "@/lib/googleSheets";
+import { deleteMaterialFromSheet, getMaterialsFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * DELETE /api/materials/delete
- * Xóa nguyên phụ liệu khỏi Google Sheets
- */
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
-
-    // Validate dữ liệu
-    if (!body.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Material ID is required",
-        },
-        { status: 400 }
-      );
+    const url = new URL(request.url);
+    let id = url.searchParams.get("id");
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = body?.id ? String(body.id) : null;
+      } catch {}
     }
-
-    await deleteMaterialFromSheet(body.id);
-
-    return NextResponse.json({
-      success: true,
-      message: "Material deleted successfully",
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Material ID is required" }, { status: 400 });
+    }
+    const materialId = parseInt(id);
+    const before = await getMaterialsFromSheet();
+    const oldRow = before.find((m) => m.id === materialId) ?? null;
+    await deleteMaterialFromSheet(materialId);
+    logSheetEdit({
+      action: "delete",
+      tableKey: "materials",
+      sheetName: process.env.GOOGLE_SHEET_NAME_NGUYEN_PHU_LIEU_RIOMIO || "Mã NPL",
+      recordId: materialId,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
     });
+    return NextResponse.json({ success: true, message: "Material deleted" });
   } catch (error: any) {
-    console.error("Error deleting material:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to delete material from Google Sheets",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

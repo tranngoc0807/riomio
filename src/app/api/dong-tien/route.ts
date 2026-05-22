@@ -5,6 +5,11 @@ import {
   updateDongTienInSheet,
   deleteDongTienFromSheet,
 } from "@/lib/googleSheets";
+import { logEdit } from "@/lib/editHistory";
+import { getCurrentUserEmail } from "@/lib/getUserEmail";
+
+const TABLE_KEY = "dong-tien";
+const SHEET_NAME = process.env.GOOGLE_SHEET_NAME_DONG_TIEN || "Dòng tiền";
 
 /**
  * GET /api/dong-tien
@@ -57,7 +62,6 @@ export async function POST(request: Request) {
       ghiChu,
     } = body;
 
-    // Validate required dropdown fields (chỉ Tên TK và Phân loại thu chi)
     if (!tenTK || !phanLoaiThuChi) {
       return NextResponse.json(
         { success: false, error: "Tên TK và Phân loại thu chi là bắt buộc" },
@@ -65,7 +69,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await addDongTienToSheet({
+    const newData = {
       ngayThang: ngayThang || "",
       tenTK,
       nccNPL: nccNPL || "",
@@ -82,10 +86,22 @@ export async function POST(request: Request) {
       tongThu: tongThu || "",
       tongChi: tongChi || "",
       ghiChu: ghiChu || "",
-    });
+    };
 
-    // Fetch updated data
+    await addDongTienToSheet(newData);
+
     const dongTienList = await getDongTienFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    const added = dongTienList[dongTienList.length - 1];
+    logEdit({
+      source: "app",
+      action: "add",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: added?.rowIndex ?? null,
+      newData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -139,7 +155,6 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Validate required dropdown fields (chỉ Tên TK và Phân loại thu chi)
     if (!tenTK || !phanLoaiThuChi) {
       return NextResponse.json(
         { success: false, error: "Tên TK và Phân loại thu chi là bắt buộc" },
@@ -147,7 +162,12 @@ export async function PUT(request: Request) {
       );
     }
 
-    await updateDongTienInSheet(parseInt(rowIndex), {
+    const rowIdx = parseInt(rowIndex);
+    const before = await getDongTienFromSheet();
+    const oldRow = before.find((r) => r.rowIndex === rowIdx) ?? null;
+    const oldData = oldRow ? toPlain(oldRow as unknown as Record<string, unknown>) : null;
+
+    const newData = {
       ngayThang: ngayThang || "",
       tenTK,
       nccNPL: nccNPL || "",
@@ -164,10 +184,22 @@ export async function PUT(request: Request) {
       tongThu: tongThu || "",
       tongChi: tongChi || "",
       ghiChu: ghiChu || "",
-    });
+    };
 
-    // Fetch updated data
+    await updateDongTienInSheet(rowIdx, newData);
+
     const dongTienList = await getDongTienFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    logEdit({
+      source: "app",
+      action: "update",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: rowIdx,
+      oldData,
+      newData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -203,10 +235,24 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteDongTienFromSheet(parseInt(rowIndex));
+    const rowIdx = parseInt(rowIndex);
+    const before = await getDongTienFromSheet();
+    const oldRow = before.find((r) => r.rowIndex === rowIdx) ?? null;
+    const oldData = oldRow ? toPlain(oldRow as unknown as Record<string, unknown>) : null;
 
-    // Fetch updated data
+    await deleteDongTienFromSheet(rowIdx);
+
     const dongTienList = await getDongTienFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    logEdit({
+      source: "app",
+      action: "delete",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: rowIdx,
+      oldData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -224,4 +270,11 @@ export async function DELETE(request: Request) {
       { status: 500 }
     );
   }
+}
+
+function toPlain(obj: Record<string, unknown>): Record<string, unknown> {
+  const { id: _id, rowIndex: _rowIndex, ...rest } = obj;
+  void _id;
+  void _rowIndex;
+  return rest;
 }

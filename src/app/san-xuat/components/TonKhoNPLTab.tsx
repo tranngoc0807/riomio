@@ -4,6 +4,7 @@ import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Factory,
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import DatePicker from "@/components/DatePicker";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import type { TonKhoNPLThang, TonKhoNPLNgay, TonKhoNPLXuongSX } from "@/lib/googleSheets";
 import * as XLSX from "xlsx";
 
@@ -478,7 +479,8 @@ export default function TonKhoNPLTab() {
   return (
     <div className="space-y-4">
       {/* Toggle buttons */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex gap-2 mb-4 flex-wrap items-center">
+        <EditHistoryButton tableKey="ton-kho-npl" variant="labeled" title="Tồn kho NPL" />
         <button
           onClick={() => setActiveTable("thang")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${

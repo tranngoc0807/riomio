@@ -19,6 +19,7 @@ import toast, { Toaster } from "react-hot-toast";
 import * as XLSX from "xlsx";
 import html2canvas from "html2canvas";
 import ConfirmModal from "@/components/ConfirmModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import { useCompanyConfig } from "@/context/CompanyConfigContext";
 
 const formatNumberInput = (value: string): string => {
@@ -703,6 +704,11 @@ export default function DongTienTab() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <EditHistoryButton
+            tableKey="dong-tien"
+            variant="labeled"
+            title="Dòng tiền"
+          />
           <button
             onClick={handleExportPDF}
             className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"

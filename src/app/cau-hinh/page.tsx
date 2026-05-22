@@ -28,6 +28,14 @@ import {
   Pencil,
   Upload,
   Loader2,
+  RotateCcw,
+  Package,
+  ShoppingCart,
+  BarChart3,
+  DollarSign,
+  Briefcase,
+  Headphones,
+  Gem,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -38,18 +46,40 @@ import {
   BusinessArea,
   QuickLinkSection,
   Announcement,
+  defaultConfig,
 } from "@/context/CompanyConfigContext";
 import UserManagement from "@/components/UserManagement";
 import RolePermissionsConfig from "@/components/RolePermissionsConfig";
 
 const iconOptions = [
   { value: "Factory", label: "Sản xuất", icon: Factory },
+  { value: "Package", label: "Sản phẩm", icon: Package },
   { value: "ShoppingBag", label: "Bán lẻ", icon: ShoppingBag },
+  { value: "ShoppingCart", label: "Bán hàng", icon: ShoppingCart },
   { value: "Truck", label: "Phân phối", icon: Truck },
   { value: "Palette", label: "Thiết kế", icon: Palette },
   { value: "Users", label: "Nhân sự", icon: Users },
+  { value: "BarChart3", label: "Báo cáo", icon: BarChart3 },
+  { value: "DollarSign", label: "Dòng tiền", icon: DollarSign },
+  { value: "Briefcase", label: "Dịch vụ", icon: Briefcase },
+  { value: "Headphones", label: "Hỗ trợ", icon: Headphones },
   { value: "Globe", label: "Toàn cầu", icon: Globe },
 ];
+
+const iconColorMap: Record<string, { bg: string; text: string }> = {
+  Factory: { bg: "bg-sky-100", text: "text-sky-600" },
+  Package: { bg: "bg-emerald-100", text: "text-emerald-600" },
+  ShoppingBag: { bg: "bg-orange-100", text: "text-orange-600" },
+  ShoppingCart: { bg: "bg-pink-100", text: "text-pink-600" },
+  Truck: { bg: "bg-amber-100", text: "text-amber-600" },
+  Palette: { bg: "bg-fuchsia-100", text: "text-fuchsia-600" },
+  Users: { bg: "bg-blue-100", text: "text-blue-600" },
+  BarChart3: { bg: "bg-purple-100", text: "text-purple-600" },
+  DollarSign: { bg: "bg-cyan-100", text: "text-cyan-600" },
+  Briefcase: { bg: "bg-indigo-100", text: "text-indigo-600" },
+  Headphones: { bg: "bg-rose-100", text: "text-rose-600" },
+  Globe: { bg: "bg-teal-100", text: "text-teal-600" },
+};
 
 const colorOptions = [
   { value: "from-orange-400 to-orange-500", label: "Cam" },
@@ -172,7 +202,7 @@ export default function CauHinh() {
   // Get tab from URL or default to "users"
   const tabParam = searchParams.get("tab");
   const validTabs = ["users", "permissions", "config"] as const;
-  const activeTab = validTabs.includes(tabParam as typeof validTabs[number])
+  const activeTab = validTabs.includes(tabParam as (typeof validTabs)[number])
     ? (tabParam as "users" | "permissions" | "config")
     : "users";
 
@@ -185,7 +215,9 @@ export default function CauHinh() {
   const heroImageInputRef = useRef<HTMLInputElement>(null);
   const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
 
-  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -257,12 +289,12 @@ export default function CauHinh() {
   const updateBusinessArea = (
     id: string,
     field: keyof BusinessArea,
-    value: string
+    value: string,
   ) => {
     setEditConfig({
       ...editConfig,
       businessAreas: editConfig.businessAreas.map((a) =>
-        a.id === id ? { ...a, [field]: value } : a
+        a.id === id ? { ...a, [field]: value } : a,
       ),
     });
   };
@@ -291,7 +323,7 @@ export default function CauHinh() {
     setEditConfig({
       ...editConfig,
       quickLinks: editConfig.quickLinks.map((s) =>
-        s.id === id ? { ...s, title } : s
+        s.id === id ? { ...s, title } : s,
       ),
     });
   };
@@ -300,7 +332,7 @@ export default function CauHinh() {
     setEditConfig({
       ...editConfig,
       quickLinks: editConfig.quickLinks.map((s) =>
-        s.id === sectionId ? { ...s, links: [...s.links, "Liên kết mới"] } : s
+        s.id === sectionId ? { ...s, links: [...s.links, "Liên kết mới"] } : s,
       ),
     });
   };
@@ -311,7 +343,7 @@ export default function CauHinh() {
       quickLinks: editConfig.quickLinks.map((s) =>
         s.id === sectionId
           ? { ...s, links: s.links.filter((_, i) => i !== linkIndex) }
-          : s
+          : s,
       ),
     });
   };
@@ -319,7 +351,7 @@ export default function CauHinh() {
   const updateLinkInSection = (
     sectionId: string,
     linkIndex: number,
-    value: string
+    value: string,
   ) => {
     setEditConfig({
       ...editConfig,
@@ -329,7 +361,7 @@ export default function CauHinh() {
               ...s,
               links: s.links.map((l, i) => (i === linkIndex ? value : l)),
             }
-          : s
+          : s,
       ),
     });
   };
@@ -365,12 +397,12 @@ export default function CauHinh() {
   const updateAnnouncement = (
     id: string,
     field: keyof Announcement,
-    value: string | boolean
+    value: string | boolean,
   ) => {
     setEditConfig({
       ...editConfig,
       announcements: editConfig.announcements.map((a) =>
-        a.id === id ? { ...a, [field]: value } : a
+        a.id === id ? { ...a, [field]: value } : a,
       ),
     });
   };
@@ -395,8 +427,8 @@ export default function CauHinh() {
               {activeTab === "users"
                 ? "Thêm, sửa, xóa tài khoản nhân viên"
                 : activeTab === "permissions"
-                ? "Cấu hình quyền truy cập các trang cho từng vai trò"
-                : "Di chuột vào từng phần để chỉnh sửa. Thay đổi sẽ được áp dụng ngay lên trang thông tin công ty."}
+                  ? "Cấu hình quyền truy cập các trang cho từng vai trò"
+                  : "Di chuột vào từng phần để chỉnh sửa. Thay đổi sẽ được áp dụng ngay lên trang thông tin công ty."}
             </p>
           </div>
         </div>
@@ -494,46 +526,40 @@ export default function CauHinh() {
                   </button>
                 </div>
                 {config.announcements.filter((a) => a.isActive).length > 0 ? (
-                  <div className="space-y-3">
-                    {config.announcements
-                      .filter((a) => a.isActive)
-                      .map((announcement) => {
-                        const typeConfig =
-                          announcementTypes.find(
-                            (t) => t.value === announcement.type
-                          ) || announcementTypes[0];
-                        const TypeIcon = typeConfig.icon;
-                        return (
-                          <div
-                            key={announcement.id}
-                            className={`${typeConfig.bgColor} ${typeConfig.borderColor} border rounded-xl p-4 flex items-start gap-4`}
-                          >
-                            <div
-                              className={`p-2 ${typeConfig.iconBg} rounded-lg shrink-0`}
-                            >
-                              <TypeIcon
-                                className={typeConfig.textColor}
-                                size={20}
-                              />
-                            </div>
-                            <div>
-                              <h4
-                                className={`font-bold ${typeConfig.textColor}`}
-                              >
-                                {announcement.title}
-                              </h4>
-                              <p className="text-gray-700 text-sm mt-1">
-                                {announcement.content}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  <div className="flex justify-center">
+                    <div className="relative w-full max-w-md rounded-2xl shadow-md overflow-hidden bg-white">
+                      <Image
+                        src="/riomioLogo.png"
+                        alt="Welcome modal preview"
+                        width={1200}
+                        height={800}
+                        className="w-full h-auto object-contain select-none pointer-events-none"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center px-8 sm:px-12">
+                        <div className="text-center space-y-3 max-w-xs">
+                          {config.announcements
+                            .filter((a) => a.isActive)
+                            .map((announcement) => (
+                              <div key={announcement.id} className="space-y-1">
+                                <h4 className="text-base font-extrabold text-red-600 drop-shadow-sm">
+                                  {announcement.title}
+                                </h4>
+                                <p className="text-gray-800 text-xs leading-relaxed whitespace-pre-line font-medium">
+                                  {announcement.content}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="py-6 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 flex items-center justify-center gap-2">
                     <Megaphone size={20} />
-                    <span>Chưa có thông báo nào. Bấm &quot;Sửa thông báo&quot; để thêm.</span>
+                    <span>
+                      Chưa có thông báo nào. Bấm &quot;Sửa thông báo&quot; để
+                      thêm.
+                    </span>
                   </div>
                 )}
               </div>
@@ -553,7 +579,7 @@ export default function CauHinh() {
                     unoptimized={config.heroImage?.startsWith("http")}
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-900/85 via-blue-800/70 to-transparent" />
-                  <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
+                  <div className="relative z-10 max-w-8xl mx-auto px-6 py-16">
                     <div className="max-w-2xl">
                       <h1 className="text-5xl font-bold mb-6 leading-tight">
                         <span className="text-orange-400 italic">
@@ -577,8 +603,8 @@ export default function CauHinh() {
                 onEdit={() => setEditingSection("about")}
                 label="Về chúng tôi"
               >
-                <div className="bg-white px-6 py-12">
-                  <div className="max-w-6xl mx-auto">
+                <div className="bg-white px-8 py-14">
+                  <div className="max-w-8xl mx-auto">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full">
                         <Target className="text-white" size={28} />
@@ -594,38 +620,56 @@ export default function CauHinh() {
                 </div>
               </EditableSection>
 
-              {/* Vision & Mission */}
+              {/* Vision & Mission + Giá trị cốt lõi */}
               <EditableSection
                 onEdit={() => setEditingSection("vision")}
                 label="Tầm nhìn & Sứ mệnh"
               >
-                <div className="bg-gray-50 px-6 py-12">
-                  <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                      <div className="flex items-center gap-3 mb-4">
+                <div className="bg-gray-50 px-8 py-14">
+                  <div className="max-w-8xl mx-auto grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-6">
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border-t-4 border-orange-400">
+                      <div className="flex items-center gap-3 mb-3">
                         <div className="p-2 bg-orange-100 rounded-lg">
-                          <Eye className="text-orange-500" size={28} />
+                          <Eye className="text-orange-500" size={22} />
                         </div>
-                        <h3 className="text-2xl font-bold text-orange-500">
+                        <h3 className="text-lg font-bold text-orange-500">
                           TẦM NHÌN
                         </h3>
                       </div>
-                      <p className="text-gray-600 leading-relaxed">
+                      <p className="text-gray-600 text-sm leading-relaxed">
                         {config.vision}
                       </p>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border-t-4 border-blue-500">
+                      <div className="flex items-center gap-3 mb-3">
                         <div className="p-2 bg-blue-100 rounded-lg">
-                          <Settings className="text-blue-500" size={28} />
+                          <Settings className="text-blue-500" size={22} />
                         </div>
-                        <h3 className="text-2xl font-bold text-blue-600">
+                        <h3 className="text-lg font-bold text-blue-600">
                           SỨ MỆNH
                         </h3>
                       </div>
-                      <p className="text-gray-600 leading-relaxed">
+                      <p className="text-gray-600 text-sm leading-relaxed">
                         {config.mission}
                       </p>
+                    </div>
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border-t-4 border-pink-400">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-pink-100 rounded-lg">
+                          <Gem className="text-pink-500" size={22} />
+                        </div>
+                        <h3 className="text-lg font-bold text-pink-500">
+                          GIÁ TRỊ CỐT LÕI
+                        </h3>
+                      </div>
+                      <ul className="space-y-2 text-gray-600 text-sm">
+                        {config.coreValues.map((value, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-pink-500 shrink-0"></span>
+                            <span>{value}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 </div>
@@ -636,33 +680,43 @@ export default function CauHinh() {
                 onEdit={() => setEditingSection("business")}
                 label="Lĩnh vực hoạt động"
               >
-                <div className="relative bg-gradient-to-br from-blue-50 via-white to-blue-50 px-6 py-12">
-                  <div className="max-w-6xl mx-auto">
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full">
-                        <Globe className="text-white" size={28} />
+                <div className="bg-white px-8 py-14">
+                  <div className="max-w-8xl mx-auto">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Globe className="text-blue-600" size={22} />
                       </div>
-                      <h2 className="text-3xl font-bold text-blue-600">
+                      <h2 className="text-lg font-bold text-blue-600">
                         LĨNH VỰC HOẠT ĐỘNG
                       </h2>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                       {config.businessAreas.map((area) => {
                         const IconComponent = getIconComponent(area.icon);
+                        const colors = iconColorMap[area.icon] || {
+                          bg: "bg-gray-100",
+                          text: "text-gray-600",
+                        };
                         return (
                           <div
                             key={area.id}
-                            className={`bg-gradient-to-br ${area.color} rounded-2xl p-5 text-white shadow-lg`}
+                            className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
                           >
-                            <div className="bg-white/20 w-12 h-12 rounded-xl flex items-center justify-center mb-3">
-                              <IconComponent size={24} />
+                            <div className="flex items-start gap-2.5">
+                              <div
+                                className={`p-2 ${colors.bg} ${colors.text} rounded-lg shrink-0 flex items-center justify-center`}
+                              >
+                                <IconComponent size={20} />
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-semibold text-gray-900 text-sm mb-0.5 truncate">
+                                  {area.title}
+                                </h4>
+                                <p className="text-gray-500 text-xs leading-snug line-clamp-2">
+                                  {area.description}
+                                </p>
+                              </div>
                             </div>
-                            <h4 className="font-bold text-lg mb-1">
-                              {area.title}
-                            </h4>
-                            <p className="text-white/90 text-sm">
-                              {area.description}
-                            </p>
                           </div>
                         );
                       })}
@@ -677,7 +731,7 @@ export default function CauHinh() {
                 label="Footer"
               >
                 <footer className="bg-white border-t border-gray-200">
-                  <div className="max-w-7xl mx-auto px-6 py-10">
+                  <div className="max-w-8xl mx-auto py-10">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                       <div className="lg:col-span-5 space-y-4">
                         <div className="flex items-center gap-3 mb-4">
@@ -890,7 +944,7 @@ export default function CauHinh() {
       <EditModal
         isOpen={editingSection === "vision"}
         onClose={handleCancel}
-        title="Chỉnh sửa Tầm nhìn & Sứ mệnh"
+        title="Chỉnh sửa Tầm nhìn / Sứ mệnh / Giá trị cốt lõi"
       >
         <div className="space-y-4">
           <div>
@@ -918,6 +972,53 @@ export default function CauHinh() {
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Giá trị cốt lõi
+            </label>
+            <div className="space-y-2">
+              {editConfig.coreValues.map((value, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => {
+                      const newValues = [...editConfig.coreValues];
+                      newValues[idx] = e.target.value;
+                      setEditConfig({ ...editConfig, coreValues: newValues });
+                    }}
+                    placeholder="VD: Khách hàng là trung tâm"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => {
+                      setEditConfig({
+                        ...editConfig,
+                        coreValues: editConfig.coreValues.filter(
+                          (_, i) => i !== idx,
+                        ),
+                      });
+                    }}
+                    className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                    title="Xóa"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() =>
+                  setEditConfig({
+                    ...editConfig,
+                    coreValues: [...editConfig.coreValues, ""],
+                  })
+                }
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-2 text-sm"
+              >
+                <Plus size={16} /> Thêm giá trị
+              </button>
+            </div>
           </div>
           <div className="flex gap-3 pt-4">
             <button
@@ -1003,7 +1104,7 @@ export default function CauHinh() {
                         updateBusinessArea(
                           area.id,
                           "description",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       className="w-full px-2 py-1.5 bg-white/20 border border-white/30 rounded text-white text-sm"
@@ -1035,12 +1136,32 @@ export default function CauHinh() {
               </div>
             );
           })}
-          <button
-            onClick={addBusinessArea}
-            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-2"
-          >
-            <Plus size={20} /> Thêm lĩnh vực
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={addBusinessArea}
+              className="flex-1 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-2"
+            >
+              <Plus size={20} /> Thêm lĩnh vực
+            </button>
+            <button
+              onClick={() => {
+                if (
+                  confirm(
+                    "Khôi phục về 6 lĩnh vực mặc định (Sản xuất / Sản phẩm / Nhân sự / Bán hàng / Báo cáo / Dòng tiền)? Các lĩnh vực hiện tại sẽ bị thay thế.",
+                  )
+                ) {
+                  setEditConfig({
+                    ...editConfig,
+                    businessAreas: defaultConfig.businessAreas,
+                  });
+                }
+              }}
+              className="px-4 py-3 border-2 border-dashed border-orange-300 rounded-xl text-orange-600 hover:border-orange-500 hover:bg-orange-50 flex items-center justify-center gap-2 whitespace-nowrap"
+              title="Thay 6 lĩnh vực mặc định mới"
+            >
+              <RotateCcw size={18} /> Khôi phục mặc định
+            </button>
+          </div>
           <div className="flex gap-3 pt-4">
             <button
               onClick={handleCancel}
@@ -1195,7 +1316,7 @@ export default function CauHinh() {
                           updateLinkInSection(
                             section.id,
                             linkIndex,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="flex-1 px-2 py-1 border border-gray-200 rounded text-sm"
@@ -1265,7 +1386,7 @@ export default function CauHinh() {
               {editConfig.announcements.map((announcement) => {
                 const typeConfig =
                   announcementTypes.find(
-                    (t) => t.value === announcement.type
+                    (t) => t.value === announcement.type,
                   ) || announcementTypes[0];
                 return (
                   <div
@@ -1290,7 +1411,7 @@ export default function CauHinh() {
                             updateAnnouncement(
                               announcement.id,
                               "title",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
@@ -1307,7 +1428,7 @@ export default function CauHinh() {
                             updateAnnouncement(
                               announcement.id,
                               "content",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
@@ -1324,7 +1445,7 @@ export default function CauHinh() {
                               updateAnnouncement(
                                 announcement.id,
                                 "type",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-full px-2 py-1.5 border border-gray-300 rounded bg-white text-sm"
@@ -1347,7 +1468,7 @@ export default function CauHinh() {
                               updateAnnouncement(
                                 announcement.id,
                                 "startDate",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-full px-2 py-1.5 border border-gray-300 rounded bg-white text-sm"
@@ -1364,7 +1485,7 @@ export default function CauHinh() {
                               updateAnnouncement(
                                 announcement.id,
                                 "endDate",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-full px-2 py-1.5 border border-gray-300 rounded bg-white text-sm"
@@ -1379,7 +1500,7 @@ export default function CauHinh() {
                               updateAnnouncement(
                                 announcement.id,
                                 "isActive",
-                                !announcement.isActive
+                                !announcement.isActive,
                               )
                             }
                             className={`w-full px-2 py-1.5 rounded text-sm font-medium ${

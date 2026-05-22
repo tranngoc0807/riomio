@@ -4,8 +4,12 @@ import {
   addCustomerToSheet,
   updateCustomerInSheet,
   deleteCustomerFromSheet,
-  Customer,
 } from "@/lib/googleSheets";
+import { logEdit } from "@/lib/editHistory";
+import { getCurrentUserEmail } from "@/lib/getUserEmail";
+
+const TABLE_KEY = "khach-hang";
+const SHEET_NAME = process.env.GOOGLE_SHEET_NAME_KHACH_HANG || "DS KH";
 
 /**
  * GET /api/khach-hang
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await addCustomerToSheet({
+    const newData = {
       name,
       category: category || "",
       cccd: cccd || "",
@@ -57,11 +61,22 @@ export async function POST(request: Request) {
       shippingInfo: shippingInfo || "",
       birthday: birthday || "",
       notes: notes || "",
-      rowIndex: 0, // Will be assigned when added to sheet
-    });
+    };
 
-    // Fetch updated data
+    await addCustomerToSheet({ ...newData, rowIndex: 0 });
+
     const customers = await getCustomersFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    const added = customers[customers.length - 1];
+    logEdit({
+      source: "app",
+      action: "add",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: added?.rowIndex ?? null,
+      newData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -104,7 +119,12 @@ export async function PUT(request: Request) {
       );
     }
 
-    await updateCustomerInSheet(parseInt(rowIndex), {
+    const rowIdx = parseInt(rowIndex);
+    const before = await getCustomersFromSheet();
+    const oldRow = before.find((r) => r.rowIndex === rowIdx) ?? null;
+    const oldData = oldRow ? toPlain(oldRow as unknown as Record<string, unknown>) : null;
+
+    const newData = {
       name,
       category: category || "",
       cccd: cccd || "",
@@ -113,10 +133,22 @@ export async function PUT(request: Request) {
       shippingInfo: shippingInfo || "",
       birthday: birthday || "",
       notes: notes || "",
-    });
+    };
 
-    // Fetch updated data
+    await updateCustomerInSheet(rowIdx, newData);
+
     const customers = await getCustomersFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    logEdit({
+      source: "app",
+      action: "update",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: rowIdx,
+      oldData,
+      newData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -152,10 +184,24 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteCustomerFromSheet(parseInt(rowIndex));
+    const rowIdx = parseInt(rowIndex);
+    const before = await getCustomersFromSheet();
+    const oldRow = before.find((r) => r.rowIndex === rowIdx) ?? null;
+    const oldData = oldRow ? toPlain(oldRow as unknown as Record<string, unknown>) : null;
 
-    // Fetch updated data
+    await deleteCustomerFromSheet(rowIdx);
+
     const customers = await getCustomersFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    logEdit({
+      source: "app",
+      action: "delete",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: rowIdx,
+      oldData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -173,4 +219,11 @@ export async function DELETE(request: Request) {
       { status: 500 }
     );
   }
+}
+
+function toPlain(obj: Record<string, unknown>): Record<string, unknown> {
+  const { id: _id, rowIndex: _rowIndex, ...rest } = obj;
+  void _id;
+  void _rowIndex;
+  return rest;
 }

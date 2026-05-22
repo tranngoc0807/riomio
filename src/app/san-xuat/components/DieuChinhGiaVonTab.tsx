@@ -4,6 +4,7 @@ import { Loader2, Search, ChevronLeft, ChevronRight, Calculator, Filter, Plus, P
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import PrintDownloadButton from "@/components/PrintDownloadButton";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 interface DieuChinhGiaVon {
   id: number;
@@ -266,6 +267,7 @@ export default function DieuChinhGiaVonTab() {
           Điều chỉnh giá vốn ({filteredList.length})
         </h3>
         <div className="flex items-center gap-3">
+          <EditHistoryButton tableKey="dieu-chinh-gia-von" variant="labeled" title="Điều chỉnh giá vốn" />
           <PrintDownloadButton
             targetRef={printableRef}
             fileName="PhieuDieuChinhGiaVon"

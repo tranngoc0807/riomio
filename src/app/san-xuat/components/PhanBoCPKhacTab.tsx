@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
 import ConfirmModal from "@/components/ConfirmModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import { useAuth } from "@/context/AuthContext";
 
 interface SanPham {
@@ -525,6 +526,7 @@ export default function PhanBoCPKhacTab() {
           Phân bổ chi phí khác ({groupedData.length} phiếu - {filtered.length} mục)
         </h3>
         <div className="flex items-center gap-3">
+          <EditHistoryButton tableKey="phan-bo-cp-khac" variant="labeled" title="Phân bổ CP khác" />
           <button
             onClick={openAddModal}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

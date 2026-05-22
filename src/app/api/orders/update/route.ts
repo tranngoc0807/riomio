@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateOrderInSheet, Order } from "@/lib/googleSheets";
+import { updateOrderInSheet, Order, getOrdersFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * PUT /api/orders/update
@@ -9,23 +10,16 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate dữ liệu
     if (!body.id) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Order ID is required",
-        },
+        { success: false, error: "Order ID is required" },
         { status: 400 }
       );
     }
 
     if (!body.code) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Order code is required",
-        },
+        { success: false, error: "Order code is required" },
         { status: 400 }
       );
     }
@@ -50,7 +44,19 @@ export async function PUT(request: NextRequest) {
       notes: body.notes || "",
     };
 
+    const before = await getOrdersFromSheet();
+    const oldRow = before.find((o) => o.id === order.id) ?? null;
+
     await updateOrderInSheet(order);
+
+    logSheetEdit({
+      action: "update",
+      tableKey: "orders",
+      sheetName: process.env.GOOGLE_SHEET_NAME_BAN_HANG || "Bán hàng",
+      recordId: order.id,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData: order as unknown as Record<string, unknown>,
+    });
 
     return NextResponse.json({
       success: true,
@@ -59,12 +65,8 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error updating order:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to update order in Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to update order in Google Sheets" },
       { status: 500 }
     );
   }

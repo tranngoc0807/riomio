@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { deleteXuatKhoSPFromSheet } from "@/lib/googleSheets";
+import { deleteXuatKhoSPFromSheet, getXuatKhoSPFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * DELETE /api/xuat-kho-sp/delete
@@ -17,7 +18,19 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteXuatKhoSPFromSheet(parseInt(id));
+    const rowIdx = parseInt(id);
+    const before = await getXuatKhoSPFromSheet();
+    const oldRow = before.find((r) => r.id === rowIdx) ?? null;
+
+    await deleteXuatKhoSPFromSheet(rowIdx);
+
+    logSheetEdit({
+      action: "delete",
+      tableKey: "xuat-kho-sp",
+      sheetName: process.env.GOOGLE_SHEET_NAME_XUAT_KHO_SP || "Xuất kho SP",
+      rowIndex: rowIdx,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+    });
 
     return NextResponse.json({
       success: true,

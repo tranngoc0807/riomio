@@ -1,31 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateSupplierInSheet, Supplier } from "@/lib/googleSheets";
+import { updateSupplierInSheet, Supplier, getSuppliersFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * PUT /api/suppliers/update
- * Cập nhật nhà cung cấp trong Google Sheets
- */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate dữ liệu
     if (!body.id) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Supplier ID is required",
-        },
+        { success: false, error: "Supplier ID is required" },
         { status: 400 }
       );
     }
 
     if (!body.name) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Supplier name is required",
-        },
+        { success: false, error: "Supplier name is required" },
         { status: 400 }
       );
     }
@@ -40,7 +30,19 @@ export async function PUT(request: NextRequest) {
       note: body.note || "",
     };
 
+    const before = await getSuppliersFromSheet();
+    const oldRow = before.find((s) => s.id === supplier.id) ?? null;
+
     await updateSupplierInSheet(supplier);
+
+    logSheetEdit({
+      action: "update",
+      tableKey: "suppliers",
+      sheetName: "Suppliers",
+      recordId: supplier.id,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData: supplier as unknown as Record<string, unknown>,
+    });
 
     return NextResponse.json({
       success: true,
@@ -49,12 +51,8 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error updating supplier:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to update supplier in Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to update supplier" },
       { status: 500 }
     );
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { updateXuatKhoSPInSheet } from "@/lib/googleSheets";
+import { updateXuatKhoSPInSheet, getXuatKhoSPFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * PUT /api/xuat-kho-sp/update
@@ -17,7 +18,11 @@ export async function PUT(request: Request) {
       );
     }
 
-    await updateXuatKhoSPInSheet(id, {
+    const rowIdx = typeof id === "number" ? id : parseInt(id);
+    const before = await getXuatKhoSPFromSheet();
+    const oldRow = before.find((r) => r.id === rowIdx) ?? null;
+
+    const newData = {
       maPXK: maPXK || "",
       ngayThang: ngayThang || "",
       maSP: maSP || "",
@@ -25,6 +30,17 @@ export async function PUT(request: Request) {
       maDonHang: maDonHang || "",
       khachHang: khachHang || "",
       userThucHien: userThucHien || "",
+    };
+
+    await updateXuatKhoSPInSheet(rowIdx, newData);
+
+    logSheetEdit({
+      action: "update",
+      tableKey: "xuat-kho-sp",
+      sheetName: process.env.GOOGLE_SHEET_NAME_XUAT_KHO_SP || "Xuất kho SP",
+      rowIndex: rowIdx,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData,
     });
 
     return NextResponse.json({

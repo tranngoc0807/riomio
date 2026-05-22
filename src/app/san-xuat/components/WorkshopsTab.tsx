@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 import type { Workshop } from "@/lib/googleSheets";
 
@@ -184,13 +185,16 @@ export default function WorkshopsTab() {
         <h3 className="text-lg font-semibold">
           Danh sách xưởng sản xuất ({workshops.length})
         </h3>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <Plus size={20} />
-          Thêm xưởng
-        </button>
+        <div className="flex items-center gap-2">
+          <EditHistoryButton tableKey="workshops" variant="labeled" title="Xưởng sản xuất" />
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            <Plus size={20} />
+            Thêm xưởng
+          </button>
+        </div>
       </div>
 
       {/* Table */}

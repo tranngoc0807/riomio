@@ -1,40 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteXuatKhoHinhInFromSheet } from "@/lib/googleSheets";
+import { deleteXuatKhoHinhInFromSheet, getXuatKhoHinhInFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * DELETE /api/xuat-kho-hinh-in/delete
- * Xóa xuất kho hình in từ Google Sheets
- */
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
-
-    // Validate dữ liệu
-    if (!body.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ID là bắt buộc",
-        },
-        { status: 400 }
-      );
+    // Accept id from query OR body
+    const url = new URL(request.url);
+    let id: string | null = url.searchParams.get("id");
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = body?.id ? String(body.id) : null;
+      } catch {}
     }
-
-    await deleteXuatKhoHinhInFromSheet(body.id);
-
-    return NextResponse.json({
-      success: true,
-      message: "Xóa xuất kho hình in thành công",
+    if (!id) {
+      return NextResponse.json({ success: false, error: "ID là bắt buộc" }, { status: 400 });
+    }
+    const itemId = parseInt(id);
+    const before = await getXuatKhoHinhInFromSheet();
+    const oldRow = before.find((r) => r.id === itemId) ?? null;
+    await deleteXuatKhoHinhInFromSheet(itemId);
+    logSheetEdit({
+      action: "delete",
+      tableKey: "xuat-kho-hinh-in",
+      sheetName: process.env.GOOGLE_SHEET_NAME_XUAT_KHO_HINH_IN || "Xuất kho HI",
+      recordId: itemId,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
     });
+    return NextResponse.json({ success: true, message: "Xóa xuất kho hình in thành công" });
   } catch (error: any) {
-    console.error("Error deleting xuat kho hinh in:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể xóa xuất kho hình in",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

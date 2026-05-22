@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { updateNhapKhoSPInSheet } from "@/lib/googleSheets";
+import { updateNhapKhoSPInSheet, getNhapKhoSPFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * PUT /api/nhap-kho-sp/update
@@ -17,12 +18,27 @@ export async function PUT(request: Request) {
       );
     }
 
-    await updateNhapKhoSPInSheet(id, {
+    const rowIdx = typeof id === "number" ? id : parseInt(id);
+    const before = await getNhapKhoSPFromSheet();
+    const oldRow = before.find((r) => r.id === rowIdx) ?? null;
+
+    const newData = {
       maPNK: maPNK || "",
       ngayNhap: ngayNhap || "",
       maSP: maSP || "",
       soLuong: soLuong || 0,
       ghiChu: ghiChu || "",
+    };
+
+    await updateNhapKhoSPInSheet(rowIdx, newData);
+
+    logSheetEdit({
+      action: "update",
+      tableKey: "nhap-kho-sp",
+      sheetName: process.env.GOOGLE_SHEET_NAME_NHAP_KHO_SP_RIOMIO || "Nhập kho SP",
+      rowIndex: rowIdx,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData,
     });
 
     return NextResponse.json({

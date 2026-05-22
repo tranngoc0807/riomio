@@ -1,35 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateShippingUnitInSheet, ShippingUnit } from "@/lib/googleSheets";
+import { updateShippingUnitInSheet, ShippingUnit, getShippingUnitsFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * PUT /api/shipping-units/update
- * Cập nhật đơn vị vận chuyển trong Google Sheets
- */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validate
     if (!body.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ID đơn vị vận chuyển không hợp lệ",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "ID đơn vị vận chuyển không hợp lệ" }, { status: 400 });
     }
-
     if (!body.name?.trim()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Vui lòng điền Tên đơn vị vận chuyển",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Vui lòng điền Tên đơn vị vận chuyển" }, { status: 400 });
     }
-
     const shippingUnit: ShippingUnit = {
       id: body.id,
       name: body.name || "",
@@ -38,23 +19,19 @@ export async function PUT(request: NextRequest) {
       contact: body.contact || "",
       note: body.note || "",
     };
-
+    const before = await getShippingUnitsFromSheet();
+    const oldRow = before.find((u) => u.id === shippingUnit.id) ?? null;
     await updateShippingUnitInSheet(shippingUnit);
-
-    return NextResponse.json({
-      success: true,
-      message: "Shipping unit updated successfully",
-      data: shippingUnit,
+    logSheetEdit({
+      action: "update",
+      tableKey: "shipping-units",
+      sheetName: process.env.GOOGLE_SHEET_NAME_VAN_CHUYEN || "Đối tác vận chuyển",
+      recordId: shippingUnit.id,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData: shippingUnit as unknown as Record<string, unknown>,
     });
+    return NextResponse.json({ success: true, message: "Shipping unit updated", data: shippingUnit });
   } catch (error: any) {
-    console.error("Error updating shipping unit:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to update shipping unit in Google Sheets",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

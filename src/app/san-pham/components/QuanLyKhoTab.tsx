@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Package, Loader2, AlertCircle, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, Search, ChevronDown, FileDown, FileSpreadsheet, Printer, Download, ShoppingCart } from "lucide-react";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import { TonKhoSP, TonDauSP, XuatKhoSP, Customer, SanPhamCatalog, TonKhoItem, NhapKhoSP } from "@/lib/googleSheets";
 import DatePicker from "@/components/DatePicker";
 import Portal from "@/components/Portal";
@@ -1307,6 +1308,7 @@ export default function QuanLyKhoTab() {
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-white">Bảng kê xuất kho SP ({groupedXuatKho.length} phiếu)</h4>
                 <div className="flex items-center gap-2">
+                  <EditHistoryButton tableKey="xuat-kho-sp" variant="labeled" title="Xuất kho SP" />
                   <button onClick={openAddTLModal} className="bg-white/15 text-white border border-white/40 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-white/25 transition-colors flex items-center gap-2">
                     <Plus size={16} />Thêm phiếu TL
                   </button>
@@ -1396,6 +1398,7 @@ export default function QuanLyKhoTab() {
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-white">Bảng kê nhập kho SP ({groupedNhapKho.length} phiếu)</h4>
                 <div className="flex items-center gap-2">
+                  <EditHistoryButton tableKey="nhap-kho-sp" variant="labeled" title="Nhập kho SP" />
                   <button onClick={openAddNhapKhoTLModal} className="bg-white/15 text-white border border-white/40 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-white/25 transition-colors flex items-center gap-2">
                     <Plus size={16} />Thêm phiếu TL
                   </button>

@@ -17,6 +17,7 @@ import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
 import ConfirmModal from "@/components/ConfirmModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import PrintDownloadButton from "@/components/PrintDownloadButton";
 
 interface ChiPhiKhacItem {
@@ -524,6 +525,7 @@ function ChiPhiKhacView({
           Bảng kê chi phí khác ({filtered.length})
         </h3>
         <div className="flex items-center gap-3">
+          <EditHistoryButton tableKey="bang-ke-cp-khac" variant="labeled" title="Bảng kê CP khác" />
           <button
             onClick={() => {
               resetForm();

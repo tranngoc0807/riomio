@@ -21,6 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 import { FileDown, FileSpreadsheet, Copy } from "lucide-react";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 interface Order {
   id: number;
@@ -1107,6 +1108,7 @@ export default function OrdersTab() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <EditHistoryButton tableKey="orders" variant="labeled" title="Đơn hàng" />
           <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
           <button onClick={handleExportListExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
           <button

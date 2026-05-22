@@ -1,31 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addYeuCauXuatKhoNPLToSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * POST /api/yeu-cau-xuat-kho-npl/add
- * Thêm yêu cầu xuất kho NPL mới vào Google Sheets
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validate dữ liệu
     if (!body.maNPL) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Mã NPL là bắt buộc",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Mã NPL là bắt buộc" }, { status: 400 });
     }
-
     const dinhMuc = parseFloat(body.dinhMuc) || 0;
     const slKHSX = parseFloat(body.slKHSX) || 0;
-    const tyLeHaoHut = 0.03; // Always 3%
+    const tyLeHaoHut = 0.03;
     const slCanDung = dinhMuc * slKHSX * (1 + tyLeHaoHut);
-
-    await addYeuCauXuatKhoNPLToSheet({
+    const newData = {
       ngayThang: body.ngayThang || "",
       maPhieuYC: body.maPhieuYC || "",
       maNPL: body.maNPL,
@@ -37,21 +24,16 @@ export async function POST(request: NextRequest) {
       maSPSuDung: body.maSPSuDung || "",
       mauSac: body.mauSac || "",
       xuongSX: body.xuongSX || "",
+    };
+    await addYeuCauXuatKhoNPLToSheet(newData);
+    logSheetEdit({
+      action: "add",
+      tableKey: "yeu-cau-xuat-kho-npl",
+      sheetName: process.env.GOOGLE_SHEET_NAME_YEU_CAU_XUAT_KHO_NPL || "Yêu cầu xuất kho NPL",
+      newData,
     });
-
-    return NextResponse.json({
-      success: true,
-      message: "Thêm yêu cầu xuất kho NPL thành công",
-    });
+    return NextResponse.json({ success: true, message: "Thêm yêu cầu xuất kho NPL thành công" });
   } catch (error: any) {
-    console.error("Error adding yeu cau xuat kho npl:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể thêm yêu cầu xuất kho NPL",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

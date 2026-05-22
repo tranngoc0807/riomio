@@ -4,6 +4,7 @@ import { Loader2, Search, ChevronLeft, ChevronRight, Package, Calendar, Plus, Pe
 import { useState, useEffect, useRef, useMemo } from "react";
 import toast from "react-hot-toast";
 import Portal from "@/components/Portal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import * as XLSX from "xlsx";
 
 interface YeuCauXuatKhoNPL {
@@ -1165,6 +1166,7 @@ export default function BangKeYCXKTab() {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-72"
             />
           </div>
+          <EditHistoryButton tableKey="yeu-cau-xuat-kho-npl" variant="labeled" title="Bảng kê YCXK NPL" />
           <button
             onClick={handleExportListPDF}
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"

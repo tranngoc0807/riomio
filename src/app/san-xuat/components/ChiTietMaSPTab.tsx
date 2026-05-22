@@ -4,6 +4,7 @@ import { Loader2, Package, ChevronDown, Pencil, X, Image as ImageIcon, Search } 
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import ImagePickerModal from "@/components/ImagePickerModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 interface ChiTietMaSP {
   maSP: string;
@@ -450,8 +451,9 @@ export default function ChiTietMaSPTab() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
           Chi tiết mã sản phẩm
+          <EditHistoryButton tableKey="chi-tiet-ma-sp" variant="labeled" title="Chi tiết Mã SP" />
         </h3>
 
         <div className="relative min-w-[320px]" ref={dropdownRef}>

@@ -5,27 +5,23 @@ import {
   updateTaiKhoanInSheet,
   deleteTaiKhoanFromSheet,
 } from "@/lib/googleSheets";
+import { logEdit } from "@/lib/editHistory";
+import { getCurrentUserEmail } from "@/lib/getUserEmail";
+
+const TABLE_KEY = "tai-khoan-so-quy";
+const SHEET_NAME = process.env.GOOGLE_SHEET_NAME_TAI_KHOAN || "Thông tin tài khoản";
 
 /**
  * GET /api/tai-khoan-so-quy
- * Lấy danh sách tài khoản từ Google Sheets
  */
 export async function GET() {
   try {
     const taiKhoanList = await getTaiKhoanListFromSheet();
-
-    return NextResponse.json({
-      success: true,
-      data: taiKhoanList,
-    });
+    return NextResponse.json({ success: true, data: taiKhoanList });
   } catch (error: any) {
     console.error("Error fetching accounts:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to fetch accounts from Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to fetch accounts from Google Sheets" },
       { status: 500 }
     );
   }
@@ -33,7 +29,6 @@ export async function GET() {
 
 /**
  * POST /api/tai-khoan-so-quy
- * Thêm tài khoản mới vào Google Sheets
  */
 export async function POST(request: Request) {
   try {
@@ -47,10 +42,21 @@ export async function POST(request: Request) {
       );
     }
 
-    await addTaiKhoanToSheet({ taiKhoan });
+    const newData = { taiKhoan };
+    await addTaiKhoanToSheet(newData);
 
-    // Fetch updated list
     const taiKhoanList = await getTaiKhoanListFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    const added = taiKhoanList[taiKhoanList.length - 1];
+    logEdit({
+      source: "app",
+      action: "add",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: added?.rowIndex ?? null,
+      newData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -59,12 +65,8 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("Error adding account:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to add account to Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to add account to Google Sheets" },
       { status: 500 }
     );
   }
@@ -72,7 +74,6 @@ export async function POST(request: Request) {
 
 /**
  * PUT /api/tai-khoan-so-quy
- * Cập nhật tài khoản trong Google Sheets
  */
 export async function PUT(request: Request) {
   try {
@@ -86,10 +87,26 @@ export async function PUT(request: Request) {
       );
     }
 
-    await updateTaiKhoanInSheet(rowIndex, { taiKhoan });
+    const rowIdx = typeof rowIndex === "number" ? rowIndex : parseInt(rowIndex);
+    const before = await getTaiKhoanListFromSheet();
+    const oldRow = before.find((r) => r.rowIndex === rowIdx) ?? null;
+    const oldData = oldRow ? { taiKhoan: oldRow.taiKhoan } : null;
 
-    // Fetch updated list
+    const newData = { taiKhoan };
+    await updateTaiKhoanInSheet(rowIdx, newData);
+
     const taiKhoanList = await getTaiKhoanListFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    logEdit({
+      source: "app",
+      action: "update",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: rowIdx,
+      oldData,
+      newData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -98,12 +115,8 @@ export async function PUT(request: Request) {
     });
   } catch (error: any) {
     console.error("Error updating account:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to update account in Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to update account in Google Sheets" },
       { status: 500 }
     );
   }
@@ -111,7 +124,6 @@ export async function PUT(request: Request) {
 
 /**
  * DELETE /api/tai-khoan-so-quy
- * Xóa tài khoản khỏi Google Sheets
  */
 export async function DELETE(request: Request) {
   try {
@@ -125,10 +137,24 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteTaiKhoanFromSheet(parseInt(rowIndex));
+    const rowIdx = parseInt(rowIndex);
+    const before = await getTaiKhoanListFromSheet();
+    const oldRow = before.find((r) => r.rowIndex === rowIdx) ?? null;
+    const oldData = oldRow ? { taiKhoan: oldRow.taiKhoan } : null;
 
-    // Fetch updated list
+    await deleteTaiKhoanFromSheet(rowIdx);
+
     const taiKhoanList = await getTaiKhoanListFromSheet();
+    const userEmail = await getCurrentUserEmail();
+    logEdit({
+      source: "app",
+      action: "delete",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      rowIndex: rowIdx,
+      oldData,
+      userEmail,
+    });
 
     return NextResponse.json({
       success: true,
@@ -137,12 +163,8 @@ export async function DELETE(request: Request) {
     });
   } catch (error: any) {
     console.error("Error deleting account:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to delete account from Google Sheets",
-      },
+      { success: false, error: error.message || "Failed to delete account from Google Sheets" },
       { status: 500 }
     );
   }

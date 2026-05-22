@@ -1,26 +1,15 @@
 import { NextResponse } from "next/server";
 import { addMaSPToSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * POST /api/ma-sp/add
- * Thêm mã sản phẩm mới
- */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { maSP, tenSP, size, vaiChinh, vaiPhoi, phuLieuKhac, lenhSX, xuongSX } = body;
-
     if (!maSP) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Mã sản phẩm không được để trống",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Mã sản phẩm không được để trống" }, { status: 400 });
     }
-
-    await addMaSPToSheet({
+    const newData = {
       maSP,
       tenSP: tenSP || "",
       size: size || "",
@@ -29,20 +18,16 @@ export async function POST(request: Request) {
       phuLieuKhac: phuLieuKhac || "",
       lenhSX: lenhSX || "",
       xuongSX: xuongSX || "",
+    };
+    await addMaSPToSheet(newData);
+    logSheetEdit({
+      action: "add",
+      tableKey: "ma-sp",
+      sheetName: process.env.GOOGLE_SHEET_NAME_MA_SP || "Mã SP",
+      newData,
     });
-
-    return NextResponse.json({
-      success: true,
-      message: "Thêm mã sản phẩm thành công",
-    });
+    return NextResponse.json({ success: true, message: "Thêm mã sản phẩm thành công" });
   } catch (error: any) {
-    console.error("Error adding ma sp:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể thêm mã sản phẩm",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

@@ -1,25 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addSanPhamToSheet, SanPham } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * POST /api/san-pham/add
- * Thêm sản phẩm mới vào Google Sheets
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validate - yêu cầu mã hoặc tên sản phẩm
     if (!body.code && !body.name) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Vui lòng điền Mã SP hoặc Tên SP",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Vui lòng điền Mã SP hoặc Tên SP" }, { status: 400 });
     }
-
     const sanPham: SanPham = {
       id: body.id || 0,
       code: body.code || "",
@@ -44,23 +32,16 @@ export async function POST(request: NextRequest) {
       productionStage: body.productionStage || "",
       image: body.image || "",
     };
-
     await addSanPhamToSheet(sanPham);
-
-    return NextResponse.json({
-      success: true,
-      message: "San pham added successfully",
-      data: sanPham,
+    logSheetEdit({
+      action: "add",
+      tableKey: "san-pham",
+      sheetName: process.env.GOOGLE_SHEET_NAME_SAN_PHAM_PHAT_TRIEN || "PhatTrienSanPham",
+      recordId: sanPham.id || null,
+      newData: sanPham as unknown as Record<string, unknown>,
     });
+    return NextResponse.json({ success: true, message: "San pham added", data: sanPham });
   } catch (error: any) {
-    console.error("Error adding san pham:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to add san pham to Google Sheets",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

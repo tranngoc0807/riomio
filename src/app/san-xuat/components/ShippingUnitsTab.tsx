@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 import type { ShippingUnit } from "@/lib/googleSheets";
 
@@ -183,16 +184,19 @@ export default function ShippingUnitsTab() {
         <h3 className="text-lg font-semibold">
           Danh sách đơn vị vận chuyển ({shippingUnits.length})
         </h3>
-        <button
-          onClick={() => {
-            setNewItem(INITIAL_SHIPPING_UNIT);
-            setShowAddModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <Plus size={20} />
-          Thêm ĐVVC
-        </button>
+        <div className="flex items-center gap-2">
+          <EditHistoryButton tableKey="shipping-units" variant="labeled" title="Đơn vị vận chuyển" />
+          <button
+            onClick={() => {
+              setNewItem(INITIAL_SHIPPING_UNIT);
+              setShowAddModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            <Plus size={20} />
+            Thêm ĐVVC
+          </button>
+        </div>
       </div>
 
       {/* Table */}

@@ -20,6 +20,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Portal from "@/components/Portal";
 import DecimalInput from "@/components/DecimalInput";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 import html2canvas from "html2canvas";
 import { useAuth } from "@/context/AuthContext";
@@ -1119,6 +1120,7 @@ export default function XuatKhoNPLTab() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <EditHistoryButton tableKey="xuat-kho-npl" variant="labeled" title="Xuất kho NPL" />
           <button onClick={handleExportListPDF} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><FileDown size={14} /> PDF</button>
           <button onClick={handleExportListExcel} className="flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"><FileSpreadsheet size={14} /> Excel</button>
           <button

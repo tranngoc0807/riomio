@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addXuatKhoSPToSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * POST /api/xuat-kho-sp/add
@@ -17,13 +18,22 @@ export async function POST(request: Request) {
       );
     }
 
-    await addXuatKhoSPToSheet({
+    const newData = {
       maPXK,
       ngayThang: ngayThang || new Date().toISOString().split('T')[0],
       maDonHang: maDonHang || "",
       khachHang: khachHang || "",
       userThucHien: userThucHien || "",
       products,
+    };
+
+    await addXuatKhoSPToSheet(newData);
+
+    logSheetEdit({
+      action: "add",
+      tableKey: "xuat-kho-sp",
+      sheetName: process.env.GOOGLE_SHEET_NAME_XUAT_KHO_SP || "Xuất kho SP",
+      newData,
     });
 
     return NextResponse.json({

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { deleteNhapKhoSPFromSheet } from "@/lib/googleSheets";
+import { deleteNhapKhoSPFromSheet, getNhapKhoSPFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * DELETE /api/nhap-kho-sp/delete
@@ -18,10 +19,18 @@ export async function DELETE(request: Request) {
     }
 
     const rowNumber = parseInt(id);
-    console.log("DELETE nhap-kho-sp - Deleting row number:", rowNumber);
+    const before = await getNhapKhoSPFromSheet();
+    const oldRow = before.find((r) => r.id === rowNumber) ?? null;
 
     await deleteNhapKhoSPFromSheet(rowNumber);
-    console.log("DELETE nhap-kho-sp - Successfully deleted row:", rowNumber);
+
+    logSheetEdit({
+      action: "delete",
+      tableKey: "nhap-kho-sp",
+      sheetName: process.env.GOOGLE_SHEET_NAME_NHAP_KHO_SP_RIOMIO || "Nhập kho SP",
+      rowIndex: rowNumber,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+    });
 
     return NextResponse.json({
       success: true,

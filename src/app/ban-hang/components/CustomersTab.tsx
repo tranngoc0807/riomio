@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 
 type CustomerType = "npp" | "shop" | "ctv" | "nhanvien" | "daily" | "khachle" | "";
@@ -337,6 +338,11 @@ export default function CustomersTab() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
+        <EditHistoryButton
+          tableKey="khach-hang"
+          variant="labeled"
+          title="Khách hàng"
+        />
         <button
           onClick={() => {
             setNewCustomer(INITIAL_CUSTOMER);

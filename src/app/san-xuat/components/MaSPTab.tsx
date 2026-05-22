@@ -3,6 +3,7 @@
 import { Loader2, Search, ChevronLeft, ChevronRight, Package, Plus, Pencil, Trash2, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 interface MaSP {
   id: number;
@@ -222,6 +223,7 @@ export default function MaSPTab() {
           Mã sản phẩm ({filtered.length})
         </h3>
         <div className="flex items-center gap-3 flex-wrap">
+          <EditHistoryButton tableKey="ma-sp" variant="labeled" title="Mã sản phẩm" />
           {/* Add button */}
           <button
             onClick={openAddModal}

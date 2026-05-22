@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addNhapKhoSPToSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * POST /api/nhap-kho-sp/add
@@ -17,10 +18,19 @@ export async function POST(request: Request) {
       );
     }
 
-    await addNhapKhoSPToSheet({
+    const newData = {
       maPNK,
       ngayNhap: ngayNhap || new Date().toISOString().split('T')[0],
       products,
+    };
+
+    await addNhapKhoSPToSheet(newData);
+
+    logSheetEdit({
+      action: "add",
+      tableKey: "nhap-kho-sp",
+      sheetName: process.env.GOOGLE_SHEET_NAME_NHAP_KHO_SP_RIOMIO || "Nhập kho SP",
+      newData,
     });
 
     return NextResponse.json({

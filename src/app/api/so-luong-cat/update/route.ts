@@ -1,30 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateSoLuongCatInSheet } from "@/lib/googleSheets";
+import { updateSoLuongCatInSheet, getSoLuongCatFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * PUT /api/so-luong-cat/update
- * Cập nhật số lượng cắt trong Google Sheets
- */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Validate dữ liệu
     if (!body.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ID là bắt buộc",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "ID là bắt buộc" }, { status: 400 });
     }
-
+    const itemId = parseInt(body.id);
     const soLuongKeHoach = parseFloat(body.soLuongKeHoach) || 0;
     const soLuongCat = parseFloat(body.soLuongCat) || 0;
     const soLuongNhapKho = parseFloat(body.soLuongNhapKho) || 0;
-
-    await updateSoLuongCatInSheet(parseInt(body.id), {
+    const newData = {
       maPhieuCat: body.maPhieuCat || "",
       maSP: body.maSP || "",
       lenhSanXuat: body.lenhSanXuat || "",
@@ -40,21 +28,20 @@ export async function PUT(request: NextRequest) {
       slNKTruSlCat: soLuongNhapKho - soLuongCat,
       nguyenNhan2: body.nguyenNhan2 || "",
       ghiChu: body.ghiChu || "",
+    };
+    const before = await getSoLuongCatFromSheet();
+    const oldRow = before.find((s) => s.id === itemId) ?? null;
+    await updateSoLuongCatInSheet(itemId, newData);
+    logSheetEdit({
+      action: "update",
+      tableKey: "so-luong-cat",
+      sheetName: process.env.GOOGLE_SHEET_NAME_SO_LUONG_CAT || "Số lượng cắt",
+      recordId: itemId,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData,
     });
-
-    return NextResponse.json({
-      success: true,
-      message: "Cập nhật số lượng cắt thành công",
-    });
+    return NextResponse.json({ success: true, message: "Cập nhật số lượng cắt thành công" });
   } catch (error: any) {
-    console.error("Error updating so luong cat:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể cập nhật số lượng cắt",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

@@ -6,49 +6,26 @@ import {
   deleteDinhMucSXFromSheet,
   DinhMucSX,
 } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * GET /api/dinh-muc-sx
- * Lấy dữ liệu định mức sản xuất từ Google Sheets
- */
+const TABLE_KEY = "dinh-muc-sx";
+const SHEET_NAME = process.env.GOOGLE_SHEET_NAME_DINH_MUC_SAN_XUAT || "Định mức sản xuất";
+
 export async function GET() {
   try {
     const data = await getDinhMucSXFromSheet();
-
-    return NextResponse.json({
-      success: true,
-      data,
-    });
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error("Error fetching dinh muc sx:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to fetch dinh muc sx",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }
 
-/**
- * POST /api/dinh-muc-sx
- * Thêm định mức sản xuất mới
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
     if (!body.maSP) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Vui lòng điền Mã SP",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Vui lòng điền Mã SP" }, { status: 400 });
     }
-
     const dinhMuc: Omit<DinhMucSX, "id"> = {
       maSP: body.maSP,
       vaiChinh: body.vaiChinh || "",
@@ -69,53 +46,28 @@ export async function POST(request: NextRequest) {
       phuKien5: body.phuKien5 || "",
       khac: body.khac || "",
     };
-
     await addDinhMucSXToSheet(dinhMuc);
-
-    return NextResponse.json({
-      success: true,
-      message: "Thêm định mức sản xuất thành công",
+    logSheetEdit({
+      action: "add",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      newData: dinhMuc,
     });
+    return NextResponse.json({ success: true, message: "Thêm định mức sản xuất thành công" });
   } catch (error: any) {
-    console.error("Error adding dinh muc sx:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to add dinh muc sx",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }
 
-/**
- * PUT /api/dinh-muc-sx
- * Cập nhật định mức sản xuất
- */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-
     if (!body.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Thiếu ID định mức sản xuất",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Thiếu ID định mức sản xuất" }, { status: 400 });
     }
-
     if (!body.maSP) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Vui lòng điền Mã SP",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Vui lòng điền Mã SP" }, { status: 400 });
     }
-
     const dinhMuc: DinhMucSX = {
       id: body.id,
       maSP: body.maSP,
@@ -137,58 +89,43 @@ export async function PUT(request: NextRequest) {
       phuKien5: body.phuKien5 || "",
       khac: body.khac || "",
     };
-
+    const before = await getDinhMucSXFromSheet();
+    const oldRow = before.find((d) => d.id === dinhMuc.id) ?? null;
     await updateDinhMucSXInSheet(dinhMuc);
-
-    return NextResponse.json({
-      success: true,
-      message: "Cập nhật định mức sản xuất thành công",
+    logSheetEdit({
+      action: "update",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      recordId: dinhMuc.id,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
+      newData: dinhMuc as unknown as Record<string, unknown>,
     });
+    return NextResponse.json({ success: true, message: "Cập nhật định mức sản xuất thành công" });
   } catch (error: any) {
-    console.error("Error updating dinh muc sx:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to update dinh muc sx",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }
 
-/**
- * DELETE /api/dinh-muc-sx
- * Xóa định mức sản xuất
- */
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-
     if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Thiếu ID định mức sản xuất",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Thiếu ID định mức sản xuất" }, { status: 400 });
     }
-
-    await deleteDinhMucSXFromSheet(parseInt(id, 10));
-
-    return NextResponse.json({
-      success: true,
-      message: "Xóa định mức sản xuất thành công",
+    const itemId = parseInt(id, 10);
+    const before = await getDinhMucSXFromSheet();
+    const oldRow = before.find((d) => d.id === itemId) ?? null;
+    await deleteDinhMucSXFromSheet(itemId);
+    logSheetEdit({
+      action: "delete",
+      tableKey: TABLE_KEY,
+      sheetName: SHEET_NAME,
+      recordId: itemId,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
     });
+    return NextResponse.json({ success: true, message: "Xóa định mức sản xuất thành công" });
   } catch (error: any) {
-    console.error("Error deleting dinh muc sx:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to delete dinh muc sx",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

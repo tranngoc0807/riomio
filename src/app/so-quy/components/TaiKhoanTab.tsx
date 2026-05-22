@@ -5,10 +5,13 @@ import { Loader2, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight } from "luci
 import { TaiKhoan } from "@/lib/googleSheets";
 import toast, { Toaster } from "react-hot-toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 export default function TaiKhoanTab() {
   const [taiKhoanList, setTaiKhoanList] = useState<TaiKhoan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<TaiKhoan | null>(null);
 
@@ -57,6 +60,9 @@ export default function TaiKhoanTab() {
       return;
     }
 
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     try {
       const url = "/api/tai-khoan-so-quy";
       const method = editingItem ? "PUT" : "POST";
@@ -83,6 +89,8 @@ export default function TaiKhoanTab() {
     } catch (err: any) {
       console.error("Error submitting account:", err);
       toast.error("Đã xảy ra lỗi khi lưu tài khoản");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -101,7 +109,9 @@ export default function TaiKhoanTab() {
 
   const confirmDelete = async () => {
     if (!deletingItem) return;
+    if (isDeleting) return;
 
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/tai-khoan-so-quy?rowIndex=${deletingItem.rowIndex}`, {
         method: "DELETE",
@@ -119,6 +129,7 @@ export default function TaiKhoanTab() {
       console.error("Error deleting account:", err);
       toast.error("Đã xảy ra lỗi khi xóa tài khoản");
     } finally {
+      setIsDeleting(false);
       setShowDeleteConfirm(false);
       setDeletingItem(null);
     }
@@ -158,13 +169,20 @@ export default function TaiKhoanTab() {
             Tổng số: {taiKhoanList.length} tài khoản
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm tài khoản
-        </button>
+        <div className="flex items-center gap-2">
+          <EditHistoryButton
+            tableKey="tai-khoan-so-quy"
+            variant="labeled"
+            title="Tài khoản sổ quỹ"
+          />
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm tài khoản
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -308,14 +326,17 @@ export default function TaiKhoanTab() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editingItem ? "Cập nhật" : "Thêm"}
                 </button>
               </div>

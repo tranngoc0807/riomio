@@ -12,6 +12,7 @@ import {
 import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
 import ImagePickerModal from "@/components/ImagePickerModal";
+import EditHistoryButton from "@/components/EditHistoryButton";
 import toast from "react-hot-toast";
 import type { Material, Supplier } from "@/lib/googleSheets";
 
@@ -265,18 +266,21 @@ export default function MaterialsTab() {
             )}
           </div>
         </div>
-        <button
-          onClick={() => {
-            setNewItem(INITIAL_MATERIAL);
-            setSupplierSearchTerm("");
-            setShowSupplierDropdown(false);
-            setShowAddModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shrink-0"
-        >
-          <Plus size={20} />
-          Thêm NPL
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <EditHistoryButton tableKey="materials" variant="labeled" title="Nguyên phụ liệu" />
+          <button
+            onClick={() => {
+              setNewItem(INITIAL_MATERIAL);
+              setSupplierSearchTerm("");
+              setShowSupplierDropdown(false);
+              setShowAddModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            <Plus size={20} />
+            Thêm NPL
+          </button>
+        </div>
       </div>
 
       {/* Table */}

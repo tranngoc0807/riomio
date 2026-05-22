@@ -1,41 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteDanhMucHinhInFromSheet } from "@/lib/googleSheets";
+import { deleteDanhMucHinhInFromSheet, getDanhMucHinhInFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * DELETE /api/danh-muc-hinh-in/delete
- * Xóa danh mục hình in khỏi Google Sheets
- */
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-
-    // Validate dữ liệu
     if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ID là bắt buộc",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "ID là bắt buộc" }, { status: 400 });
     }
-
-    await deleteDanhMucHinhInFromSheet(parseInt(id));
-
-    return NextResponse.json({
-      success: true,
-      message: "Xóa danh mục hình in thành công",
+    const itemId = parseInt(id);
+    const before = await getDanhMucHinhInFromSheet();
+    const oldRow = before.find((d) => d.id === itemId) ?? null;
+    await deleteDanhMucHinhInFromSheet(itemId);
+    logSheetEdit({
+      action: "delete",
+      tableKey: "danh-muc-hinh-in",
+      sheetName: process.env.GOOGLE_SHEET_NAME_DANH_MUC_HINH_IN || "Danh mục HI",
+      recordId: itemId,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
     });
+    return NextResponse.json({ success: true, message: "Xóa danh mục hình in thành công" });
   } catch (error: any) {
-    console.error("Error deleting danh muc hinh in:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể xóa danh mục hình in",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

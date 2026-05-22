@@ -4,6 +4,7 @@ import { Loader2, Search, Archive, Calendar, ChevronLeft, ChevronRight, Edit2, C
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import EditHistoryButton from "@/components/EditHistoryButton";
 
 interface TonKhoHinhInThang {
   id: number;
@@ -388,7 +389,8 @@ export default function TonKhoHinhInTab() {
   return (
     <div className="space-y-4">
       {/* Toggle buttons */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 items-center">
+        <EditHistoryButton tableKey="ton-kho-hinh-in" variant="labeled" title="Tồn kho hình in" />
         <button
           onClick={() => setActiveTable("thang")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${

@@ -1,42 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deletePhanBoCPKhacFromSheet } from "@/lib/googleSheets";
+import { deletePhanBoCPKhacFromSheet, getPhanBoCPKhacFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
-/**
- * DELETE /api/phan-bo-cp-khac/delete
- * Xóa phân bổ chi phí khác khỏi Google Sheets
- */
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-
     if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Thiếu ID để xóa",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Thiếu ID để xóa" }, { status: 400 });
     }
-
-    // id is 1-based from the data, convert to 0-based rowIndex
-    const rowIndex = parseInt(id) - 1;
-
+    const itemId = parseInt(id);
+    const rowIndex = itemId - 1;
+    const before = await getPhanBoCPKhacFromSheet();
+    const oldRow = before.find((p) => p.id === itemId) ?? null;
     await deletePhanBoCPKhacFromSheet(rowIndex);
-
-    return NextResponse.json({
-      success: true,
-      message: "Xóa phân bổ chi phí khác thành công",
+    logSheetEdit({
+      action: "delete",
+      tableKey: "phan-bo-cp-khac",
+      sheetName: process.env.GOOGLE_SHEET_NAME_PHAN_BO_CP_KHAC || "Phân bổ CP khác",
+      recordId: itemId,
+      oldData: oldRow as unknown as Record<string, unknown> | null,
     });
+    return NextResponse.json({ success: true, message: "Xóa phân bổ chi phí khác thành công" });
   } catch (error: any) {
-    console.error("Error deleting phan bo cp khac:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Không thể xóa phân bổ chi phí khác",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Failed" }, { status: 500 });
   }
 }

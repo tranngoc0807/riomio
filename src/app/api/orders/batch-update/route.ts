@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { batchUpdateOrdersInSheet, Order } from "@/lib/googleSheets";
+import { batchUpdateOrdersInSheet, Order, getOrdersFromSheet } from "@/lib/googleSheets";
+import { logSheetEdit } from "@/lib/editHistory";
 
 /**
  * PUT /api/orders/batch-update
@@ -36,7 +37,6 @@ export async function PUT(request: NextRequest) {
       notes: o.notes || "",
     }));
 
-    // Validate all orders have id and code
     for (const order of orders) {
       if (!order.id || !order.code) {
         return NextResponse.json(
@@ -46,7 +46,22 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    const before = await getOrdersFromSheet();
+    const beforeById = new Map(before.map((o) => [o.id, o]));
+
     await batchUpdateOrdersInSheet(orders);
+
+    for (const order of orders) {
+      const oldRow = beforeById.get(order.id) ?? null;
+      logSheetEdit({
+        action: "update",
+        tableKey: "orders",
+        sheetName: process.env.GOOGLE_SHEET_NAME_BAN_HANG || "Bán hàng",
+        recordId: order.id,
+        oldData: oldRow as unknown as Record<string, unknown> | null,
+        newData: order as unknown as Record<string, unknown>,
+      });
+    }
 
     return NextResponse.json({
       success: true,
