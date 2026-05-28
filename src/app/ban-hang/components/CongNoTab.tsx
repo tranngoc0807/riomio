@@ -341,11 +341,15 @@ export default function CongNoTab() {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                      {transaction.tienHang > 0 ? transaction.tienHang.toLocaleString() : '-'}
+                    <td className={`px-4 py-3 text-right font-semibold ${
+                      transaction.tienHang < 0 ? 'text-red-600' : 'text-gray-900'
+                    }`}>
+                      {transaction.tienHang !== 0 ? transaction.tienHang.toLocaleString() : '-'}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-green-600">
-                      {transaction.thanhToan > 0 ? transaction.thanhToan.toLocaleString() : '-'}
+                    <td className={`px-4 py-3 text-right font-semibold ${
+                      transaction.thanhToan < 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {transaction.thanhToan !== 0 ? transaction.thanhToan.toLocaleString() : '-'}
                     </td>
                     <td className={`px-4 py-3 text-right font-bold ${
                       transaction.duCuoi >= 0 ? 'text-blue-600' : 'text-red-600'

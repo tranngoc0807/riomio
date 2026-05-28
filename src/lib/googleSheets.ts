@@ -707,6 +707,7 @@ export type DebtHistoryRow = { noiDung: string; duCuoi: number };
 
 const parseDuCuoi = (cell: any): number => {
   if (cell == null || String(cell).trim() === "") return 0;
+  if (typeof cell === "number") return isNaN(cell) ? 0 : cell;
   const cleaned = String(cell).replace(/\./g, "").replace(/,/g, ".");
   const n = parseFloat(cleaned);
   return isNaN(n) ? 0 : n;
