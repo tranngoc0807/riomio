@@ -890,8 +890,8 @@ export default function NhapKhoNPLTab() {
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.ncc || "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.dvt || "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.soLuong)}</td>
-      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.donGiaSauThue > 0 ? fmt(item.donGiaSauThue) : "-"}</td>
-      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.thanhTien > 0 ? fmt(item.thanhTien) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.donGiaSauThue !== 0 ? fmt(item.donGiaSauThue) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.thanhTien !== 0 ? fmt(item.thanhTien) : "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.ghiChu || "-"}</td>
     </tr>`,
       )
@@ -943,8 +943,8 @@ export default function NhapKhoNPLTab() {
         <td>${item.maNPL || ""}</td>
         <td class="c">${item.dvt || ""}</td>
         <td class="r">${fmt(item.soLuong)}</td>
-        <td class="r">${item.donGiaSauThue > 0 ? fmt(item.donGiaSauThue) : ""}</td>
-        <td class="r">${item.thanhTien > 0 ? fmt(item.thanhTien) : ""}</td>
+        <td class="r">${item.donGiaSauThue !== 0 ? fmt(item.donGiaSauThue) : ""}</td>
+        <td class="r">${item.thanhTien !== 0 ? fmt(item.thanhTien) : ""}</td>
         <td>${item.ghiChu || ""}</td>
       </tr>`,
       )
@@ -1194,13 +1194,17 @@ export default function NhapKhoNPLTab() {
                       {group.items.length}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center font-medium text-gray-900">
-                    {group.totalSoLuong > 0
+                  <td className={`px-3 py-3 text-center font-medium ${
+                    group.totalSoLuong < 0 ? "text-red-600" : "text-gray-900"
+                  }`}>
+                    {group.totalSoLuong !== 0
                       ? group.totalSoLuong.toLocaleString("vi-VN")
                       : "-"}
                   </td>
-                  <td className="px-3 py-3 text-right font-semibold text-green-600">
-                    {group.totalThanhTien > 0
+                  <td className={`px-3 py-3 text-right font-semibold ${
+                    group.totalThanhTien < 0 ? "text-red-600" : "text-green-600"
+                  }`}>
+                    {group.totalThanhTien !== 0
                       ? group.totalThanhTien.toLocaleString("vi-VN") + "đ"
                       : "-"}
                   </td>
@@ -1441,8 +1445,10 @@ export default function NhapKhoNPLTab() {
                             ? item.donGiaSauThue.toLocaleString("vi-VN")
                             : "-"}
                         </td>
-                        <td className="px-5 py-4 text-sm text-right font-semibold bg-yellow-50">
-                          {item.thanhTien > 0
+                        <td className={`px-5 py-4 text-sm text-right font-semibold bg-yellow-50 ${
+                          item.thanhTien < 0 ? "text-red-600" : ""
+                        }`}>
+                          {item.thanhTien !== 0
                             ? item.thanhTien.toLocaleString("vi-VN")
                             : "-"}
                         </td>
@@ -1541,8 +1547,10 @@ export default function NhapKhoNPLTab() {
                     <span className="text-sm text-gray-500 block mb-1">
                       Thành tiền
                     </span>
-                    <p className="font-bold text-green-600 text-lg">
-                      {selectedItemDetail.thanhTien > 0
+                    <p className={`font-bold text-lg ${
+                      selectedItemDetail.thanhTien < 0 ? "text-red-600" : "text-green-600"
+                    }`}>
+                      {selectedItemDetail.thanhTien !== 0
                         ? selectedItemDetail.thanhTien.toLocaleString("vi-VN") +
                           "đ"
                         : "-"}

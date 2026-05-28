@@ -1068,8 +1068,8 @@ export default function XuatKhoNPLTab() {
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.maNPL}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.dvt || "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(item.soLuong)}</td>
-      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.donGia > 0 ? fmt(item.donGia) : "-"}</td>
-      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.thanhTien > 0 ? fmt(item.thanhTien) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${item.donGia !== 0 ? fmt(item.donGia) : "-"}</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${item.thanhTien !== 0 ? fmt(item.thanhTien) : "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.loaiChiPhi || "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.ghiChu || "-"}</td>
     </tr>`).join("");
@@ -1184,11 +1184,15 @@ export default function XuatKhoNPLTab() {
                       {group.items.length}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center font-medium text-gray-900">
-                    {group.totalItems > 0 ? group.totalItems.toLocaleString("vi-VN") : "-"}
+                  <td className={`px-3 py-3 text-center font-medium ${
+                    group.totalItems < 0 ? "text-red-600" : "text-gray-900"
+                  }`}>
+                    {group.totalItems !== 0 ? group.totalItems.toLocaleString("vi-VN") : "-"}
                   </td>
-                  <td className="px-3 py-3 text-right font-semibold text-red-600">
-                    {group.totalThanhTien > 0 ? group.totalThanhTien.toLocaleString("vi-VN") + "đ" : "-"}
+                  <td className={`px-3 py-3 text-right font-semibold ${
+                    group.totalThanhTien < 0 ? "text-red-600" : "text-green-600"
+                  }`}>
+                    {group.totalThanhTien !== 0 ? group.totalThanhTien.toLocaleString("vi-VN") + "đ" : "-"}
                   </td>
                   <td className="px-3 py-3 text-gray-600">{group.nguoiNhap || "-"}</td>
                   <td className="px-3 py-3">
@@ -1840,8 +1844,10 @@ export default function XuatKhoNPLTab() {
                               ? item.donGia.toLocaleString("vi-VN")
                               : "-"}
                           </td>
-                          <td className="px-5 py-4 text-sm text-right font-semibold bg-yellow-50">
-                            {item.thanhTien > 0
+                          <td className={`px-5 py-4 text-sm text-right font-semibold bg-yellow-50 ${
+                            item.thanhTien < 0 ? "text-red-600" : ""
+                          }`}>
+                            {item.thanhTien !== 0
                               ? item.thanhTien.toLocaleString("vi-VN")
                               : "-"}
                           </td>
@@ -1944,7 +1950,7 @@ export default function XuatKhoNPLTab() {
                         Thành tiền
                       </span>
                       <p className="font-bold text-red-600 text-lg">
-                        {selectedItemDetail.thanhTien > 0
+                        {selectedItemDetail.thanhTien !== 0
                           ? selectedItemDetail.thanhTien.toLocaleString("vi-VN") +
                             "đ"
                           : "-"}
