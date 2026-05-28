@@ -1963,11 +1963,28 @@ export async function getOrdersFromSheet(): Promise<Order[]> {
 }
 
 /**
+ * Đơn TL (trả lại) → ghi vào sheet với SL và các giá trị tiền dạng âm.
+ * Đơn giá đơn vị (giá sỉ, đơn giá sau CK) giữ dương vì là giá trị tham chiếu.
+ * Dùng -Math.abs để idempotent: edit lại đơn TL không bị đảo dấu lần 2.
+ */
+function applyReturnSign(order: Order): Order {
+  if (!order.code?.trim().toUpperCase().startsWith("TL")) return order;
+  return {
+    ...order,
+    items: -Math.abs(order.items),
+    subtotal: -Math.abs(order.subtotal),
+    subtotalAfterDiscount: -Math.abs(order.subtotalAfterDiscount),
+    total: -Math.abs(order.total),
+  };
+}
+
+/**
  * Thêm đơn hàng mới vào Google Sheets
  * Sheet: Bán hàng (16 cột A-P), dữ liệu bắt đầu từ dòng 6
  * Tìm dòng cuối cùng có data thật (cột A có mã đơn hàng) rồi thêm vào sau đó
  */
-export async function addOrderToSheet(order: Order): Promise<void> {
+export async function addOrderToSheet(orderInput: Order): Promise<void> {
+  const order = applyReturnSign(orderInput);
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -2036,7 +2053,8 @@ export async function addOrderToSheet(order: Order): Promise<void> {
  * Cập nhật đơn hàng trong Google Sheets
  * Sheet: Bán hàng (16 cột A-P), dữ liệu bắt đầu từ dòng 6
  */
-export async function updateOrderInSheet(order: Order): Promise<void> {
+export async function updateOrderInSheet(orderInput: Order): Promise<void> {
+  const order = applyReturnSign(orderInput);
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -2084,7 +2102,8 @@ export async function updateOrderInSheet(order: Order): Promise<void> {
  * Cập nhật nhiều đơn hàng cùng lúc trong Google Sheets (batch)
  * Sử dụng batchUpdate để ghi tất cả trong 1 request
  */
-export async function batchUpdateOrdersInSheet(orders: Order[]): Promise<void> {
+export async function batchUpdateOrdersInSheet(ordersInput: Order[]): Promise<void> {
+  const orders = ordersInput.map(applyReturnSign);
   try {
     if (orders.length === 0) return;
 
@@ -4509,6 +4528,13 @@ export async function getXuatKhoSPFromSheet(): Promise<XuatKhoSP[]> {
 /**
  * Thêm nhiều dòng xuất kho SP vào Google Sheets
  */
+/**
+ * Phiếu trả lại SP (mã bắt đầu bằng "TL") → SL ghi sheet phải là số âm.
+ */
+function isReturnPhieuSP(code: string | undefined): boolean {
+  return !!code?.trim().toUpperCase().startsWith("TL");
+}
+
 export async function addXuatKhoSPToSheet(data: {
   maPXK: string;
   ngayThang: string;
@@ -4517,6 +4543,12 @@ export async function addXuatKhoSPToSheet(data: {
   userThucHien: string;
   products: { maSP: string; soLuong: number }[];
 }): Promise<void> {
+  if (isReturnPhieuSP(data.maPXK)) {
+    data = {
+      ...data,
+      products: data.products.map((p) => ({ ...p, soLuong: -Math.abs(p.soLuong || 0) })),
+    };
+  }
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -4573,6 +4605,9 @@ export async function updateXuatKhoSPInSheet(
     userThucHien: string;
   }
 ): Promise<void> {
+  if (isReturnPhieuSP(data.maPXK)) {
+    data = { ...data, soLuong: -Math.abs(data.soLuong || 0) };
+  }
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -4723,6 +4758,12 @@ export async function addNhapKhoSPToSheet(data: {
   ngayNhap: string;
   products: { maSP: string; soLuong: number; ghiChu?: string }[];
 }): Promise<void> {
+  if (isReturnPhieuSP(data.maPNK)) {
+    data = {
+      ...data,
+      products: data.products.map((p) => ({ ...p, soLuong: -Math.abs(p.soLuong || 0) })),
+    };
+  }
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -4776,6 +4817,9 @@ export async function updateNhapKhoSPInSheet(
     ghiChu: string;
   }
 ): Promise<void> {
+  if (isReturnPhieuSP(data.maPNK)) {
+    data = { ...data, soLuong: -Math.abs(data.soLuong || 0) };
+  }
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -7805,9 +7849,20 @@ export async function getNhapKhoNPLFromSheet(): Promise<NhapKhoNPL[]> {
 }
 
 /**
+ * Phiếu trả lại NPL (mã bắt đầu bằng "PTL") → SL ghi sheet phải là số âm.
+ * Dùng -Math.abs để idempotent khi update lại đơn đã có sẵn dấu âm.
+ */
+function isReturnPhieuNPL(code: string | undefined): boolean {
+  return !!code?.trim().toUpperCase().startsWith("PTL");
+}
+
+/**
  * Thêm nhập kho NPL mới vào Google Sheets
  */
 export async function addNhapKhoNPLToSheet(data: Omit<NhapKhoNPL, 'id' | 'thanhTien' | 'tonThucTe'>): Promise<boolean> {
+  if (isReturnPhieuNPL(data.maPNKNPL)) {
+    data = { ...data, soLuong: -Math.abs(data.soLuong || 0) };
+  }
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -7894,7 +7949,9 @@ export async function updateNhapKhoNPLInSheet(rowIndex: number, data: Partial<Nh
       return parseFloat(cleaned) || 0;
     };
 
-    const soLuong = data.soLuong ?? parseNum(currentRow[7]);
+    const maPNKNPL = data.maPNKNPL ?? currentRow[0] ?? "";
+    const rawSoLuong = data.soLuong ?? parseNum(currentRow[7]);
+    const soLuong = isReturnPhieuNPL(maPNKNPL) ? -Math.abs(rawSoLuong) : rawSoLuong;
     const donGiaSauThue = data.donGiaSauThue ?? parseNum(currentRow[8]);
     const maNPL = data.maNPL ?? currentRow[4] ?? "";
 
@@ -7913,7 +7970,7 @@ export async function updateNhapKhoNPLInSheet(rowIndex: number, data: Partial<Nh
 
     // Update with new values
     const updatedRow = [
-      data.maPNKNPL ?? currentRow[0] ?? "",
+      maPNKNPL,
       data.ngayThang ?? currentRow[1] ?? "",
       data.nguoiNhap ?? currentRow[2] ?? "",
       data.noiDung ?? currentRow[3] ?? "",
@@ -8130,6 +8187,13 @@ export async function addXuatKhoNPLToSheet(data: {
   ghiChu: string;
   tonThucTe: number;
 }): Promise<void> {
+  if (isReturnPhieuNPL(data.maPhieu)) {
+    data = {
+      ...data,
+      soLuong: -Math.abs(data.soLuong || 0),
+      thanhTien: -Math.abs(data.thanhTien || 0),
+    };
+  }
   try {
     const sheets = await getGoogleSheetsClient();
 
@@ -8352,7 +8416,9 @@ export async function updateXuatKhoNPLInSheet(id: number, data: Partial<XuatKhoN
       return parseFloat(cleaned) || 0;
     };
 
-    const soLuong = data.soLuong ?? parseNum(currentRow[9]);
+    const maPhieu = String(currentRow[0] ?? "");
+    const rawSoLuong = data.soLuong ?? parseNum(currentRow[9]);
+    const soLuong = isReturnPhieuNPL(maPhieu) ? -Math.abs(rawSoLuong) : rawSoLuong;
     const donGia = data.donGia ?? parseNum(currentRow[10]);
     const thanhTien = soLuong * donGia;
 
