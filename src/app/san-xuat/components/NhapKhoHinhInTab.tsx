@@ -11,6 +11,7 @@ import {
   X,
   Pencil,
   Trash2,
+  Eye,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import toast from "react-hot-toast";
@@ -46,6 +47,20 @@ interface DanhMucHinhIn {
   tonKho: number;
 }
 
+interface GroupedNhapKho {
+  groupKey: string;
+  maDon: string;
+  ngayThang: string;
+  items: NhapKhoHinhIn[];
+  soHinhIn: number;
+  totalDatHI: number;
+  totalNhapKhoThucTe: number;
+  totalNhapKhoMet: number;
+  totalThanhTien: number;
+  xuongIns: string[];
+  ngayNhapKhos: string[];
+}
+
 const ITEMS_PER_PAGE = 100;
 
 const XUONG_IN_OPTIONS = ["Xưởng in Đăng Quang", "Xưởng in pet 686"];
@@ -79,6 +94,7 @@ export default function NhapKhoHinhInTab() {
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
   const [itemToDelete, setItemToDelete] = useState<NhapKhoHinhIn | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewingGroup, setViewingGroup] = useState<GroupedNhapKho | null>(null);
 
   const [danhMucHI, setDanhMucHI] = useState<DanhMucHinhIn[]>([]);
 
@@ -258,54 +274,113 @@ export default function NhapKhoHinhInTab() {
     }
   };
 
-  // Sort by date descending
-  const sortedData = useMemo(() => {
-    return [...data].sort((a, b) => {
-      const parseDate = (d: string) => {
-        if (!d) return 0;
-        if (d.includes("/")) {
-          const [dd, mm, yyyy] = d.split("/");
-          return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
-        }
-        return new Date(d).getTime() || 0;
-      };
-      return parseDate(b.ngayThang) - parseDate(a.ngayThang);
+  const parseDateTs = (d: string) => {
+    if (!d) return 0;
+    if (d.includes("/")) {
+      const [dd, mm, yyyy] = d.split("/");
+      return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+    }
+    return new Date(d).getTime() || 0;
+  };
+
+  // Group rows by maDon (rows with empty maDon stay as their own group)
+  const groupedData: GroupedNhapKho[] = useMemo(() => {
+    const groups: Record<string, GroupedNhapKho> = {};
+    data.forEach((item) => {
+      const key = item.maDon?.trim()
+        ? `MD:${item.maDon.trim()}`
+        : `NO:${item.id}`;
+      if (!groups[key]) {
+        groups[key] = {
+          groupKey: key,
+          maDon: item.maDon || "",
+          ngayThang: item.ngayThang || "",
+          items: [],
+          soHinhIn: 0,
+          totalDatHI: 0,
+          totalNhapKhoThucTe: 0,
+          totalNhapKhoMet: 0,
+          totalThanhTien: 0,
+          xuongIns: [],
+          ngayNhapKhos: [],
+        };
+      }
+      const g = groups[key];
+      g.items.push(item);
+      g.soHinhIn += 1;
+      g.totalDatHI += item.datHI || 0;
+      g.totalNhapKhoThucTe += item.nhapKhoThucTe || 0;
+      g.totalNhapKhoMet += item.nhapKhoMet || 0;
+      g.totalThanhTien += item.thanhTien || 0;
+      if (item.xuongIn && !g.xuongIns.includes(item.xuongIn))
+        g.xuongIns.push(item.xuongIn);
+      if (item.ngayNhapKho && !g.ngayNhapKhos.includes(item.ngayNhapKho))
+        g.ngayNhapKhos.push(item.ngayNhapKho);
+      // Prefer the earliest non-empty ngayThang on the group
+      if (!g.ngayThang && item.ngayThang) g.ngayThang = item.ngayThang;
     });
+    return Object.values(groups).sort(
+      (a, b) => parseDateTs(b.ngayThang) - parseDateTs(a.ngayThang),
+    );
   }, [data]);
 
-  const filteredData = sortedData.filter((item) => {
+  // Keep viewing group in sync after edit/delete refetch
+  useEffect(() => {
+    if (!viewingGroup) return;
+    const fresh = groupedData.find((g) => g.groupKey === viewingGroup.groupKey);
+    if (!fresh) {
+      setViewingGroup(null);
+      return;
+    }
+    if (fresh !== viewingGroup) setViewingGroup(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupedData]);
+
+  const filteredGroups = groupedData.filter((g) => {
     const s = searchTerm.toLowerCase();
-    return (
-      item.maDon.toLowerCase().includes(s) ||
-      item.maHinhIn.toLowerCase().includes(s) ||
-      item.maSPSuDung.toLowerCase().includes(s) ||
-      item.xuongIn.toLowerCase().includes(s) ||
-      item.ngayThang.toLowerCase().includes(s)
+    if (!s) return true;
+    if (g.maDon.toLowerCase().includes(s)) return true;
+    if (g.ngayThang.toLowerCase().includes(s)) return true;
+    return g.items.some(
+      (it) =>
+        it.maHinhIn.toLowerCase().includes(s) ||
+        it.maSPSuDung.toLowerCase().includes(s) ||
+        it.xuongIn.toLowerCase().includes(s),
     );
   });
 
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredGroups.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedData = filteredData.slice(
+  const paginatedGroups = filteredGroups.slice(
     startIndex,
     startIndex + ITEMS_PER_PAGE,
   );
 
-  const totalDatHI = filteredData.reduce((s, it) => s + it.datHI, 0);
-  const totalNhapKhoThucTe = filteredData.reduce(
-    (s, it) => s + it.nhapKhoThucTe,
+  const totalLines = filteredGroups.reduce((s, g) => s + g.soHinhIn, 0);
+  const totalDatHI = filteredGroups.reduce((s, g) => s + g.totalDatHI, 0);
+  const totalNhapKhoThucTe = filteredGroups.reduce(
+    (s, g) => s + g.totalNhapKhoThucTe,
     0,
   );
-  const totalNhapKhoMet = filteredData.reduce((s, it) => s + it.nhapKhoMet, 0);
-  const totalThanhTien = filteredData.reduce((s, it) => s + it.thanhTien, 0);
+  const totalNhapKhoMet = filteredGroups.reduce(
+    (s, g) => s + g.totalNhapKhoMet,
+    0,
+  );
+  const totalThanhTien = filteredGroups.reduce(
+    (s, g) => s + g.totalThanhTien,
+    0,
+  );
 
   const fmt = (v: number) => (v ? v.toLocaleString("vi-VN") : "-");
 
+  // Flatten grouped items back to line-level for exports
+  const filteredLines = filteredGroups.flatMap((g) => g.items);
+
   const handleExportPDF = () => {
-    if (filteredData.length === 0) return;
+    if (filteredLines.length === 0) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
-    const rows = filteredData
+    const rows = filteredLines
       .map(
         (item) => `<tr>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.maDon}</td>
@@ -349,8 +424,8 @@ export default function NhapKhoHinhInTab() {
   };
 
   const handleExportExcel = () => {
-    if (filteredData.length === 0) return;
-    const sheetData = filteredData.map((item) => ({
+    if (filteredLines.length === 0) return;
+    const sheetData = filteredLines.map((item) => ({
       "Mã đơn": item.maDon,
       "Ngày tháng": item.ngayThang,
       STT: item.stt,
@@ -389,7 +464,8 @@ export default function NhapKhoHinhInTab() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">
-          Đặt in & Nhập kho hình in ({filteredData.length})
+          Đặt in & Nhập kho hình in ({filteredGroups.length} đơn ·{" "}
+          {totalLines} dòng)
         </h3>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -433,9 +509,9 @@ export default function NhapKhoHinhInTab() {
       {/* Summary */}
       <div className="grid grid-cols-4 gap-4 mb-4">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-          <p className="text-sm text-blue-600 mb-1">Số dòng</p>
+          <p className="text-sm text-blue-600 mb-1">Số đơn</p>
           <p className="text-2xl font-bold text-blue-700">
-            {filteredData.length}
+            {filteredGroups.length}
           </p>
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
@@ -470,44 +546,26 @@ export default function NhapKhoHinhInTab() {
                 <th className="px-3 py-3 text-left font-medium text-gray-600">
                   Ngày tháng
                 </th>
-                <th className="px-3 py-3 text-center font-medium text-gray-600 w-12">
-                  STT
-                </th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600">
-                  Mã HI
-                </th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600">
-                  Kích thước
-                </th>
-                <th className="px-3 py-3 text-center font-medium text-gray-600 w-16">
-                  Hình ảnh
+                <th className="px-3 py-3 text-center font-medium text-gray-600">
+                  Số HI
                 </th>
                 <th className="px-3 py-3 text-right font-medium text-gray-600">
-                  Đặt HI
+                  Tổng đặt HI
                 </th>
                 <th className="px-3 py-3 text-right font-medium text-gray-600">
-                  Nhập thực tế
-                </th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600">
-                  Mã SP
+                  Tổng nhập thực tế
                 </th>
                 <th className="px-3 py-3 text-left font-medium text-gray-600">
                   Xưởng in
                 </th>
                 <th className="px-3 py-3 text-right font-medium text-gray-600">
-                  Nhập kho (Mét)
+                  Tổng nhập (Mét)
                 </th>
                 <th className="px-3 py-3 text-right font-medium text-gray-600">
-                  Đơn giá
-                </th>
-                <th className="px-3 py-3 text-right font-medium text-gray-600">
-                  Thành tiền
+                  Tổng thành tiền
                 </th>
                 <th className="px-3 py-3 text-left font-medium text-gray-600">
                   Ngày nhập kho
-                </th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600">
-                  Ghi chú
                 </th>
                 <th className="px-3 py-3 text-center font-medium text-gray-600 w-24">
                   Thao tác
@@ -515,112 +573,118 @@ export default function NhapKhoHinhInTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {paginatedData.length === 0 ? (
+              {paginatedGroups.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={16}
+                    colSpan={10}
                     className="px-4 py-8 text-center text-gray-500"
                   >
                     Không có dữ liệu
                   </td>
                 </tr>
               ) : (
-                paginatedData.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-3 font-medium text-gray-900">
-                      {item.maDon || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-gray-900">
-                      {item.ngayThang}
-                    </td>
-                    <td className="px-3 py-3 text-center text-gray-600">
-                      {item.stt}
-                    </td>
-                    <td className="px-3 py-3 font-medium text-blue-600">
-                      {item.maHinhIn}
-                    </td>
-                    <td className="px-3 py-3 text-gray-700 whitespace-pre-line">
-                      {item.kichThuoc}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      {item.hinhAnh ? (
-                        <img
-                          src={item.hinhAnh}
-                          alt={item.maHinhIn}
-                          className="w-10 h-10 object-cover rounded mx-auto cursor-zoom-in hover:opacity-80"
-                          onClick={() => setZoomedImageUrl(item.hinhAnh)}
-                        />
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right text-gray-700">
-                      {fmt(item.datHI)}
-                    </td>
-                    <td className="px-3 py-3 text-right text-gray-700">
-                      {fmt(item.nhapKhoThucTe)}
-                    </td>
-                    <td className="px-3 py-3 text-gray-700">
-                      {item.maSPSuDung || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-gray-700">
-                      {item.xuongIn || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold text-green-600">
-                      {fmt(item.nhapKhoMet)}
-                    </td>
-                    <td className="px-3 py-3 text-right text-gray-700">
-                      {fmt(item.donGia)}
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold text-purple-700">
-                      {fmt(item.thanhTien)}
-                    </td>
-                    <td className="px-3 py-3 text-gray-700">
-                      {item.ngayNhapKho || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-gray-500">
-                      {item.ghiChu || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => openEditModal(item)}
-                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Sửa"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => setItemToDelete(item)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Xóa"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                paginatedGroups.map((g) => {
+                  const onlyItem =
+                    !g.maDon && g.items.length === 1 ? g.items[0] : null;
+                  return (
+                    <tr
+                      key={g.groupKey}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setViewingGroup(g)}
+                    >
+                      <td className="px-3 py-3 font-semibold text-blue-600">
+                        {g.maDon || (
+                          <span className="text-gray-400 italic">(không mã)</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-gray-900">
+                        {g.ngayThang || "-"}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-xs">
+                          {g.soHinhIn}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right text-gray-700">
+                        {fmt(g.totalDatHI)}
+                      </td>
+                      <td className="px-3 py-3 text-right text-gray-700">
+                        {fmt(g.totalNhapKhoThucTe)}
+                      </td>
+                      <td className="px-3 py-3 text-gray-700">
+                        {g.xuongIns.length === 0
+                          ? "-"
+                          : g.xuongIns.length === 1
+                            ? g.xuongIns[0]
+                            : `${g.xuongIns[0]} +${g.xuongIns.length - 1}`}
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-green-600">
+                        {fmt(g.totalNhapKhoMet)}
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-purple-700">
+                        {fmt(g.totalThanhTien)}
+                      </td>
+                      <td className="px-3 py-3 text-gray-700">
+                        {g.ngayNhapKhos.length === 0
+                          ? "-"
+                          : g.ngayNhapKhos.length === 1
+                            ? g.ngayNhapKhos[0]
+                            : `${g.ngayNhapKhos[0]} +${g.ngayNhapKhos.length - 1}`}
+                      </td>
+                      <td
+                        className="px-3 py-3 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setViewingGroup(g)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Xem chi tiết"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          {onlyItem && (
+                            <>
+                              <button
+                                onClick={() => openEditModal(onlyItem)}
+                                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="Sửa"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => setItemToDelete(onlyItem)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Xóa"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
             <tfoot>
               <tr className="bg-gray-100 font-semibold">
-                <td colSpan={6} className="px-3 py-3 text-right">
+                <td colSpan={3} className="px-3 py-3 text-right">
                   Tổng cộng:
                 </td>
                 <td className="px-3 py-3 text-right">{fmt(totalDatHI)}</td>
                 <td className="px-3 py-3 text-right">
                   {fmt(totalNhapKhoThucTe)}
                 </td>
-                <td colSpan={2}></td>
+                <td></td>
                 <td className="px-3 py-3 text-right text-green-700">
                   {fmt(totalNhapKhoMet)}
                 </td>
-                <td></td>
                 <td className="px-3 py-3 text-right text-purple-700">
                   {fmt(totalThanhTien)}
                 </td>
-                <td colSpan={3}></td>
+                <td colSpan={2}></td>
               </tr>
             </tfoot>
           </table>
@@ -631,8 +695,8 @@ export default function NhapKhoHinhInTab() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
             <div className="text-sm text-gray-500">
               Hiển thị {startIndex + 1} -{" "}
-              {Math.min(startIndex + ITEMS_PER_PAGE, filteredData.length)} /{" "}
-              {filteredData.length}
+              {Math.min(startIndex + ITEMS_PER_PAGE, filteredGroups.length)} /{" "}
+              {filteredGroups.length} đơn
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -682,6 +746,202 @@ export default function NhapKhoHinhInTab() {
             className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {/* Group detail modal */}
+      {viewingGroup && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-40 p-4"
+          onClick={() => setViewingGroup(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chi tiết đơn{" "}
+                  <span className="text-blue-600">
+                    {viewingGroup.maDon || "(không mã)"}
+                  </span>
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Ngày {viewingGroup.ngayThang || "-"} · {viewingGroup.soHinhIn}{" "}
+                  hình in
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingGroup(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3 px-6 py-4 bg-gray-50 border-b">
+              <div>
+                <p className="text-xs text-gray-500">Tổng đặt HI</p>
+                <p className="text-lg font-semibold text-amber-700">
+                  {viewingGroup.totalDatHI.toLocaleString("vi-VN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Tổng nhập thực tế</p>
+                <p className="text-lg font-semibold text-gray-800">
+                  {viewingGroup.totalNhapKhoThucTe.toLocaleString("vi-VN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Tổng nhập kho (Mét)</p>
+                <p className="text-lg font-semibold text-green-700">
+                  {viewingGroup.totalNhapKhoMet.toLocaleString("vi-VN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Tổng thành tiền</p>
+                <p className="text-lg font-semibold text-purple-700">
+                  {viewingGroup.totalThanhTien.toLocaleString("vi-VN")}
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-auto flex-1">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-3 py-2 text-center font-medium text-gray-600 w-12">
+                      STT
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">
+                      Mã HI
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">
+                      Kích thước
+                    </th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-600 w-16">
+                      Ảnh
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">
+                      Đặt HI
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">
+                      Nhập thực tế
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">
+                      Mã SP
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">
+                      Xưởng in
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">
+                      Mét
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">
+                      Đơn giá
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">
+                      Thành tiền
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">
+                      Ngày nhập kho
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">
+                      Ghi chú
+                    </th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-600 w-24">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {viewingGroup.items.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-center text-gray-600">
+                        {item.stt || "-"}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-blue-600">
+                        {item.maHinhIn}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700 whitespace-pre-line">
+                        {item.kichThuoc}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {item.hinhAnh ? (
+                          <img
+                            src={item.hinhAnh}
+                            alt={item.maHinhIn}
+                            className="w-10 h-10 object-cover rounded mx-auto cursor-zoom-in hover:opacity-80"
+                            onClick={() => setZoomedImageUrl(item.hinhAnh)}
+                          />
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-700">
+                        {fmt(item.datHI)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-700">
+                        {fmt(item.nhapKhoThucTe)}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {item.maSPSuDung || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {item.xuongIn || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-green-600">
+                        {fmt(item.nhapKhoMet)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-700">
+                        {fmt(item.donGia)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-purple-700">
+                        {fmt(item.thanhTien)}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {item.ngayNhapKho || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-gray-500">
+                        {item.ghiChu || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setViewingGroup(null);
+                              openEditModal(item);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Sửa"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setItemToDelete(item)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Xóa"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t">
+              <button
+                onClick={() => setViewingGroup(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

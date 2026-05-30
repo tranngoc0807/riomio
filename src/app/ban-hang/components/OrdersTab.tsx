@@ -130,6 +130,10 @@ const INITIAL_ORDER = {
   notes: "",
 };
 
+// Mã gốc = phần đầu của mã SP (vd "RAD1337 BB Đỏ" → "RAD1337")
+const getBaseCode = (code: string): string =>
+  (code || "").trim().split(/\s+/)[0].toUpperCase();
+
 // Date format helpers: Google Sheet uses DD/MM/YYYY, input[type=date] uses YYYY-MM-DD
 const toSheetDate = (isoDate: string): string => {
   // YYYY-MM-DD → DD/MM/YYYY
@@ -234,6 +238,14 @@ export default function OrdersTab() {
   const [imagePickerProductId, setImagePickerProductId] = useState<
     string | null
   >(null);
+
+  // CK TT / chương trình khuyến mại theo từng item
+  const [promoExpandedId, setPromoExpandedId] = useState<string | null>(null);
+  const [promoModalProductId, setPromoModalProductId] = useState<string | null>(
+    null,
+  );
+  const [promoType, setPromoType] = useState<"percent" | "amount">("percent");
+  const [promoValue, setPromoValue] = useState("");
 
   // Refs for click outside
   const customerDropdownRef = useRef<HTMLDivElement>(null);
@@ -582,10 +594,14 @@ export default function OrdersTab() {
 
     await fetchDropdownData();
 
+    const isTLOrder = group.orderCode?.trim().toUpperCase().startsWith("TL");
+
     const response = await fetch("/api/orders");
     const result = await response.json();
     if (result.success) {
-      const nextCode = generateNextOrderCode(result.data);
+      const nextCode = isTLOrder
+        ? generateNextTLCode(result.data)
+        : generateNextOrderCode(result.data);
       setFormOrderCode(nextCode);
     }
 
@@ -653,9 +669,20 @@ export default function OrdersTab() {
     field: keyof SelectedProduct,
     value: any,
   ) => {
+    // CK TT: khi nhập cho 1 SP thì áp dụng luôn cho các SP cùng mã gốc
+    const target = selectedProducts.find((p) => p.id === id);
+    const propagateBase =
+      field === "paymentDiscount" && target
+        ? getBaseCode(target.productCode)
+        : null;
+
     setSelectedProducts(
       selectedProducts.map((p) => {
-        if (p.id !== id) return p;
+        const isTarget = p.id === id;
+        const isSameBase =
+          propagateBase !== null &&
+          getBaseCode(p.productCode) === propagateBase;
+        if (!isTarget && !isSameBase) return p;
 
         const updated = { ...p, [field]: value };
 
@@ -732,6 +759,38 @@ export default function OrdersTab() {
         return updated;
       }),
     );
+  };
+
+  // Mở modal áp dụng CK TT cho 1 item (prefill từ giá trị hiện có)
+  const openPromoModal = (productId: string) => {
+    const product = selectedProducts.find((p) => p.id === productId);
+    const current = product?.paymentDiscount || "";
+    if (current.includes("%")) {
+      setPromoType("percent");
+      setPromoValue(current.replace("%", "").trim());
+    } else if (current) {
+      setPromoType("amount");
+      setPromoValue(current.replace(/[,.\s]/g, ""));
+    } else {
+      setPromoType("percent");
+      setPromoValue("");
+    }
+    setPromoModalProductId(productId);
+  };
+
+  // Áp dụng giá trị CK TT từ modal → lan sang item cùng mã gốc (qua handleUpdateProductInList)
+  const applyPromo = () => {
+    if (!promoModalProductId) return;
+    const raw = promoValue.trim();
+    const value =
+      promoType === "percent"
+        ? raw
+          ? `${raw}%`
+          : ""
+        : raw.replace(/[,.\s]/g, "");
+    handleUpdateProductInList(promoModalProductId, "paymentDiscount", value);
+    setPromoModalProductId(null);
+    setPromoExpandedId(null);
   };
 
   // Handle Add multi-product order
@@ -2553,7 +2612,25 @@ export default function OrdersTab() {
                           </thead>
                           <tbody className="divide-y divide-gray-200">
                             {selectedProducts.map((product, index) => (
-                              <tr key={product.id} className="hover:bg-gray-50">
+                              <React.Fragment key={product.id}>
+                              <tr
+                                className="hover:bg-gray-50 cursor-pointer"
+                                title="Bấm vào dòng để áp dụng chương trình khuyến mại"
+                                onClick={(e) => {
+                                  // Bỏ qua khi bấm vào ô nhập liệu / nút bấm
+                                  if (
+                                    (e.target as HTMLElement).closest(
+                                      "input, select, textarea, button",
+                                    )
+                                  )
+                                    return;
+                                  setPromoExpandedId(
+                                    promoExpandedId === product.id
+                                      ? null
+                                      : product.id,
+                                  );
+                                }}
+                              >
                                 <td className="px-3 py-2 text-sm text-gray-600">
                                   {index + 1}
                                 </td>
@@ -2686,7 +2763,16 @@ export default function OrdersTab() {
                                       )
                                     }
                                     placeholder="5%"
-                                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                    className={`w-20 px-2 py-1 border rounded text-sm ${
+                                      selectedProducts.some(
+                                        (o) =>
+                                          o.id !== product.id &&
+                                          getBaseCode(o.productCode) ===
+                                            getBaseCode(product.productCode),
+                                      )
+                                        ? "border-red-300 text-red-600 font-medium"
+                                        : "border-gray-300"
+                                    }`}
                                   />
                                 </td>
                                 <td className="px-3 py-2 text-sm text-right font-semibold text-green-600 bg-green-50">
@@ -2750,6 +2836,20 @@ export default function OrdersTab() {
                                   </button>
                                 </td>
                               </tr>
+                              {promoExpandedId === product.id && (
+                                <tr className="bg-blue-50/60">
+                                  <td colSpan={14} className="px-4 py-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => openPromoModal(product.id)}
+                                      className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 rounded hover:bg-blue-100"
+                                    >
+                                      + Áp dụng chương trình khuyến mại
+                                    </button>
+                                  </td>
+                                </tr>
+                              )}
+                              </React.Fragment>
                             ))}
                           </tbody>
                           <tfoot className="bg-gray-100">
@@ -3545,6 +3645,95 @@ export default function OrdersTab() {
           setImagePickerProductId(null);
         }}
       />
+
+      {/* Modal áp dụng CK TT (chương trình khuyến mại) */}
+      {promoModalProductId && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+            onClick={() => setPromoModalProductId(null)}
+          >
+            <div
+              className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                Áp dụng chương trình khuyến mại
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Áp dụng cho{" "}
+                {
+                  selectedProducts.find((p) => p.id === promoModalProductId)
+                    ?.productCode
+                }{" "}
+                và các SP cùng mã gốc.
+              </p>
+
+              <div className="flex gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setPromoType("percent")}
+                  className={`flex-1 px-3 py-2 rounded border text-sm font-medium ${
+                    promoType === "percent"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-600 border-gray-300"
+                  }`}
+                >
+                  Phần trăm (%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoType("amount")}
+                  className={`flex-1 px-3 py-2 rounded border text-sm font-medium ${
+                    promoType === "amount"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-600 border-gray-300"
+                  }`}
+                >
+                  Số tiền (đ)
+                </button>
+              </div>
+
+              <div className="relative mb-5">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  value={promoValue}
+                  onChange={(e) =>
+                    setPromoValue(e.target.value.replace(/[^\d]/g, ""))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") applyPromo();
+                  }}
+                  placeholder={promoType === "percent" ? "Ví dụ: 5" : "Ví dụ: 5000"}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  {promoType === "percent" ? "%" : "đ"}
+                </span>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPromoModalProductId(null)}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={applyPromo}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                >
+                  Áp dụng
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
     </>
   );
 }

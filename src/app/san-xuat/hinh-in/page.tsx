@@ -8,8 +8,6 @@ import {
   Archive,
   Building2,
   Eye,
-  FileInput,
-  FileOutput,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -41,9 +39,7 @@ type TabType =
 const TABS = [
   { id: "danh-muc" as TabType, label: "Danh mục HI", icon: List },
   { id: "nhap-kho" as TabType, label: "Nhập kho HI", icon: PackagePlus },
-  { id: "phieu-nhap" as TabType, label: "Phiếu nhập kho HI", icon: FileInput },
   { id: "xuat-kho" as TabType, label: "Xuất kho HI", icon: PackageMinus },
-  { id: "phieu-xuat" as TabType, label: "Phiếu xuất kho HI", icon: FileOutput },
   { id: "ton-kho" as TabType, label: "Tồn kho HI", icon: Archive },
   { id: "ncc-hi" as TabType, label: "NCC HI", icon: Building2 },
   {
