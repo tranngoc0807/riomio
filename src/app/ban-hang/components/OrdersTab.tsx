@@ -636,6 +636,20 @@ export default function OrdersTab() {
         ? product.wholesalePrice
         : product.retailPrice;
 
+    // CK TT đang áp dụng cho cả đơn → SP mới thêm vào tự ăn luôn CK TT đó
+    const inheritedCKTT = selectedProducts[0]?.paymentDiscount || "";
+    let total = productPrice;
+    if (inheritedCKTT) {
+      if (inheritedCKTT.includes("%")) {
+        const discountValue = parseFloat(inheritedCKTT.replace("%", "")) / 100;
+        total = Math.round(productPrice * (1 - discountValue));
+      } else {
+        const fixedDiscount =
+          parseFloat(inheritedCKTT.replace(/[,.\s]/g, "")) || 0;
+        total = Math.round(productPrice - fixedDiscount);
+      }
+    }
+
     const newProduct: SelectedProduct = {
       id: `${product.code}-${Date.now()}`,
       productCode: product.code,
@@ -648,8 +662,8 @@ export default function OrdersTab() {
       discount: "",
       priceAfterDiscount: productPrice,
       subtotalAfterDiscount: productPrice,
-      paymentDiscount: "",
-      total: productPrice,
+      paymentDiscount: inheritedCKTT,
+      total,
       notes: "",
     };
 
@@ -669,20 +683,13 @@ export default function OrdersTab() {
     field: keyof SelectedProduct,
     value: any,
   ) => {
-    // CK TT: khi nhập cho 1 SP thì áp dụng luôn cho các SP cùng mã gốc
-    const target = selectedProducts.find((p) => p.id === id);
-    const propagateBase =
-      field === "paymentDiscount" && target
-        ? getBaseCode(target.productCode)
-        : null;
+    // CK TT: khi nhập cho 1 SP thì áp dụng cho TẤT CẢ sản phẩm (kể cả khác mã)
+    const propagateAll = field === "paymentDiscount";
 
     setSelectedProducts(
       selectedProducts.map((p) => {
         const isTarget = p.id === id;
-        const isSameBase =
-          propagateBase !== null &&
-          getBaseCode(p.productCode) === propagateBase;
-        if (!isTarget && !isSameBase) return p;
+        if (!isTarget && !propagateAll) return p;
 
         const updated = { ...p, [field]: value };
 
@@ -778,7 +785,7 @@ export default function OrdersTab() {
     setPromoModalProductId(productId);
   };
 
-  // Áp dụng giá trị CK TT từ modal → lan sang item cùng mã gốc (qua handleUpdateProductInList)
+  // Áp dụng giá trị CK TT từ modal → lan sang TẤT CẢ sản phẩm (qua handleUpdateProductInList)
   const applyPromo = () => {
     if (!promoModalProductId) return;
     const raw = promoValue.trim();
@@ -2763,16 +2770,7 @@ export default function OrdersTab() {
                                       )
                                     }
                                     placeholder="5%"
-                                    className={`w-20 px-2 py-1 border rounded text-sm ${
-                                      selectedProducts.some(
-                                        (o) =>
-                                          o.id !== product.id &&
-                                          getBaseCode(o.productCode) ===
-                                            getBaseCode(product.productCode),
-                                      )
-                                        ? "border-red-300 text-red-600 font-medium"
-                                        : "border-gray-300"
-                                    }`}
+                                    className="w-20 px-2 py-1 border rounded text-sm border-red-300 text-red-600 font-medium"
                                   />
                                 </td>
                                 <td className="px-3 py-2 text-sm text-right font-semibold text-green-600 bg-green-50">
@@ -3085,6 +3083,29 @@ export default function OrdersTab() {
                                 ? product.wholesalePrice
                                 : product.retailPrice;
 
+                              // CK TT đang áp dụng cho cả đơn → SP mới tự ăn luôn CK TT đó
+                              const inheritedCKTT =
+                                editProducts[0]?.paymentDiscount || "";
+                              let newTotal = productPrice;
+                              if (inheritedCKTT) {
+                                if (inheritedCKTT.includes("%")) {
+                                  const discountValue =
+                                    parseFloat(inheritedCKTT.replace("%", "")) /
+                                    100;
+                                  newTotal = Math.round(
+                                    productPrice * (1 - discountValue),
+                                  );
+                                } else {
+                                  const fixedDiscount =
+                                    parseFloat(
+                                      inheritedCKTT.replace(/[,.\s]/g, ""),
+                                    ) || 0;
+                                  newTotal = Math.round(
+                                    productPrice - fixedDiscount,
+                                  );
+                                }
+                              }
+
                               const newOrder: Order = {
                                 id: -(Date.now() + Math.floor(Math.random() * 1000)), // unique negative id; server assigns real id on save
                                 code: editGroupedOrder!.orderCode,
@@ -3099,8 +3120,8 @@ export default function OrdersTab() {
                                 discount: "",
                                 priceAfterDiscount: productPrice,
                                 subtotalAfterDiscount: productPrice,
-                                paymentDiscount: "",
-                                total: productPrice,
+                                paymentDiscount: inheritedCKTT,
+                                total: newTotal,
                                 salesUser: editGroupedOrder!.salesUser,
                                 notes: "",
                               };
@@ -3360,9 +3381,9 @@ export default function OrdersTab() {
                               value={product.paymentDiscount || ""}
                               onChange={(e) => {
                                 const paymentDiscount = e.target.value;
+                                // CK TT: nhập 1 lần áp dụng cho TẤT CẢ sản phẩm (kể cả khác mã)
                                 setEditProducts((prev) =>
                                   prev.map((p) => {
-                                    if (p.id !== product.id) return p;
                                     let total = p.subtotalAfterDiscount;
                                     if (paymentDiscount) {
                                       if (paymentDiscount.includes("%")) {
@@ -3393,7 +3414,7 @@ export default function OrdersTab() {
                                 );
                               }}
                               placeholder="5%"
-                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="w-20 px-2 py-1 border rounded text-sm border-red-300 text-red-600 font-medium"
                             />
                           </td>
                           <td className="px-3 py-2 text-sm text-right font-semibold text-green-600 bg-green-50">

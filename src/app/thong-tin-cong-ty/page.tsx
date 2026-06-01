@@ -409,13 +409,13 @@ export default function ThongTinCongTy() {
 
               {/* Nội dung announcement chồng lên giữa */}
               <div className="absolute inset-0 flex items-center justify-center px-12 sm:px-20 md:px-28">
-                <div className="text-center space-y-5 max-w-lg -translate-y-6 md:-translate-y-10">
+                <div className="text-center space-y-5 max-w-xl -translate-y-6 md:-translate-y-10">
                   {activeAnnouncements.map((announcement) => (
                     <div
                       key={announcement.id}
                       className="space-y-6 md:space-y-8"
                     >
-                      <h3 className="text-3xl md:text-5xl font-extrabold text-red-600 drop-shadow-sm">
+                      <h3 className="text-2xl md:text-4xl font-extrabold text-red-600 drop-shadow-sm text-balance md:whitespace-nowrap">
                         {announcement.title}
                       </h3>
                       <p className="text-gray-800 text-base md:text-xl leading-relaxed whitespace-pre-line font-semibold">

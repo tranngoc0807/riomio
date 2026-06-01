@@ -47,6 +47,23 @@ interface DanhMucHinhIn {
   tonKho: number;
 }
 
+// Một dòng hình in trong form tạo phiếu nhiều dòng
+interface SelectedHI {
+  id: string;
+  stt: string;
+  maHinhIn: string;
+  kichThuoc: string;
+  hinhAnh: string;
+  maSPSuDung: string;
+  datHI: number;
+  nhapKhoThucTe: number;
+  xuongIn: string;
+  nhapKhoMet: number;
+  donGia: number;
+  ngayNhapKho: string;
+  ghiChu: string;
+}
+
 interface GroupedNhapKho {
   groupKey: string;
   maDon: string;
@@ -103,6 +120,11 @@ export default function NhapKhoHinhInTab() {
 
   const [formData, setFormData] = useState(emptyForm);
 
+  // State cho form tạo phiếu nhiều dòng (gộp nhiều hình in vào 1 mã đơn)
+  const [formMaDon, setFormMaDon] = useState("");
+  const [formNgayThang, setFormNgayThang] = useState("");
+  const [selectedItems, setSelectedItems] = useState<SelectedHI[]>([]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -158,30 +180,122 @@ export default function NhapKhoHinhInTab() {
     setHiSearchTerm("");
   };
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.maHinhIn) {
-      toast.error("Vui lòng chọn mã hình in");
+  // Sinh mã phiếu tự động. Số thứ tự chạy CHUNG giữa ĐH và NKHI (lấy max + 1).
+  const generateNextMaPhieu = (prefix: "ĐH" | "NKHI"): string => {
+    const regex = /^(?:ĐH|NKHI)(\d+)$/i;
+    const numbers = data
+      .map((item) => {
+        const match = item.maDon?.trim().match(regex);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+    const maxNumber = Math.max(0, ...numbers);
+    return `${prefix}${maxNumber + 1}`;
+  };
+
+  // Mở form tạo phiếu nhiều dòng với mã đơn tự sinh theo tiền tố
+  const openAddModalWithPrefix = (prefix: "ĐH" | "NKHI") => {
+    setFormMaDon(generateNextMaPhieu(prefix));
+    setFormNgayThang(new Date().toISOString().split("T")[0]);
+    setSelectedItems([]);
+    setHiSearchTerm("");
+    setShowHiDropdown(false);
+    setShowAddModal(true);
+    fetchLookups();
+  };
+
+  // Nút "Tạo phiếu Nhập kho" → phiếu mã ĐH
+  const handleOpenAddDH = () => openAddModalWithPrefix("ĐH");
+
+  // Nút "Tạo phiếu PNKHI" → phiếu mã NKHI
+  const handleOpenAddModal = () => openAddModalWithPrefix("NKHI");
+
+  // Thêm 1 hình in (từ Danh mục HI) vào danh sách dòng của phiếu
+  const handleAddHILine = (item: DanhMucHinhIn) => {
+    setSelectedItems((prev) => [
+      ...prev,
+      {
+        id: `${item.id}-${Date.now()}`,
+        stt: String(prev.length + 1),
+        maHinhIn: item.maHinhIn,
+        kichThuoc: item.thongTinHinhIn,
+        hinhAnh: item.hinhAnh,
+        maSPSuDung: item.maSPSuDung,
+        datHI: 0,
+        nhapKhoThucTe: 0,
+        xuongIn: "",
+        nhapKhoMet: 0,
+        donGia: 0,
+        ngayNhapKho: "",
+        ghiChu: "",
+      },
+    ]);
+    setShowHiDropdown(false);
+    setHiSearchTerm("");
+  };
+
+  const updateLine = (
+    id: string,
+    field: keyof SelectedHI,
+    value: string | number,
+  ) => {
+    setSelectedItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, [field]: value } : it)),
+    );
+  };
+
+  const removeLine = (id: string) => {
+    setSelectedItems((prev) =>
+      prev
+        .filter((it) => it.id !== id)
+        .map((it, i) => ({ ...it, stt: String(i + 1) })),
+    );
+  };
+
+  // Lưu phiếu nhiều dòng: mỗi hình in là 1 record, chung mã đơn + ngày tháng
+  const handleAddPhieu = async () => {
+    if (!formMaDon || !formNgayThang) {
+      toast.error("Vui lòng nhập đầy đủ mã đơn và ngày tháng");
+      return;
+    }
+    if (selectedItems.length === 0) {
+      toast.error("Vui lòng thêm ít nhất 1 hình in");
       return;
     }
     try {
       setIsAdding(true);
-      const response = await fetch("/api/nhap-kho-hinh-in/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const result = await response.json();
-      if (result.success) {
-        toast.success("Thêm thành công");
-        setShowAddModal(false);
-        setFormData(emptyForm);
-        fetchData();
-      } else {
-        toast.error(result.error || "Không thể thêm");
+      let ok = 0;
+      for (const it of selectedItems) {
+        const response = await fetch("/api/nhap-kho-hinh-in/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            maDon: formMaDon,
+            ngayThang: formNgayThang,
+            stt: it.stt,
+            maHinhIn: it.maHinhIn,
+            kichThuoc: it.kichThuoc,
+            hinhAnh: it.hinhAnh,
+            datHI: it.datHI,
+            nhapKhoThucTe: it.nhapKhoThucTe,
+            maSPSuDung: it.maSPSuDung,
+            xuongIn: it.xuongIn,
+            nhapKhoMet: it.nhapKhoMet,
+            donGia: it.donGia,
+            ngayNhapKho: it.ngayNhapKho,
+            ghiChu: it.ghiChu,
+          }),
+        });
+        const result = await response.json();
+        if (result.success) ok++;
+        else toast.error(`Lỗi khi thêm ${it.maHinhIn}`);
       }
+      await fetchData();
+      setShowAddModal(false);
+      setSelectedItems([]);
+      toast.success(`Thêm phiếu ${formMaDon} thành công (${ok} hình in)`);
     } catch (error) {
-      toast.error("Lỗi khi thêm dữ liệu");
+      toast.error("Lỗi khi thêm phiếu");
     } finally {
       setIsAdding(false);
     }
@@ -495,13 +609,16 @@ export default function NhapKhoHinhInTab() {
             <FileSpreadsheet size={14} /> Excel
           </button>
           <button
-            onClick={() => {
-              setShowAddModal(true);
-              fetchLookups();
-            }}
+            onClick={handleOpenAddDH}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors"
+          >
+            <Plus size={18} /> Tạo phiếu Nhập kho
+          </button>
+          <button
+            onClick={handleOpenAddModal}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
-            <Plus size={18} /> Tạo phiếu nhập kho
+            <Plus size={18} /> Tạo phiếu PNKHI
           </button>
         </div>
       </div>
@@ -945,24 +1062,16 @@ export default function NhapKhoHinhInTab() {
         </div>
       )}
 
-      {/* Add / Edit Modal */}
-      {(showAddModal || showEditModal) && (
+      {/* Edit Modal (sửa 1 dòng hình in) */}
+      {showEditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
-              <h3 className="text-lg font-semibold">
-                {showEditModal
-                  ? "Sửa phiếu nhập kho HI"
-                  : "Tạo phiếu đặt in / nhập kho HI"}
-              </h3>
+              <h3 className="text-lg font-semibold">Sửa phiếu nhập kho HI</h3>
               <button
                 onClick={() => {
-                  if (showEditModal) {
-                    setShowEditModal(false);
-                    setEditingId(null);
-                  } else {
-                    setShowAddModal(false);
-                  }
+                  setShowEditModal(false);
+                  setEditingId(null);
                   setFormData(emptyForm);
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
@@ -970,10 +1079,7 @@ export default function NhapKhoHinhInTab() {
                 <X size={20} />
               </button>
             </div>
-            <form
-              onSubmit={showEditModal ? handleEdit : handleAdd}
-              className="p-6 space-y-4"
-            >
+            <form onSubmit={handleEdit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -982,11 +1088,9 @@ export default function NhapKhoHinhInTab() {
                   <input
                     type="text"
                     value={formData.maDon}
-                    onChange={(e) =>
-                      setFormData({ ...formData, maDon: e.target.value })
-                    }
-                    placeholder="VD: ĐHI01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    readOnly
+                    placeholder="VD: ĐH49 / NKHI49"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -1264,12 +1368,8 @@ export default function NhapKhoHinhInTab() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (showEditModal) {
-                      setShowEditModal(false);
-                      setEditingId(null);
-                    } else {
-                      setShowAddModal(false);
-                    }
+                    setShowEditModal(false);
+                    setEditingId(null);
                     setFormData(emptyForm);
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
@@ -1279,17 +1379,325 @@ export default function NhapKhoHinhInTab() {
                 <button
                   type="submit"
                   disabled={isAdding}
-                  className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 flex items-center gap-2 ${
-                    showEditModal
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-blue-600 hover:bg-blue-700"
-                  }`}
+                  className="px-4 py-2 text-white rounded-lg disabled:opacity-50 flex items-center gap-2 bg-green-600 hover:bg-green-700"
                 >
                   {isAdding && <Loader2 className="animate-spin" size={16} />}
-                  {showEditModal ? "Lưu" : "Thêm mới"}
+                  Lưu
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Modal: tạo phiếu nhiều dòng (gộp nhiều hình in vào 1 mã đơn) */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h3 className="text-lg font-semibold">
+                  Tạo phiếu nhập kho hình in
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Mã đơn <span className="font-semibold text-blue-600">{formMaDon}</span> · {selectedItems.length} hình in
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setSelectedItems([]);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Phiếu-level fields */}
+            <div className="grid grid-cols-2 gap-4 px-6 py-4 border-b bg-gray-50">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mã đơn
+                </label>
+                <input
+                  type="text"
+                  value={formMaDon}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ngày tháng <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formNgayThang}
+                  onChange={(e) => setFormNgayThang(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* HI picker để thêm dòng */}
+            <div className="px-6 py-4 border-b">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Thêm hình in <span className="text-red-500">*</span>
+              </label>
+              <div className="relative max-w-md">
+                <input
+                  type="text"
+                  value={hiSearchTerm}
+                  onChange={(e) => {
+                    setHiSearchTerm(e.target.value);
+                    setShowHiDropdown(true);
+                  }}
+                  onFocus={() => setShowHiDropdown(true)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Tìm mã hình in để thêm vào phiếu..."
+                />
+                {showHiDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowHiDropdown(false)}
+                    />
+                    <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+                      {filteredDanhMucHI.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                          Không tìm thấy
+                        </div>
+                      ) : (
+                        filteredDanhMucHI.map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleAddHILine(item)}
+                            className="px-4 py-2.5 cursor-pointer hover:bg-blue-50 flex items-center gap-3 text-gray-700"
+                          >
+                            {item.hinhAnh ? (
+                              <img
+                                src={item.hinhAnh}
+                                alt={item.maHinhIn}
+                                className="w-8 h-8 object-cover rounded"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
+                                -
+                              </div>
+                            )}
+                            <span className="text-sm">{item.maHinhIn}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Danh sách dòng hình in */}
+            <div className="overflow-auto flex-1 px-6 py-4">
+              {selectedItems.length === 0 ? (
+                <div className="text-center text-gray-400 py-10 text-sm">
+                  Chưa có hình in nào. Dùng ô tìm kiếm ở trên để thêm.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedItems.map((it) => (
+                    <div
+                      key={it.id}
+                      className="border border-gray-200 rounded-xl p-4"
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        {it.hinhAnh ? (
+                          <img
+                            src={it.hinhAnh}
+                            alt={it.maHinhIn}
+                            className="w-12 h-12 object-cover rounded border cursor-zoom-in hover:opacity-90"
+                            onClick={() => setZoomedImageUrl(it.hinhAnh)}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
+                            -
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-blue-600">
+                            {it.stt}. {it.maHinhIn}
+                          </p>
+                          <p className="text-xs text-gray-500 whitespace-pre-line">
+                            {it.kichThuoc}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Mã SP: {it.maSPSuDung || "-"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeLine(it.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          title="Xóa dòng"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Đặt HI
+                          </label>
+                          <input
+                            type="number"
+                            value={it.datHI || ""}
+                            onChange={(e) =>
+                              updateLine(
+                                it.id,
+                                "datHI",
+                                parseFloat(e.target.value) || 0,
+                              )
+                            }
+                            placeholder="0"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Nhập kho thực tế
+                          </label>
+                          <input
+                            type="number"
+                            value={it.nhapKhoThucTe || ""}
+                            onChange={(e) =>
+                              updateLine(
+                                it.id,
+                                "nhapKhoThucTe",
+                                parseFloat(e.target.value) || 0,
+                              )
+                            }
+                            placeholder="0"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Xưởng in
+                          </label>
+                          <select
+                            value={it.xuongIn}
+                            onChange={(e) =>
+                              updateLine(it.id, "xuongIn", e.target.value)
+                            }
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="">-- Chọn --</option>
+                            {XUONG_IN_OPTIONS.map((x) => (
+                              <option key={x} value={x}>
+                                {x}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Nhập kho (Mét)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={it.nhapKhoMet || ""}
+                            onChange={(e) =>
+                              updateLine(
+                                it.id,
+                                "nhapKhoMet",
+                                parseFloat(e.target.value) || 0,
+                              )
+                            }
+                            placeholder="0"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Đơn giá
+                          </label>
+                          <input
+                            type="number"
+                            value={it.donGia || ""}
+                            onChange={(e) =>
+                              updateLine(
+                                it.id,
+                                "donGia",
+                                parseFloat(e.target.value) || 0,
+                              )
+                            }
+                            placeholder="0"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Thành tiền
+                          </label>
+                          <div className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-purple-700 font-semibold">
+                            {((it.nhapKhoMet || 0) * (it.donGia || 0)).toLocaleString("vi-VN")}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Ngày nhập kho
+                          </label>
+                          <input
+                            type="date"
+                            value={it.ngayNhapKho}
+                            onChange={(e) =>
+                              updateLine(it.id, "ngayNhapKho", e.target.value)
+                            }
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Ghi chú
+                          </label>
+                          <input
+                            type="text"
+                            value={it.ghiChu}
+                            onChange={(e) =>
+                              updateLine(it.id, "ghiChu", e.target.value)
+                            }
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setSelectedItems([]);
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleAddPhieu}
+                disabled={isAdding}
+                className="px-4 py-2 text-white rounded-lg disabled:opacity-50 flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                {isAdding && <Loader2 className="animate-spin" size={16} />}
+                Lưu phiếu
+              </button>
+            </div>
           </div>
         </div>
       )}

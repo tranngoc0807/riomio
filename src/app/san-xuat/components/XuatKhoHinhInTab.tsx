@@ -11,6 +11,7 @@ import {
   X,
   Pencil,
   Trash2,
+  Eye,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import toast from "react-hot-toast";
@@ -36,6 +37,16 @@ interface DanhMucHinhIn {
   anhMinhHoa: string;
   maSPSuDung: string;
   tonKho: number;
+}
+
+interface GroupedXuatKho {
+  groupKey: string;
+  maPhieuXuat: string;
+  ngayThang: string;
+  items: XuatKhoHinhIn[];
+  soHinhIn: number;
+  totalSoLuong: number;
+  totalTonKho: number;
 }
 
 const ITEMS_PER_PAGE = 100;
@@ -67,6 +78,7 @@ export default function XuatKhoHinhInTab() {
   const [isSaving, setIsSaving] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<XuatKhoHinhIn | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewingGroup, setViewingGroup] = useState<GroupedXuatKho | null>(null);
 
   const [formData, setFormData] = useState(emptyForm);
 
@@ -165,6 +177,25 @@ export default function XuatKhoHinhInTab() {
     }
   };
 
+  // Sinh mã phiếu xuất tự động tăng dần (PXKHI01, PXKHI02, ...)
+  const generateNextMaPhieu = (prefix: string = "PXKHI"): string => {
+    const regex = new RegExp(`^${prefix}(\\d+)$`, "i");
+    const numbers = data
+      .map((item) => {
+        const match = item.maPhieuXuat?.trim().match(regex);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+    const maxNumber = Math.max(0, ...numbers);
+    return `${prefix}${String(maxNumber + 1).padStart(2, "0")}`;
+  };
+
+  const handleOpenAddModal = () => {
+    setFormData({ ...emptyForm, maPhieuXuat: generateNextMaPhieu("PXKHI") });
+    setShowAddModal(true);
+    fetchDanhMucHI();
+  };
+
   const openEditModal = (item: XuatKhoHinhIn) => {
     setEditingId(item.id);
     setFormData({
@@ -234,47 +265,87 @@ export default function XuatKhoHinhInTab() {
     }
   };
 
-  // Sort by date descending
-  const sortedData = useMemo(() => {
-    return [...data].sort((a, b) => {
-      const parseDate = (d: string) => {
-        if (!d) return 0;
-        if (d.includes("/")) {
-          const [dd, mm, yyyy] = d.split("/");
-          return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
-        }
-        return new Date(d).getTime() || 0;
-      };
-      return parseDate(b.ngayThang) - parseDate(a.ngayThang);
+  const parseDateTs = (d: string) => {
+    if (!d) return 0;
+    if (d.includes("/")) {
+      const [dd, mm, yyyy] = d.split("/");
+      return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+    }
+    return new Date(d).getTime() || 0;
+  };
+
+  // Gộp các dòng cùng mã phiếu xuất thành 1 nhóm (dòng không có mã → nhóm riêng)
+  const groupedData: GroupedXuatKho[] = useMemo(() => {
+    const groups: Record<string, GroupedXuatKho> = {};
+    data.forEach((item) => {
+      const key = item.maPhieuXuat?.trim()
+        ? `MP:${item.maPhieuXuat.trim()}`
+        : `NO:${item.id}`;
+      if (!groups[key]) {
+        groups[key] = {
+          groupKey: key,
+          maPhieuXuat: item.maPhieuXuat || "",
+          ngayThang: item.ngayThang || "",
+          items: [],
+          soHinhIn: 0,
+          totalSoLuong: 0,
+          totalTonKho: 0,
+        };
+      }
+      const g = groups[key];
+      g.items.push(item);
+      g.soHinhIn += 1;
+      g.totalSoLuong += item.soLuong || 0;
+      g.totalTonKho += item.tonKho || 0;
+      if (!g.ngayThang && item.ngayThang) g.ngayThang = item.ngayThang;
     });
+    return Object.values(groups).sort(
+      (a, b) => parseDateTs(b.ngayThang) - parseDateTs(a.ngayThang),
+    );
   }, [data]);
 
-  const filteredData = sortedData.filter((item) => {
+  // Đồng bộ nhóm đang xem sau khi sửa/xóa và refetch
+  useEffect(() => {
+    if (!viewingGroup) return;
+    const fresh = groupedData.find((g) => g.groupKey === viewingGroup.groupKey);
+    if (!fresh) {
+      setViewingGroup(null);
+      return;
+    }
+    if (fresh !== viewingGroup) setViewingGroup(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupedData]);
+
+  const filteredGroups = groupedData.filter((g) => {
     const s = searchTerm.toLowerCase();
-    return (
-      item.maPhieuXuat.toLowerCase().includes(s) ||
-      item.maHinhIn.toLowerCase().includes(s) ||
-      item.ngayThang.toLowerCase().includes(s)
-    );
+    if (!s) return true;
+    if (g.maPhieuXuat.toLowerCase().includes(s)) return true;
+    if (g.ngayThang.toLowerCase().includes(s)) return true;
+    return g.items.some((it) => it.maHinhIn.toLowerCase().includes(s));
   });
 
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredGroups.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedData = filteredData.slice(
+  const paginatedGroups = filteredGroups.slice(
     startIndex,
     startIndex + ITEMS_PER_PAGE,
   );
 
-  const totalSoLuong = filteredData.reduce((sum, item) => sum + item.soLuong, 0);
-  const totalTonKho = filteredData.reduce((sum, item) => sum + item.tonKho, 0);
+  const filteredLines = filteredGroups.flatMap((g) => g.items);
+  const totalLines = filteredLines.length;
+  const totalSoLuong = filteredLines.reduce(
+    (sum, item) => sum + item.soLuong,
+    0,
+  );
+  const totalTonKho = filteredLines.reduce((sum, item) => sum + item.tonKho, 0);
 
   const fmt = (v: number) => (v ? v.toLocaleString("vi-VN") : "-");
 
   const handleExportPDF = () => {
-    if (filteredData.length === 0) return;
+    if (filteredLines.length === 0) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
-    const rows = filteredData
+    const rows = filteredLines
       .map(
         (item, i) => `<tr>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
@@ -306,8 +377,8 @@ export default function XuatKhoHinhInTab() {
   };
 
   const handleExportExcel = () => {
-    if (filteredData.length === 0) return;
-    const sheetData = filteredData.map((item, i) => ({
+    if (filteredLines.length === 0) return;
+    const sheetData = filteredLines.map((item, i) => ({
       STT: i + 1,
       "Mã phiếu xuất": item.maPhieuXuat,
       "Ngày tháng": item.ngayThang,
@@ -336,7 +407,7 @@ export default function XuatKhoHinhInTab() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">
-          Xuất kho hình in ({filteredData.length})
+          Xuất kho hình in ({filteredGroups.length} phiếu · {totalLines} dòng)
         </h3>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -366,10 +437,7 @@ export default function XuatKhoHinhInTab() {
             <FileSpreadsheet size={14} /> Excel
           </button>
           <button
-            onClick={() => {
-              setShowAddModal(true);
-              fetchDanhMucHI();
-            }}
+            onClick={handleOpenAddModal}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
             <Plus size={18} /> Tạo phiếu xuất
@@ -380,9 +448,9 @@ export default function XuatKhoHinhInTab() {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
-          <p className="text-sm text-orange-600 mb-1">Số dòng</p>
+          <p className="text-sm text-orange-600 mb-1">Số phiếu</p>
           <p className="text-2xl font-bold text-orange-700">
-            {filteredData.length}
+            {filteredGroups.length}
           </p>
         </div>
         <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border border-red-200">
@@ -414,20 +482,14 @@ export default function XuatKhoHinhInTab() {
                 <th className="px-3 py-3 text-left font-medium text-gray-600">
                   Ngày tháng
                 </th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600">
-                  Mã HI
-                </th>
-                <th className="px-3 py-3 text-center font-medium text-gray-600 w-16">
-                  Hình ảnh
+                <th className="px-3 py-3 text-center font-medium text-gray-600">
+                  Số HI
                 </th>
                 <th className="px-3 py-3 text-right font-medium text-gray-600">
-                  Số lượng
+                  Tổng số lượng
                 </th>
                 <th className="px-3 py-3 text-right font-medium text-gray-600">
-                  Tồn kho
-                </th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600">
-                  Ghi chú
+                  Tổng tồn kho
                 </th>
                 <th className="px-3 py-3 text-center font-medium text-gray-600 w-24">
                   Thao tác
@@ -435,76 +497,87 @@ export default function XuatKhoHinhInTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {paginatedData.length === 0 ? (
+              {paginatedGroups.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-gray-500"
                   >
                     Không có dữ liệu
                   </td>
                 </tr>
               ) : (
-                paginatedData.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-3 text-gray-600">
-                      {startIndex + index + 1}
-                    </td>
-                    <td className="px-3 py-3 font-medium text-gray-900">
-                      {item.maPhieuXuat || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-gray-900">
-                      {item.ngayThang}
-                    </td>
-                    <td className="px-3 py-3 font-medium text-blue-600">
-                      {item.maHinhIn}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      {item.hinhAnh ? (
-                        <img
-                          src={item.hinhAnh}
-                          alt={item.maHinhIn}
-                          className="w-10 h-10 object-cover rounded mx-auto cursor-zoom-in hover:opacity-80"
-                          onClick={() => setZoomedImageUrl(item.hinhAnh)}
-                        />
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold text-red-600">
-                      {fmt(item.soLuong)}
-                    </td>
-                    <td className="px-3 py-3 text-right font-medium text-green-700">
-                      {item.tonKho ? item.tonKho.toLocaleString("vi-VN") : "0"}
-                    </td>
-                    <td className="px-3 py-3 text-gray-500">
-                      {item.ghiChu || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => openEditModal(item)}
-                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Sửa"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => setItemToDelete(item)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Xóa"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                paginatedGroups.map((g, index) => {
+                  const onlyItem =
+                    !g.maPhieuXuat && g.items.length === 1 ? g.items[0] : null;
+                  return (
+                    <tr
+                      key={g.groupKey}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setViewingGroup(g)}
+                    >
+                      <td className="px-3 py-3 text-gray-600">
+                        {startIndex + index + 1}
+                      </td>
+                      <td className="px-3 py-3 font-semibold text-gray-900">
+                        {g.maPhieuXuat || (
+                          <span className="text-gray-400 italic">(không mã)</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-gray-900">
+                        {g.ngayThang || "-"}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-xs">
+                          {g.soHinhIn}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-red-600">
+                        {fmt(g.totalSoLuong)}
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium text-green-700">
+                        {fmt(g.totalTonKho)}
+                      </td>
+                      <td
+                        className="px-3 py-3 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setViewingGroup(g)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Xem chi tiết"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          {onlyItem && (
+                            <>
+                              <button
+                                onClick={() => openEditModal(onlyItem)}
+                                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="Sửa"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => setItemToDelete(onlyItem)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Xóa"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
             <tfoot>
               <tr className="bg-gray-100 font-semibold">
-                <td colSpan={5} className="px-3 py-3 text-right">
+                <td colSpan={4} className="px-3 py-3 text-right">
                   Tổng cộng:
                 </td>
                 <td className="px-3 py-3 text-right text-red-600">
@@ -513,7 +586,7 @@ export default function XuatKhoHinhInTab() {
                 <td className="px-3 py-3 text-right text-green-700">
                   {fmt(totalTonKho)}
                 </td>
-                <td colSpan={2}></td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
@@ -524,8 +597,8 @@ export default function XuatKhoHinhInTab() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
             <div className="text-sm text-gray-500">
               Hiển thị {startIndex + 1} -{" "}
-              {Math.min(startIndex + ITEMS_PER_PAGE, filteredData.length)} /{" "}
-              {filteredData.length}
+              {Math.min(startIndex + ITEMS_PER_PAGE, filteredGroups.length)} /{" "}
+              {filteredGroups.length} phiếu
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -578,6 +651,150 @@ export default function XuatKhoHinhInTab() {
         </div>
       )}
 
+      {/* Group detail modal */}
+      {viewingGroup && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-40 p-4"
+          onClick={() => setViewingGroup(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chi tiết phiếu xuất{" "}
+                  <span className="text-blue-600">
+                    {viewingGroup.maPhieuXuat || "(không mã)"}
+                  </span>
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Ngày {viewingGroup.ngayThang || "-"} · {viewingGroup.soHinhIn}{" "}
+                  hình in
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingGroup(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 px-6 py-4 bg-gray-50 border-b">
+              <div>
+                <p className="text-xs text-gray-500">Tổng số lượng xuất</p>
+                <p className="text-lg font-semibold text-red-700">
+                  {viewingGroup.totalSoLuong.toLocaleString("vi-VN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Tổng tồn kho</p>
+                <p className="text-lg font-semibold text-green-700">
+                  {viewingGroup.totalTonKho.toLocaleString("vi-VN")}
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-auto flex-1">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-3 py-2 text-center font-medium text-gray-600 w-12">
+                      STT
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">
+                      Mã HI
+                    </th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-600 w-16">
+                      Ảnh
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">
+                      Số lượng
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">
+                      Tồn kho
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">
+                      Ghi chú
+                    </th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-600 w-24">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {viewingGroup.items.map((item, i) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-center text-gray-600">
+                        {i + 1}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-blue-600">
+                        {item.maHinhIn}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {item.hinhAnh ? (
+                          <img
+                            src={item.hinhAnh}
+                            alt={item.maHinhIn}
+                            className="w-10 h-10 object-cover rounded mx-auto cursor-zoom-in hover:opacity-80"
+                            onClick={() => setZoomedImageUrl(item.hinhAnh)}
+                          />
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-red-600">
+                        {fmt(item.soLuong)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-green-700">
+                        {item.tonKho
+                          ? item.tonKho.toLocaleString("vi-VN")
+                          : "0"}
+                      </td>
+                      <td className="px-3 py-2 text-gray-500">
+                        {item.ghiChu || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setViewingGroup(null);
+                              openEditModal(item);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Sửa"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setItemToDelete(item)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Xóa"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t">
+              <button
+                onClick={() => setViewingGroup(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add / Edit Modal */}
       {(showAddModal || showEditModal) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -615,11 +832,9 @@ export default function XuatKhoHinhInTab() {
                   <input
                     type="text"
                     value={formData.maPhieuXuat}
-                    onChange={(e) =>
-                      setFormData({ ...formData, maPhieuXuat: e.target.value })
-                    }
+                    readOnly
                     placeholder="VD: PXKHI01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-not-allowed"
                   />
                 </div>
                 <div>

@@ -40,8 +40,11 @@ export default function SoQuy() {
 
   const [activeTab, setActiveTab] = useState<TabType>("so-quy");
 
-  // Filter tabs based on permissions
+  // Filter tabs based on permissions.
+  // Quyền cha "so-quy" (toggle Sổ quỹ trong phân quyền) → mở tất cả tab;
+  // nếu không, lọc theo từng quyền tab con "so-quy/<tab>".
   const filteredTabs = useMemo(() => {
+    if (hasAccess("so-quy")) return TABS;
     return TABS.filter((tab) => hasAccess(`so-quy/${tab.id}`));
   }, [hasAccess]);
 
