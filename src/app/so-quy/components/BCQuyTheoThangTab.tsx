@@ -167,6 +167,11 @@ export default function BCQuyTheoThangTab() {
     { duDau: 0, thu: 0, chi: 0, duCuoi: 0 }
   ) || { duDau: 0, thu: 0, chi: 0, duCuoi: 0 };
 
+  // Sắp xếp bảng 1 theo Dư đầu giảm dần (tài khoản có dư đầu cao nhất lên trên)
+  const sortedTable1 = data
+    ? [...data.table1].sort((a, b) => b.duDau - a.duDau)
+    : [];
+
   // Calculate totals for Table 2
   const table2Total = data?.table2.reduce((acc, row) => acc + row.soTien, 0) || 0;
 
@@ -176,19 +181,13 @@ export default function BCQuyTheoThangTab() {
     if (!printWindow) return;
     const fmt = (v: number) => v.toLocaleString("vi-VN");
 
-    const rows1 = data.table1.map((row) => `<tr>
-      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
+    const rows1 = sortedTable1.map((row, i) => `<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${row.taiKhoan}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${row.duDau ? fmt(row.duDau) : "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${row.thu ? fmt(row.thu) : "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${row.chi ? fmt(row.chi) : "-"}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${row.duCuoi ? fmt(row.duCuoi) : "-"}</td>
-    </tr>`).join("");
-
-    const rows2 = data.table2.map((row) => `<tr>
-      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${row.stt}</td>
-      <td style="padding:5px 8px;border:1px solid #ddd;">${row.taiKhoan}</td>
-      <td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600;">${row.soTien ? fmt(row.soTien) : "-"}</td>
     </tr>`).join("");
 
     printWindow.document.write(`<html><head><title>Báo cáo quỹ theo tháng</title>
@@ -197,10 +196,6 @@ export default function BCQuyTheoThangTab() {
       <h2>Báo cáo quỹ - Tháng ${data.date1}</h2>
       <table><thead><tr><th style="width:40px;">STT</th><th>Tài khoản</th><th style="text-align:right;">Dư đầu</th><th style="text-align:right;">Thu</th><th style="text-align:right;">Chi</th><th style="text-align:right;">Dư cuối</th></tr></thead><tbody>${rows1}
         <tr style="background:#f0f0f0;font-weight:600;"><td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(table1Totals.duDau)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:green;">${fmt(table1Totals.thu)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;color:red;">${fmt(table1Totals.chi)}</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(table1Totals.duCuoi)}</td></tr>
-      </tbody></table>
-      <h2>Bảng kê số dư quỹ đầu kỳ đến ngày ${data.date2}</h2>
-      <table><thead><tr><th style="width:40px;">STT</th><th>Tài khoản</th><th style="text-align:right;">Số tiền</th></tr></thead><tbody>${rows2}
-        <tr style="background:#f0f0f0;font-weight:600;"><td colspan="2" style="padding:5px 8px;border:1px solid #ddd;text-align:right;">Tổng:</td><td style="padding:5px 8px;border:1px solid #ddd;text-align:right;">${fmt(table2Total)}</td></tr>
       </tbody></table></body></html>`);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 300);
@@ -211,8 +206,8 @@ export default function BCQuyTheoThangTab() {
     const wb = XLSX.utils.book_new();
 
     // Sheet 1: Báo cáo quỹ
-    const sheet1Data = data.table1.map((row) => ({
-      "STT": row.stt,
+    const sheet1Data = sortedTable1.map((row, i) => ({
+      "STT": i + 1,
       "Tài khoản": row.taiKhoan,
       "Dư đầu": row.duDau,
       "Thu": row.thu,
@@ -327,9 +322,9 @@ export default function BCQuyTheoThangTab() {
                     </td>
                   </tr>
                 ) : (
-                  data?.table1.map((row, index) => (
+                  sortedTable1.map((row, index) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-3 py-2 text-sm text-gray-600">{row.stt}</td>
+                      <td className="px-3 py-2 text-sm text-gray-600">{index + 1}</td>
                       <td className="px-3 py-2 text-sm font-medium text-gray-900">
                         {row.taiKhoan}
                       </td>

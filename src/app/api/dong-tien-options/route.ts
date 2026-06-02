@@ -7,6 +7,8 @@ import {
   getVanChuyenOptionsFromSheet,
   getXuongSXToDoiTuongMapping,
   getKhachHangOptionsFromSheet,
+  getNCCHinhInOptionsFromSheet,
+  getCaNhanToChucChoVayOptionsFromSheet,
 } from "@/lib/googleSheets";
 
 /**
@@ -15,7 +17,7 @@ import {
  */
 export async function GET() {
   try {
-    const [taiKhoanOptions, phanLoaiOptions, nccNPLOptions, xuongSXOptions, vanChuyenOptions, xuongSXToDoiTuongMapping, khachHangOptions] = await Promise.all([
+    const [taiKhoanOptions, phanLoaiOptions, nccNPLOptions, xuongSXOptions, vanChuyenOptions, xuongSXToDoiTuongMapping, khachHangOptions, nccHinhInOptions, caNhanToChucChoVayOptions] = await Promise.all([
       getTaiKhoanOptionsFromSheet(),
       getPhanLoaiThuChiOptionsFromSheet(),
       getNCCNPLOptionsFromSheet(),
@@ -23,6 +25,8 @@ export async function GET() {
       getVanChuyenOptionsFromSheet(),
       getXuongSXToDoiTuongMapping(),
       getKhachHangOptionsFromSheet(),
+      getNCCHinhInOptionsFromSheet(),
+      getCaNhanToChucChoVayOptionsFromSheet(),
     ]);
 
     return NextResponse.json({
@@ -35,6 +39,8 @@ export async function GET() {
         vanChuyen: vanChuyenOptions,
         xuongSXToDoiTuong: xuongSXToDoiTuongMapping,
         khachHang: khachHangOptions,
+        nccHinhIn: nccHinhInOptions,
+        caNhanToChucChoVay: caNhanToChucChoVayOptions,
       },
     });
   } catch (error: any) {

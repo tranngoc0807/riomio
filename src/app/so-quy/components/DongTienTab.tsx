@@ -120,6 +120,10 @@ export default function DongTienTab() {
   const [xuongSXOptions, setXuongSXOptions] = useState<string[]>([]);
   const [vanChuyenOptions, setVanChuyenOptions] = useState<string[]>([]);
   const [khachHangOptions, setKhachHangOptions] = useState<string[]>([]);
+  const [nccHinhInOptions, setNccHinhInOptions] = useState<string[]>([]);
+  const [caNhanToChucChoVayOptions, setCaNhanToChucChoVayOptions] = useState<
+    string[]
+  >([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -146,6 +150,8 @@ export default function DongTienTab() {
     tongThu: "",
     tongChi: "",
     ghiChu: "",
+    nccHinhIn: "",
+    caNhanToChucChoVay: "",
   });
 
   useEffect(() => {
@@ -165,6 +171,8 @@ export default function DongTienTab() {
         setXuongSXOptions(result.data.xuongSX);
         setVanChuyenOptions(result.data.vanChuyen);
         setKhachHangOptions(result.data.khachHang);
+        setNccHinhInOptions(result.data.nccHinhIn || []);
+        setCaNhanToChucChoVayOptions(result.data.caNhanToChucChoVay || []);
       } else {
         toast.error(result.error || "Không thể tải tùy chọn dropdown");
       }
@@ -297,6 +305,8 @@ export default function DongTienTab() {
       tongThu: "",
       tongChi: "",
       ghiChu: "",
+      nccHinhIn: "",
+      caNhanToChucChoVay: "",
     });
     setEditingItem(null);
     setShowPhieuThuModal(true);
@@ -321,6 +331,8 @@ export default function DongTienTab() {
       tongThu: "",
       tongChi: "",
       ghiChu: "",
+      nccHinhIn: "",
+      caNhanToChucChoVay: "",
     });
     setEditingItem(null);
     setShowPhieuChiModal(true);
@@ -434,6 +446,8 @@ export default function DongTienTab() {
       tongThu: String(item.tongThu || ""),
       tongChi: String(item.tongChi || ""),
       ghiChu: item.ghiChu,
+      nccHinhIn: item.nccHinhIn || "",
+      caNhanToChucChoVay: item.caNhanToChucChoVay || "",
     });
     // Open the appropriate modal based on which code exists
     if (item.maPhieuThu && item.maPhieuThu.toUpperCase().startsWith('PT')) {
@@ -470,6 +484,8 @@ export default function DongTienTab() {
       tongThu: "",
       tongChi: "",
       ghiChu: "",
+      nccHinhIn: "",
+      caNhanToChucChoVay: "",
     });
   };
 
@@ -611,17 +627,23 @@ export default function DongTienTab() {
   const totalThu = dongTienList.reduce((sum, item) => sum + item.tongThu, 0);
   const totalChi = dongTienList.reduce((sum, item) => sum + item.tongChi, 0);
 
+  // Giao dịch mới thêm/cập nhật lên đầu: sắp theo rowIndex giảm dần
+  // (dòng mới được thêm ở cuối Google Sheet → có rowIndex lớn hơn → hiển thị trên cùng)
+  const sortedList = [...dongTienList].sort(
+    (a, b) => (b.rowIndex || 0) - (a.rowIndex || 0),
+  );
+
   // Pagination logic
-  const totalPages = Math.ceil(dongTienList.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedList.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedList = dongTienList.slice(startIndex, endIndex);
+  const paginatedList = sortedList.slice(startIndex, endIndex);
 
   const handleExportPDF = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const fmt = (v: number) => v.toLocaleString("vi-VN");
-    const rows = dongTienList.map((item, i) => `<tr>
+    const rows = sortedList.map((item, i) => `<tr>
       <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.ngayThang}</td>
       <td style="padding:5px 8px;border:1px solid #ddd;">${item.tenTK}</td>
@@ -649,7 +671,7 @@ export default function DongTienTab() {
   };
 
   const handleExportExcel = () => {
-    const sheetData = dongTienList.map((item, i) => ({
+    const sheetData = sortedList.map((item, i) => ({
       "STT": i + 1,
       "Ngày tháng": item.ngayThang,
       "Tên TK": item.tenTK,
@@ -1193,6 +1215,50 @@ export default function DongTienTab() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nhà cung cấp hình in
+                  </label>
+                  <select
+                    value={formData.nccHinhIn}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nccHinhIn: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">Chọn NCC hình in</option>
+                    {nccHinhInOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cá nhân/tổ chức cho vay
+                  </label>
+                  <select
+                    value={formData.caNhanToChucChoVay}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        caNhanToChucChoVay: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">Chọn cá nhân/tổ chức cho vay</option>
+                    {caNhanToChucChoVayOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nội dung
@@ -1495,6 +1561,50 @@ export default function DongTienTab() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Nhập số tiền"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nhà cung cấp hình in
+                  </label>
+                  <select
+                    value={formData.nccHinhIn}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nccHinhIn: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">Chọn NCC hình in</option>
+                    {nccHinhInOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cá nhân/tổ chức cho vay
+                  </label>
+                  <select
+                    value={formData.caNhanToChucChoVay}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        caNhanToChucChoVay: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">Chọn cá nhân/tổ chức cho vay</option>
+                    {caNhanToChucChoVayOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>

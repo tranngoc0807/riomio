@@ -107,7 +107,7 @@ export default function BCQuyTheoNgayTab() {
     const rows = table1.map((row) => `
       <tr>
         <td style="padding:6px 10px; border:1px solid #ddd; text-align:center;">${row.stt}</td>
-        <td style="padding:6px 10px; border:1px solid #ddd;">${row.taiKhoan}</td>
+        <td style="padding:6px 10px; border:1px solid #ddd; white-space:nowrap;">${row.taiKhoan}</td>
         <td style="padding:6px 10px; border:1px solid #ddd; text-align:right;">${row.duDau !== 0 ? row.duDau.toLocaleString("vi-VN") : "-"}</td>
         <td style="padding:6px 10px; border:1px solid #ddd; text-align:right; color:green;">${row.thu !== 0 ? row.thu.toLocaleString("vi-VN") : "-"}</td>
         <td style="padding:6px 10px; border:1px solid #ddd; text-align:right; color:red;">${row.chi !== 0 ? row.chi.toLocaleString("vi-VN") : "-"}</td>

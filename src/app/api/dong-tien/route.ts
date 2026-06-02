@@ -60,6 +60,8 @@ export async function POST(request: Request) {
       tongThu,
       tongChi,
       ghiChu,
+      nccHinhIn,
+      caNhanToChucChoVay,
     } = body;
 
     if (!tenTK || !phanLoaiThuChi) {
@@ -86,6 +88,8 @@ export async function POST(request: Request) {
       tongThu: tongThu || "",
       tongChi: tongChi || "",
       ghiChu: ghiChu || "",
+      nccHinhIn: nccHinhIn || "",
+      caNhanToChucChoVay: caNhanToChucChoVay || "",
     };
 
     await addDongTienToSheet(newData);
@@ -146,6 +150,8 @@ export async function PUT(request: Request) {
       tongThu,
       tongChi,
       ghiChu,
+      nccHinhIn,
+      caNhanToChucChoVay,
     } = body;
 
     if (!rowIndex) {
@@ -184,6 +190,8 @@ export async function PUT(request: Request) {
       tongThu: tongThu || "",
       tongChi: tongChi || "",
       ghiChu: ghiChu || "",
+      nccHinhIn: nccHinhIn || "",
+      caNhanToChucChoVay: caNhanToChucChoVay || "",
     };
 
     await updateDongTienInSheet(rowIdx, newData);

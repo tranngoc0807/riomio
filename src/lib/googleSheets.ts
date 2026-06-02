@@ -1111,6 +1111,8 @@ export interface DongTien {
   ghiChu: string;            // O - Ghi chú
   maPhieuThu: string;        // P - Mã phiếu thu
   maPhieuChi: string;        // Q - Mã phiếu chi
+  nccHinhIn: string;         // R - Nhà cung cấp hình in
+  caNhanToChucChoVay: string;// S - Cá nhân/tổ chức cho vay
   rowIndex: number;          // Actual row number in sheet
 }
 
@@ -1126,7 +1128,7 @@ export async function getDongTienFromSheet(): Promise<DongTien[]> {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A6:Q`,
+      range: `'${sheetNameDongTien}'!A6:S`,
     });
 
     const rows = response.data.values;
@@ -1164,6 +1166,8 @@ export async function getDongTienFromSheet(): Promise<DongTien[]> {
           ghiChu: row[14] || "",               // O
           maPhieuThu: row[15] || "",           // P
           maPhieuChi: row[16] || "",           // Q
+          nccHinhIn: row[17] || "",            // R
+          caNhanToChucChoVay: row[18] || "",   // S
           rowIndex: index + 6, // Row 6 is first data row
         };
       })
@@ -1209,12 +1213,14 @@ export async function addDongTienToSheet(dongTien: Omit<DongTien, 'id' | 'rowInd
         dongTien.ghiChu,           // O
         dongTien.maPhieuThu,       // P
         dongTien.maPhieuChi,       // Q
+        dongTien.nccHinhIn,        // R
+        dongTien.caNhanToChucChoVay, // S
       ],
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A6:Q`,
+      range: `'${sheetNameDongTien}'!A6:S`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -1261,12 +1267,14 @@ export async function updateDongTienInSheet(rowIndex: number, dongTien: Omit<Don
         dongTien.ghiChu,           // O
         dongTien.maPhieuThu,       // P
         dongTien.maPhieuChi,       // Q
+        dongTien.nccHinhIn,        // R
+        dongTien.caNhanToChucChoVay, // S
       ],
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A${rowIndex}:Q${rowIndex}`,
+      range: `'${sheetNameDongTien}'!A${rowIndex}:S${rowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
@@ -1289,7 +1297,7 @@ export async function deleteDongTienFromSheet(rowIndex: number): Promise<void> {
 
     await sheets.spreadsheets.values.clear({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A${rowIndex}:O${rowIndex}`,
+      range: `'${sheetNameDongTien}'!A${rowIndex}:S${rowIndex}`,
     });
 
     console.log(`Successfully cleared cash flow data at row ${rowIndex}`);
@@ -1399,6 +1407,71 @@ export async function getNCCNPLOptionsFromSheet(): Promise<string[]> {
     return uniqueNCCs;
   } catch (error) {
     console.error("Error fetching NCC NPL from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy danh sách Nhà cung cấp hình in từ sheet "DS NCC hình in"
+ * Header dòng 5, data từ dòng 6, cột B (Tên NCC)
+ */
+export async function getNCCHinhInOptionsFromSheet(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_SAN_XUAT;
+    const sheetName =
+      process.env.GOOGLE_SHEET_NAME_DS_NCC_HINH_IN || "DS NCC hình in";
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'!B6:B`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return [];
+
+    return Array.from(
+      new Set(
+        rows
+          .map((row) => row[0])
+          .filter((value) => value && value.trim() !== ""),
+      ),
+    );
+  } catch (error) {
+    console.error("Error fetching NCC hình in options from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lấy danh sách Cá nhân/tổ chức cho vay từ sheet "Lãi vay"
+ * Header dòng 7, data từ dòng 8, cột B (Người cho vay)
+ */
+export async function getCaNhanToChucChoVayOptionsFromSheet(): Promise<string[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    const spreadsheetId =
+      process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN ||
+      "1a8ebfB2KVQvrNYqoP5MNnn_gXhhxVH_8sJalPcNpMC8";
+    const sheetName = process.env.GOOGLE_SHEET_NAME_LAI_VAY || "Lãi vay";
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'!B8:B`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return [];
+
+    return Array.from(
+      new Set(
+        rows
+          .map((row) => row[0])
+          .filter((value) => value && value.trim() !== ""),
+      ),
+    );
+  } catch (error) {
+    console.error("Error fetching cá nhân/tổ chức cho vay options from Google Sheets:", error);
     throw error;
   }
 }
