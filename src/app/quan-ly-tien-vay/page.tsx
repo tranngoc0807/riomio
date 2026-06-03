@@ -16,8 +16,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Loader2,
+  Printer,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import Portal from "@/components/Portal";
@@ -192,6 +195,8 @@ export default function QuanLyTienVay() {
   const [giaoDichToDelete, setGiaoDichToDelete] =
     useState<GiaoDichVayItem | null>(null);
   const [isDeletingGiaoDich, setIsDeletingGiaoDich] = useState(false);
+  const [giaoDichDetail, setGiaoDichDetail] =
+    useState<GiaoDichVayItem | null>(null);
 
   // Chi tiết món vay - mã món đang chọn (dropdown)
   const [selectedMaMonVay, setSelectedMaMonVay] = useState("");
@@ -201,7 +206,6 @@ export default function QuanLyTienVay() {
     { id: "chi-tiet-mon-vay", label: "Chi tiết món vay", icon: HandCoins },
     { id: "lai-vay", label: "Lãi vay", icon: HandCoins },
     { id: "giao-dich-vay", label: "Giao dịch vay", icon: History },
-    { id: "nhat-ky-mon-vay", label: "Nhật ký món vay", icon: History },
     { id: "dashboard", label: "DASHBOARD", icon: TrendingDown },
   ];
 
@@ -463,6 +467,73 @@ export default function QuanLyTienVay() {
     } finally {
       setIsDeletingGiaoDich(false);
     }
+  };
+
+  // Xuất file Excel cho một giao dịch
+  const handleExportGiaoDichExcel = (gd: GiaoDichVayItem) => {
+    const sheetData = [
+      { "Thông tin": "STT", "Giá trị": gd.stt || "" },
+      { "Thông tin": "Ngày", "Giá trị": gd.ngay || "" },
+      { "Thông tin": "Mã món vay", "Giá trị": gd.maMonVay || "" },
+      { "Thông tin": "Người cho vay", "Giá trị": gd.nguoiChoVay || "" },
+      { "Thông tin": "Loại GD", "Giá trị": gd.loaiGD || "" },
+      { "Thông tin": "Số tiền", "Giá trị": gd.soTien || 0 },
+      { "Thông tin": "Ghi chú", "Giá trị": gd.ghiChu || "" },
+      { "Thông tin": "Gốc sau GD", "Giá trị": gd.gocSauGD || 0 },
+      {
+        "Thông tin": "Ngày GD trước",
+        "Giá trị":
+          gd.ngayGDTruoc && gd.ngayGDTruoc !== "0" ? gd.ngayGDTruoc : "",
+      },
+      { "Thông tin": "Gốc trước GD", "Giá trị": gd.gocTruocGD || 0 },
+      { "Thông tin": "Lãi suất", "Giá trị": gd.laiSuat || "" },
+      { "Thông tin": "Lãi phát sinh", "Giá trị": gd.laiPhatSinh || 0 },
+    ];
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Giao dich vay");
+    const safeName = (gd.maMonVay || "giao-dich").replace(/[/\\?*[\]]/g, "_");
+    XLSX.writeFile(wb, `Giao_dich_${safeName}.xlsx`);
+  };
+
+  // In một giao dịch
+  const handlePrintGiaoDich = (gd: GiaoDichVayItem) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const fmt = (v: number) => (v ? v.toLocaleString("vi-VN") : "-");
+    const rows: [string, string][] = [
+      ["STT", gd.stt || "-"],
+      ["Ngày", gd.ngay || "-"],
+      ["Mã món vay", gd.maMonVay || "-"],
+      ["Người cho vay", gd.nguoiChoVay || "-"],
+      ["Loại GD", gd.loaiGD || "-"],
+      ["Số tiền", fmt(gd.soTien)],
+      ["Gốc sau GD", fmt(gd.gocSauGD)],
+      [
+        "Ngày GD trước",
+        gd.ngayGDTruoc && gd.ngayGDTruoc !== "0" ? gd.ngayGDTruoc : "-",
+      ],
+      ["Gốc trước GD", fmt(gd.gocTruocGD)],
+      ["Lãi suất", gd.laiSuat || "-"],
+      ["Lãi phát sinh", fmt(gd.laiPhatSinh)],
+      ["Ghi chú", gd.ghiChu || "-"],
+    ];
+    const body = rows
+      .map(
+        ([label, value]) => `<tr>
+      <td style="padding:8px 12px;border:1px solid #ddd;background:#f5f5f5;font-weight:600;width:40%;">${label}</td>
+      <td style="padding:8px 12px;border:1px solid #ddd;">${value}</td>
+    </tr>`,
+      )
+      .join("");
+    const title = "Chi tiết giao dịch vay";
+    printWindow.document.write(`<html><head><title>${title}</title>
+      <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:30px; color:#333; } h1 { font-size:20px; margin-bottom:6px; text-align:center; } p.sub { text-align:center; color:#666; margin-bottom:20px; font-size:13px; } table { width:100%; border-collapse:collapse; font-size:13px; } @media print { body { padding:15px; } }</style></head><body>
+      <h1>${title.toUpperCase()}</h1>
+      <p class="sub">${gd.maMonVay || ""} · ${gd.loaiGD || ""}</p>
+      <table><tbody>${body}</tbody></table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
   };
 
   // Fetch payment history from API
@@ -1061,12 +1132,6 @@ export default function QuanLyTienVay() {
                   <span className="text-xs text-gray-400 italic">
                     Tổng hợp từ sheet Giao dịch
                   </span>
-                  <button
-                    onClick={openAddGiaoDich}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                  >
-                    <Plus size={18} /> Thêm món vay
-                  </button>
                 </div>
               </div>
 
@@ -1447,7 +1512,11 @@ export default function QuanLyTienVay() {
                         </tr>
                       ) : (
                         giaoDichList.map((gd, index) => (
-                          <tr key={gd.rowIndex} className="hover:bg-gray-50">
+                          <tr
+                            key={gd.rowIndex}
+                            onClick={() => setGiaoDichDetail(gd)}
+                            className="hover:bg-blue-50 cursor-pointer"
+                          >
                             <td className="px-3 py-3 text-gray-600">{gd.stt || index + 1}</td>
                             <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{gd.ngay || "-"}</td>
                             <td className="px-3 py-3 font-medium text-blue-600">{gd.maMonVay}</td>
@@ -1483,14 +1552,20 @@ export default function QuanLyTienVay() {
                             <td className="px-3 py-3 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button
-                                  onClick={() => openEditGiaoDich(gd)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditGiaoDich(gd);
+                                  }}
                                   className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                                   title="Sửa"
                                 >
                                   <Edit size={16} />
                                 </button>
                                 <button
-                                  onClick={() => setGiaoDichToDelete(gd)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setGiaoDichToDelete(gd);
+                                  }}
                                   className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                   title="Xóa"
                                 >
@@ -3270,6 +3345,134 @@ export default function QuanLyTienVay() {
                     <Loader2 className="animate-spin" size={16} />
                   )}
                   Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal chi tiết giao dịch vay */}
+      {giaoDichDetail && (
+        <Portal>
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setGiaoDichDetail(null)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Chi tiết giao dịch
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-medium text-blue-600">
+                      {giaoDichDetail.maMonVay}
+                    </span>{" "}
+                    · {giaoDichDetail.loaiGD}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setGiaoDichDetail(null)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-1">
+                {[
+                  { label: "STT", value: giaoDichDetail.stt || "-" },
+                  { label: "Ngày", value: giaoDichDetail.ngay || "-" },
+                  { label: "Mã món vay", value: giaoDichDetail.maMonVay || "-" },
+                  {
+                    label: "Người cho vay",
+                    value: giaoDichDetail.nguoiChoVay || "-",
+                  },
+                  { label: "Loại GD", value: giaoDichDetail.loaiGD || "-" },
+                  {
+                    label: "Số tiền",
+                    value: giaoDichDetail.soTien
+                      ? formatCurrency(giaoDichDetail.soTien)
+                      : "-",
+                  },
+                  {
+                    label: "Gốc sau GD",
+                    value: giaoDichDetail.gocSauGD
+                      ? formatCurrency(giaoDichDetail.gocSauGD)
+                      : "-",
+                  },
+                  {
+                    label: "Ngày GD trước",
+                    value:
+                      giaoDichDetail.ngayGDTruoc &&
+                      giaoDichDetail.ngayGDTruoc !== "0"
+                        ? giaoDichDetail.ngayGDTruoc
+                        : "-",
+                  },
+                  {
+                    label: "Gốc trước GD",
+                    value: giaoDichDetail.gocTruocGD
+                      ? formatCurrency(giaoDichDetail.gocTruocGD)
+                      : "-",
+                  },
+                  { label: "Lãi suất", value: giaoDichDetail.laiSuat || "-" },
+                  {
+                    label: "Lãi phát sinh",
+                    value: giaoDichDetail.laiPhatSinh
+                      ? formatCurrency(giaoDichDetail.laiPhatSinh)
+                      : "-",
+                  },
+                ].map((row) => (
+                  <div
+                    key={row.label}
+                    className="flex justify-between gap-4 py-2 border-b border-gray-100 last:border-0"
+                  >
+                    <span className="text-sm text-gray-500">{row.label}</span>
+                    <span className="text-sm font-medium text-gray-900 text-right">
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
+                <div className="pt-2">
+                  <span className="text-sm text-gray-500 block mb-1">
+                    Ghi chú
+                  </span>
+                  <p className="text-sm text-gray-900 whitespace-pre-wrap bg-gray-50 rounded-lg p-3">
+                    {giaoDichDetail.ghiChu || "-"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
+                <button
+                  onClick={() => handlePrintGiaoDich(giaoDichDetail)}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  <Printer size={16} /> In
+                </button>
+                <button
+                  onClick={() => handleExportGiaoDichExcel(giaoDichDetail)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  <FileSpreadsheet size={16} /> Xuất Excel
+                </button>
+                <button
+                  onClick={() => {
+                    const gd = giaoDichDetail;
+                    setGiaoDichDetail(null);
+                    openEditGiaoDich(gd);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Edit size={16} /> Sửa
+                </button>
+                <button
+                  onClick={() => setGiaoDichDetail(null)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Đóng
                 </button>
               </div>
             </div>

@@ -1104,7 +1104,12 @@ export default function OrdersTab() {
       setIsDeleting(true);
 
       // Find all orders with this code
-      const ordersToDelete = orders.filter((o) => o.code === orderToDelete);
+      // Sort by id descending so higher rows are deleted first.
+      // Deleting a lower row first would shift the remaining rows up,
+      // making subsequent deletes target the wrong row (leaving products behind).
+      const ordersToDelete = orders
+        .filter((o) => o.code === orderToDelete)
+        .sort((a, b) => b.id - a.id);
       let hasError = false;
       let errorMessage = "";
 
