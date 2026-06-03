@@ -1476,6 +1476,138 @@ export async function getCaNhanToChucChoVayOptionsFromSheet(): Promise<string[]>
   }
 }
 
+// ============================================
+// LÃI VAY (Danh sách người cho vay) - sheet "Lãi vay"
+// Header dòng 7, data từ dòng 8. Cột A-E:
+// A: STT, B: Người cho vay, C: Lãi suất năm, D: Cách tính lãi, E: Ghi chú
+// ============================================
+
+const spreadsheetIdLaiVay =
+  process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN ||
+  "1a8ebfB2KVQvrNYqoP5MNnn_gXhhxVH_8sJalPcNpMC8";
+const sheetNameLaiVay = process.env.GOOGLE_SHEET_NAME_LAI_VAY || "Lãi vay";
+const LAI_VAY_DATA_START_ROW = 8;
+
+export interface LaiVay {
+  id: number;
+  stt: string;          // A
+  nguoiChoVay: string;  // B
+  laiSuatNam: string;   // C
+  cachTinhLai: string;  // D
+  ghiChu: string;       // E
+  rowIndex: number;     // dòng thực tế trong sheet
+}
+
+export async function getLaiVayFromSheet(): Promise<LaiVay[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLaiVay,
+      range: `'${sheetNameLaiVay}'!A${LAI_VAY_DATA_START_ROW}:E`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return [];
+
+    return rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: row[0] || "",            // A
+        nguoiChoVay: row[1] || "",    // B
+        laiSuatNam: row[2] || "",     // C
+        cachTinhLai: row[3] || "",    // D
+        ghiChu: row[4] || "",         // E
+        rowIndex: index + LAI_VAY_DATA_START_ROW,
+      }))
+      .filter((item) => item.nguoiChoVay.trim() !== "");
+  } catch (error) {
+    console.error("Error reading lãi vay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+export async function addLaiVayToSheet(
+  laiVay: Omit<LaiVay, "id" | "rowIndex">,
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Tìm dòng trống kế tiếp dựa trên cột B (Người cho vay).
+    // KHÔNG dùng append vì cột A có STT → Google detect table A:E làm lệch cột.
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdLaiVay,
+      range: `'${sheetNameLaiVay}'!B${LAI_VAY_DATA_START_ROW}:B`,
+    });
+    const count = existing.data.values?.length || 0;
+    const nextRow = LAI_VAY_DATA_START_ROW + count;
+
+    // Chỉ ghi cột B-E, để trống cột A (STT) cho sheet tự đánh số
+    const values = [
+      [
+        laiVay.nguoiChoVay,  // B
+        laiVay.laiSuatNam,   // C
+        laiVay.cachTinhLai,  // D
+        laiVay.ghiChu,       // E
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLaiVay,
+      range: `'${sheetNameLaiVay}'!B${nextRow}:E${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+  } catch (error) {
+    console.error("Error adding lãi vay to Google Sheets:", error);
+    throw error;
+  }
+}
+
+export async function updateLaiVayInSheet(
+  rowIndex: number,
+  laiVay: Omit<LaiVay, "id" | "rowIndex">,
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Chỉ ghi cột B-E, KHÔNG đụng cột A (STT) để giữ số tự nhảy của sheet
+    const values = [
+      [
+        laiVay.nguoiChoVay,  // B
+        laiVay.laiSuatNam,   // C
+        laiVay.cachTinhLai,  // D
+        laiVay.ghiChu,       // E
+      ],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdLaiVay,
+      range: `'${sheetNameLaiVay}'!B${rowIndex}:E${rowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+  } catch (error) {
+    console.error("Error updating lãi vay in Google Sheets:", error);
+    throw error;
+  }
+}
+
+export async function deleteLaiVayFromSheet(rowIndex: number): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Chỉ xóa nội dung cột B-E, giữ cột A (STT tự nhảy của sheet)
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetIdLaiVay,
+      range: `'${sheetNameLaiVay}'!B${rowIndex}:E${rowIndex}`,
+    });
+  } catch (error) {
+    console.error("Error deleting lãi vay from Google Sheets:", error);
+    throw error;
+  }
+}
+
 /**
  * Lấy danh sách Xưởng SX từ sheet "Xưởng SX"
  * Header ở row 5, data từ row 6, cột B (Tên xưởng)
@@ -3637,6 +3769,267 @@ export async function deleteKeHoachSXFromSheet(keHoachId: number): Promise<void>
 
 const spreadsheetIdKhoanVay = process.env.GOOGLE_SPREADSHEET_ID_RIOMIO_DONG_TIEN || "1a8ebfB2KVQvrNYqoP5MNnn_gXhhxVH_8sJalPcNpMC8";
 const sheetNameKhoanVay = process.env.GOOGLE_SHEET_NAME_DANH_SACH_MON_VAY || "Danh sách món vay";
+
+// Sheet "Món vay" — bảng tự tổng hợp từ sheet Giao dịch (chỉ đọc).
+// Header dòng 4, data từ dòng 5. Cột A-M.
+const sheetNameMonVay = process.env.GOOGLE_SHEET_NAME_MON_VAY || "Món vay";
+const MON_VAY_DATA_START_ROW = 5;
+
+export interface MonVay {
+  id: number;
+  stt: string;          // A - STT
+  code: string;         // B - Mã món vay
+  lender: string;       // C - Người cho vay
+  ngayVay: string;      // D - Ngày vay
+  soTienVay: number;    // E - Số tiền vay
+  laiVay: string;       // F - Lãi vay (%)
+  gocDaTra: number;     // G - Gốc đã trả
+  gocConLai: number;    // H - Gốc còn lại
+  laiCongDon: number;   // I - Lãi cộng dồn
+  laiDaTra: number;     // J - Lãi đã trả
+  laiConLai: number;    // K - Lãi còn lại
+  tongPhaiTra: number;  // L - Tổng phải trả
+  status: string;       // M - Trạng thái
+}
+
+/**
+ * Đọc danh sách "Món vay" (tự tổng hợp từ sheet Giao dịch) - chỉ đọc.
+ * Header dòng 4, data từ dòng 5, cột A-M.
+ */
+export async function getMonVayFromSheet(): Promise<MonVay[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdKhoanVay,
+      range: `'${sheetNameMonVay}'!A${MON_VAY_DATA_START_ROW}:M`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return [];
+
+    const num = (v: any): number => {
+      if (!v) return 0;
+      const s = String(v).replace(/[%\s]/g, "").replace(/\./g, "").replace(",", ".");
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    };
+
+    return rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: row[0] || "",          // A
+        code: row[1] || "",         // B
+        lender: row[2] || "",       // C
+        ngayVay: row[3] || "",      // D
+        soTienVay: num(row[4]),     // E
+        laiVay: row[5] || "",       // F
+        gocDaTra: num(row[6]),      // G
+        gocConLai: num(row[7]),     // H
+        laiCongDon: num(row[8]),    // I
+        laiDaTra: num(row[9]),      // J
+        laiConLai: num(row[10]),    // K
+        tongPhaiTra: num(row[11]),  // L
+        status: row[12] || "",      // M
+      }))
+      .filter((item) => item.code.trim() !== "");
+  } catch (error) {
+    console.error("Error reading Món vay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// GIAO DỊCH VAY - sheet "Giao dịch vay" (Sổ giao dịch, mỗi dòng = 1 phát sinh)
+// Header dòng 4, data từ dòng 5.
+// Cột người dùng nhập: B-G (Ngày, Mã món vay, Người cho vay, Loại GD, Số tiền, Ghi chú)
+// Cột A (STT) và H-L ([H]...) do sheet tự tính → KHÔNG ghi.
+// ============================================
+
+const sheetNameGiaoDichVay =
+  process.env.GOOGLE_SHEET_NAME_GIAO_DICH_VAY || "Giao dịch vay";
+const GIAO_DICH_VAY_DATA_START_ROW = 5;
+
+export interface GiaoDichVay {
+  id: number;
+  stt: string;          // A
+  ngay: string;         // B - Ngày
+  maMonVay: string;     // C - Mã món vay
+  nguoiChoVay: string;  // D - Người cho vay
+  loaiGD: string;       // E - Loại GD
+  soTien: number;       // F - Số tiền
+  ghiChu: string;       // G - Ghi chú
+  gocSauGD: number;     // H - [H] Gốc sau GD
+  ngayGDTruoc: string;  // I - [H] Ngày GD trước
+  gocTruocGD: number;   // J - [H] Gốc trước GD
+  laiSuat: string;      // K - [H] Lãi suất
+  laiPhatSinh: number;  // L - [H] Lãi phát sinh
+  rowIndex: number;
+}
+
+const parseNumGDV = (v: any): number => {
+  if (!v) return 0;
+  const s = String(v).replace(/[%\s]/g, "").replace(/\./g, "").replace(",", ".");
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+};
+
+export async function getGiaoDichVayFromSheet(): Promise<GiaoDichVay[]> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdKhoanVay,
+      range: `'${sheetNameGiaoDichVay}'!A${GIAO_DICH_VAY_DATA_START_ROW}:L`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return [];
+
+    return rows
+      .map((row, index) => ({
+        id: index + 1,
+        stt: row[0] || "",            // A
+        ngay: row[1] || "",           // B
+        maMonVay: row[2] || "",       // C
+        nguoiChoVay: row[3] || "",    // D
+        loaiGD: row[4] || "",         // E
+        soTien: parseNumGDV(row[5]),  // F
+        ghiChu: row[6] || "",         // G
+        gocSauGD: parseNumGDV(row[7]),    // H
+        ngayGDTruoc: row[8] || "",        // I
+        gocTruocGD: parseNumGDV(row[9]),  // J
+        laiSuat: row[10] || "",           // K
+        laiPhatSinh: parseNumGDV(row[11]),// L
+        rowIndex: index + GIAO_DICH_VAY_DATA_START_ROW,
+      }))
+      .filter((item) => item.maMonVay.trim() !== "" || item.ngay.trim() !== "");
+  } catch (error) {
+    console.error("Error reading Giao dịch vay from Google Sheets:", error);
+    throw error;
+  }
+}
+
+type GiaoDichVayInput = Pick<
+  GiaoDichVay,
+  "ngay" | "maMonVay" | "nguoiChoVay" | "loaiGD" | "soTien" | "ghiChu"
+>;
+
+function giaoDichVayRow(gd: GiaoDichVayInput) {
+  // Chỉ ghi B-G, để cột A (STT) và H-L tự tính trong sheet
+  return [
+    gd.ngay,         // B
+    gd.maMonVay,     // C
+    gd.nguoiChoVay,  // D
+    gd.loaiGD,       // E
+    gd.soTien,       // F
+    gd.ghiChu,       // G
+  ];
+}
+
+// Công thức [H] cho 1 dòng (tự thay số dòng `row`). Dùng khi THÊM dòng mới
+// vì công thức trong sheet là từng ô (không phải ARRAYFORMULA tự kéo).
+function giaoDichVayFormulas(row: number): string[] {
+  return [
+    // H - Gốc sau GD
+    `=IF(OR(E${row}="Vay mới";E${row}="Trả gốc");SUMIFS($F$5:$F${row};$C$5:$C${row};$C${row};$E$5:$E${row};"Vay mới")-SUMIFS($F$5:$F${row};$C$5:$C${row};$C${row};$E$5:$E${row};"Trả gốc");"")`,
+    // I - Ngày GD trước
+    `=LET(kq; IF(OR(E${row}="Vay mới"; E${row}="Trả gốc"); SUMPRODUCT(MAX(($C$5:$C=$C${row})*($B$5:$B<$B${row})*($E$5:$E<>"Trả lãi")*$B$5:$B)); 0); IF(kq=0; 0; TEXT(kq; "dd/MM/yyyy")))`,
+    // J - Gốc trước GD
+    `=IF(OR(E${row}="Vay mới";E${row}="Trả gốc");SUMIFS($F$5:$F;$C$5:$C;$C${row};$B$5:$B;"<"&$B${row};$E$5:$E;"Vay mới")-SUMIFS($F$5:$F;$C$5:$C;$C${row};$B$5:$B;"<"&$B${row};$E$5:$E;"Trả gốc");"")`,
+    // K - Lãi suất
+    `=IFERROR(VLOOKUP(D${row};'Lãi vay'!$B$8:$C;2;FALSE());"")`,
+    // L - Lãi phát sinh
+    `=IF(OR(E${row}="Vay mới";E${row}="Trả gốc");IFERROR(J${row}*K${row}*MAX(0;(B${row}-I${row}))/365;0);0)`,
+  ];
+}
+
+export async function addGiaoDichVayToSheet(
+  gd: GiaoDichVayInput,
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    // Tìm dòng trống kế tiếp dựa trên cột C (Mã món vay) để tránh lệch cột do append
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetIdKhoanVay,
+      range: `'${sheetNameGiaoDichVay}'!C${GIAO_DICH_VAY_DATA_START_ROW}:C`,
+    });
+    const count = existing.data.values?.length || 0;
+    const nextRow = GIAO_DICH_VAY_DATA_START_ROW + count;
+
+    // Ghi B-G (giá trị nhập) + H-L (công thức tự tính) cho dòng mới
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdKhoanVay,
+      range: `'${sheetNameGiaoDichVay}'!B${nextRow}:L${nextRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[...giaoDichVayRow(gd), ...giaoDichVayFormulas(nextRow)]],
+      },
+    });
+  } catch (error) {
+    console.error("Error adding Giao dịch vay to Google Sheets:", error);
+    throw error;
+  }
+}
+
+export async function updateGiaoDichVayInSheet(
+  rowIndex: number,
+  gd: GiaoDichVayInput,
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdKhoanVay,
+      range: `'${sheetNameGiaoDichVay}'!B${rowIndex}:G${rowIndex}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [giaoDichVayRow(gd)] },
+    });
+  } catch (error) {
+    console.error("Error updating Giao dịch vay in Google Sheets:", error);
+    throw error;
+  }
+}
+
+export async function deleteGiaoDichVayFromSheet(
+  rowIndex: number,
+): Promise<void> {
+  try {
+    const sheets = await getGoogleSheetsClient();
+
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetIdKhoanVay,
+    });
+    const target = meta.data.sheets?.find(
+      (s) => s.properties?.title === sheetNameGiaoDichVay,
+    );
+    if (!target || target.properties?.sheetId === undefined) {
+      throw new Error(`Không tìm thấy sheet "${sheetNameGiaoDichVay}"`);
+    }
+    const sheetId = target.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetIdKhoanVay,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: "ROWS",
+                startIndex: rowIndex - 1, // 0-based
+                endIndex: rowIndex,
+              },
+            },
+          },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting Giao dịch vay from Google Sheets:", error);
+    throw error;
+  }
+}
 
 // Interface cho khoản vay
 export interface Loan {

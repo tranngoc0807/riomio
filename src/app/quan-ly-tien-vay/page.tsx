@@ -39,76 +39,53 @@ interface Loan {
   notes?: string;
 }
 
-// Google Sheets loan interface - matches new structure
-interface GoogleSheetsLoan {
+// Lãi vay (Danh sách người cho vay) - sheet "Lãi vay"
+interface LaiVayItem {
   id: number;
-  code: string; // A - Mã món vay
-  lender: string; // B - Người cho vay
-  category: string; // C - Phân loại
-  maturityDate: string; // D - Ngày đáo hạn
-  principalAmount: number; // E - Số tiền vay gốc ban đầu
-  initialInterestRate: string; // F - Lãi suất ban đầu
-  interestType: string; // G - Loại lãi suất
-  interestPaymentDate: string; // H - Ngày trả lãi quy định
-  paymentTerm: string; // I - Kỳ hạn trả lãi
-  status: string; // J - Trạng thái
-  disbursementDate: string; // K - Ngày giải ngân
-  purpose: string; // L - Mục đích vay
+  stt: string;
+  nguoiChoVay: string;
+  laiSuatNam: string;
+  cachTinhLai: string;
+  ghiChu: string;
+  rowIndex: number;
 }
 
-// Map Google Sheets status to app status
-const mapStatus = (sheetStatus: string): Loan["status"] => {
-  const status = sheetStatus.toLowerCase();
-  if (status.includes("ổn định") || status.includes("active")) return "active";
-  if (status.includes("sắp") || status.includes("near")) return "near_due";
-  if (status.includes("hoàn") || status.includes("completed"))
-    return "completed";
-  if (status.includes("quá") || status.includes("overdue")) return "overdue";
-  return "active";
+const emptyLaiVay = {
+  stt: "",
+  nguoiChoVay: "",
+  laiSuatNam: "",
+  cachTinhLai: "",
+  ghiChu: "",
 };
 
-// Map Google Sheets interest type to loan type
-const mapLoanType = (interestType: string, lender: string): Loan["type"] => {
-  if (lender.toLowerCase().includes("cá nhân")) return "personal";
-  if (lender.toLowerCase().includes("ngân hàng")) return "long_term";
-  return "short_term";
+// Giao dịch vay (Sổ giao dịch) - sheet "Giao dịch vay"
+interface GiaoDichVayItem {
+  id: number;
+  stt: string;
+  ngay: string;
+  maMonVay: string;
+  nguoiChoVay: string;
+  loaiGD: string;
+  soTien: number;
+  ghiChu: string;
+  gocSauGD: number;
+  ngayGDTruoc: string;
+  gocTruocGD: number;
+  laiSuat: string;
+  laiPhatSinh: number;
+  rowIndex: number;
+}
+
+const emptyGiaoDich = {
+  ngay: new Date().toISOString().split("T")[0],
+  maMonVay: "",
+  nguoiChoVay: "",
+  loaiGD: "Vay mới",
+  soTien: "",
+  ghiChu: "",
 };
 
-// Parse interest rate string (e.g., "12,0%" -> 12.0)
-const parseInterestRate = (rate: string | undefined): number => {
-  if (!rate) return 0;
-  const cleaned = rate.replace(/[%,]/g, ".").replace(/\s/g, "");
-  return parseFloat(cleaned) || 0;
-};
-
-// Convert Google Sheets loan to app loan - keeping all original fields
-const convertGoogleSheetsLoan = (sheetLoan: GoogleSheetsLoan): any => {
-  return {
-    // Use code as the primary id (string) for the Loan interface
-    id: sheetLoan.code,
-    code: sheetLoan.code,
-    lender: sheetLoan.lender,
-    category: sheetLoan.category,
-    maturityDate: sheetLoan.maturityDate,
-    principalAmount: sheetLoan.principalAmount,
-    initialInterestRate: sheetLoan.initialInterestRate,
-    interestType: sheetLoan.interestType,
-    interestPaymentDate: sheetLoan.interestPaymentDate,
-    paymentTerm: sheetLoan.paymentTerm,
-    disbursementDate: sheetLoan.disbursementDate,
-    purpose: sheetLoan.purpose,
-    // Mapped fields for compatibility
-    type: mapLoanType(sheetLoan.interestType, sheetLoan.category),
-    principal: sheetLoan.principalAmount,
-    interestRate: parseInterestRate(sheetLoan.initialInterestRate),
-    startDate: sheetLoan.disbursementDate || "",
-    endDate: sheetLoan.maturityDate || "",
-    monthlyPayment: 0,
-    remainingPrincipal: sheetLoan.principalAmount,
-    status: mapStatus(sheetLoan.status),
-    notes: undefined,
-  };
-};
+const LOAI_GD_OPTIONS = ["Vay mới", "Trả gốc", "Trả lãi"];
 
 // Format currency
 const formatCurrency = (amount: number) => {
@@ -127,7 +104,8 @@ export default function QuanLyTienVay() {
   const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [loans, setLoans] = useState<Loan[]>([]);
+  // Món vay đọc từ sheet (chỉ xem) - cấu trúc tự tổng hợp từ Giao dịch
+  const [loans, setLoans] = useState<any[]>([]);
   const [isLoadingLoans, setIsLoadingLoans] = useState(false);
 
   // Payment History state
@@ -192,8 +170,37 @@ export default function QuanLyTienVay() {
     status: "active",
   });
 
+  // Lãi vay (Danh sách người cho vay) state
+  const [laiVayList, setLaiVayList] = useState<LaiVayItem[]>([]);
+  const [isLoadingLaiVay, setIsLoadingLaiVay] = useState(false);
+  const [showLaiVayModal, setShowLaiVayModal] = useState(false);
+  const [editingLaiVay, setEditingLaiVay] = useState<LaiVayItem | null>(null);
+  const [laiVayForm, setLaiVayForm] = useState(emptyLaiVay);
+  const [isSubmittingLaiVay, setIsSubmittingLaiVay] = useState(false);
+  const [laiVayToDelete, setLaiVayToDelete] = useState<LaiVayItem | null>(null);
+  const [isDeletingLaiVay, setIsDeletingLaiVay] = useState(false);
+
+  // Giao dịch vay (Sổ giao dịch) state
+  const [giaoDichList, setGiaoDichList] = useState<GiaoDichVayItem[]>([]);
+  const [isLoadingGiaoDich, setIsLoadingGiaoDich] = useState(false);
+  const [showGiaoDichModal, setShowGiaoDichModal] = useState(false);
+  const [editingGiaoDich, setEditingGiaoDich] = useState<GiaoDichVayItem | null>(
+    null,
+  );
+  const [giaoDichForm, setGiaoDichForm] = useState(emptyGiaoDich);
+  const [isSubmittingGiaoDich, setIsSubmittingGiaoDich] = useState(false);
+  const [giaoDichToDelete, setGiaoDichToDelete] =
+    useState<GiaoDichVayItem | null>(null);
+  const [isDeletingGiaoDich, setIsDeletingGiaoDich] = useState(false);
+
+  // Chi tiết món vay - mã món đang chọn (dropdown)
+  const [selectedMaMonVay, setSelectedMaMonVay] = useState("");
+
   const tabs = [
     { id: "danh-sach-mon-vay", label: "Danh sách món vay", icon: HandCoins },
+    { id: "chi-tiet-mon-vay", label: "Chi tiết món vay", icon: HandCoins },
+    { id: "lai-vay", label: "Lãi vay", icon: HandCoins },
+    { id: "giao-dich-vay", label: "Giao dịch vay", icon: History },
     { id: "nhat-ky-mon-vay", label: "Nhật ký món vay", icon: History },
     { id: "dashboard", label: "DASHBOARD", icon: TrendingDown },
   ];
@@ -218,10 +225,8 @@ export default function QuanLyTienVay() {
       const result = await response.json();
 
       if (result.success && result.data) {
-        const convertedLoans = result.data.map((sheetLoan: GoogleSheetsLoan) =>
-          convertGoogleSheetsLoan(sheetLoan),
-        );
-        setLoans(convertedLoans);
+        // Sheet "Món vay" tự tổng hợp từ Giao dịch → đọc trực tiếp (chỉ xem)
+        setLoans(result.data);
       } else {
         console.error("Failed to fetch loans:", result.error);
       }
@@ -236,6 +241,229 @@ export default function QuanLyTienVay() {
   useEffect(() => {
     fetchLoans();
   }, []);
+
+  // ===== Lãi vay (Danh sách người cho vay) =====
+  const fetchLaiVay = async () => {
+    try {
+      setIsLoadingLaiVay(true);
+      const response = await fetch("/api/lai-vay");
+      const result = await response.json();
+      if (result.success) {
+        setLaiVayList(result.data);
+      } else {
+        console.error("Failed to fetch lãi vay:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching lãi vay:", error);
+    } finally {
+      setIsLoadingLaiVay(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLaiVay();
+  }, []);
+
+  const openAddLaiVay = () => {
+    setEditingLaiVay(null);
+    setLaiVayForm(emptyLaiVay);
+    setShowLaiVayModal(true);
+  };
+
+  const openEditLaiVay = (item: LaiVayItem) => {
+    setEditingLaiVay(item);
+    setLaiVayForm({
+      stt: item.stt,
+      nguoiChoVay: item.nguoiChoVay,
+      laiSuatNam: item.laiSuatNam,
+      cachTinhLai: item.cachTinhLai,
+      ghiChu: item.ghiChu,
+    });
+    setShowLaiVayModal(true);
+  };
+
+  const handleSubmitLaiVay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!laiVayForm.nguoiChoVay.trim()) {
+      toast.error("Vui lòng nhập Người cho vay");
+      return;
+    }
+    try {
+      setIsSubmittingLaiVay(true);
+      const response = await fetch("/api/lai-vay", {
+        method: editingLaiVay ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editingLaiVay
+            ? { ...laiVayForm, rowIndex: editingLaiVay.rowIndex }
+            : laiVayForm,
+        ),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setLaiVayList(result.data);
+        setShowLaiVayModal(false);
+        setEditingLaiVay(null);
+        setLaiVayForm(emptyLaiVay);
+        toast.success(editingLaiVay ? "Cập nhật thành công" : "Thêm thành công");
+      } else {
+        toast.error(result.error || "Không thể lưu");
+      }
+    } catch (error) {
+      toast.error("Đã xảy ra lỗi khi lưu");
+    } finally {
+      setIsSubmittingLaiVay(false);
+    }
+  };
+
+  const confirmDeleteLaiVay = async () => {
+    if (!laiVayToDelete) return;
+    try {
+      setIsDeletingLaiVay(true);
+      const response = await fetch(
+        `/api/lai-vay?rowIndex=${laiVayToDelete.rowIndex}`,
+        { method: "DELETE" },
+      );
+      const result = await response.json();
+      if (result.success) {
+        setLaiVayList(result.data);
+        setLaiVayToDelete(null);
+        toast.success("Xóa thành công");
+      } else {
+        toast.error(result.error || "Không thể xóa");
+      }
+    } catch (error) {
+      toast.error("Đã xảy ra lỗi khi xóa");
+    } finally {
+      setIsDeletingLaiVay(false);
+    }
+  };
+
+  // ===== Giao dịch vay (Sổ giao dịch) =====
+  const fetchGiaoDich = async () => {
+    try {
+      setIsLoadingGiaoDich(true);
+      const response = await fetch("/api/giao-dich-vay");
+      const result = await response.json();
+      if (result.success) {
+        setGiaoDichList(result.data);
+      } else {
+        console.error("Failed to fetch giao dịch vay:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching giao dịch vay:", error);
+    } finally {
+      setIsLoadingGiaoDich(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGiaoDich();
+  }, []);
+
+  // Mặc định chọn mã món vay đầu tiên cho tab Chi tiết
+  useEffect(() => {
+    if (loans.length === 0) return;
+    const codes = loans.map((l) => l.code);
+    if (!selectedMaMonVay || !codes.includes(selectedMaMonVay)) {
+      setSelectedMaMonVay(loans[0].code);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loans]);
+
+  const openAddGiaoDich = () => {
+    setEditingGiaoDich(null);
+    setGiaoDichForm({
+      ...emptyGiaoDich,
+      ngay: new Date().toISOString().split("T")[0],
+    });
+    setShowGiaoDichModal(true);
+  };
+
+  const openEditGiaoDich = (item: GiaoDichVayItem) => {
+    // Chuyển ngày dd/MM/yyyy -> yyyy-MM-dd cho input date
+    const toIso = (d: string) => {
+      if (!d) return "";
+      if (d.includes("/")) {
+        const [dd, mm, yyyy] = d.split("/");
+        if (dd && mm && yyyy)
+          return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+      }
+      return d;
+    };
+    setEditingGiaoDich(item);
+    setGiaoDichForm({
+      ngay: toIso(item.ngay),
+      maMonVay: item.maMonVay,
+      nguoiChoVay: item.nguoiChoVay,
+      loaiGD: item.loaiGD || "Vay mới",
+      soTien: item.soTien ? String(item.soTien) : "",
+      ghiChu: item.ghiChu,
+    });
+    setShowGiaoDichModal(true);
+  };
+
+  const handleSubmitGiaoDich = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!giaoDichForm.maMonVay.trim()) {
+      toast.error("Vui lòng nhập Mã món vay");
+      return;
+    }
+    try {
+      setIsSubmittingGiaoDich(true);
+      const response = await fetch("/api/giao-dich-vay", {
+        method: editingGiaoDich ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editingGiaoDich
+            ? { ...giaoDichForm, rowIndex: editingGiaoDich.rowIndex }
+            : giaoDichForm,
+        ),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setGiaoDichList(result.data);
+        setShowGiaoDichModal(false);
+        setEditingGiaoDich(null);
+        setGiaoDichForm(emptyGiaoDich);
+        // Giao dịch ảnh hưởng tới Món vay → tải lại danh sách món vay
+        fetchLoans();
+        toast.success(
+          editingGiaoDich ? "Cập nhật thành công" : "Thêm thành công",
+        );
+      } else {
+        toast.error(result.error || "Không thể lưu");
+      }
+    } catch (error) {
+      toast.error("Đã xảy ra lỗi khi lưu");
+    } finally {
+      setIsSubmittingGiaoDich(false);
+    }
+  };
+
+  const confirmDeleteGiaoDich = async () => {
+    if (!giaoDichToDelete) return;
+    try {
+      setIsDeletingGiaoDich(true);
+      const response = await fetch(
+        `/api/giao-dich-vay?rowIndex=${giaoDichToDelete.rowIndex}`,
+        { method: "DELETE" },
+      );
+      const result = await response.json();
+      if (result.success) {
+        setGiaoDichList(result.data);
+        setGiaoDichToDelete(null);
+        fetchLoans();
+        toast.success("Xóa thành công");
+      } else {
+        toast.error(result.error || "Không thể xóa");
+      }
+    } catch (error) {
+      toast.error("Đã xảy ra lỗi khi xóa");
+    } finally {
+      setIsDeletingGiaoDich(false);
+    }
+  };
 
   // Fetch payment history from API
   const fetchPaymentHistory = async () => {
@@ -286,16 +514,17 @@ export default function QuanLyTienVay() {
   }, []);
 
   // Calculations
-  const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
-  const totalRemaining = loans.reduce(
-    (sum, l) => sum + l.remainingPrincipal,
-    0,
-  );
-  const totalPaid = totalPrincipal - totalRemaining;
-  const monthlyPayment = loans
-    .filter((l) => l.status !== "completed")
-    .reduce((sum, l) => sum + l.monthlyPayment, 0);
-  const activeLoans = loans.filter((l) => l.status !== "completed").length;
+  // Tổng hợp từ dữ liệu "Món vay" (cấu trúc mới)
+  const totalPrincipal = loans.reduce((sum, l) => sum + (l.soTienVay || 0), 0);
+  const totalGocDaTra = loans.reduce((sum, l) => sum + (l.gocDaTra || 0), 0);
+  const totalRemaining = loans.reduce((sum, l) => sum + (l.gocConLai || 0), 0);
+  const totalLaiConLai = loans.reduce((sum, l) => sum + (l.laiConLai || 0), 0);
+  const totalPhaiTra = loans.reduce((sum, l) => sum + (l.tongPhaiTra || 0), 0);
+  const activeLoans = loans.filter((l) => (l.gocConLai || 0) > 0).length;
+  const paidPct =
+    totalPrincipal > 0
+      ? ((totalGocDaTra / totalPrincipal) * 100).toFixed(1)
+      : "0";
 
   const stats = [
     {
@@ -306,28 +535,121 @@ export default function QuanLyTienVay() {
       color: "bg-blue-500",
     },
     {
-      label: "Đã trả",
-      value: formatCurrency(totalPaid),
-      change: `${((totalPaid / totalPrincipal) * 100).toFixed(1)}% tổng nợ`,
+      label: "Gốc đã trả",
+      value: formatCurrency(totalGocDaTra),
+      change: `${paidPct}% tổng gốc`,
       isPositive: true,
       icon: CheckCircle,
       color: "bg-green-500",
     },
     {
-      label: "Dư nợ còn lại",
+      label: "Gốc còn lại",
       value: formatCurrency(totalRemaining),
       change: `${activeLoans} khoản đang vay`,
       icon: TrendingDown,
       color: "bg-red-500",
     },
     {
-      label: "Trả góp/tháng",
-      value: formatCurrency(monthlyPayment),
-      change: "Kỳ thanh toán tiếp theo",
+      label: "Lãi còn phải trả",
+      value: formatCurrency(totalLaiConLai),
+      change: `Tổng phải trả: ${formatCurrency(totalPhaiTra)}`,
       icon: Calendar,
       color: "bg-orange-500",
     },
   ];
+
+  // Tổng lãi cộng dồn (cho dashboard)
+  const totalLaiCongDon = loans.reduce(
+    (sum, l) => sum + (l.laiCongDon || 0),
+    0,
+  );
+
+  // Tổng hợp theo người cho vay (cho dashboard) - gom nhóm từ Món vay
+  const lenderSummary = (() => {
+    const map: Record<string, any> = {};
+    for (const l of loans) {
+      const key = l.lender || "(không tên)";
+      if (!map[key]) {
+        map[key] = {
+          lender: key,
+          soMon: 0,
+          tongVay: 0,
+          gocDaTra: 0,
+          gocConLai: 0,
+          laiCongDon: 0,
+          laiDaTra: 0,
+          laiConLai: 0,
+          tongPhaiTra: 0,
+        };
+      }
+      const g = map[key];
+      g.soMon += 1;
+      g.tongVay += l.soTienVay || 0;
+      g.gocDaTra += l.gocDaTra || 0;
+      g.gocConLai += l.gocConLai || 0;
+      g.laiCongDon += l.laiCongDon || 0;
+      g.laiDaTra += l.laiDaTra || 0;
+      g.laiConLai += l.laiConLai || 0;
+      g.tongPhaiTra += l.tongPhaiTra || 0;
+    }
+    return Object.values(map);
+  })();
+
+  // ===== Chi tiết món vay (theo mã món đang chọn) =====
+  const selectedMon = loans.find((l) => l.code === selectedMaMonVay) || null;
+
+  const parseVNDate = (d: string): number => {
+    if (!d) return 0;
+    if (d.includes("/")) {
+      const [dd, mm, yyyy] = d.split("/");
+      return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+    }
+    return new Date(d).getTime() || 0;
+  };
+
+  // Lịch sử giao dịch của món đang chọn + tính lãi còn lại / tổng phải trả lũy kế
+  const isVayMoi = (t: string) => t === "Vay mới" || t === "Vay thêm";
+  const monTransactions = (() => {
+    if (!selectedMon) return [];
+    const txs = giaoDichList
+      .filter((g) => g.maMonVay === selectedMon.code)
+      .sort((a, b) => parseVNDate(a.ngay) - parseVNDate(b.ngay));
+    let laiConLaiRun = 0;
+    const rows = txs.map((g) => {
+      const gocTang = isVayMoi(g.loaiGD) ? g.soTien : 0;
+      const gocGiam = g.loaiGD === "Trả gốc" ? g.soTien : 0;
+      const laiGiam = g.loaiGD === "Trả lãi" ? g.soTien : 0;
+      laiConLaiRun += (g.laiPhatSinh || 0) - laiGiam;
+      const gocConLai = g.gocSauGD || 0;
+      return {
+        ngay: g.ngay,
+        loaiGD: g.loaiGD,
+        noiDung: g.ghiChu,
+        gocTang,
+        gocGiam,
+        gocConLai,
+        laiPhatSinh: g.laiPhatSinh || 0,
+        laiGiam,
+        laiConLai: laiConLaiRun,
+        tongPhaiTra: gocConLai + laiConLaiRun,
+      };
+    });
+    // Dòng "Chốt số" - cập nhật số liệu đến hiện tại (khớp tổng từ Món vay)
+    const laiPhatSinhChot = Math.max(0, (selectedMon.laiConLai || 0) - laiConLaiRun);
+    rows.push({
+      ngay: new Date().toLocaleDateString("vi-VN"),
+      loaiGD: "Chốt số",
+      noiDung: "Cập nhật số liệu đến hiện tại",
+      gocTang: 0,
+      gocGiam: 0,
+      gocConLai: selectedMon.gocConLai || 0,
+      laiPhatSinh: laiPhatSinhChot,
+      laiGiam: 0,
+      laiConLai: selectedMon.laiConLai || 0,
+      tongPhaiTra: selectedMon.tongPhaiTra || 0,
+    });
+    return rows;
+  })();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -390,12 +712,13 @@ export default function QuanLyTienVay() {
   };
 
   const filteredLoans = loans.filter((loan) => {
-    const matchesSearch =
-      loan.lender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loan.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter =
-      filterStatus === "all" || loan.status === filterStatus;
-    return matchesSearch && matchesFilter;
+    const s = searchTerm.toLowerCase();
+    if (!s) return true;
+    return (
+      (loan.lender || "").toLowerCase().includes(s) ||
+      (loan.code || "").toLowerCase().includes(s) ||
+      (loan.status || "").toLowerCase().includes(s)
+    );
   });
 
   const handleViewLoan = (loan: Loan) => {
@@ -714,15 +1037,6 @@ export default function QuanLyTienVay() {
                 </button>
               ))}
             </nav>
-            {activeTab === "danh-sach-mon-vay" && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Thêm khoản vay
-              </button>
-            )}
           </div>
         </div>
 
@@ -736,22 +1050,23 @@ export default function QuanLyTienVay() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="text"
-                      placeholder="Tìm khoản vay..."
+                      placeholder="Tìm mã món, người cho vay..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
                     />
                   </div>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 italic">
+                    Tổng hợp từ sheet Giao dịch
+                  </span>
+                  <button
+                    onClick={openAddGiaoDich}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                   >
-                    <option value="all">Tất cả trạng thái</option>
-                    <option value="active">Đang vay</option>
-                    <option value="near_due">Sắp đến hạn</option>
-                    <option value="completed">Đã tất toán</option>
-                  </select>
+                    <Plus size={18} /> Thêm món vay
+                  </button>
                 </div>
               </div>
 
@@ -765,129 +1080,427 @@ export default function QuanLyTienVay() {
               ) : filteredLoans.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <HandCoins className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                  <p className="font-medium">Chưa có khoản vay nào</p>
-                  <p className="text-sm mt-1">
-                    Nhấn &quot;Thêm khoản vay&quot; để bắt đầu
-                  </p>
+                  <p className="font-medium">Chưa có món vay nào</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+                <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                  <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Mã món vay
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Mã món vay</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Người cho vay</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Ngày vay</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Số tiền vay</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Lãi vay</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Gốc đã trả</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Gốc còn lại</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Lãi cộng dồn</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Lãi đã trả</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Lãi còn lại</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Tổng phải trả</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredLoans.map((loan: any) => (
+                        <tr key={loan.code} className="hover:bg-gray-50">
+                          <td className="px-3 py-3 font-medium text-blue-600">
+                            {loan.code}
+                          </td>
+                          <td className="px-3 py-3 text-gray-900">
+                            {loan.lender || "-"}
+                          </td>
+                          <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
+                            {loan.ngayVay || "-"}
+                          </td>
+                          <td className="px-3 py-3 text-right font-medium text-gray-900">
+                            {formatCurrency(loan.soTienVay)}
+                          </td>
+                          <td className="px-3 py-3 text-right text-gray-700">
+                            {loan.laiVay || "-"}
+                          </td>
+                          <td className="px-3 py-3 text-right text-gray-700">
+                            {loan.gocDaTra ? formatCurrency(loan.gocDaTra) : "-"}
+                          </td>
+                          <td className="px-3 py-3 text-right font-medium text-orange-600">
+                            {loan.gocConLai ? formatCurrency(loan.gocConLai) : "-"}
+                          </td>
+                          <td className="px-3 py-3 text-right text-gray-700">
+                            {loan.laiCongDon ? formatCurrency(loan.laiCongDon) : "-"}
+                          </td>
+                          <td className="px-3 py-3 text-right text-gray-700">
+                            {loan.laiDaTra ? formatCurrency(loan.laiDaTra) : "-"}
+                          </td>
+                          <td className="px-3 py-3 text-right font-medium text-red-600">
+                            {loan.laiConLai ? formatCurrency(loan.laiConLai) : "-"}
+                          </td>
+                          <td className="px-3 py-3 text-right font-semibold text-purple-700">
+                            {loan.tongPhaiTra ? formatCurrency(loan.tongPhaiTra) : "-"}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs whitespace-nowrap">
+                              {loan.status || "-"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab: Chi tiết món vay */}
+          {activeTab === "chi-tiet-mon-vay" && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <p className="text-sm italic text-gray-500">
+                  Công ty Cổ phần Riomio | Tận Tâm + Tốc Độ + Chính Xác
+                </p>
+                <h3 className="text-xl font-bold text-blue-700 mt-1">
+                  BẢNG KÊ CHI TIẾT KHOẢN VAY
+                </h3>
+              </div>
+
+              {/* Chọn mã món vay (dropdown) */}
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="text-sm font-semibold text-gray-700">
+                  Chọn mã món vay:
+                </label>
+                <select
+                  value={selectedMaMonVay}
+                  onChange={(e) => setSelectedMaMonVay(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-red-600 focus:ring-2 focus:ring-blue-500 bg-yellow-50 min-w-40"
+                >
+                  {loans.length === 0 && <option value="">—</option>}
+                  {loans.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.code} — {l.lender}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-sm text-gray-500">
+                  Ngày báo cáo: {new Date().toLocaleDateString("vi-VN")}
+                </span>
+              </div>
+
+              {!selectedMon ? (
+                <div className="text-center py-12 text-gray-500">
+                  Chọn một mã món vay để xem chi tiết
+                </div>
+              ) : (
+                <>
+                  {/* I. THÔNG TIN MÓN VAY */}
+                  <div>
+                    <div className="bg-slate-800 text-white px-4 py-2 rounded-t-lg font-semibold">
+                      I. THÔNG TIN MÓN VAY
+                    </div>
+                    <div className="border border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-100">
+                      {[
+                        ["Người cho vay", selectedMon.lender || "-"],
+                        ["Ngày vay", selectedMon.ngayVay || "-"],
+                        ["Số tiền vay gốc", formatCurrency(selectedMon.soTienVay)],
+                        ["Lãi suất/năm", selectedMon.laiVay || "-"],
+                      ].map(([k, v]) => (
+                        <div key={k} className="flex px-4 py-2.5 text-sm">
+                          <span className="w-48 font-medium text-gray-700">{k}</span>
+                          <span className="font-semibold text-red-600">{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* II. TÌNH HÌNH TÀI CHÍNH */}
+                  <div>
+                    <div className="bg-slate-800 text-white px-4 py-2 rounded-t-lg font-semibold">
+                      II. TÌNH HÌNH TÀI CHÍNH TẠI NGÀY BÁO CÁO
+                    </div>
+                    <div className="border border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-100">
+                      {[
+                        ["Gốc đã trả", formatCurrency(selectedMon.gocDaTra)],
+                        ["Gốc còn nợ", formatCurrency(selectedMon.gocConLai)],
+                        ["Lãi cộng dồn", formatCurrency(selectedMon.laiCongDon)],
+                        ["Lãi đã trả", formatCurrency(selectedMon.laiDaTra)],
+                        ["Lãi còn phải trả", formatCurrency(selectedMon.laiConLai)],
+                      ].map(([k, v]) => (
+                        <div key={k} className="flex px-4 py-2.5 text-sm">
+                          <span className="w-48 font-medium text-gray-700">{k}</span>
+                          <span className="font-semibold text-red-600">{v}</span>
+                        </div>
+                      ))}
+                      <div className="flex px-4 py-2.5 text-sm bg-amber-50">
+                        <span className="w-48 font-bold text-gray-800">
+                          TỔNG SỐ TIỀN PHẢI TRẢ
+                        </span>
+                        <span className="font-bold text-red-600 text-base">
+                          {formatCurrency(selectedMon.tongPhaiTra)}
+                        </span>
+                      </div>
+                      <div className="flex px-4 py-2.5 text-sm">
+                        <span className="w-48 font-medium text-gray-700">Trạng thái</span>
+                        <span className="font-semibold text-red-600">
+                          {selectedMon.status || "-"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* III. LỊCH SỬ GIAO DỊCH */}
+                  <div>
+                    <div className="bg-slate-800 text-white px-4 py-2 rounded-t-lg font-semibold">
+                      III. LỊCH SỬ GIAO DỊCH
+                    </div>
+                    <div className="overflow-x-auto border border-t-0 border-gray-200 rounded-b-lg">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-700 text-white">
+                            <th className="px-3 py-2 text-left font-medium whitespace-nowrap">Ngày tháng</th>
+                            <th className="px-3 py-2 text-left font-medium">Loại GD</th>
+                            <th className="px-3 py-2 text-left font-medium">Nội dung</th>
+                            <th className="px-3 py-2 text-right font-medium">Gốc Tăng (Vay thêm)</th>
+                            <th className="px-3 py-2 text-right font-medium">Gốc Giảm (Trả gốc)</th>
+                            <th className="px-3 py-2 text-right font-medium">Gốc còn lại</th>
+                            <th className="px-3 py-2 text-right font-medium">Lãi phát sinh</th>
+                            <th className="px-3 py-2 text-right font-medium">Lãi giảm (Trả lãi)</th>
+                            <th className="px-3 py-2 text-right font-medium">Lãi còn lại</th>
+                            <th className="px-3 py-2 text-right font-medium">Tổng phải trả</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {monTransactions.map((r, i) => (
+                            <tr
+                              key={i}
+                              className={
+                                r.loaiGD === "Chốt số"
+                                  ? "bg-amber-50 font-medium"
+                                  : "hover:bg-gray-50"
+                              }
+                            >
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-700">{r.ngay}</td>
+                              <td className="px-3 py-2 text-gray-700">{r.loaiGD}</td>
+                              <td className="px-3 py-2 text-gray-600">{r.noiDung || "-"}</td>
+                              <td className="px-3 py-2 text-right text-gray-700">{r.gocTang ? formatCurrency(r.gocTang) : "0"}</td>
+                              <td className="px-3 py-2 text-right text-gray-700">{r.gocGiam ? formatCurrency(r.gocGiam) : "0"}</td>
+                              <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(r.gocConLai)}</td>
+                              <td className="px-3 py-2 text-right text-gray-700">{r.laiPhatSinh ? formatCurrency(r.laiPhatSinh) : "0"}</td>
+                              <td className="px-3 py-2 text-right text-gray-700">{r.laiGiam ? formatCurrency(r.laiGiam) : "0"}</td>
+                              <td className="px-3 py-2 text-right font-medium text-red-600">{formatCurrency(r.laiConLai)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-purple-700">{formatCurrency(r.tongPhaiTra)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Tab: Lãi vay (Danh sách người cho vay) */}
+          {activeTab === "lai-vay" && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Danh sách người cho vay ({laiVayList.length})
+                </h3>
+                <button
+                  onClick={openAddLaiVay}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <Plus size={18} /> Thêm người cho vay
+                </button>
+              </div>
+
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-4 py-3 text-left font-medium text-gray-600 w-16">
+                          STT
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left font-medium text-gray-600">
                           Người cho vay
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Phân loại
+                        <th className="px-4 py-3 text-right font-medium text-gray-600 w-32">
+                          Lãi suất năm
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Ngày đáo hạn
+                        <th className="px-4 py-3 text-left font-medium text-gray-600 w-48">
+                          Cách tính lãi
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Số tiền vay gốc
+                        <th className="px-4 py-3 text-left font-medium text-gray-600">
+                          Ghi chú
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Lãi suất ban đầu
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Loại lãi suất
-                        </th>
-                        {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ngày trả lãi</th> */}
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Kỳ hạn trả lãi
-                        </th>
-                        <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Trạng thái
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Ngày giải ngân
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-center font-medium text-gray-600 w-24">
                           Thao tác
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {filteredLoans.map((loan: any) => (
-                        <tr key={loan.code} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewLoan(loan)}>
-                          <td className="px-4 py-4">
-                            <span className="font-medium text-blue-600">
-                              {loan.code}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-gray-900">{loan.lender}</span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-gray-900">
-                              {loan.category || "-"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-gray-900">
-                              {loan.maturityDate || "-"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-right font-medium text-gray-900">
-                            {formatCurrency(loan.principalAmount)}
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-gray-900">
-                              {loan.initialInterestRate || "-"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-gray-900">
-                              {loan.interestType || "-"}
-                            </span>
-                          </td>
-                          {/* <td className="px-4 py-4">
-                            <span className="text-gray-900">
-                              {loan.interestPaymentDate || "-"}
-                            </span>
-                          </td> */}
-                          <td className="px-4 py-4">
-                            <span className="text-gray-900">
-                              {loan.paymentTerm || "-"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center">
-                            {getStatusBadge(loan.status)}
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-gray-900">
-                              {loan.disbursementDate || "-"}
-                            </span>
-                          </td>
-                          {/* <td className="px-4 py-4">
-                            <span className="text-gray-900">
-                              {loan.purpose || "-"}
-                            </span>
-                          </td> */}
-                          <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleEditLoan(loan)}
-                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                title="Sửa"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLoan(loan)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Xóa"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                      {isLoadingLaiVay ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                            <Loader2 className="animate-spin inline mr-2" size={18} />
+                            Đang tải dữ liệu...
                           </td>
                         </tr>
-                      ))}
+                      ) : laiVayList.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                            Chưa có dữ liệu
+                          </td>
+                        </tr>
+                      ) : (
+                        laiVayList.map((item, index) => (
+                          <tr key={item.rowIndex} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-600">
+                              {item.stt || index + 1}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-blue-600">
+                              {item.nguoiChoVay}
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-700">
+                              {item.laiSuatNam || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">
+                              {item.cachTinhLai || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500">
+                              {item.ghiChu || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => openEditLaiVay(item)}
+                                  className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                  title="Sửa"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                <button
+                                  onClick={() => setLaiVayToDelete(item)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Xóa"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab: Giao dịch vay (Sổ giao dịch) */}
+          {activeTab === "giao-dich-vay" && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Sổ giao dịch vay ({giaoDichList.length})
+                </h3>
+                <button
+                  onClick={openAddGiaoDich}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <Plus size={18} /> Thêm giao dịch
+                </button>
+              </div>
+
+              {isLoadingGiaoDich ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-3 text-left font-medium text-gray-600 w-12">STT</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Ngày</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Mã món vay</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Người cho vay</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Loại GD</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600">Số tiền</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600">Ghi chú</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600 bg-gray-100">Gốc sau GD</th>
+                        <th className="px-3 py-3 text-left font-medium text-gray-600 bg-gray-100">Ngày GD trước</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600 bg-gray-100">Gốc trước GD</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600 bg-gray-100">Lãi suất</th>
+                        <th className="px-3 py-3 text-right font-medium text-gray-600 bg-gray-100">Lãi phát sinh</th>
+                        <th className="px-3 py-3 text-center font-medium text-gray-600 w-24">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {giaoDichList.length === 0 ? (
+                        <tr>
+                          <td colSpan={13} className="px-4 py-8 text-center text-gray-500">
+                            Chưa có giao dịch
+                          </td>
+                        </tr>
+                      ) : (
+                        giaoDichList.map((gd, index) => (
+                          <tr key={gd.rowIndex} className="hover:bg-gray-50">
+                            <td className="px-3 py-3 text-gray-600">{gd.stt || index + 1}</td>
+                            <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{gd.ngay || "-"}</td>
+                            <td className="px-3 py-3 font-medium text-blue-600">{gd.maMonVay}</td>
+                            <td className="px-3 py-3 text-gray-900">{gd.nguoiChoVay || "-"}</td>
+                            <td className="px-3 py-3">
+                              <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs whitespace-nowrap">
+                                {gd.loaiGD || "-"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-right font-medium text-gray-900">
+                              {gd.soTien ? formatCurrency(gd.soTien) : "-"}
+                            </td>
+                            <td className="px-3 py-3 text-gray-500 max-w-xs truncate" title={gd.ghiChu}>
+                              {gd.ghiChu || "-"}
+                            </td>
+                            <td className="px-3 py-3 text-right text-gray-700 bg-gray-50">
+                              {gd.gocSauGD ? formatCurrency(gd.gocSauGD) : "-"}
+                            </td>
+                            <td className="px-3 py-3 text-gray-700 bg-gray-50 whitespace-nowrap">
+                              {gd.ngayGDTruoc && gd.ngayGDTruoc !== "0"
+                                ? gd.ngayGDTruoc
+                                : "-"}
+                            </td>
+                            <td className="px-3 py-3 text-right text-gray-700 bg-gray-50">
+                              {gd.gocTruocGD ? formatCurrency(gd.gocTruocGD) : "-"}
+                            </td>
+                            <td className="px-3 py-3 text-right text-gray-700 bg-gray-50">
+                              {gd.laiSuat || "-"}
+                            </td>
+                            <td className="px-3 py-3 text-right text-gray-700 bg-gray-50">
+                              {gd.laiPhatSinh ? formatCurrency(gd.laiPhatSinh) : "-"}
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => openEditGiaoDich(gd)}
+                                  className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                  title="Sửa"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                <button
+                                  onClick={() => setGiaoDichToDelete(gd)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Xóa"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1023,103 +1636,114 @@ export default function QuanLyTienVay() {
 
           {/* Tab: DASHBOARD */}
           {activeTab === "dashboard" && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                TỔNG QUAN TIỀN VAY
-              </h3>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xl font-bold text-blue-700">
+                  DASHBOARD - TỔNG QUAN KHOẢN VAY
+                </h3>
+                <p className="text-xs text-gray-500 italic mt-0.5">
+                  Cập nhật đến: {new Date().toLocaleDateString("vi-VN")}
+                </p>
+              </div>
 
-              {isLoadingDashboard ? (
+              {isLoadingLoans ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-gray-500">Đang tải dữ liệu...</span>
                 </div>
-              ) : dashboardData ? (
-                <div className="space-y-6">
-                  {/* Row 1: Tổng dư nợ & Áp lực lãi */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-5 bg-red-50 rounded-xl border border-red-200">
-                      <p className="text-sm text-red-600 font-medium">Tổng dư nợ toàn công ty</p>
-                      <p className="text-3xl font-bold text-red-700 mt-1">
-                        {formatCurrency(dashboardData.tongDuNoToanCongTy)}
-                      </p>
-                    </div>
-                    <div className="p-5 bg-orange-50 rounded-xl border border-orange-200">
-                      <p className="text-sm text-orange-600 font-medium">Tổng áp lực lãi vay tháng này</p>
-                      <p className="text-3xl font-bold text-orange-700 mt-1">
-                        {formatCurrency(dashboardData.tongApLucLaiVayThangNay)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Dư nợ Bank & Ngoài */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-5 bg-blue-50 rounded-xl border border-blue-200">
-                      <p className="text-sm text-blue-600 font-medium">Dư nợ Vay bank</p>
-                      <p className="text-2xl font-bold text-blue-700 mt-1">
-                        {formatCurrency(dashboardData.duNoVayBank)}
-                      </p>
-                    </div>
-                    <div className="p-5 bg-purple-50 rounded-xl border border-purple-200">
-                      <p className="text-sm text-purple-600 font-medium">Dư nợ Vay ngoài</p>
-                      <p className="text-2xl font-bold text-purple-700 mt-1">
-                        {formatCurrency(dashboardData.duNoVayNgoai)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Row 3: Cảnh báo */}
-                  {dashboardData.canhBao > 0 && (
-                    <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                      <div className="flex items-center gap-2 text-yellow-700">
-                        <AlertTriangle className="w-5 h-5" />
-                        <span className="font-semibold">Cảnh báo: {dashboardData.canhBao}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Row 4: Lãi vay */}
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 mb-3">Lãi vay</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 bg-green-50 rounded-xl border border-green-200">
-                        <p className="text-sm text-green-600 font-medium">Lãi vay đã trả</p>
-                        <p className="text-xl font-bold text-green-700 mt-1">
-                          {formatCurrency(dashboardData.laiVayDaTra)}
-                        </p>
-                      </div>
-                      <div className="p-4 bg-red-50 rounded-xl border border-red-200">
-                        <p className="text-sm text-red-600 font-medium">Lãi còn lại</p>
-                        <p className="text-xl font-bold text-red-700 mt-1">
-                          {formatCurrency(dashboardData.laiConLai)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 5: Gốc */}
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 mb-3">Gốc vay</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 bg-green-50 rounded-xl border border-green-200">
-                        <p className="text-sm text-green-600 font-medium">Gốc đã trả</p>
-                        <p className="text-xl font-bold text-green-700 mt-1">
-                          {formatCurrency(dashboardData.gocDaTra)}
-                        </p>
-                      </div>
-                      <div className="p-4 bg-red-50 rounded-xl border border-red-200">
-                        <p className="text-sm text-red-600 font-medium">Gốc còn lại</p>
-                        <p className="text-xl font-bold text-red-700 mt-1">
-                          {formatCurrency(dashboardData.gocConLai)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <TrendingDown className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                  <p>Không có dữ liệu Dashboard</p>
-                </div>
+                <>
+                  {/* CHỈ SỐ TỔNG QUAN */}
+                  <div>
+                    <h4 className="text-base font-bold text-blue-700 mb-3">
+                      CHỈ SỐ TỔNG QUAN
+                    </h4>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      {[
+                        { label: "Tổng gốc còn nợ", value: totalRemaining },
+                        { label: "Lãi cộng dồn", value: totalLaiCongDon },
+                        { label: "Lãi còn phải trả", value: totalLaiConLai },
+                        { label: "Tổng phải trả", value: totalPhaiTra },
+                      ].map((c) => (
+                        <div
+                          key={c.label}
+                          className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center"
+                        >
+                          <p className="text-sm font-medium text-gray-700 mb-1">
+                            {c.label}
+                          </p>
+                          <p className="text-xl font-bold text-red-600">
+                            {formatCurrency(c.value)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* TỔNG HỢP THEO NGƯỜI CHO VAY */}
+                  <div>
+                    <h4 className="text-base font-bold text-blue-700 mb-3">
+                      TỔNG HỢP THEO NGƯỜI CHO VAY
+                    </h4>
+                    <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-800 text-white">
+                            <th className="px-3 py-2.5 text-center font-medium w-12">STT</th>
+                            <th className="px-3 py-2.5 text-left font-medium">Người cho vay</th>
+                            <th className="px-3 py-2.5 text-center font-medium">Số món</th>
+                            <th className="px-3 py-2.5 text-right font-medium">Tổng vay</th>
+                            <th className="px-3 py-2.5 text-right font-medium">Gốc đã trả</th>
+                            <th className="px-3 py-2.5 text-right font-medium">Gốc còn lại</th>
+                            <th className="px-3 py-2.5 text-right font-medium">Lãi cộng dồn</th>
+                            <th className="px-3 py-2.5 text-right font-medium">Lãi đã trả</th>
+                            <th className="px-3 py-2.5 text-right font-medium">Lãi còn lại</th>
+                            <th className="px-3 py-2.5 text-right font-medium">Tổng phải trả</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {lenderSummary.length === 0 ? (
+                            <tr>
+                              <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                                Chưa có dữ liệu
+                              </td>
+                            </tr>
+                          ) : (
+                            lenderSummary.map((g: any, index: number) => (
+                              <tr key={g.lender} className="hover:bg-gray-50">
+                                <td className="px-3 py-2.5 text-center text-gray-600">{index + 1}</td>
+                                <td className="px-3 py-2.5 font-medium text-blue-600">{g.lender}</td>
+                                <td className="px-3 py-2.5 text-center text-gray-700">{g.soMon}</td>
+                                <td className="px-3 py-2.5 text-right text-gray-900">{formatCurrency(g.tongVay)}</td>
+                                <td className="px-3 py-2.5 text-right text-gray-700">{g.gocDaTra ? formatCurrency(g.gocDaTra) : "0"}</td>
+                                <td className="px-3 py-2.5 text-right font-medium text-orange-600">{g.gocConLai ? formatCurrency(g.gocConLai) : "0"}</td>
+                                <td className="px-3 py-2.5 text-right text-gray-700">{g.laiCongDon ? formatCurrency(g.laiCongDon) : "0"}</td>
+                                <td className="px-3 py-2.5 text-right text-gray-700">{g.laiDaTra ? formatCurrency(g.laiDaTra) : "0"}</td>
+                                <td className="px-3 py-2.5 text-right font-medium text-red-600">{g.laiConLai ? formatCurrency(g.laiConLai) : "0"}</td>
+                                <td className="px-3 py-2.5 text-right font-semibold text-purple-700">{formatCurrency(g.tongPhaiTra)}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                        {lenderSummary.length > 0 && (
+                          <tfoot>
+                            <tr className="bg-gray-100 font-semibold">
+                              <td colSpan={2} className="px-3 py-2.5 text-right">Tổng cộng:</td>
+                              <td className="px-3 py-2.5 text-center">{loans.length}</td>
+                              <td className="px-3 py-2.5 text-right">{formatCurrency(totalPrincipal)}</td>
+                              <td className="px-3 py-2.5 text-right">{formatCurrency(totalGocDaTra)}</td>
+                              <td className="px-3 py-2.5 text-right text-orange-700">{formatCurrency(totalRemaining)}</td>
+                              <td className="px-3 py-2.5 text-right">{formatCurrency(totalLaiCongDon)}</td>
+                              <td className="px-3 py-2.5 text-right">{formatCurrency(loans.reduce((s, l) => s + (l.laiDaTra || 0), 0))}</td>
+                              <td className="px-3 py-2.5 text-right text-red-700">{formatCurrency(totalLaiConLai)}</td>
+                              <td className="px-3 py-2.5 text-right text-purple-700">{formatCurrency(totalPhaiTra)}</td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -2238,6 +2862,414 @@ export default function QuanLyTienVay() {
                     <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                   )}
                   {isDeletingPayment ? "Đang xóa..." : "Xóa giao dịch"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal Thêm/Sửa Lãi vay (người cho vay) */}
+      {showLaiVayModal && (
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {editingLaiVay ? "Sửa người cho vay" : "Thêm người cho vay"}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowLaiVayModal(false);
+                    setEditingLaiVay(null);
+                    setLaiVayForm(emptyLaiVay);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSubmitLaiVay} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Người cho vay <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={laiVayForm.nguoiChoVay}
+                    onChange={(e) =>
+                      setLaiVayForm({ ...laiVayForm, nguoiChoVay: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="VD: Mr Việt 12%"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Lãi suất năm
+                    </label>
+                    <input
+                      type="text"
+                      value={laiVayForm.laiSuatNam}
+                      onChange={(e) =>
+                        setLaiVayForm({ ...laiVayForm, laiSuatNam: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="VD: 12,00%"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cách tính lãi
+                    </label>
+                    <input
+                      type="text"
+                      value={laiVayForm.cachTinhLai}
+                      onChange={(e) =>
+                        setLaiVayForm({ ...laiVayForm, cachTinhLai: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="VD: Lãi đơn theo ngày"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    value={laiVayForm.ghiChu}
+                    onChange={(e) =>
+                      setLaiVayForm({ ...laiVayForm, ghiChu: e.target.value })
+                    }
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ghi chú (nếu có)"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLaiVayModal(false);
+                      setEditingLaiVay(null);
+                      setLaiVayForm(emptyLaiVay);
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingLaiVay}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isSubmittingLaiVay && (
+                      <Loader2 className="animate-spin" size={16} />
+                    )}
+                    {editingLaiVay ? "Cập nhật" : "Thêm mới"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal xác nhận xóa Lãi vay */}
+      {laiVayToDelete && (
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold">Xác nhận xóa</h3>
+                <button
+                  onClick={() => setLaiVayToDelete(null)}
+                  disabled={isDeletingLaiVay}
+                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-gray-700">
+                  Bạn có chắc muốn xóa người cho vay{" "}
+                  <span className="font-semibold text-blue-600">
+                    {laiVayToDelete.nguoiChoVay}
+                  </span>
+                  ?
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Hành động này không thể hoàn tác.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+                <button
+                  onClick={() => setLaiVayToDelete(null)}
+                  disabled={isDeletingLaiVay}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDeleteLaiVay}
+                  disabled={isDeletingLaiVay}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeletingLaiVay && <Loader2 className="animate-spin" size={16} />}
+                  Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal Thêm/Sửa Giao dịch vay */}
+      {showGiaoDichModal && (
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {editingGiaoDich ? "Sửa giao dịch" : "Thêm giao dịch"}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowGiaoDichModal(false);
+                    setEditingGiaoDich(null);
+                    setGiaoDichForm(emptyGiaoDich);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSubmitGiaoDich} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày
+                    </label>
+                    <input
+                      type="date"
+                      value={giaoDichForm.ngay}
+                      onChange={(e) =>
+                        setGiaoDichForm({ ...giaoDichForm, ngay: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Loại GD
+                    </label>
+                    <select
+                      value={giaoDichForm.loaiGD}
+                      onChange={(e) =>
+                        setGiaoDichForm({ ...giaoDichForm, loaiGD: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {LOAI_GD_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mã món vay <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={giaoDichForm.maMonVay}
+                      onChange={(e) =>
+                        setGiaoDichForm({
+                          ...giaoDichForm,
+                          maMonVay: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="VD: MV1"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Người cho vay
+                    </label>
+                    <input
+                      type="text"
+                      value={giaoDichForm.nguoiChoVay}
+                      onChange={(e) =>
+                        setGiaoDichForm({
+                          ...giaoDichForm,
+                          nguoiChoVay: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="VD: Mr Việt 12%"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Số tiền
+                  </label>
+                  <input
+                    type="number"
+                    value={giaoDichForm.soTien}
+                    onChange={(e) =>
+                      setGiaoDichForm({ ...giaoDichForm, soTien: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    value={giaoDichForm.ghiChu}
+                    onChange={(e) =>
+                      setGiaoDichForm({ ...giaoDichForm, ghiChu: e.target.value })
+                    }
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ghi chú (nếu có)"
+                  />
+                </div>
+                {/* Các cột [H] do sheet tự tính - chỉ xem */}
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs font-medium text-gray-500 mb-2">
+                    Thông tin tự tính (sheet){" "}
+                    {!editingGiaoDich && (
+                      <span className="italic font-normal">
+                        — sẽ hiện sau khi lưu
+                      </span>
+                    )}
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-500">Gốc sau GD:</span>
+                      <span className="font-medium text-gray-800">
+                        {editingGiaoDich?.gocSauGD
+                          ? formatCurrency(editingGiaoDich.gocSauGD)
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-500">Lãi suất:</span>
+                      <span className="font-medium text-gray-800">
+                        {editingGiaoDich?.laiSuat || "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-500">Ngày GD trước:</span>
+                      <span className="font-medium text-gray-800">
+                        {editingGiaoDich?.ngayGDTruoc &&
+                        editingGiaoDich.ngayGDTruoc !== "0"
+                          ? editingGiaoDich.ngayGDTruoc
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-500">Gốc trước GD:</span>
+                      <span className="font-medium text-gray-800">
+                        {editingGiaoDich?.gocTruocGD
+                          ? formatCurrency(editingGiaoDich.gocTruocGD)
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-500">Lãi phát sinh:</span>
+                      <span className="font-medium text-red-600">
+                        {editingGiaoDich?.laiPhatSinh
+                          ? formatCurrency(editingGiaoDich.laiPhatSinh)
+                          : "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowGiaoDichModal(false);
+                      setEditingGiaoDich(null);
+                      setGiaoDichForm(emptyGiaoDich);
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingGiaoDich}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isSubmittingGiaoDich && (
+                      <Loader2 className="animate-spin" size={16} />
+                    )}
+                    {editingGiaoDich ? "Cập nhật" : "Thêm mới"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal xác nhận xóa Giao dịch vay */}
+      {giaoDichToDelete && (
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold">Xác nhận xóa</h3>
+                <button
+                  onClick={() => setGiaoDichToDelete(null)}
+                  disabled={isDeletingGiaoDich}
+                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-gray-700">
+                  Bạn có chắc muốn xóa giao dịch{" "}
+                  <span className="font-semibold text-blue-600">
+                    {giaoDichToDelete.maMonVay}
+                  </span>{" "}
+                  ({giaoDichToDelete.loaiGD}) ngày{" "}
+                  <span className="font-medium">{giaoDichToDelete.ngay}</span>?
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Hành động này không thể hoàn tác.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+                <button
+                  onClick={() => setGiaoDichToDelete(null)}
+                  disabled={isDeletingGiaoDich}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDeleteGiaoDich}
+                  disabled={isDeletingGiaoDich}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeletingGiaoDich && (
+                    <Loader2 className="animate-spin" size={16} />
+                  )}
+                  Xóa
                 </button>
               </div>
             </div>

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLoansFromSheet } from "@/lib/googleSheets";
+import { getMonVayFromSheet } from "@/lib/googleSheets";
 
 /**
  * GET /api/loans
- * Lấy danh sách khoản vay từ Google Sheets
+ * Lấy danh sách "Món vay" (tự tổng hợp từ sheet Giao dịch) - chỉ đọc
  */
 export async function GET(request: NextRequest) {
   try {
-    const loans = await getLoansFromSheet();
+    const loans = await getMonVayFromSheet();
 
     return NextResponse.json({
       success: true,
