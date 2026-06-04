@@ -1343,15 +1343,19 @@ export async function getTaiKhoanOptionsFromSheet(): Promise<string[]> {
 
 /**
  * Lấy danh sách phân loại thu chi từ sheet "Phân loại thu, chi"
- * Header ở row 5, data từ row 6, cột C (Nội dung)
+ * Header ở row 5, data từ row 6, cột B (Loại phiếu) và cột C (Nội dung)
+ * Trả về cả loại phiếu để frontend lọc Thu/Chi chính xác theo cột "Loại phiếu"
+ * thay vì so chuỗi trong nội dung.
  */
-export async function getPhanLoaiThuChiOptionsFromSheet(): Promise<string[]> {
+export async function getPhanLoaiThuChiOptionsFromSheet(): Promise<
+  { loaiPhieu: string; noiDung: string }[]
+> {
   try {
     const sheets = await getGoogleSheetsClient();
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNamePhanLoaiThuChi}'!C6:C`,
+      range: `'${sheetNamePhanLoaiThuChi}'!B6:C`,
     });
 
     const rows = response.data.values;
@@ -1361,14 +1365,18 @@ export async function getPhanLoaiThuChiOptionsFromSheet(): Promise<string[]> {
       return [];
     }
 
-    // Lọc các giá trị không rỗng và loại bỏ trùng lặp
-    const uniqueCategories = Array.from(new Set(
-      rows
-        .map(row => row[0])
-        .filter(value => value && value.trim() !== "")
-    ));
+    // Lọc các dòng có đủ loại phiếu + nội dung, loại bỏ trùng lặp theo nội dung
+    const seen = new Set<string>();
+    const options: { loaiPhieu: string; noiDung: string }[] = [];
+    for (const row of rows) {
+      const loaiPhieu = (row[0] || "").trim();
+      const noiDung = (row[1] || "").trim();
+      if (!loaiPhieu || !noiDung || seen.has(noiDung)) continue;
+      seen.add(noiDung);
+      options.push({ loaiPhieu, noiDung });
+    }
 
-    return uniqueCategories;
+    return options;
   } catch (error) {
     console.error("Error fetching categories from Google Sheets:", error);
     throw error;

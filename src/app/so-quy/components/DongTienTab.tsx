@@ -115,7 +115,7 @@ export default function DongTienTab() {
 
   // Dropdown options
   const [taiKhoanOptions, setTaiKhoanOptions] = useState<string[]>([]);
-  const [phanLoaiOptions, setPhanLoaiOptions] = useState<string[]>([]);
+  const [phanLoaiOptions, setPhanLoaiOptions] = useState<{ loaiPhieu: string; noiDung: string }[]>([]);
   const [nccNPLOptions, setNccNPLOptions] = useState<string[]>([]);
   const [xuongSXOptions, setXuongSXOptions] = useState<string[]>([]);
   const [vanChuyenOptions, setVanChuyenOptions] = useState<string[]>([]);
@@ -1075,10 +1075,10 @@ export default function DongTienTab() {
                   >
                     <option value="">Chọn phân loại</option>
                     {phanLoaiOptions
-                      .filter((option) => option.toLowerCase().includes('thu'))
+                      .filter((option) => option.loaiPhieu === "Phiếu thu")
                       .map((option) => (
-                        <option key={option} value={option}>
-                          {option}
+                        <option key={option.noiDung} value={option.noiDung}>
+                          {option.noiDung}
                         </option>
                       ))}
                   </select>
@@ -1423,10 +1423,10 @@ export default function DongTienTab() {
                   >
                     <option value="">Chọn phân loại</option>
                     {phanLoaiOptions
-                      .filter((option) => option.toLowerCase().includes('chi'))
+                      .filter((option) => option.loaiPhieu === "Phiếu chi")
                       .map((option) => (
-                        <option key={option} value={option}>
-                          {option}
+                        <option key={option.noiDung} value={option.noiDung}>
+                          {option.noiDung}
                         </option>
                       ))}
                   </select>
