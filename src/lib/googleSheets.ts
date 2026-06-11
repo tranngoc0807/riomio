@@ -1218,16 +1218,33 @@ export async function addDongTienToSheet(dongTien: Omit<DongTien, 'id' | 'rowInd
       ],
     ];
 
-    await sheets.spreadsheets.values.append({
+    // KHÔNG dùng append: Google tự dò "table" trong range và có thể ghi lệch cột
+    // khi các cột bên phải (R..AI) đã có sẵn dữ liệu báo cáo. Thay vào đó tính
+    // chính xác dòng trống kế tiếp dựa trên cột A rồi update đúng A{row}:S{row}.
+    const colA = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdDongTien,
-      range: `'${sheetNameDongTien}'!A6:S`,
+      range: `'${sheetNameDongTien}'!A6:A`,
+    });
+    const aValues = colA.data.values || [];
+    // Tìm index cuối cùng có dữ liệu (bỏ qua các dòng trống ở giữa)
+    let lastFilled = -1;
+    for (let i = 0; i < aValues.length; i++) {
+      if (aValues[i] && String(aValues[i][0]).trim() !== "") {
+        lastFilled = i;
+      }
+    }
+    const nextRow = 6 + lastFilled + 1; // dòng dữ liệu bắt đầu ở row 6
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdDongTien,
+      range: `'${sheetNameDongTien}'!A${nextRow}:S${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values,
       },
     });
 
-    console.log(`Successfully added cash flow entry`);
+    console.log(`Successfully added cash flow entry at row ${nextRow}`);
   } catch (error) {
     console.error("Error adding cash flow to Google Sheets:", error);
     throw error;
