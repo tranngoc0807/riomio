@@ -50,7 +50,9 @@ export default function HinhAnhSanPhamTab({ folders, defaultFolder }: HinhAnhSan
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [customFileNames, setCustomFileNames] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addMoreInputRef = useRef<HTMLInputElement>(null);
 
   const fetchImages = async () => {
     try {
@@ -74,18 +76,52 @@ export default function HinhAnhSanPhamTab({ folders, defaultFolder }: HinhAnhSan
     fetchImages();
   }, [selectedFolder]);
 
+  // Gộp thêm file vào danh sách đã chọn, bỏ qua file trùng (cùng tên + kích thước)
+  const addFiles = (incoming: File[]) => {
+    const imageFiles = incoming.filter((f) => f.type.startsWith("image/"));
+    if (imageFiles.length === 0) return;
+
+    setSelectedFiles((prev) => {
+      const existingKeys = new Set(prev.map((f) => `${f.name}-${f.size}`));
+      const toAdd = imageFiles.filter((f) => !existingKeys.has(`${f.name}-${f.size}`));
+      if (toAdd.length > 0) {
+        setCustomFileNames((names) => [
+          ...names,
+          ...toAdd.map((f) => f.name.replace(/\.[^/.]+$/, "")),
+        ]);
+      }
+      return [...prev, ...toAdd];
+    });
+    setShowUploadModal(true);
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const fileArray = Array.from(files);
-    setSelectedFiles(fileArray);
-    // Initialize custom names with original filenames (without extension)
-    setCustomFileNames(fileArray.map((f) => f.name.replace(/\.[^/.]+$/, "")));
-    setShowUploadModal(true);
+    addFiles(Array.from(files));
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+    if (addMoreInputRef.current) {
+      addMoreInputRef.current.value = "";
+    }
+  };
+
+  // Xóa 1 file khỏi danh sách đã chọn trước khi upload
+  const handleRemoveSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setCustomFileNames((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Kéo-thả ảnh vào vùng upload
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      addFiles(Array.from(files));
     }
   };
 
@@ -191,7 +227,28 @@ export default function HinhAnhSanPhamTab({ folders, defaultFolder }: HinhAnhSan
   }, [searchTerm, selectedFolder]);
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 relative"
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!isDragging) setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        // Chỉ tắt khi rời khỏi vùng cha, không phải khi di chuyển qua phần tử con
+        if (e.currentTarget === e.target) setIsDragging(false);
+      }}
+      onDrop={handleDrop}
+    >
+      {/* Lớp phủ khi kéo-thả ảnh vào */}
+      {isDragging && (
+        <div className="absolute inset-0 z-40 bg-purple-500/10 border-2 border-dashed border-purple-500 rounded-xl flex items-center justify-center pointer-events-none">
+          <div className="bg-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+            <Upload className="text-purple-600" size={24} />
+            <span className="font-medium text-purple-700">Thả ảnh vào đây để upload</span>
+          </div>
+        </div>
+      )}
+
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
@@ -262,13 +319,16 @@ export default function HinhAnhSanPhamTab({ folders, defaultFolder }: HinhAnhSan
             <RefreshCw size={18} />
           </button>
 
-          <label className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer">
+          <label
+            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer"
+            title="Chọn nhiều ảnh cùng lúc, hoặc kéo-thả ảnh vào trang. Trong cửa sổ chọn ảnh có thể bấm vào từng ảnh rồi 'Thêm ảnh' để gộp dần."
+          >
             {uploading ? (
               <Loader2 className="animate-spin" size={18} />
             ) : (
               <Upload size={18} />
             )}
-            <span className="hidden sm:inline">Upload ảnh</span>
+            <span className="hidden sm:inline">Upload ảnh (chọn nhiều)</span>
             <input
               ref={fileInputRef}
               type="file"
@@ -529,9 +589,32 @@ export default function HinhAnhSanPhamTab({ folders, defaultFolder }: HinhAnhSan
                       placeholder="Nhập tên file (không cần đuôi)"
                     />
                   </div>
+                  <button
+                    onClick={() => handleRemoveSelectedFile(index)}
+                    disabled={uploading}
+                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
+                    title="Bỏ ảnh này"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
               ))}
             </div>
+
+            {/* Nút thêm ảnh nối tiếp (không cần giữ Shift) */}
+            <label className="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 cursor-pointer">
+              <Upload size={18} />
+              <span className="text-sm font-medium">Thêm ảnh</span>
+              <input
+                ref={addMoreInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={uploading}
+              />
+            </label>
 
             <div className="flex gap-3 mt-6">
               <button

@@ -213,6 +213,12 @@ export default function KeHoachSXTab() {
   const [formNote, setFormNote] = useState("");
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
 
+  // Product detail (xem chi tiết khi bấm vào mã SP) states
+  const [showProductDetailModal, setShowProductDetailModal] = useState(false);
+  const [productDetailItem, setProductDetailItem] = useState<KeHoachSX | null>(null);
+  const [productDetailInfo, setProductDetailInfo] = useState<any | null>(null);
+  const [isLoadingProductDetail, setIsLoadingProductDetail] = useState(false);
+
   // Image picker states
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [imagePickerProductId, setImagePickerProductId] = useState<string | null>(null);
@@ -370,6 +376,31 @@ export default function KeHoachSXTab() {
   const handleViewGrouped = (group: GroupedLSX) => {
     setSelectedGroupedLSX(group);
     setShowViewModal(true);
+  };
+
+  // Xem chi tiết 1 mã SP khi bấm vào mã trong danh sách sản phẩm
+  const handleViewProductDetail = async (product: KeHoachSX) => {
+    setProductDetailItem(product);
+    setProductDetailInfo(null);
+    setShowProductDetailModal(true);
+
+    const code = (product.productCode || "").trim();
+    if (!code) return;
+
+    try {
+      setIsLoadingProductDetail(true);
+      const response = await fetch(
+        `/api/san-pham/get-info-by-code?code=${encodeURIComponent(code)}`
+      );
+      const result = await response.json();
+      if (result.success) {
+        setProductDetailInfo(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching product detail:", error);
+    } finally {
+      setIsLoadingProductDetail(false);
+    }
   };
 
 
@@ -1246,7 +1277,14 @@ export default function KeHoachSXTab() {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-blue-600">{product.productCode}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleViewProductDetail(product)}
+                              className="font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                              title="Xem chi tiết mã SP"
+                            >
+                              {product.productCode}
+                            </button>
                             <span className="text-gray-400">|</span>
                             <span className="text-gray-600">{product.mainFabric || "-"}</span>
                             <span className="text-gray-400">|</span>
@@ -1283,6 +1321,115 @@ export default function KeHoachSXTab() {
                   <span className="text-sm text-gray-500">Ghi chú:</span>
                   <p className="font-medium">{selectedGroupedLSX.note}</p>
                 </div>
+              )}
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Product Detail Modal - Chi tiết mã SP */}
+      {showProductDetailModal && productDetailItem && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-[70] bg-black/40"
+            onClick={() => { setShowProductDetailModal(false); setProductDetailItem(null); setProductDetailInfo(null); }}
+          />
+          <div className="fixed left-1/2 top-1/2 z-[80] -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-2xl max-h-[88vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-blue-50">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Chi tiết mã SP</h3>
+                <p className="text-sm text-blue-600 font-medium">{productDetailItem.productCode}</p>
+              </div>
+              <button
+                onClick={() => { setShowProductDetailModal(false); setProductDetailItem(null); setProductDetailInfo(null); }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Thông tin cơ bản */}
+              <div className="flex items-start gap-4">
+                {productDetailItem.image ? (
+                  <img src={productDetailItem.image} alt={productDetailItem.productName} className="w-24 h-24 object-cover rounded-lg border shrink-0" />
+                ) : (
+                  <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs shrink-0">No img</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-semibold text-gray-900">{productDetailItem.productName || "-"}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <div><span className="text-gray-500">Mã vải chính:</span> <span className="text-gray-900 font-medium">{productDetailItem.mainFabric || "-"}</span></div>
+                    <div><span className="text-gray-500">Màu sắc:</span> <span className="text-gray-900 font-medium">{productDetailItem.color || "-"}</span></div>
+                    <div><span className="text-gray-500">Dòng size:</span> <span className="text-gray-900 font-medium">{productDetailItem.size || "-"}</span></div>
+                    <div><span className="text-gray-500">Tổng SL:</span> <span className="text-blue-600 font-bold">{productDetailItem.totalQuantity || 0}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Size breakdown */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Chi tiết theo size</h4>
+                <div className="flex flex-wrap gap-2">
+                  {TABLE_SIZES.filter((s) => (productDetailItem as any)[s.key] > 0).map((s) => (
+                    <div key={s.key} className="text-center min-w-[56px]">
+                      <div className="text-xs text-gray-500 mb-1">{s.label}</div>
+                      <div className="px-3 py-1.5 text-sm font-medium bg-yellow-50 rounded border border-gray-200">
+                        {(productDetailItem as any)[s.key]}
+                      </div>
+                    </div>
+                  ))}
+                  {TABLE_SIZES.filter((s) => (productDetailItem as any)[s.key] > 0).length === 0 && (
+                    <span className="text-sm text-gray-400">Không có dữ liệu size</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Thông tin mở rộng từ các bảng khác */}
+              {isLoadingProductDetail ? (
+                <div className="flex items-center gap-2 text-gray-500 py-4">
+                  <Loader2 size={18} className="animate-spin" />
+                  Đang tải thông tin chi tiết...
+                </div>
+              ) : productDetailInfo ? (
+                <>
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Thông tin sản xuất</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500">Xưởng SX</div>
+                        <div className="font-medium text-gray-900">{productDetailInfo.workshop || "-"}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500">SL kế hoạch</div>
+                        <div className="font-medium text-gray-900">{productDetailInfo.plannedQuantity || 0}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500">SL đã cắt</div>
+                        <div className="font-medium text-gray-900">{productDetailInfo.cutQuantity || 0}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500">SL nhập kho</div>
+                        <div className="font-medium text-gray-900">{productDetailInfo.warehouseQuantity || 0}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Định mức nguyên phụ liệu</h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                      <div><span className="text-gray-500">Vải chính:</span> <span className="text-gray-900 font-medium">{productDetailInfo.mainFabricQuota || "-"}</span></div>
+                      <div><span className="text-gray-500">Vải phối 1:</span> <span className="text-gray-900 font-medium">{productDetailInfo.accentFabricQuota1 || "-"}</span></div>
+                      <div><span className="text-gray-500">Vải phối 2:</span> <span className="text-gray-900 font-medium">{productDetailInfo.accentFabricQuota2 || "-"}</span></div>
+                      <div><span className="text-gray-500">Phụ liệu 1:</span> <span className="text-gray-900 font-medium">{productDetailInfo.materialsQuota1 || "-"}</span></div>
+                      <div><span className="text-gray-500">Phụ liệu 2:</span> <span className="text-gray-900 font-medium">{productDetailInfo.materialsQuota2 || "-"}</span></div>
+                      <div><span className="text-gray-500">Phụ kiện:</span> <span className="text-gray-900 font-medium">{productDetailInfo.accessoriesQuota || "-"}</span></div>
+                      <div><span className="text-gray-500">Khác:</span> <span className="text-gray-900 font-medium">{productDetailInfo.otherQuota || "-"}</span></div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400">Không tìm thấy thông tin mở rộng cho mã này</p>
               )}
             </div>
           </div>

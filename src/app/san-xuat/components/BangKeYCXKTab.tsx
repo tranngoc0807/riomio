@@ -685,29 +685,29 @@ export default function BangKeYCXKTab() {
         throw new Error("Có lỗi khi cập nhật một số mục");
       }
 
-      // 3. Add new items (id === 0)
-      const addPromises = editItems
-        .filter((it) => it.id === 0)
-        .map((it) =>
-          fetch("/api/yeu-cau-xuat-kho-npl/add", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ngayThang: editHeaderData.ngayThang,
-              maPhieuYC: editHeaderData.maPhieuYC,
-              maNPL: it.maNPL,
-              dvt: it.dvt,
-              dinhMuc: it.dinhMuc,
-              slKHSX: it.slKHSX,
-              maSPSuDung: it.maSPSuDung,
-              mauSac: it.mauSac,
-              xuongSX: it.xuongSX,
-            }),
-          }).then((r) => r.json())
-        );
-      const addResults = await Promise.all(addPromises);
-      if (addResults.some((r) => !r.success)) {
-        throw new Error("Có lỗi khi thêm mục mới");
+      // 3. Add new items (id === 0) - PHẢI thêm tuần tự (không Promise.all) vì
+      // mỗi lần thêm đọc dòng cuối rồi mới ghi; chạy song song sẽ ghi đè lên nhau.
+      const itemsToAdd = editItems.filter((it) => it.id === 0);
+      for (const it of itemsToAdd) {
+        const res = await fetch("/api/yeu-cau-xuat-kho-npl/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ngayThang: editHeaderData.ngayThang,
+            maPhieuYC: editHeaderData.maPhieuYC,
+            maNPL: it.maNPL,
+            dvt: it.dvt,
+            dinhMuc: it.dinhMuc,
+            slKHSX: it.slKHSX,
+            maSPSuDung: it.maSPSuDung,
+            mauSac: it.mauSac,
+            xuongSX: it.xuongSX,
+          }),
+        });
+        const r = await res.json();
+        if (!r.success) {
+          throw new Error("Có lỗi khi thêm mục mới");
+        }
       }
 
       toast.success("Cập nhật phiếu thành công");
@@ -734,39 +734,51 @@ export default function BangKeYCXKTab() {
     try {
       setIsSubmitting(true);
 
-      // Submit all items with same header data
-      const promises = nplItems.map((item) =>
-        fetch("/api/yeu-cau-xuat-kho-npl/add", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ngayThang: addHeaderData.ngayThang,
-            maPhieuYC: addHeaderData.maPhieuYC,
-            maNPL: item.maNPL,
-            dvt: item.dvt,
-            dinhMuc: item.dinhMuc,
-            slKHSX: item.slKHSX,
-            maSPSuDung: item.maSPSuDung,
-            mauSac: item.mauSac,
-            xuongSX: item.xuongSX,
-          }),
-        })
-      );
+      // Submit tuần tự từng item (KHÔNG dùng Promise.all) vì mỗi lần thêm phải
+      // đọc dòng cuối của sheet rồi mới ghi -> nếu chạy song song sẽ cùng đọc 1
+      // dòng cuối và ghi đè lên nhau, gây mất dữ liệu (nhập 15 chỉ lưu 2-3).
+      let successCount = 0;
+      let failCount = 0;
+      for (const item of nplItems) {
+        try {
+          const response = await fetch("/api/yeu-cau-xuat-kho-npl/add", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ngayThang: addHeaderData.ngayThang,
+              maPhieuYC: addHeaderData.maPhieuYC,
+              maNPL: item.maNPL,
+              dvt: item.dvt,
+              dinhMuc: item.dinhMuc,
+              slKHSX: item.slKHSX,
+              maSPSuDung: item.maSPSuDung,
+              mauSac: item.mauSac,
+              xuongSX: item.xuongSX,
+            }),
+          });
+          if (response.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (err) {
+          failCount++;
+          console.error("Error adding NPL item:", err);
+        }
+      }
 
-      const results = await Promise.all(promises);
-      const allSuccess = results.every((r) => r.ok);
-
-      if (allSuccess) {
+      if (failCount === 0) {
         toast.success(
           isCopyMode
-            ? `Sao chép sang phiếu ${addHeaderData.maPhieuYC} thành công (${nplItems.length} mã NPL)`
-            : `Thêm ${nplItems.length} mã NPL thành công`,
+            ? `Sao chép sang phiếu ${addHeaderData.maPhieuYC} thành công (${successCount} mã NPL)`
+            : `Thêm ${successCount} mã NPL thành công`,
         );
         setShowAddModal(false);
         setIsCopyMode(false);
         fetchData();
       } else {
-        toast.error("Có lỗi khi thêm một số mã NPL");
+        toast.error(`Đã thêm ${successCount}/${nplItems.length} mã NPL, ${failCount} mã bị lỗi`);
+        fetchData();
       }
     } catch (error) {
       console.error("Error adding:", error);

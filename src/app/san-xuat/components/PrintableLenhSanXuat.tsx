@@ -127,6 +127,9 @@ export default function PrintableLenhSanXuat({ data }: PrintableLenhSanXuatProps
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    // Bỏ crossorigin để in không bị chặn bởi CORS (in chỉ hiển thị, không cần CORS như export JPG)
+    const printHTML = printContent.outerHTML.replace(/\scrossorigin="[^"]*"/gi, "");
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -152,7 +155,7 @@ export default function PrintableLenhSanXuat({ data }: PrintableLenhSanXuatProps
           </style>
         </head>
         <body>
-          ${printContent.outerHTML}
+          ${printHTML}
         </body>
       </html>
     `);
@@ -160,10 +163,40 @@ export default function PrintableLenhSanXuat({ data }: PrintableLenhSanXuatProps
     printWindow.document.close();
     printWindow.focus();
 
-    setTimeout(() => {
+    const doPrint = () => {
+      printWindow.focus();
       printWindow.print();
       printWindow.close();
-    }, 250);
+    };
+
+    // Đợi tất cả ảnh tải xong (hoặc lỗi) trước khi in, tránh in ra mất hình
+    const images = Array.from(printWindow.document.images);
+    if (images.length === 0) {
+      setTimeout(doPrint, 250);
+      return;
+    }
+
+    let remaining = images.length;
+    let printed = false;
+    const finish = () => {
+      if (printed) return;
+      printed = true;
+      doPrint();
+    };
+    const onOne = () => {
+      remaining -= 1;
+      if (remaining <= 0) finish();
+    };
+    images.forEach((img) => {
+      if (img.complete) {
+        onOne();
+      } else {
+        img.addEventListener("load", onOne);
+        img.addEventListener("error", onOne);
+      }
+    });
+    // Dự phòng: nếu có ảnh treo quá lâu thì vẫn in sau 5 giây
+    setTimeout(finish, 5000);
   };
 
   return (

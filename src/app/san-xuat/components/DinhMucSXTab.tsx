@@ -605,6 +605,7 @@ export default function DinhMucSXTab() {
                       </label>
                       <input
                         type="text"
+                        inputMode="decimal"
                         value={(formData as any)[field.key] || ""}
                         onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -720,6 +721,7 @@ export default function DinhMucSXTab() {
                       </label>
                       <input
                         type="text"
+                        inputMode="decimal"
                         value={(editItem as any)[field.key] || ""}
                         onChange={(e) => setEditItem({ ...editItem, [field.key]: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"

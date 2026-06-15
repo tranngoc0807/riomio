@@ -11429,6 +11429,33 @@ export interface DinhMucSX {
 }
 
 /**
+ * Chuyển giá trị cell đọc từ sheet (có thể là number 1.5 hoặc string) thành
+ * string hiển thị, giữ nguyên phần thập phân với dấu chấm.
+ */
+function dinhMucCellToStr(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") return String(value);
+  return String(value);
+}
+
+/**
+ * Chuyển giá trị nhập từ form thành số thực nếu là số (để lưu vào sheet đúng
+ * dạng số thập phân, tránh việc locale của sheet hiểu sai dấu chấm/phẩy).
+ * Nếu không phải số thì giữ nguyên string.
+ */
+function dinhMucToCellValue(value: string): string | number {
+  const trimmed = (value ?? "").trim();
+  if (trimmed === "") return "";
+  // Cho phép số thập phân với dấu chấm hoặc dấu phẩy, ví dụ: 1.5, 1,5, 0.75, 12
+  const normalized = trimmed.replace(",", ".");
+  if (/^-?\d+(\.\d+)?$/.test(normalized)) {
+    const num = Number(normalized);
+    if (Number.isFinite(num)) return num;
+  }
+  return value;
+}
+
+/**
  * Lấy dữ liệu định mức sản xuất từ Google Sheets
  * Header row 5, data từ row 6
  * Columns: Mã SP (A), Vải chính (B), Vải phối 1-5 (C-G),
@@ -11441,6 +11468,8 @@ export async function getDinhMucSXFromSheet(): Promise<DinhMucSX[]> {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdLSX,
       range: `'${sheetNameDinhMucSX}'!A6:R`,
+      // Đọc giá trị số gốc (1.5) thay vì giá trị đã định dạng theo locale (1,5 / làm tròn)
+      valueRenderOption: "UNFORMATTED_VALUE",
     });
 
     const rows = response.data.values;
@@ -11452,24 +11481,24 @@ export async function getDinhMucSXFromSheet(): Promise<DinhMucSX[]> {
     const data: DinhMucSX[] = rows
       .map((row, index) => ({
         id: index + 1,
-        maSP: row[0] || "",
-        vaiChinh: row[1] || "",
-        vaiPhoi1: row[2] || "",
-        vaiPhoi2: row[3] || "",
-        vaiPhoi3: row[4] || "",
-        vaiPhoi4: row[5] || "",
-        vaiPhoi5: row[6] || "",
-        phuLieu1: row[7] || "",
-        phuLieu2: row[8] || "",
-        phuLieu3: row[9] || "",
-        phuLieu4: row[10] || "",
-        phuLieu5: row[11] || "",
-        phuKien1: row[12] || "",
-        phuKien2: row[13] || "",
-        phuKien3: row[14] || "",
-        phuKien4: row[15] || "",
-        phuKien5: row[16] || "",
-        khac: row[17] || "",
+        maSP: dinhMucCellToStr(row[0]),
+        vaiChinh: dinhMucCellToStr(row[1]),
+        vaiPhoi1: dinhMucCellToStr(row[2]),
+        vaiPhoi2: dinhMucCellToStr(row[3]),
+        vaiPhoi3: dinhMucCellToStr(row[4]),
+        vaiPhoi4: dinhMucCellToStr(row[5]),
+        vaiPhoi5: dinhMucCellToStr(row[6]),
+        phuLieu1: dinhMucCellToStr(row[7]),
+        phuLieu2: dinhMucCellToStr(row[8]),
+        phuLieu3: dinhMucCellToStr(row[9]),
+        phuLieu4: dinhMucCellToStr(row[10]),
+        phuLieu5: dinhMucCellToStr(row[11]),
+        phuKien1: dinhMucCellToStr(row[12]),
+        phuKien2: dinhMucCellToStr(row[13]),
+        phuKien3: dinhMucCellToStr(row[14]),
+        phuKien4: dinhMucCellToStr(row[15]),
+        phuKien5: dinhMucCellToStr(row[16]),
+        khac: dinhMucCellToStr(row[17]),
       }))
       .filter((item) => item.maSP.trim() !== "");
 
@@ -11509,23 +11538,23 @@ export async function addDinhMucSXToSheet(dinhMuc: Omit<DinhMucSX, "id">): Promi
     const values = [
       [
         dinhMuc.maSP,
-        dinhMuc.vaiChinh,
-        dinhMuc.vaiPhoi1,
-        dinhMuc.vaiPhoi2,
-        dinhMuc.vaiPhoi3,
-        dinhMuc.vaiPhoi4,
-        dinhMuc.vaiPhoi5,
-        dinhMuc.phuLieu1,
-        dinhMuc.phuLieu2,
-        dinhMuc.phuLieu3,
-        dinhMuc.phuLieu4,
-        dinhMuc.phuLieu5,
-        dinhMuc.phuKien1,
-        dinhMuc.phuKien2,
-        dinhMuc.phuKien3,
-        dinhMuc.phuKien4,
-        dinhMuc.phuKien5,
-        dinhMuc.khac,
+        dinhMucToCellValue(dinhMuc.vaiChinh),
+        dinhMucToCellValue(dinhMuc.vaiPhoi1),
+        dinhMucToCellValue(dinhMuc.vaiPhoi2),
+        dinhMucToCellValue(dinhMuc.vaiPhoi3),
+        dinhMucToCellValue(dinhMuc.vaiPhoi4),
+        dinhMucToCellValue(dinhMuc.vaiPhoi5),
+        dinhMucToCellValue(dinhMuc.phuLieu1),
+        dinhMucToCellValue(dinhMuc.phuLieu2),
+        dinhMucToCellValue(dinhMuc.phuLieu3),
+        dinhMucToCellValue(dinhMuc.phuLieu4),
+        dinhMucToCellValue(dinhMuc.phuLieu5),
+        dinhMucToCellValue(dinhMuc.phuKien1),
+        dinhMucToCellValue(dinhMuc.phuKien2),
+        dinhMucToCellValue(dinhMuc.phuKien3),
+        dinhMucToCellValue(dinhMuc.phuKien4),
+        dinhMucToCellValue(dinhMuc.phuKien5),
+        dinhMucToCellValue(dinhMuc.khac),
       ],
     ];
 
@@ -11558,23 +11587,23 @@ export async function updateDinhMucSXInSheet(dinhMuc: DinhMucSX): Promise<void> 
     const values = [
       [
         dinhMuc.maSP,
-        dinhMuc.vaiChinh,
-        dinhMuc.vaiPhoi1,
-        dinhMuc.vaiPhoi2,
-        dinhMuc.vaiPhoi3,
-        dinhMuc.vaiPhoi4,
-        dinhMuc.vaiPhoi5,
-        dinhMuc.phuLieu1,
-        dinhMuc.phuLieu2,
-        dinhMuc.phuLieu3,
-        dinhMuc.phuLieu4,
-        dinhMuc.phuLieu5,
-        dinhMuc.phuKien1,
-        dinhMuc.phuKien2,
-        dinhMuc.phuKien3,
-        dinhMuc.phuKien4,
-        dinhMuc.phuKien5,
-        dinhMuc.khac,
+        dinhMucToCellValue(dinhMuc.vaiChinh),
+        dinhMucToCellValue(dinhMuc.vaiPhoi1),
+        dinhMucToCellValue(dinhMuc.vaiPhoi2),
+        dinhMucToCellValue(dinhMuc.vaiPhoi3),
+        dinhMucToCellValue(dinhMuc.vaiPhoi4),
+        dinhMucToCellValue(dinhMuc.vaiPhoi5),
+        dinhMucToCellValue(dinhMuc.phuLieu1),
+        dinhMucToCellValue(dinhMuc.phuLieu2),
+        dinhMucToCellValue(dinhMuc.phuLieu3),
+        dinhMucToCellValue(dinhMuc.phuLieu4),
+        dinhMucToCellValue(dinhMuc.phuLieu5),
+        dinhMucToCellValue(dinhMuc.phuKien1),
+        dinhMucToCellValue(dinhMuc.phuKien2),
+        dinhMucToCellValue(dinhMuc.phuKien3),
+        dinhMucToCellValue(dinhMuc.phuKien4),
+        dinhMucToCellValue(dinhMuc.phuKien5),
+        dinhMucToCellValue(dinhMuc.khac),
       ],
     ];
 
