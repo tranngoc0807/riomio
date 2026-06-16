@@ -12,11 +12,15 @@ import {
   Pencil,
   Trash2,
   Eye,
+  Printer,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import EditHistoryButton from "@/components/EditHistoryButton";
+import { useCompanyConfig } from "@/context/CompanyConfigContext";
 
 interface NhapKhoHinhIn {
   id: number;
@@ -100,6 +104,7 @@ const emptyForm = {
 };
 
 export default function NhapKhoHinhInTab() {
+  const { config } = useCompanyConfig();
   const [data, setData] = useState<NhapKhoHinhIn[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -559,6 +564,109 @@ export default function NhapKhoHinhInTab() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Nhap kho HI");
     XLSX.writeFile(wb, "Nhap_kho_hinh_in.xlsx");
+  };
+
+  // HTML "Đơn đặt hình in" cho 1 đơn (group) theo mẫu giấy.
+  // Dùng inline style để render được cả ở cửa sổ in lẫn khi chụp bằng html2canvas.
+  const buildDonDatHIHtml = (group: GroupedNhapKho): string => {
+    const esc = (s: string) =>
+      (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const td = "border:1px solid #333;padding:8px 10px;font-size:13px;";
+    const rows = group.items
+      .map(
+        (item, i) => `<tr>
+        <td style="${td}text-align:center;">${esc(item.stt) || i + 1}</td>
+        <td style="${td}">${esc(item.maHinhIn)}</td>
+        <td style="${td}white-space:pre-line;">${esc(item.kichThuoc)}</td>
+        <td style="${td}text-align:center;">${
+          item.hinhAnh
+            ? `<img src="${item.hinhAnh}" style="max-width:90px;max-height:60px;object-fit:contain;" crossorigin="anonymous" />`
+            : ""
+        }</td>
+        <td style="${td}text-align:right;">${fmt(item.datHI)}</td>
+      </tr>`,
+      )
+      .join("");
+    return `<div style="font-family:Arial,sans-serif;color:#222;padding:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="font-size:16px;font-weight:bold;text-transform:uppercase;">${esc(config.name)}</div>
+        <div style="font-size:16px;font-weight:bold;">${fmt(group.totalDatHI)}</div>
+      </div>
+      <div style="font-size:13px;margin-top:4px;">${esc(config.address)}</div>
+      <div style="display:flex;align-items:center;gap:24px;margin-top:10px;">
+        <div style="font-size:15px;font-weight:bold;text-transform:uppercase;">Đơn đặt hình in</div>
+        <div style="background:#92d050;font-weight:bold;padding:6px 40px;text-align:center;min-width:220px;">${esc(group.maDon) || "(không mã)"}</div>
+        <div style="font-weight:bold;font-size:14px;">${esc(group.ngayThang)}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:22px;">
+        <thead><tr>
+          <th style="${td}background:#a9d08e;font-weight:bold;width:50px;">STT</th>
+          <th style="${td}background:#a9d08e;font-weight:bold;width:160px;">Mã hình in</th>
+          <th style="${td}background:#a9d08e;font-weight:bold;">Kích thước</th>
+          <th style="${td}background:#a9d08e;font-weight:bold;width:140px;">Hình ảnh</th>
+          <th style="${td}background:#a9d08e;font-weight:bold;width:120px;">Đặt HI</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  };
+
+  // 1) In trực tiếp qua máy in (mở cửa sổ in)
+  const handlePrintDonDatHI = (group: GroupedNhapKho) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`<html><head><title>Đơn đặt hình in ${group.maDon}</title>
+      <style>*{margin:0;padding:0;box-sizing:border-box;}body{padding:24px 28px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}@media print{body{padding:10px;}}</style>
+      </head><body>${buildDonDatHIHtml(group)}</body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 400);
+  };
+
+  // 2) Tải xuống đơn dạng file PDF
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const handleDownloadDonDatHIPDF = async (group: GroupedNhapKho) => {
+    setIsExportingPdf(true);
+    const holder = document.createElement("div");
+    holder.style.position = "fixed";
+    holder.style.left = "-10000px";
+    holder.style.top = "0";
+    holder.style.width = "800px";
+    holder.style.background = "#ffffff";
+    holder.innerHTML = buildDonDatHIHtml(group);
+    document.body.appendChild(holder);
+    try {
+      const canvas = await html2canvas(holder, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const imgWidth = pageWidth - margin * 2;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = margin;
+      pdf.addImage(imgData, "JPEG", margin, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight - margin * 2;
+      // Tách trang nếu nội dung dài hơn 1 trang A4
+      while (heightLeft > 0) {
+        pdf.addPage();
+        position = margin - (imgHeight - heightLeft);
+        pdf.addImage(imgData, "JPEG", margin, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight - margin * 2;
+      }
+      pdf.save(`DonDatHI_${group.maDon || "khong-ma"}.pdf`);
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Lỗi khi tạo PDF");
+    } finally {
+      document.body.removeChild(holder);
+      setIsExportingPdf(false);
+    }
   };
 
   if (isLoading) {
@@ -1051,6 +1159,24 @@ export default function NhapKhoHinhInTab() {
             </div>
 
             <div className="flex justify-end gap-3 px-6 py-4 border-t">
+              <button
+                onClick={() => handlePrintDonDatHI(viewingGroup)}
+                className="flex items-center gap-1.5 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              >
+                <Printer size={16} /> In đơn đặt
+              </button>
+              <button
+                onClick={() => handleDownloadDonDatHIPDF(viewingGroup)}
+                disabled={isExportingPdf}
+                className="flex items-center gap-1.5 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isExportingPdf ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <FileDown size={16} />
+                )}
+                Tải PDF
+              </button>
               <button
                 onClick={() => setViewingGroup(null)}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"

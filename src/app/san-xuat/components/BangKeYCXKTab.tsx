@@ -114,6 +114,48 @@ const emptyNPLItem: Omit<NPLItem, "id"> = {
   xuongSX: "",
 };
 
+// Input số thập phân: giữ nguyên text đang gõ (cho phép "0", "0.", "0.02"...)
+// và trả về số đã parse cho component cha.
+function DecimalInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  className?: string;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(value ? String(value) : "");
+
+  // Đồng bộ lại khi giá trị ngoài thay đổi (vd: reset form, đổi dòng đang sửa)
+  useEffect(() => {
+    const parsed = parseFloat(text);
+    const current = isNaN(parsed) ? 0 : parsed;
+    if (current !== (value || 0)) {
+      setText(value ? String(value) : "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <input
+      type="number"
+      step="any"
+      inputMode="decimal"
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = parseFloat(e.target.value);
+        onChange(isNaN(n) ? 0 : n);
+      }}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+}
+
 export default function BangKeYCXKTab() {
   const [data, setData] = useState<YeuCauXuatKhoNPL[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -927,12 +969,9 @@ export default function BangKeYCXKTab() {
       {/* Định mức */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Định mức</label>
-        <input
-          type="number"
-          step="0.01"
-          value={formData.dinhMuc || ""}
-          onChange={(e) => {
-            const dinhMuc = parseFloat(e.target.value) || 0;
+        <DecimalInput
+          value={formData.dinhMuc}
+          onChange={(dinhMuc) => {
             const tyLeHaoHut = formData.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
             setFormData({
               ...formData,
@@ -959,11 +998,9 @@ export default function BangKeYCXKTab() {
       {/* SL KH SX */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">SL KH SX</label>
-        <input
-          type="number"
-          value={formData.slKHSX || ""}
-          onChange={(e) => {
-            const slKHSX = parseFloat(e.target.value) || 0;
+        <DecimalInput
+          value={formData.slKHSX}
+          onChange={(slKHSX) => {
             const tyLeHaoHut = formData.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
             setFormData({
               ...formData,
@@ -1453,12 +1490,9 @@ export default function BangKeYCXKTab() {
                   {/* Định mức */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Định mức</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={currentNPLItem.dinhMuc || ""}
-                      onChange={(e) => {
-                        const dinhMuc = parseFloat(e.target.value) || 0;
+                    <DecimalInput
+                      value={currentNPLItem.dinhMuc}
+                      onChange={(dinhMuc) => {
                         const tyLeHaoHut = currentNPLItem.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
                         setCurrentNPLItem({
                           ...currentNPLItem,
@@ -1485,11 +1519,9 @@ export default function BangKeYCXKTab() {
                   {/* SL KH SX */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">SL KH SX</label>
-                    <input
-                      type="number"
-                      value={currentNPLItem.slKHSX || ""}
-                      onChange={(e) => {
-                        const slKHSX = parseFloat(e.target.value) || 0;
+                    <DecimalInput
+                      value={currentNPLItem.slKHSX}
+                      onChange={(slKHSX) => {
                         const tyLeHaoHut = currentNPLItem.dvt?.toLowerCase() === "mét" ? 0.01 : 0.03;
                         setCurrentNPLItem({
                           ...currentNPLItem,
@@ -2074,11 +2106,9 @@ export default function BangKeYCXKTab() {
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={item.dinhMuc || ""}
-                                onChange={(e) => updateEditItemField(key, "dinhMuc", parseFloat(e.target.value) || 0)}
+                              <DecimalInput
+                                value={item.dinhMuc}
+                                onChange={(n) => updateEditItemField(key, "dinhMuc", n)}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-right"
                               />
                             </td>
@@ -2086,10 +2116,9 @@ export default function BangKeYCXKTab() {
                               {item.dvt?.toLowerCase() === "mét" ? "1%" : "3%"}
                             </td>
                             <td className="px-3 py-2">
-                              <input
-                                type="number"
-                                value={item.slKHSX || ""}
-                                onChange={(e) => updateEditItemField(key, "slKHSX", parseFloat(e.target.value) || 0)}
+                              <DecimalInput
+                                value={item.slKHSX}
+                                onChange={(n) => updateEditItemField(key, "slKHSX", n)}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-right"
                               />
                             </td>
