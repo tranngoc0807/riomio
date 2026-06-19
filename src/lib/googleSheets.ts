@@ -10465,9 +10465,29 @@ export async function addDanhMucHinhInToSheet(
       ],
     ];
 
-    await sheets.spreadsheets.values.append({
+    // Không dùng append vì các cột E/F có sẵn công thức/dropdown kéo dài
+    // xuống dưới khiến Google Sheets chèn dòng mới xuống tận cuối bảng.
+    // Thay vào đó tìm dòng dữ liệu thật cuối cùng theo cột A (mã hình in)
+    // rồi ghi đè vào đúng dòng trống kế tiếp.
+    const existing = await sheets.spreadsheets.values.get({
       spreadsheetId: spreadsheetIdSanXuat13,
-      range: `'${sheetNameDanhMucHinhIn}'!A6:F`,
+      range: `'${sheetNameDanhMucHinhIn}'!A6:A`,
+    });
+    const colA = existing.data.values || [];
+    let targetRow = -1; // dòng trống đầu tiên ở cột A
+    for (let i = 0; i < colA.length; i++) {
+      const ma = String(colA[i]?.[0] || "").trim();
+      if (ma === "") {
+        targetRow = 6 + i;
+        break;
+      }
+    }
+    // Không có dòng trống nào ở giữa → ghi ngay sau dòng cuối cùng
+    if (targetRow === -1) targetRow = 6 + colA.length;
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetIdSanXuat13,
+      range: `'${sheetNameDanhMucHinhIn}'!A${targetRow}:F${targetRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values },
     });
