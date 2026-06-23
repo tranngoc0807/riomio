@@ -61,6 +61,17 @@ export default function LuongBaoHiem() {
     router.push(`/luong-bao-hiem?tab=${tab}`, { scroll: false });
   };
 
+  // Href cho mỗi tab (giống hệt URL mà handleTabChange push)
+  const getTabHref = (tab: TabType) => `/luong-bao-hiem?tab=${tab}`;
+
+  // Click trái -> SPA; chuột giữa/phải/Ctrl/Cmd -> để trình duyệt mở tab mới
+  const handleTabClick = (e: React.MouseEvent, tab: TabType) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)
+      return;
+    e.preventDefault();
+    handleTabChange(tab);
+  };
+
   // Load employees from Google Sheets on mount
   useEffect(() => {
     loadEmployeesFromSheet();
@@ -117,9 +128,10 @@ export default function LuongBaoHiem() {
               {filteredTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
-                  <button
+                  <a
                     key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
+                    href={getTabHref(tab.id)}
+                    onClick={(e) => handleTabClick(e, tab.id)}
                     className={`px-6 py-4 font-medium transition-colors ${
                       activeTab === tab.id
                         ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
@@ -130,7 +142,7 @@ export default function LuongBaoHiem() {
                       <Icon size={20} />
                       {tab.label}
                     </div>
-                  </button>
+                  </a>
                 );
               })}
             </div>

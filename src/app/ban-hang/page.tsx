@@ -62,6 +62,14 @@ export default function BanHang() {
     router.push(`?tab=${tabId}`, { scroll: false });
   };
 
+  const getTabHref = (tabId: TabType) => `?tab=${tabId}`;
+
+  const handleTabClick = (e: React.MouseEvent, tabId: TabType) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    handleTabChange(tabId);
+  };
+
   return (
     <div className="space-y-6">
       <Toaster position="top-right" />
@@ -96,9 +104,10 @@ export default function BanHang() {
               {filteredTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
-                  <button
+                  <a
                     key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
+                    href={getTabHref(tab.id)}
+                    onClick={(e) => handleTabClick(e, tab.id)}
                     className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === tab.id
                         ? "text-blue-600 border-blue-600 bg-blue-50/50"
@@ -107,7 +116,7 @@ export default function BanHang() {
                   >
                     <Icon size={18} />
                     {tab.label}
-                  </button>
+                  </a>
                 );
               })}
             </div>

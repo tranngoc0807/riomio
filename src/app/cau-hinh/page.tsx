@@ -211,6 +211,21 @@ export default function CauHinh() {
     router.push(`/cau-hinh?tab=${tab}`, { scroll: false });
   };
 
+  // Helper: tạo URL cho tab (giống hệt setActiveTab push) để dùng với <a href>
+  const getTabHref = (tab: "users" | "permissions" | "config") => {
+    return `/cau-hinh?tab=${tab}`;
+  };
+
+  // Helper: click trái vẫn SPA, modifier/middle-click để trình duyệt mở tab mới
+  const handleTabClick = (
+    e: React.MouseEvent,
+    tab: "users" | "permissions" | "config"
+  ) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    setActiveTab(tab);
+  };
+
   // Image upload
   const heroImageInputRef = useRef<HTMLInputElement>(null);
   const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
@@ -436,8 +451,9 @@ export default function CauHinh() {
         {/* Tabs */}
         <div className="mt-4">
           <div className="flex gap-2 border-b border-gray-200">
-            <button
-              onClick={() => setActiveTab("users")}
+            <a
+              href={getTabHref("users")}
+              onClick={(e) => handleTabClick(e, "users")}
               className={`px-6 py-3 font-medium transition-colors relative ${
                 activeTab === "users"
                   ? "text-blue-600 border-b-2 border-blue-600"
@@ -448,9 +464,10 @@ export default function CauHinh() {
                 <Users size={20} />
                 Quản lý tài khoản
               </div>
-            </button>
-            <button
-              onClick={() => setActiveTab("permissions")}
+            </a>
+            <a
+              href={getTabHref("permissions")}
+              onClick={(e) => handleTabClick(e, "permissions")}
               className={`px-6 py-3 font-medium transition-colors relative ${
                 activeTab === "permissions"
                   ? "text-blue-600 border-b-2 border-blue-600"
@@ -461,9 +478,10 @@ export default function CauHinh() {
                 <Settings size={20} />
                 Phân quyền
               </div>
-            </button>
-            <button
-              onClick={() => setActiveTab("config")}
+            </a>
+            <a
+              href={getTabHref("config")}
+              onClick={(e) => handleTabClick(e, "config")}
               className={`px-6 py-3 font-medium transition-colors relative ${
                 activeTab === "config"
                   ? "text-blue-600 border-b-2 border-blue-600"
@@ -474,7 +492,7 @@ export default function CauHinh() {
                 <Building2 size={20} />
                 Cấu hình trang thông tin
               </div>
-            </button>
+            </a>
           </div>
         </div>
       </div>

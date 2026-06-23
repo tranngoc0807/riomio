@@ -82,6 +82,14 @@ export default function NguyenPhuLieu() {
     router.push(`?tab=${tabId}`, { scroll: false });
   };
 
+  const getTabHref = (tabId: TabType) => `?tab=${tabId}`;
+
+  const handleTabClick = (e: React.MouseEvent, tabId: TabType) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    handleTabChange(tabId);
+  };
+
   return (
     <div className="space-y-6">
       <Toaster position="top-right" />
@@ -113,9 +121,10 @@ export default function NguyenPhuLieu() {
               {filteredTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
-                  <button
+                  <a
                     key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
+                    href={getTabHref(tab.id)}
+                    onClick={(e) => handleTabClick(e, tab.id)}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                       activeTab === tab.id
                         ? "text-white bg-blue-600 shadow-sm"
@@ -124,7 +133,7 @@ export default function NguyenPhuLieu() {
                   >
                     <Icon size={16} />
                     <span className="truncate">{tab.label}</span>
-                  </button>
+                  </a>
                 );
               })}
             </div>

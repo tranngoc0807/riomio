@@ -215,6 +215,17 @@ export default function QuanLyTienVay() {
     router.push(`?tab=${tabId}`, { scroll: false });
   };
 
+  // Href cho mỗi tab (giống hệt URL mà handleTabChange push)
+  const getTabHref = (tabId: string) => `?tab=${tabId}`;
+
+  // Click trái -> SPA; chuột giữa/phải/Ctrl/Cmd -> để trình duyệt mở tab mới
+  const handleTabClick = (e: React.MouseEvent, tabId: string) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)
+      return;
+    e.preventDefault();
+    handleTabChange(tabId);
+  };
+
   // Sync activeTab with URL on mount and when URL changes
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab") || "danh-sach-mon-vay";
@@ -1094,9 +1105,10 @@ export default function QuanLyTienVay() {
           <div className="flex items-center justify-between px-6">
             <nav className="flex space-x-8" aria-label="Tabs">
               {tabs.map((tab) => (
-                <button
+                <a
                   key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
+                  href={getTabHref(tab.id)}
+                  onClick={(e) => handleTabClick(e, tab.id)}
                   className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
                       ? "border-blue-500 text-blue-600"
@@ -1105,7 +1117,7 @@ export default function QuanLyTienVay() {
                 >
                   <tab.icon className="w-4 h-4" />
                   {tab.label}
-                </button>
+                </a>
               ))}
             </nav>
           </div>

@@ -57,6 +57,18 @@ export default function HinhAnhPage() {
     router.push(`?tab=${tabId}`, { scroll: false });
   };
 
+  // Helper: tạo URL cho tab (giống hệt handleTabChange push) để dùng với <a href>
+  const getTabHref = (tabId: TabType) => {
+    return `?tab=${tabId}`;
+  };
+
+  // Helper: click trái vẫn SPA, modifier/middle-click để trình duyệt mở tab mới
+  const handleTabClick = (e: React.MouseEvent, tabId: TabType) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    handleTabChange(tabId);
+  };
+
   return (
     <div className="space-y-6">
       <Toaster position="top-right" />
@@ -88,9 +100,10 @@ export default function HinhAnhPage() {
               {filteredTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
-                  <button
+                  <a
                     key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
+                    href={getTabHref(tab.id)}
+                    onClick={(e) => handleTabClick(e, tab.id)}
                     className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                       activeTab === tab.id
                         ? "text-white bg-blue-600 shadow-sm"
@@ -99,7 +112,7 @@ export default function HinhAnhPage() {
                   >
                     <Icon size={16} />
                     {tab.label}
-                  </button>
+                  </a>
                 );
               })}
             </div>

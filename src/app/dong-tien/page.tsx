@@ -249,6 +249,21 @@ export default function DongTien() {
     router.push(`/dong-tien?tab=${tab}`);
   };
 
+  // Helper: tạo URL cho tab (giống hệt handleTabChange push) để dùng với <a href>
+  const getTabHref = (tab: "transactions" | "accounts" | "loans") => {
+    return `/dong-tien?tab=${tab}`;
+  };
+
+  // Helper: click trái vẫn SPA, modifier/middle-click để trình duyệt mở tab mới
+  const handleTabClick = (
+    e: React.MouseEvent,
+    tab: "transactions" | "accounts" | "loans"
+  ) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    handleTabChange(tab);
+  };
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -686,8 +701,9 @@ export default function DongTien() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">
           <div className="flex">
-            <button
-              onClick={() => handleTabChange("transactions")}
+            <a
+              href={getTabHref("transactions")}
+              onClick={(e) => handleTabClick(e, "transactions")}
               className={`px-6 py-4 font-medium transition-colors ${
                 activeTab === "transactions"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
@@ -698,9 +714,10 @@ export default function DongTien() {
                 <TrendingUp size={20} />
                 Thu chi hàng ngày
               </div>
-            </button>
-            <button
-              onClick={() => handleTabChange("accounts")}
+            </a>
+            <a
+              href={getTabHref("accounts")}
+              onClick={(e) => handleTabClick(e, "accounts")}
               className={`px-6 py-4 font-medium transition-colors ${
                 activeTab === "accounts"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
@@ -711,9 +728,10 @@ export default function DongTien() {
                 <Wallet size={20} />
                 Tài khoản
               </div>
-            </button>
-            <button
-              onClick={() => handleTabChange("loans")}
+            </a>
+            <a
+              href={getTabHref("loans")}
+              onClick={(e) => handleTabClick(e, "loans")}
               className={`px-6 py-4 font-medium transition-colors ${
                 activeTab === "loans"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
@@ -724,7 +742,7 @@ export default function DongTien() {
                 <CreditCard size={20} />
                 Khoản vay
               </div>
-            </button>
+            </a>
           </div>
         </div>
 
