@@ -1894,7 +1894,18 @@ export default function OrdersTab() {
                       }}
                     >
                       <span>CK thanh toán trước:</span>
-                      <span>0</span>
+                      <span style={{ color: "#ea580c" }}>
+                        {(() => {
+                          const ckTT =
+                            viewGroupedOrder.products.reduce(
+                              (sum, p) => sum + p.subtotalAfterDiscount,
+                              0,
+                            ) - viewGroupedOrder.total;
+                          return ckTT > 0
+                            ? `-${ckTT.toLocaleString("vi-VN")}`
+                            : "0";
+                        })()}
+                      </span>
                     </div>
                     <div
                       style={{
